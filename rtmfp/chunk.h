@@ -1,0 +1,600 @@
+#pragma once
+
+#include "types.h"
+
+#include <boost/cstdint.hpp>
+#include <boost/shared_ptr.hpp>
+
+namespace intertalk
+{
+	class chunk
+	{
+	public:
+		enum type_t
+		{
+			ePing = 0x01,
+			eForwardedInitiatorHello = 0x0f,
+			eUserData = 0x10,
+			eNextUserData = 0x11,
+			eInitiatorHello = 0x30,
+			eInitiatorInitialKeying = 0x38,
+			ePingReply = 0x41,
+			eSessionCloseAcknowledgement = 0x4c,
+			eDataAcknowledgementRanges = 0x51,
+			eFlowExceptionReportChunk = 0x5e,
+			eResponderHello = 0x70,
+			eResponderRedirect = 0x71,
+			eResponderInitialKeying = 0x78
+		};
+
+		chunk (type_t t)
+			: m_type(t)
+		{}
+
+		virtual ~chunk()
+		{}
+
+		const type_t &type() const
+		{
+			return m_type;
+		}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t) = 0;
+		virtual boost::uint16_t serialize(stream_array &) = 0;
+
+	protected:
+		boost::uint16_t serialize_chunk_header(stream_array &);
+
+		type_t m_type;
+		enum { eChunkHeaderSize = 3 };
+	};
+
+	class fihello_chunk : public chunk
+	{
+	public:
+		fihello_chunk(const boost::uint16_t &epd_len, const boost::uint8_t *epd, const address &a, const boost::uint16_t &tag_len, const boost::uint8_t *tag)
+			: chunk(eForwardedInitiatorHello)
+			, m_epd_len(epd_len)
+			, m_epd(const_cast<boost::uint8_t *>(epd))
+			, m_address(a)
+			, m_tag_len(tag_len)
+			, m_tag(const_cast<boost::uint8_t *>(tag))
+		{}
+
+		~fihello_chunk()
+		{}
+
+		const vlu_t &epd_len() const
+		{
+			return m_epd_len;
+		}
+
+		const boost::uint8_t *epd() const
+		{
+			return m_epd;
+		}
+
+		const boost::uint16_t &tag_len() const
+		{
+			return m_tag_len;
+		}
+
+		const boost::uint8_t *tag() const
+		{
+			return m_tag;
+		}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t)
+		{
+			return true; // not implemented
+		}
+		virtual boost::uint16_t serialize(stream_array &);
+
+	protected:
+		vlu_t m_epd_len;
+		boost::uint8_t *m_epd;
+		address m_address;
+		boost::uint16_t m_tag_len;
+		boost::uint8_t *m_tag;
+	};
+
+	class ihello_chunk : public chunk
+	{
+	public:
+		ihello_chunk()
+			: chunk(eInitiatorHello)
+		{}
+
+		~ihello_chunk()
+		{
+			delete[] m_tag;
+		}
+
+		enum type { eServerIHello = 0x0a, eRemotePeerIHello = 0x0f };
+
+		const vlu_t &epd_len() const
+		{
+			return m_epd_len;
+		}
+
+		const boost::uint8_t *epd() const
+		{
+			return m_epd;
+		}
+
+		const boost::uint16_t &tag_len() const
+		{
+			return m_tag_len;
+		}
+
+		const boost::uint8_t *tag() const
+		{
+			return m_tag;
+		}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t);
+		virtual boost::uint16_t serialize(stream_array &)
+		{
+			return 0;
+		} // not implemented
+
+	protected:
+		vlu_t m_epd_len;
+		boost::uint8_t *m_epd;
+		boost::uint8_t *m_tag;
+		boost::uint16_t m_tag_len;
+	};
+
+	class rhello_chunk : public chunk
+	{
+	public:
+		rhello_chunk()
+			: chunk(eResponderHello)
+		{}
+
+		rhello_chunk(const boost::uint16_t &tag_len, const boost::uint8_t *tag, const boost::uint16_t &cookie_len, const boost::uint8_t *cookie, const boost::uint16_t &cert_len, const boost::uint8_t *cert)
+			: chunk(eResponderHello)
+			, m_tag_len(tag_len)
+			, m_tag(tag)
+			, m_cookie_len(cookie_len)
+			, m_cookie(cookie)
+			, m_cert_len(cert_len)
+			, m_cert(cert)
+		{}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t)
+		{
+			return true;
+		}  // not implemented
+		virtual boost::uint16_t serialize(stream_array &);
+
+	protected:
+		boost::uint16_t m_tag_len;
+		const boost::uint8_t *m_tag;
+		boost::uint16_t m_cookie_len;
+		const boost::uint8_t *m_cookie;
+		boost::uint16_t m_cert_len;
+		const boost::uint8_t *m_cert;
+	};
+
+	class redirect_chunk : public chunk
+	{
+	public:
+		redirect_chunk(boost::uint16_t tag_len, const boost::uint8_t *tag)
+			: chunk(eResponderRedirect)
+			, m_tag_len(tag_len)
+			, m_tag(new boost::uint8_t[m_tag_len])
+		{
+			std::memcpy(const_cast<boost::uint8_t *>(m_tag), tag, m_tag_len);
+		}
+
+		~redirect_chunk()
+		{
+			delete[] m_tag;
+		}
+
+		const std::list<address> &addresses() const
+		{
+			return m_addresses;
+		}
+
+		std::list<address> &addresses()
+		{
+			return m_addresses;
+		}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t)
+		{
+			return true;
+		}  // not implemented
+		virtual boost::uint16_t serialize(stream_array &);
+
+	protected:
+		boost::uint16_t m_tag_len;
+		const boost::uint8_t *m_tag;
+		std::list<address> m_addresses;
+	};
+
+	class iikeying_chunk : public chunk
+	{
+	public:
+		iikeying_chunk()
+			: chunk(eInitiatorInitialKeying)
+		{}
+
+		const boost::uint32_t &isid() const
+		{
+			return m_isid;
+		}
+
+		const vlu_t &cookie_len() const
+		{
+			return m_cookie_len;
+		}
+
+		const boost::uint8_t *cookie_echo() const
+		{
+			return m_cookie_echo;
+		}
+
+		const vlu_t &cert_len() const
+		{
+			return m_cert_len;
+		}
+
+		const boost::uint8_t *initator_cert() const
+		{
+			return m_initiator_cert;
+		}
+
+		const vlu_t &skic_len() const
+		{
+			return m_skic_len;
+		}
+
+		const boost::uint8_t *skic() const
+		{
+			return m_skic;
+		}
+
+		const boost::uint16_t &signature_len() const
+		{
+			return m_signature_len;
+		}
+
+		const boost::uint8_t *signature() const
+		{
+			return m_signature;
+		}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t);
+		virtual boost::uint16_t serialize(stream_array &)
+		{
+			return 0;
+		} // not implemented
+
+	protected:
+		boost::uint32_t m_isid;
+		vlu_t m_cookie_len;
+		const boost::uint8_t *m_cookie_echo;
+		vlu_t m_cert_len;
+		const boost::uint8_t *m_initiator_cert;
+		vlu_t m_skic_len;
+		const boost::uint8_t *m_skic;
+		boost::uint16_t m_signature_len;
+		const boost::uint8_t *m_signature;
+	};
+
+	class rikeying_chunk : public chunk
+	{
+	public:
+		rikeying_chunk(boost::uint32_t rsid, boost::uint16_t skrc_len, const boost::uint8_t *skrc)
+			: chunk(eResponderInitialKeying)
+			, m_rsid(rsid)
+			, m_skrc_len(skrc_len)
+			, m_skrc(skrc)
+		{}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t)
+		{
+			return true;
+		}  // not implemented
+		virtual boost::uint16_t serialize(stream_array &);
+
+	protected:
+		static boost::uint8_t m_marker;
+		boost::uint32_t m_rsid;
+		boost::uint16_t m_skrc_len;
+		const boost::uint8_t *m_skrc;
+	};
+
+	struct fragment;
+	typedef boost::shared_ptr<fragment> fragment_ptr;
+
+	class data_chunk
+	{
+	public:
+		data_chunk()
+			: m_flags(0)
+			, m_user_data(0)
+			, m_user_data_len(0)
+			, m_options_present(false)
+			, m_abandon(false)
+			, m_final(false)
+		{}
+
+		data_chunk(const boost::uint8_t &flags, const boost::uint8_t *user_data, const boost::uint16_t &data_len)
+			: m_flags(flags)
+			, m_user_data(user_data)
+			, m_user_data_len(data_len)
+		{}
+
+		const boost::uint8_t &flags() const
+		{
+			return m_flags;
+		}
+
+		const option_list &options() const
+		{
+			return m_option_list;
+		}
+
+		option_list &options()
+		{
+			return m_option_list;
+		}
+
+		const bool &should_abandon() const
+		{
+			return m_abandon;
+		}
+
+		const bool &is_final() const
+		{
+			return m_final;
+		}
+
+		const boost::uint8_t &frag_ctl() const
+		{
+			return m_frag_ctl;
+		}
+
+		const boost::uint8_t *user_data() const
+		{
+			return m_user_data;
+		}
+
+		const boost::uint16_t &user_data_len() const
+		{
+			return m_user_data_len;
+		}
+
+	protected:
+		void parse_flags();
+		void create_flags();
+
+		boost::uint8_t m_flags;
+		option_list m_option_list;
+
+		const boost::uint8_t *m_user_data;
+		boost::uint16_t m_user_data_len;
+
+		// flags
+		bool m_options_present;
+		bool m_abandon;
+		bool m_final;
+		boost::uint8_t m_frag_ctl;
+	};
+
+	class user_data_chunk : public chunk, public data_chunk
+	{
+	public:
+		user_data_chunk()
+			: chunk(eUserData)
+			, data_chunk()
+			, m_flow_id(0)
+			, m_seq_number(0)
+			, m_fsn_offset(0)
+		{}
+
+		user_data_chunk(const boost::uint8_t &flags, const vlu_t &flow_id, const vlu_t &seq_no, const vlu_t &fsn_off, const boost::uint8_t *user_data, const boost::uint16_t &data_len)
+			: chunk(eUserData)
+			, data_chunk(flags, user_data, data_len)
+			, m_flow_id(flow_id)
+			, m_seq_number(seq_no)
+			, m_fsn_offset(fsn_off)
+		{}
+
+		user_data_chunk(fragment_ptr, const vlu_t &, const vlu_t &);
+
+		virtual bool deserialize(stream_array &, boost::uint16_t);
+		virtual boost::uint16_t serialize(stream_array &);
+
+		const vlu_t &flow_id() const
+		{
+			return m_flow_id;
+		}
+
+		const vlu_t &seq_number() const
+		{
+			return m_seq_number;
+		}
+
+		const vlu_t &fsn_offset() const
+		{
+			return m_fsn_offset;
+		}
+
+		vlu_t forward_seq_number() const
+		{
+			return m_seq_number - m_fsn_offset;
+		}
+
+	protected:
+		vlu_t m_flow_id;
+		vlu_t m_seq_number;
+		vlu_t m_fsn_offset;
+	};
+
+	class next_user_data_chunk : public chunk, public data_chunk
+	{
+	public:
+		next_user_data_chunk()
+			: chunk(eNextUserData)
+			, data_chunk()
+		{}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t);
+		virtual boost::uint16_t serialize(stream_array &)
+		{
+			return 0;
+		} // not implemented
+	};
+
+	class range_ack_chunk : public chunk
+	{
+	public:
+		range_ack_chunk()
+			: chunk(eDataAcknowledgementRanges)
+		{}
+
+		range_ack_chunk(const vlu_t &flowid, const vlu_t &blocks_available, const vlu_t &cumulative_ack)
+			: chunk(eDataAcknowledgementRanges)
+			, m_flowid(flowid)
+			, m_buff_blocks_available(blocks_available)
+			, m_cumulative_ack(cumulative_ack)
+		{}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t);
+		virtual boost::uint16_t serialize(stream_array &);
+
+		const vlu_t &flow_id() const
+		{
+			return m_flowid;
+		}
+
+		const vlu_t &buff_blocks_available() const
+		{
+			return m_buff_blocks_available;
+		}
+
+		const vlu_t &cumulative_ack() const
+		{
+			return m_cumulative_ack;
+		}
+
+		typedef std::pair<vlu_t, vlu_t> range_pair_t;
+		typedef std::list<range_pair_t> range_list_t;
+
+		const range_list_t &ranges() const
+		{
+			return m_ranges;
+		}
+
+		range_list_t &ranges()
+		{
+			return m_ranges;
+		}
+
+		void add_range(const range_pair_t &p)
+		{
+			m_ranges.push_back(p);
+		}
+
+	protected:
+		vlu_t m_flowid;
+		vlu_t m_buff_blocks_available;
+		vlu_t m_cumulative_ack;
+		range_list_t m_ranges;
+	};
+
+	class flow_exception_report_chunk : public chunk
+	{
+	public:
+		flow_exception_report_chunk()
+			: chunk(eFlowExceptionReportChunk)
+		{}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t);
+		virtual boost::uint16_t serialize(stream_array &)
+		{
+			return 0;
+		} // not implemented
+
+		const vlu_t &flow_id() const
+		{
+			return m_flowid;
+		}
+
+		const vlu_t &exception() const
+		{
+			return m_exception;
+		}
+
+	protected:
+		vlu_t m_flowid;
+		vlu_t m_exception;
+	};
+
+	class ping_chunk : public chunk
+	{
+	public:
+		ping_chunk()
+			: chunk(ePing)
+		{}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t);
+		virtual boost::uint16_t serialize(stream_array &)
+		{
+			return 0;
+		} // not implemented
+
+		const boost::uint16_t &data_len() const
+		{
+			return m_data_len;
+		}
+
+		const boost::uint8_t *data() const
+		{
+			return m_data;
+		}
+
+	protected:
+		boost::uint16_t m_data_len;
+		const boost::uint8_t *m_data;
+	};
+
+	class ping_reply_chunk : public chunk
+	{
+	public:
+		ping_reply_chunk(const boost::uint8_t *data, const boost::uint16_t &data_len)
+			: chunk(ePingReply)
+			, m_data_len(data_len)
+			, m_data(data)
+		{}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t)
+		{
+			return true;
+		} // not implemented
+		virtual boost::uint16_t serialize(stream_array &);
+
+	protected:
+		boost::uint16_t m_data_len;
+		const boost::uint8_t *m_data;
+	};
+
+	class close_ack_chunk : public chunk
+	{
+	public:
+		close_ack_chunk()
+			: chunk(eSessionCloseAcknowledgement)
+		{}
+
+		virtual bool deserialize(stream_array &, boost::uint16_t);
+		virtual boost::uint16_t serialize(stream_array &)
+		{
+			return 0;
+		} // not implemented
+	};
+}

@@ -1,0 +1,46 @@
+#pragma once
+
+#include <boost/cstdint.hpp>
+#include <boost/logic/tribool.hpp>
+#include <boost/shared_ptr.hpp>
+
+namespace intertalk
+{
+	// Forward declarations
+	class rtmp_channel;
+	typedef boost::shared_ptr<rtmp_channel> rtmp_channel_ptr;
+
+	class channel_manager;
+	typedef boost::shared_ptr<channel_manager> channel_manager_ptr;
+
+	class rtmp_message;
+	typedef boost::shared_ptr<rtmp_message> rtmp_message_ptr;
+
+	class stream_array;
+
+	/**
+	* rtmp_raw_data implements basics of RTMP parser. It is the base of all classes
+	* that implement specific RTMP[E,T] protocol
+	*/
+	class rtmp_raw_data
+	{
+	public:
+		rtmp_raw_data();
+		virtual ~rtmp_raw_data(){}
+
+	protected:
+		boost::tribool parse_data(stream_array &);
+		void handle_message(rtmp_channel_ptr);
+		boost::uint32_t peek_channel_id(stream_array &);
+
+		virtual void handle_message(rtmp_channel_ptr, rtmp_message_ptr) = 0;
+		virtual void handle_internal_message(rtmp_message_ptr) = 0;
+
+		bool m_read_header;
+		channel_manager_ptr m_channel_manager;
+		boost::uint32_t m_chunk_size;
+		boost::uint32_t m_channel_id;
+
+		enum { eChunkSize = 128 };
+	};
+}

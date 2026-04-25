@@ -1,0 +1,609 @@
+#include "pch.h"
+#include "admin_application.h"
+#include "config.h"
+#include "crypto.h"
+#include "logging.h"
+#include "rtmp_message.h"
+
+#include <fstream>
+#include <list>
+#include <string>
+#include <vector>
+
+#include <boost/algorithm/string.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
+namespace intertalk
+{
+	namespace invoke_functions
+	{
+		static const char get_applications[] = "getApplications";
+		static const char get_clients[] = "getClients";
+		static const char get_client_stats[] = "getClientStats";
+		static const char get_app_stats[] = "getAppStats";
+		static const char get_streams[] = "getStreams";
+		static const char get_queue_stats[] = "getQueueStats";
+		static const char dump_pools[] = "dumpPJPools";
+		static const char kill_client[] = "killClient";
+
+		// client side
+		static const char on_new_stream[] = "onNewStream";
+		static const char on_delete_stream[] = "onDeleteStream";
+		static const char on_qos[] = "onQOS";
+		static const char on_auth_status[] = "onAuthStatus";
+		static const char on_disconnect[] = "onDisconnect";
+		static const char on_call_status[] = "onCallStatus";
+	}
+
+	void admin_application::init()
+	{
+		load_password_file();
+		m_keep_time = config::instance()->admin_data_keep_time();
+		if (m_keep_time > 3600) // one hour
+		{
+			BOOST_LOG(intertalk::lg::get()) << "Warning, admin data keep time is more than one hour!";
+			std::cout << "Warning, admin data keep time is more than one hour!" << std::endl;
+		}
+	}
+
+	void admin_application::load_password_file()
+	{
+		std::ifstream p(config::instance()->password_file().c_str());
+		if (p.is_open())
+		{
+			std::string line;
+			std::vector<std::string> vec;
+			while (std::getline(p, line))
+			{
+				boost::split(vec, line, boost::is_any_of(":"), boost::token_compress_on);
+				if (vec.size() == 2)
+					m_password_map[vec[0]] = vec[1];
+				vec.clear();
+			}
+			p.close();
+		}
+		else
+		{
+			BOOST_LOG(intertalk::lg::get()) << "Warning, cannot open " << config::instance()->password_file();
+			std::cout << "Warning, cannot open " << config::instance()->password_file() << std::endl;
+		}
+	}
+
+	boost::tribool admin_application::handle_invoke(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
+	{
+		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
+
+		if (invoke.get() == 0)
+			return false;
+
+		if (!check_client(connection_id) && invoke->function()->value().compare(invoke_functions::connect) != 0)
+			return false;
+
+		if (invoke->function()->value().compare(invoke_functions::get_applications) == 0)
+		{
+			handle_invoke_get_apps(invoke, connection_id, result);
+			return true;
+		}
+
+		if (invoke->function()->value().compare(invoke_functions::get_clients) == 0)
+		{
+			handle_invoke_get_clients(invoke, connection_id, result);
+			return true;
+		}
+
+		if (invoke->function()->value().compare(invoke_functions::get_client_stats) == 0)
+		{
+			handle_invoke_get_client_stats(invoke, connection_id, result);
+			return true;
+		}
+
+		if (invoke->function()->value().compare(invoke_functions::get_app_stats) == 0)
+		{
+			handle_invoke_get_app_stats(invoke, connection_id, result);
+			return true;
+		}
+
+		if (invoke->function()->value().compare(invoke_functions::get_streams) == 0)
+		{
+			handle_invoke_get_streams(invoke, connection_id, result);
+			return true;
+		}
+
+		if (invoke->function()->value().compare(invoke_functions::get_queue_stats) == 0)
+		{
+			handle_invoke_get_queue_stats(invoke, connection_id, result);
+			return true;
+		}
+
+		if (invoke->function()->value().compare(invoke_functions::dump_pools) == 0)
+		{
+			// pool dumping was pjsip-specific; no-op now that pjsip is removed
+			return false;
+		}
+
+		if (invoke->function()->value().compare(invoke_functions::kill_client) == 0)
+		{
+			handle_invoke_kill_client(invoke, connection_id, result);
+			return false;
+		}
+
+		return rtmp_application::handle_invoke(msg, connection_id, header, result);
+	}
+
+	boost::tribool admin_application::handle_client_login(boost::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &params, rtmp_message_ptr &)
+	{
+		bool active_client = false;
+		if (params.size() == 4)
+		{
+			rtmp_message_invoke::parameters_list_t::const_iterator i = params.end();
+			--i;
+			if ((*i)->type() != amf0_type::eAMF0Boolean && (*i)->type() != amf0_type::eAMF0Null)
+				return false;
+			amf0_boolean_ptr b = boost::dynamic_pointer_cast<amf0_boolean, amf0_type>(*i);
+			if (b.get() != 0)
+				active_client = b->value();
+		}
+
+		boost::mutex::scoped_lock lock(m_admin_mutex);
+		m_clients[connection_id] = active_client;
+		lock.unlock();
+
+		create_connect_messages(connection_id);
+		notify(connection_id);
+		return false;
+	}
+
+	bool admin_application::check_connect_params(boost::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &params)
+	{
+		if (!rtmp_application::check_connect_params(connection_id, params) || params.size() < 3)
+			return false;
+
+		rtmp_message_invoke::parameters_list_t::const_iterator i = params.begin();
+		++i;
+
+		if ((*i)->type() != amf0_type::eAMF0String)
+			return false;
+
+		amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+
+		std::string user = str->value();
+
+		++i;
+		if ((*i)->type() != amf0_type::eAMF0String)
+			return false;
+
+		str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+		std::string pass = str->value();
+
+		return check_user_and_password(user, pass);
+	}
+
+	bool admin_application::check_user_and_password(const std::string &user, const std::string &pass)
+	{
+		std::map<std::string, std::string>::const_iterator i = m_password_map.find(user);
+		if (i != m_password_map.end())
+			return i->second == sha256(pass);
+		return false;
+	}
+
+	void admin_application::delete_connection(boost::uint32_t connection_id, const std::string &app_instance /* = "" */)
+	{
+		rtmp_application::delete_connection(connection_id, app_instance);
+		boost::mutex::scoped_lock lock(m_admin_mutex);
+		m_clients.erase(connection_id);
+	}
+
+	void admin_application::handle_win_ack_size(rtmp_message_ptr, boost::uint32_t connection_id)
+	{
+		boost::mutex::scoped_lock lock(m_admin_mutex);
+		if (m_clients.find(connection_id) != m_clients.end())
+		{
+			if (m_clients[connection_id] && !m_queue.empty())
+				send_enqueued_messages(connection_id);
+		}
+	}
+
+	void admin_application::handle_invoke_get_apps(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	{
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		res->channel_id() = invoke->channel_id();
+		res->stream_id() = invoke->stream_id();
+
+		amf0_strict_array_ptr list(new amf0_strict_array);
+		string_list_t apps;
+		m_app_manager->list_applications(apps);
+		for (std::list<std::string>::iterator i = apps.begin(); i != apps.end(); ++i)
+		{
+			amf0_string_ptr str(new amf0_string(*i));
+			list->add_entry(str);
+		}
+		res->add_parameter(list);
+
+		result = res;
+	}
+
+	void admin_application::handle_invoke_get_clients(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	{
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		res->channel_id() = invoke->channel_id();
+		res->stream_id() = invoke->stream_id();
+
+		amf0_strict_array_ptr list(new amf0_strict_array);
+		client_list_t clients;
+		m_app_manager->list_clients(clients);
+		for (client_list_t::iterator i = clients.begin(); i != clients.end(); ++i)
+		{
+			amf0_object_ptr obj(new amf0_object);
+			obj->add_entry("id", (*i)->m_id);
+			obj->add_entry("sid", (*i)->m_sid);
+			obj->add_entry("app", (*i)->m_app);
+			obj->add_entry("ip", (*i)->m_ip);
+			obj->add_entry("port", (*i)->m_port);
+			obj->add_entry("protocol", (*i)->m_protocol);
+			obj->add_entry("time", boost::posix_time::to_simple_string((*i)->m_create_time));
+			if ((*i)->m_username.length() > 0)
+				obj->add_entry("user", (*i)->m_username);
+			list->add_entry(obj);
+		}
+		res->add_parameter(list);
+
+		result = res;
+	}
+
+	void admin_application::handle_invoke_get_client_stats(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	{
+		if (invoke->parameters().size() != 2)
+			return;
+
+		rtmp_message_invoke::parameters_list_t::iterator i = invoke->parameters().begin();
+		++i;
+		if ((*i)->type() != amf0_type::eAMF0Number)
+			return;
+
+		amf0_number_ptr id = boost::dynamic_pointer_cast<amf0_number, amf0_type>(*i);
+
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		res->channel_id() = invoke->channel_id();
+		res->stream_id() = invoke->stream_id();
+
+		client_stats stats;
+		if (m_app_manager->get_client_stats(static_cast<boost::uint32_t>(id->value()), stats))
+		{
+			amf0_object_ptr obj(new amf0_object);
+			obj->add_entry("time", stats.m_online_time);
+			obj->add_entry("bytes_in", stats.m_bytes_read);
+			obj->add_entry("bytes_out", stats.m_bytes_written);
+			obj->add_entry("msgs_in", stats.m_messages_read);
+			obj->add_entry("msgs_out", stats.m_messages_written);
+			res->add_parameter(obj);
+		}
+		else
+		{
+			amf0_string_ptr str(new amf0_string("No such client"));
+			res->add_parameter(str);
+		}
+		result = res;
+	}
+
+	void admin_application::handle_invoke_get_app_stats(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	{
+		if (invoke->parameters().size() != 2)
+			return;
+
+		rtmp_message_invoke::parameters_list_t::iterator i = invoke->parameters().begin();
+		++i;
+		if ((*i)->type() != amf0_type::eAMF0String)
+			return;
+
+		amf0_string_ptr app = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		res->channel_id() = invoke->channel_id();
+		res->stream_id() = invoke->stream_id();
+
+		boost::optional<app_stats> stats = m_app_manager->get_app_stats(app->value());
+		if (stats)
+		{
+			amf0_object_ptr obj(new amf0_object);
+			obj->add_entry("bytes_in", (*stats).m_bytes_read);
+			obj->add_entry("bytes_out", (*stats).m_bytes_written);
+			obj->add_entry("msgs_in", (*stats).m_messages_read);
+			obj->add_entry("msgs_out", (*stats).m_messages_written);
+			res->add_parameter(obj);
+		}
+		else
+		{
+			amf0_string_ptr str(new amf0_string("No such application"));
+			res->add_parameter(str);
+		}
+		result = res;
+	}
+
+	void admin_application::handle_invoke_get_streams(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	{
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		res->channel_id() = invoke->channel_id();
+		res->stream_id() = invoke->stream_id();
+
+		amf0_strict_array_ptr list(new amf0_strict_array);
+		netstream_list_t streams;
+		m_app_manager->list_streams(streams);
+
+		for (netstream_list_t::iterator i = streams.begin(); i != streams.end(); ++i)
+			list->add_entry(create_stream_stat_obj(*i));
+
+		res->add_parameter(list);
+
+		result = res;
+	}
+
+	amf0_object_ptr admin_application::create_stream_stat_obj(netstream_stats_ptr i, bool complete_data /* = true */)
+	{
+		amf0_object_ptr obj(new amf0_object);
+		obj->add_entry("client", i->m_client);
+		obj->add_entry("name", i->m_name);
+		if (!complete_data)
+		{
+			obj->add_entry("bytes", i->m_bytes);
+			obj->add_entry("messages", i->m_messages);
+			obj->add_entry("dropped", i->m_messages_dropped);
+			obj->add_entry("delay", i->m_delay);
+		}
+		if (complete_data)
+		{
+			obj->add_entry("started", boost::posix_time::to_simple_string(i->m_time));
+			obj->add_entry("status", i->m_is_published ? "publishing" : "playing");
+		}
+		return obj;
+	}
+
+	void admin_application::handle_invoke_get_queue_stats(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	{
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		res->channel_id() = invoke->channel_id();
+		res->stream_id() = invoke->stream_id();
+
+		amf0_strict_array_ptr list(new amf0_strict_array);
+		queue_stats_list_t queue_stats;
+		m_app_manager->get_queue_stats(queue_stats);
+		for (queue_stats_list_t::iterator i = queue_stats.begin(); i != queue_stats.end(); ++i)
+		{
+			amf0_object_ptr obj(new amf0_object);
+			obj->add_entry("client", (*i).m_client);
+			obj->add_entry("messages", (*i).m_messages);
+			list->add_entry(obj);
+		}
+		res->add_parameter(list);
+
+		result = res;
+	}
+
+	void admin_application::handle_invoke_kill_client(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &)
+	{
+		if (invoke->parameters().size() != 2)
+			return;
+
+		rtmp_message_invoke::parameters_list_t::iterator i = invoke->parameters().begin();
+		++i;
+		if ((*i)->type() != amf0_type::eAMF0Number)
+			return;
+
+		amf0_number_ptr id = boost::dynamic_pointer_cast<amf0_number, amf0_type>(*i);
+
+		m_app_manager->destroy_connection(static_cast<boost::uint32_t>(id->value()));
+	}
+
+	bool admin_application::check_client(boost::uint32_t connection_id)
+	{
+		boost::mutex::scoped_lock lock(m_admin_mutex);
+		if (m_clients.find(connection_id) == m_clients.end())
+			return false;
+		return true;
+	}
+
+	bool admin_application::has_active_clients()
+	{
+		boost::mutex::scoped_lock lock(m_admin_mutex);
+		if (m_clients.empty())
+			return false;
+		for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+			if (i->second)
+				return true;
+		return false;
+	}
+
+	void admin_application::send_new_stream_notify(netstream_stats_ptr data)
+	{
+		notify_active_client(data, boost::bind(&admin_application::dispatch_new_stream_notify, this, _1, _2));
+	}
+
+	void admin_application::send_stream_deleted_notify(netstream_stats_ptr data)
+	{
+		notify_active_client(data, boost::bind(&admin_application::dispatch_delete_stream_notify, this, _1, _2));
+	}
+
+	void admin_application::send_qos_data(netstream_stats_map_t &map)
+	{
+		for (netstream_stats_map_t::iterator i = map.begin(); i != map.end(); ++i)
+			notify_active_client(i->second, boost::bind(&admin_application::dispatch_qos_data_for_stream_notify, this, _1, _2));
+	}
+
+	void admin_application::send_auth_status(auth_status_data_ptr data)
+	{
+		boost::mutex::scoped_lock lock(m_admin_mutex);
+		if (m_clients.empty())
+			dispatch_auth_result(0, data, true);
+		else
+		{
+			for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+				if (i->second)
+					dispatch_auth_result(i->first, data);
+		}
+	}
+
+	void admin_application::send_disconnect_notify(auth_status_data_ptr data)
+	{
+		boost::mutex::scoped_lock lock(m_admin_mutex);
+		if (m_clients.empty())
+			dispatch_disconnect(0, data, true);
+		else
+		{
+			for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+				if (i->second)
+					dispatch_disconnect(i->first, data);
+		}
+	}
+
+	void admin_application::send_call_status_notify(boost::uint32_t connection_id, amf0_object_ptr obj)
+	{
+		boost::mutex::scoped_lock lock(m_admin_mutex);
+		if (m_clients.empty())
+			dispatch_call_status(0, connection_id, obj, true);
+		else
+		{
+			for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+				if (i->second)
+					dispatch_call_status(i->first, connection_id, obj);
+		}
+	}
+
+	void admin_application::notify_active_client(netstream_stats_ptr data, boost::function<void (boost::uint32_t, netstream_stats_ptr)> func)
+	{
+		boost::mutex::scoped_lock lock(m_admin_mutex);
+		for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+			if (i->second)
+				func(i->first, data);
+	}
+
+	void admin_application::dispatch_new_stream_notify(boost::uint32_t connection_id, netstream_stats_ptr data)
+	{
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_new_stream);
+
+		amf0_object_ptr obj = create_stream_stat_obj(data);
+		res->add_parameter(obj);
+		enqueue_async_message(connection_id, res);
+		notify(connection_id);
+	}
+
+	void admin_application::dispatch_delete_stream_notify(boost::uint32_t connection_id, netstream_stats_ptr data)
+	{
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_delete_stream);
+
+		amf0_number_ptr id(new amf0_number(data->m_client));
+		res->add_parameter(id);
+
+		amf0_string_ptr str(new amf0_string(data->m_name));
+		res->add_parameter(str);
+
+		enqueue_async_message(connection_id, res);
+		notify(connection_id);
+	}
+
+	void admin_application::dispatch_qos_data_for_stream_notify(boost::uint32_t connection_id, netstream_stats_ptr data)
+	{
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_qos);
+
+		amf0_object_ptr obj = create_stream_stat_obj(data, false);
+		obj->add_entry("kbps", data->m_kbps);
+		res->add_parameter(obj);
+
+		enqueue_async_message(connection_id, res);
+		notify(connection_id);
+	}
+
+	void admin_application::dispatch_auth_result(boost::uint32_t connection_id, auth_status_data_ptr data, bool to_enqueue /* = false */)
+	{
+		client_data_ptr cd = m_app_manager->get_client_data(data->m_id);
+		if (cd.get() != 0)
+		{
+			rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_auth_status);
+
+			amf0_object_ptr obj(new amf0_object);
+			obj->add_entry("sid", cd->m_sid);
+			obj->add_entry("cid", data->m_id);
+			obj->add_entry("ip", cd->m_ip);
+			obj->add_entry("port", cd->m_port);
+			obj->add_entry("status", (boost::uint32_t)data->m_status);
+			obj->add_entry("reason", data->m_reason);
+			obj->add_entry("user", data->m_username);
+			obj->add_entry("time", boost::posix_time::to_simple_string(data->m_time));
+
+			res->add_parameter(obj);
+
+			if (!to_enqueue)
+			{
+				enqueue_async_message(connection_id, res);
+				notify(connection_id);
+			}
+			else
+				enqueue_message(res);
+		}
+	}
+
+	void admin_application::dispatch_disconnect(boost::uint32_t connection_id, auth_status_data_ptr data, bool to_enqueue /* = false */)
+	{
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_disconnect);
+
+		amf0_object_ptr obj(new amf0_object);
+		obj->add_entry("sid", data->m_sid);
+		obj->add_entry("cid", data->m_id);
+		obj->add_entry("time", boost::posix_time::to_simple_string(data->m_time));
+		obj->add_entry("status", (boost::uint32_t)data->m_status);
+
+		res->add_parameter(obj);
+
+		if (!to_enqueue)
+		{
+			enqueue_async_message(connection_id, res);
+			notify(connection_id);
+		}
+		else
+			enqueue_message(res);
+	}
+
+	void admin_application::dispatch_call_status(boost::uint32_t connection_id, boost::uint32_t cid, amf0_object_ptr o, bool to_enqueue /* = false */)
+	{
+		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_call_status);
+
+		amf0_object_ptr obj(new amf0_object);
+		obj->add_entry("cid", cid);
+		obj->add_entry("time", boost::posix_time::to_simple_string(boost::posix_time::microsec_clock::local_time()));
+		obj->add_entry("call_data", o);
+
+		res->add_parameter(obj);
+
+		if (!to_enqueue)
+		{
+			enqueue_async_message(connection_id, res);
+			notify(connection_id);
+		}
+		else
+			enqueue_message(res);
+	}
+
+	void admin_application::enqueue_message(rtmp_message_invoke_ptr msg)
+	{
+		boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
+		m_queue.push_back(std::make_pair(msg, now));
+		do 
+		{
+			msg_with_ts_t &m = m_queue.front();
+			boost::posix_time::time_duration ts = now - m.second;
+			if (static_cast<boost::uint32_t>(ts.total_seconds()) > m_keep_time)
+				m_queue.pop_front();
+			else
+				break;
+		} while (true);
+	}
+
+	void admin_application::send_enqueued_messages(boost::uint32_t connection_id)
+	{
+		while (!m_queue.empty())
+		{
+			msg_with_ts_t &msg = m_queue.front();
+			enqueue_async_message(connection_id, msg.first);
+			notify(connection_id);
+			m_queue.pop_front();
+		}
+	}
+}

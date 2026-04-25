@@ -1,0 +1,100 @@
+#pragma once
+
+#include <boost/noncopyable.hpp>
+#include <boost/logic/tribool.hpp>
+
+#include <list>
+#include <string>
+
+#include "basic_rtmp_connection.h"
+#include "stream_array.h"
+
+namespace intertalk
+{
+	class rtmpt_manager;
+
+	// Represents a single connection from a client.
+	class rtmpt_session : public basic_rtmp_connection, private boost::noncopyable
+	{
+	public:
+		// Construct a connection with the given io_service.
+		rtmpt_session(boost::uint32_t, boost::asio::io_service &, rtmp_app_manager *);
+
+		// Start the first asynchronous operation for the connection.
+		virtual void start();
+
+		virtual void notify() {}
+
+		const std::string &cid() const
+		{
+			return m_cid;
+		}
+
+		std::string &cid()
+		{
+			return m_cid;
+		}
+
+		const boost::asio::ip::address &address() const
+		{
+			return m_address;
+		}
+
+		boost::asio::ip::address &address()
+		{
+			return m_address;
+		}
+
+		virtual void close();
+
+		boost::tribool handle_data(stream_array &, stream_array &);
+		void serialize_result(stream_array &);
+
+		// Only used when result is not needed
+		void serialize_poll_time(stream_array &);
+
+	protected:
+		// Handle application's result
+		virtual void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr);
+
+		enum { eNotConnected, eConnected, eClose };
+		enum session_state { eCSIdle, eCSReadHS, eCSReadCommands, eCSInvalid = 0xffff };
+		enum commands { eCmdInvalid, eCmdFcs, eCmdOpen, eCmdIdle, eCmdSend, eCmdClose };
+
+		boost::tribool handle_handshake(stream_array &, stream_array &);
+		void handle_results(stream_array &);
+		void serialize_message(rtmp_message_ptr, stream_array &);
+
+		boost::uint8_t get_poll_time(bool);
+
+		rtmpt_manager *m_rtmpt_manager;
+
+		bool m_read_http_header;
+		bool m_write_http_header;
+		bool m_http_header_is_complete;
+
+		boost::uint8_t m_state;
+		session_state m_sstate;
+		boost::asio::streambuf m_header;
+
+		enum { eMaxIdleTimes = 6};
+		boost::uint8_t m_poll_cnt;
+		boost::uint8_t m_poll_index;
+
+		std::string m_cid;
+		boost::asio::ip::address m_address;
+
+		std::list<rtmp_message_ptr> m_results;
+		static boost::uint8_t m_poll_time[];
+
+	private:
+		boost::shared_ptr<rtmpt_session> shared_from_this()
+		{
+			return boost::static_pointer_cast<rtmpt_session>(basic_rtmp_connection::shared_from_this());
+		}
+
+		stream_array m_remaining_data;
+	};
+
+	typedef boost::shared_ptr<rtmpt_session> rtmpt_session_ptr;
+}
