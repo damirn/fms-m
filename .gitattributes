@@ -1,0 +1,4 @@
+# Normalize all text files to LF
+* text=auto eol=lf
+*.png binary
+*.flv binary

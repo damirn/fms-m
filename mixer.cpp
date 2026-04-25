@@ -1,0 +1,191 @@
+#include "pch.h"
+#include "mixer.h"
+#include "audio_sink.h"
+
+#include <vector>
+
+#include <boost/date_time/posix_time/posix_time_types.hpp>
+
+namespace intertalk
+{
+	simple_mixer::simple_mixer()
+		: m_active(true)
+	{}
+
+	simple_mixer::~simple_mixer()
+	{}
+
+	void simple_mixer::add_source_stream(boost::uint32_t id)
+	{
+		boost::mutex::scoped_lock lock(m_streams_mutex);
+		if (m_streams.find(id) != m_streams.end())
+			return;
+
+		m_streams[id] = new stream_data;
+	}
+
+	void simple_mixer::remove_source_stream(boost::uint32_t id)
+	{
+		boost::mutex::scoped_lock lock(m_streams_mutex);
+		stream_map_t::iterator i = m_streams.find(id);
+		if (i != m_streams.end())
+		{
+			delete i->second;
+			m_streams.erase(i);
+		}
+	}
+
+	void simple_mixer::stream_data::fill_frame()
+	{
+		rtmp_message_audio_data_ptr audio_msg;
+		if (!m_queue.try_pop(audio_msg))
+		{
+			// no audio frame available; emit silence
+			std::memset((void *) m_buffer, 0, eBufferSize);
+			return;
+		}
+
+		if (audio_msg->data()[0] == 0x00)
+		{
+			// raw 16-bit PCM payload
+			std::memcpy((void *) m_buffer, (void *) (audio_msg->data() + 1), eBufferSize);
+		}
+		else
+		{
+			boost::uint32_t size = 0;
+			m_speex_codec->decode(m_buffer, audio_msg->data() + 1, audio_msg->size() - 1, size);
+		}
+	}
+
+	void simple_mixer::add_audio(boost::uint32_t id, rtmp_message_audio_data_ptr msg)
+	{
+		if (m_active)
+		{
+			boost::mutex::scoped_lock lock(m_streams_mutex);
+			stream_map_t::iterator i = m_streams.find(id);
+			if (i != m_streams.end())
+				i->second->m_queue.push(msg);
+		}
+	}
+
+	void simple_mixer::add_audio(boost::uint32_t id, const char *data, boost::uint16_t size)
+	{
+		if (m_active && size > 0)
+		{
+			boost::mutex::scoped_lock lock(m_streams_mutex);
+			stream_map_t::iterator i = m_streams.find(id);
+			if (i != m_streams.end())
+			{
+				rtmp_message_audio_data_ptr audio(new rtmp_message_audio_data(size + 1));
+				audio->data()[0] = 0x00;
+				std::memcpy((void *)(audio->data() + 1), (void *) data, size);
+				i->second->m_queue.push(audio);
+			}
+		}
+	}
+
+	mixer::mixer()
+		: simple_mixer()
+		, m_rec_buffer(0)
+		, m_init(false)
+		, m_running(false)
+		, m_timestamp(0)
+		, m_sink(0)
+		, m_speex_codec(new speex_codec)
+	{}
+
+	mixer::mixer(audio_sink *sink)
+		: simple_mixer()
+		, m_rec_buffer(0)
+		, m_init(false)
+		, m_running(false)
+		, m_timestamp(0)
+		, m_sink(sink)
+		, m_speex_codec(new speex_codec)
+	{}
+
+	mixer::~mixer()
+	{
+		uninit();
+		delete m_sink;
+	}
+
+	void mixer::init()
+	{
+		if (m_init)
+			return;
+		m_init = true;
+
+		m_rec_buffer = new char[eBufferSize];
+		std::memset((void *) m_rec_buffer, 0, eBufferSize);
+
+		m_running = true;
+		m_thread = boost::thread(&mixer::run_loop, this);
+	}
+
+	void mixer::uninit()
+	{
+		if (m_running)
+		{
+			m_running = false;
+			if (m_thread.joinable())
+				m_thread.join();
+		}
+
+		for (stream_map_t::iterator i = m_streams.begin(); i != m_streams.end(); ++i)
+			delete i->second;
+		m_streams.clear();
+
+		delete[] m_rec_buffer;
+		m_rec_buffer = 0;
+	}
+
+	void mixer::run_loop()
+	{
+		while (m_running)
+		{
+			if (m_active)
+				mix_tick();
+			boost::this_thread::sleep(boost::posix_time::milliseconds(static_cast<long>(eTimeInterval)));
+		}
+	}
+
+	void mixer::mix_tick()
+	{
+		const std::size_t samples = eBufferSize / sizeof(short);
+		std::vector<boost::int32_t> acc(samples, 0);
+
+		{
+			boost::mutex::scoped_lock lock(m_streams_mutex);
+			for (stream_map_t::iterator i = m_streams.begin(); i != m_streams.end(); ++i)
+			{
+				i->second->fill_frame();
+				const short *src = reinterpret_cast<const short *>(i->second->m_buffer);
+				for (std::size_t s = 0; s < samples; ++s)
+					acc[s] += src[s];
+			}
+		}
+
+		short *mix = reinterpret_cast<short *>(m_rec_buffer);
+		for (std::size_t s = 0; s < samples; ++s)
+		{
+			boost::int32_t v = acc[s];
+			if (v > 32767)
+				v = 32767;
+			else if (v < -32768)
+				v = -32768;
+			mix[s] = static_cast<short>(v);
+		}
+
+		boost::uint32_t size = 0;
+		boost::uint8_t *data = m_speex_codec->encode(reinterpret_cast<boost::uint8_t *>(m_rec_buffer), eBufferSize, size);
+		if (data != 0)
+		{
+			data[0] = 0xb2;
+			if (m_sink)
+				m_sink->write_audio(reinterpret_cast<char *>(data), size, m_timestamp);
+			delete[] data;
+		}
+		m_timestamp += eTimeInterval;
+	}
+}

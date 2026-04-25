@@ -1,0 +1,141 @@
+#pragma once
+
+#include <set>
+#include <string>
+#include <boost/cstdint.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/shared_ptr.hpp>
+
+namespace intertalk
+{
+	class rtmp_application;
+	class rtmp_app_manager;
+
+	class client_session
+	{
+	public:
+		client_session(boost::uint32_t, rtmp_app_manager *);
+		virtual ~client_session(){}
+
+		virtual void start() = 0;
+		virtual void close();
+
+		virtual void notify() = 0;
+
+		void set_app(rtmp_application *app)
+		{
+			m_app = app;
+		}
+
+		rtmp_application *get_app()
+		{
+			return m_app;
+		}
+
+		const boost::uint32_t &id() const
+		{
+			return m_id;
+		}
+
+		boost::uint32_t get_timestamp();
+
+		virtual void handle_bytes_read(std::size_t);
+		virtual void handle_bytes_written(std::size_t);
+
+		boost::uint32_t get_bytes_read() const
+		{
+			return m_bytes_read;
+		}
+
+		boost::uint32_t get_bytes_written() const
+		{
+			return m_bytes_written;
+		}
+
+		boost::uint32_t get_messages_read() const
+		{
+			return m_messages_read;
+		}
+
+		boost::uint32_t get_messages_written() const
+		{
+			return m_messages_written;
+		}
+
+		bool &uses_amf3_encoding()
+		{
+			return m_uses_amf3;
+		}
+
+		const bool &uses_amf3_encoding() const
+		{
+			return m_uses_amf3;
+		}
+
+		std::string &app_instance()
+		{
+			return m_app_instance;
+		}
+
+		const std::string &app_instance() const
+		{
+			return m_app_instance;
+		}
+
+		boost::uint32_t reserve_stream_id();
+		virtual void unreserve_stream_id(boost::uint32_t);
+
+		const std::string &sid() const
+		{
+			return m_sid;
+		}
+
+		const std::string &username() const
+		{
+			return m_username;
+		}
+
+		std::string &username()
+		{
+			return m_username;
+		}
+
+		const boost::posix_time::ptime &create_time() const
+		{
+			return m_time;
+		}
+
+	protected:
+		// session id
+		boost::uint32_t m_id;
+
+		std::string m_sid;
+
+		// optional user name (if the application sets it)
+		std::string m_username;
+
+		rtmp_app_manager *m_app_manager;
+		rtmp_application *m_app;
+
+		// start time
+		boost::posix_time::ptime m_time;
+
+		// counters for read and written bytes
+		boost::uint32_t m_bytes_read;
+		boost::uint32_t m_bytes_written;
+
+		// counters for in/out messages
+		boost::uint32_t m_messages_read;
+		boost::uint32_t m_messages_written;
+
+		// app instance to which this session is connected to
+		std::string m_app_instance;
+
+		// stream ids in use
+		std::set<boost::uint32_t> m_stream_ids;
+
+		bool m_uses_amf3;
+	};
+
+	typedef boost::shared_ptr<client_session> client_session_ptr;
+}

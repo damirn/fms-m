@@ -1,0 +1,100 @@
+#include "pch.h"
+#include "speex_codec.h"
+#include "config.h"
+
+namespace intertalk
+{
+	//
+	// reserved_for_header - size in bytes reserved for header
+	//
+
+	speex_codec::speex_codec(boost::uint16_t reserved_for_header /* = 1 */)
+		: audio_codec(reserved_for_header)
+		, m_frame_size(0)
+	{
+		init_decoder();
+		init_encoder();
+	}
+
+	speex_codec::~speex_codec()
+	{
+		speex_encoder_destroy(m_enc_state);
+		speex_decoder_destroy(m_dec_state);
+
+		speex_bits_destroy(&m_dec_bits);
+		speex_bits_destroy(&m_enc_bits);
+	}
+
+	boost::uint8_t *speex_codec::encode(boost::uint8_t *data, boost::uint32_t size, boost::uint32_t &enc_size)
+	{
+		if (size == 0 || size != 640)
+			return 0;
+
+		boost::uint8_t *enc_buff = new boost::uint8_t[m_frame_size * sizeof(spx_int16_t) * 2 + m_reserved_for_header];
+
+		speex_bits_reset(&m_enc_bits);
+
+		speex_encode_int(m_enc_state, reinterpret_cast<boost::int16_t *>(data), &m_enc_bits);
+		speex_encode_int(m_enc_state, reinterpret_cast<boost::int16_t *>(data + m_frame_size * sizeof(spx_int16_t)), &m_enc_bits);
+
+		enc_size = speex_bits_write(&m_enc_bits, reinterpret_cast<char *>(enc_buff + m_reserved_for_header), m_frame_size);
+		enc_size += m_reserved_for_header;
+
+		//std::cout << "Speex encode: " << enc_size << std::endl;
+		return enc_buff;
+	}
+
+	boost::uint8_t *speex_codec::decode(char *to, boost::uint8_t *data, boost::uint8_t size, boost::uint32_t &dec_size)
+	{
+		if (size == 0)
+			return 0;
+
+		speex_bits_read_from(&m_dec_bits, reinterpret_cast<char *>(data), size);
+
+		int ret = 0;
+		int i = 0;
+		while(speex_bits_remaining(&m_dec_bits) && i < 2)
+		{
+			ret = speex_decode_int(m_dec_state, &m_dec_bits, reinterpret_cast<boost::int16_t *>(to + i * m_frame_size * sizeof(boost::int16_t)));
+			if (ret <= -2)
+			{
+				std::cout << "error decoding speex stream" << std::endl;
+				return 0;
+			}
+			else if (ret == -1)
+				break;
+			++i;
+		}
+
+		dec_size = i * m_frame_size * sizeof(boost::uint16_t);
+		return reinterpret_cast<boost::uint8_t *>(to);
+	}
+
+	void speex_codec::init_decoder()
+	{
+		m_dec_state = speex_decoder_init(&speex_nb_mode);
+
+		// Set the perceptual enhancement on
+		int param = 1;
+		speex_decoder_ctl(m_dec_state, SPEEX_SET_ENH, &param);
+
+		// Get frame size
+		speex_decoder_ctl(m_dec_state, SPEEX_GET_FRAME_SIZE, &m_frame_size);
+
+		speex_bits_init(&m_dec_bits);
+	}
+
+	void speex_codec::init_encoder()
+	{
+		m_enc_state = speex_encoder_init(&speex_nb_mode);
+		int param = config::instance()->speex_quality();
+		speex_encoder_ctl(m_enc_state, SPEEX_SET_QUALITY, &param);
+
+		param = 1;
+		speex_encoder_ctl(m_enc_state, SPEEX_SET_VAD, &param);
+
+//		speex_encoder_ctl(m_enc_state, SPEEX_SET_DTX, &param);
+
+		speex_bits_init(&m_enc_bits);
+	}
+}
