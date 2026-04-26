@@ -1,7 +1,7 @@
 #pragma once
 
 #include <map>
-#include <boost/function.hpp>
+#include <functional>
 #include <memory>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include "rtmp_application.h"
@@ -72,7 +72,7 @@ namespace intertalk
 
 		bool check_client(std::uint32_t);
 
-		void notify_active_client(netstream_stats_ptr, boost::function<void (std::uint32_t, netstream_stats_ptr)>);
+		void notify_active_client(netstream_stats_ptr, std::function<void (std::uint32_t, netstream_stats_ptr)>);
 		void dispatch_new_stream_notify(std::uint32_t, netstream_stats_ptr);
 		void dispatch_delete_stream_notify(std::uint32_t, netstream_stats_ptr);
 		void dispatch_qos_data_for_stream_notify(std::uint32_t, netstream_stats_ptr);
@@ -92,6 +92,6 @@ namespace intertalk
 		typedef std::deque<msg_with_ts_t> msg_queue_t;
 		msg_queue_t m_queue;
 
-		boost::mutex m_admin_mutex;
+		std::mutex m_admin_mutex;
 	};
 }

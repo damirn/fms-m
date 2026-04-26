@@ -2,8 +2,8 @@
 
 #include <queue>
 #include <boost/noncopyable.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
+#include <mutex>
+#include <condition_variable>
 
 namespace intertalk
 {
@@ -13,7 +13,7 @@ namespace intertalk
 	public:
 		void push(const T &value)
 		{
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			m_queue.push(value);
 			lock.unlock();
 			m_condition.notify_one();
@@ -21,20 +21,20 @@ namespace intertalk
 
 		bool empty() const
 		{
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			return m_queue.empty();
 		}
 
 		void clear()
 		{
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			while (!m_queue.empty())
 				m_queue.pop();
 		}
 
 		bool try_pop(T &value)
 		{
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			if(m_queue.empty())
 			{
 				return false;
@@ -47,7 +47,7 @@ namespace intertalk
 
 		void wait_and_pop(T& value)
 		{
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			while(m_queue.empty())
 			{
 				m_condition.wait(lock);
@@ -59,14 +59,14 @@ namespace intertalk
 
 		std::size_t size()
 		{
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			return m_queue.size();
 		}
 
 		std::size_t trim(std::size_t elements = 1)
 		{
 			std::size_t cnt = 0;
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			while (m_queue.size() > elements)
 			{
 				m_queue.pop();
@@ -77,7 +77,7 @@ namespace intertalk
 
 	private:
 		std::queue<T> m_queue;
-		mutable boost::mutex m_mutex;
-		boost::condition_variable m_condition;
+		mutable std::mutex m_mutex;
+		std::condition_variable m_condition;
 	};
 }

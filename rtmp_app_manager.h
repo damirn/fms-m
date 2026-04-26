@@ -7,9 +7,9 @@
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <boost/noncopyable.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <boost/logic/tribool.hpp>
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 
 #include "http_connection.h"
 #include "io_service_pool.h"
@@ -78,7 +78,7 @@ namespace intertalk
 		client_data_ptr get_client_data(std::uint32_t);
 		client_data_ptr get_client_data_impl(std::uint32_t);
 		bool get_client_stats(std::uint32_t, client_stats &);
-		boost::optional<app_stats> get_app_stats(const std::string &);
+		std::optional<app_stats> get_app_stats(const std::string &);
 		void list_streams(netstream_list_t &);
 		void get_queue_stats(queue_stats_list_t &);
 
@@ -88,7 +88,7 @@ namespace intertalk
 		void update_netstream(const stream_client_id_t &, const std::string &, bool);
 		void update_netstream_stats(const stream_client_id_t &, std::uint32_t, std::uint32_t);
 		void add_dropped_messages_for_netstream(const stream_client_id_t &, std::size_t);
-		boost::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &);
+		std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &);
 
 		admin_application *get_admin_app() const
 		{
@@ -109,15 +109,15 @@ namespace intertalk
 		admin_application *m_admin_app;
 		fake_application *m_fake_app;
 
-		typedef boost::unordered_map<std::uint32_t, client_session_ptr> connection_map_t;
+		typedef std::unordered_map<std::uint32_t, client_session_ptr> connection_map_t;
 		connection_map_t m_connections;
 
-		typedef boost::unordered_map<std::uint32_t, http_connection_ptr> http_connection_map_t;
+		typedef std::unordered_map<std::uint32_t, http_connection_ptr> http_connection_map_t;
 		http_connection_map_t m_http_conns;
 
 		rtmpt_manager *m_rtmpt_manager;
 
-		boost::mutex m_mutex;
+		std::mutex m_mutex;
 		netstream_stats_map_t m_netstream_stats;
 
 		boost::asio::io_service &m_io_service;

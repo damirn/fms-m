@@ -1,27 +1,27 @@
 #pragma once
 
 // std includes
+#include <array>
 #include <cstdint>
+#include <exception>
+#include <functional>
 #include <iostream>
 #include <list>
 #include <map>
+#include <memory>
+#include <mutex>
+#include <optional>
 #include <queue>
 #include <set>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // boost includes
-#include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/bimap.hpp>
 #include <boost/bind.hpp>
-#include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/optional.hpp>
-#include <memory>
 #include <boost/thread.hpp>
-#include <boost/unordered_map.hpp>
 #include <boost/logic/tribool.hpp>
-#include <boost/thread/mutex.hpp>
-#include <memory>

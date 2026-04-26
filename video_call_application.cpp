@@ -43,7 +43,7 @@ namespace intertalk
 		client_session_ptr conn = get_connection(connection_id);
 		if (conn->app_instance().length() != 0 && audio->size() > 0)
 		{
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
 			if (m_instance_to_client.find(app_instance) != m_instance_to_client.end())
 			{
@@ -112,7 +112,7 @@ namespace intertalk
 		client_session_ptr conn = get_connection(connection_id);
 		if (conn->app_instance().length() != 0)
 		{
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
 			if (m_instance_to_client.find(app_instance) == m_instance_to_client.end())
 				return;
@@ -146,7 +146,7 @@ namespace intertalk
 		client_session_ptr conn = get_connection(connection_id);
 		if (conn->app_instance().length() != 0)
 		{
-			boost::mutex::scoped_lock lock(m_mutex);
+			std::unique_lock<std::mutex> lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
 			if (m_instance_to_client.find(app_instance) == m_instance_to_client.end())
 			{

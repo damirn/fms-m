@@ -4,9 +4,9 @@
 #include <set>
 #include <string>
 #include <boost/noncopyable.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <memory>
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 
 #include "rtmp_so_message.h"
 
@@ -45,9 +45,9 @@ namespace intertalk
 		typedef std::map<std::string, so_data_ptr> so_map_t;
 		so_map_t m_so_map;
 		bool m_new_message;
-		boost::mutex m_mutex;
+		std::mutex m_mutex;
 
-		boost::optional<so_data_ptr> find_so(rtmp_message_shared_object_ptr);
+		std::optional<so_data_ptr> find_so(rtmp_message_shared_object_ptr);
 
 		void increase_version(so_data_ptr so)
 		{

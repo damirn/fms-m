@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <memory>
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 #include <boost/thread/thread.hpp>
 
 #include "queue.h"
@@ -70,7 +70,7 @@ namespace intertalk
 		typedef std::map<std::uint32_t, stream_data *> stream_map_t;
 
 		stream_map_t m_streams;
-		boost::mutex m_streams_mutex;
+		std::mutex m_streams_mutex;
 
 		std::atomic<bool> m_active;   // written on asio threads, read on mixer thread
 

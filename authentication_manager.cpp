@@ -26,7 +26,7 @@ namespace intertalk
 			m_destroy(m_auth_plugin);
 	}
 
-	boost::tribool authentication_manager::authenticate(auth_data_ptr data, boost::function<void (bool, auth_data_ptr)>)
+	boost::tribool authentication_manager::authenticate(auth_data_ptr data, std::function<void (bool, auth_data_ptr)>)
 	{
 		return m_auth_plugin->authenticate(data);
 	}

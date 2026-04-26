@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <boost/function.hpp>
+#include <functional>
 #include <boost/logic/tribool.hpp>
 #include <boost/noncopyable.hpp>
 #include <memory>
@@ -22,7 +22,7 @@ namespace intertalk
 		authentication_manager(const std::string &);
 		~authentication_manager();
 
-		boost::tribool authenticate(auth_data_ptr, boost::function<void (bool, auth_data_ptr)>);
+		boost::tribool authenticate(auth_data_ptr, std::function<void (bool, auth_data_ptr)>);
 
 	protected:
 		void init_plugin(const std::string &);

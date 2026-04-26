@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <memory>
-#include <boost/thread/mutex.hpp>
-#include <boost/unordered_map.hpp>
+#include <mutex>
+#include <unordered_map>
 
 #include <map>
 #include <list>
@@ -55,7 +55,7 @@ namespace intertalk
 
 		rtmp_app_manager *m_app_manager;
 
-		boost::mutex m_mutex;
+		std::mutex m_mutex;
 
 		boost::asio::deadline_timer m_timer;
 
@@ -80,7 +80,7 @@ namespace intertalk
 		};
 
 		typedef std::shared_ptr<rtmpt_session_data> rtmpt_session_data_ptr;
-		typedef boost::unordered_map<std::string, rtmpt_session_data_ptr> id_map_t;
+		typedef std::unordered_map<std::string, rtmpt_session_data_ptr> id_map_t;
 
 		id_map_t m_ids;
 

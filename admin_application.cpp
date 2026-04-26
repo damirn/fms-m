@@ -144,7 +144,7 @@ namespace intertalk
 				active_client = b->value();
 		}
 
-		boost::mutex::scoped_lock lock(m_admin_mutex);
+		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		m_clients[connection_id] = active_client;
 		lock.unlock();
 
@@ -189,13 +189,13 @@ namespace intertalk
 	void admin_application::delete_connection(std::uint32_t connection_id, const std::string &app_instance /* = "" */)
 	{
 		rtmp_application::delete_connection(connection_id, app_instance);
-		boost::mutex::scoped_lock lock(m_admin_mutex);
+		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		m_clients.erase(connection_id);
 	}
 
 	void admin_application::handle_win_ack_size(rtmp_message_ptr, std::uint32_t connection_id)
 	{
-		boost::mutex::scoped_lock lock(m_admin_mutex);
+		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		if (m_clients.find(connection_id) != m_clients.end())
 		{
 			if (m_clients[connection_id] && !m_queue.empty())
@@ -301,7 +301,7 @@ namespace intertalk
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
-		boost::optional<app_stats> stats = m_app_manager->get_app_stats(app->value());
+		std::optional<app_stats> stats = m_app_manager->get_app_stats(app->value());
 		if (stats)
 		{
 			amf0_object_ptr obj(new amf0_object);
@@ -395,7 +395,7 @@ namespace intertalk
 
 	bool admin_application::check_client(std::uint32_t connection_id)
 	{
-		boost::mutex::scoped_lock lock(m_admin_mutex);
+		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		if (m_clients.find(connection_id) == m_clients.end())
 			return false;
 		return true;
@@ -403,7 +403,7 @@ namespace intertalk
 
 	bool admin_application::has_active_clients()
 	{
-		boost::mutex::scoped_lock lock(m_admin_mutex);
+		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		if (m_clients.empty())
 			return false;
 		for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
@@ -430,7 +430,7 @@ namespace intertalk
 
 	void admin_application::send_auth_status(auth_status_data_ptr data)
 	{
-		boost::mutex::scoped_lock lock(m_admin_mutex);
+		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_auth_result(0, data, true);
 		else
@@ -443,7 +443,7 @@ namespace intertalk
 
 	void admin_application::send_disconnect_notify(auth_status_data_ptr data)
 	{
-		boost::mutex::scoped_lock lock(m_admin_mutex);
+		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_disconnect(0, data, true);
 		else
@@ -456,7 +456,7 @@ namespace intertalk
 
 	void admin_application::send_call_status_notify(std::uint32_t connection_id, amf0_object_ptr obj)
 	{
-		boost::mutex::scoped_lock lock(m_admin_mutex);
+		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_call_status(0, connection_id, obj, true);
 		else
@@ -467,9 +467,9 @@ namespace intertalk
 		}
 	}
 
-	void admin_application::notify_active_client(netstream_stats_ptr data, boost::function<void (std::uint32_t, netstream_stats_ptr)> func)
+	void admin_application::notify_active_client(netstream_stats_ptr data, std::function<void (std::uint32_t, netstream_stats_ptr)> func)
 	{
-		boost::mutex::scoped_lock lock(m_admin_mutex);
+		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
 			if (i->second)
 				func(i->first, data);

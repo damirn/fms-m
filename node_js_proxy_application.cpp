@@ -319,7 +319,7 @@ namespace intertalk
 	void node_js_proxy_application::send_ping_request()
 	{
 		json obj = json::object();
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		obj["seq"] = m_seq_number++;
 		lock.unlock();
 		obj["method"] = "_ping";
@@ -341,7 +341,7 @@ namespace intertalk
 
 	void node_js_proxy_application::disconnect_all_clients()
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		for (std::set<std::uint32_t>::const_iterator i = m_clients.begin(); i != m_clients.end(); ++i)
 			gracefully_close_connection(*i, false);
 	}
@@ -360,7 +360,7 @@ namespace intertalk
 	void node_js_proxy_application::delete_connection(std::uint32_t connection_id, const std::string & /* = "" */)
 	{
 		video_bcast_application::delete_connection(connection_id);
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		if (m_clients.find(connection_id) != m_clients.end())
 		{
 			m_clients.erase(connection_id);
@@ -399,7 +399,7 @@ namespace intertalk
 
 	bool node_js_proxy_application::handle_passthrough_invoke(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		bool is_connect = false;
 		if (m_clients.find(connection_id) == m_clients.end())
 		{
@@ -461,7 +461,7 @@ namespace intertalk
 	{
 		std::cout << "got json: " << o.dump() << std::endl;
 		std::uint32_t seq = o["seq"].get<std::uint32_t>();
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		seq_to_cid_map_t::iterator i = m_seq_to_cid.find(seq);
 		if (i != m_seq_to_cid.end() && o.find("params") != o.end() && o["params"].is_array())
 		{

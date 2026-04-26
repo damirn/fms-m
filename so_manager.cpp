@@ -16,7 +16,7 @@ namespace intertalk
 
 		rtmp_message_shared_object_ptr ret(new rtmp_message_shared_object(so->name(), so->version(), so->flags()));
 
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 
 		for (rtmp_message_shared_object::event_list_t::iterator i = list.begin(); i != j; ++i)
 		{
@@ -95,7 +95,7 @@ namespace intertalk
 
 	void so_manager::handle_req_change_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object::event_ptr e, rtmp_message_shared_object_ptr &result)
 	{
-		boost::optional<so_manager::so_data_ptr> so_d = find_so(so);
+		std::optional<so_manager::so_data_ptr> so_d = find_so(so);
 		if (so_d)
 		{
 			so_manager::so_data_ptr s = *so_d;
@@ -125,7 +125,7 @@ namespace intertalk
 
 	void so_manager::handle_send_message_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
 	{
-		boost::optional<so_manager::so_data_ptr> so_d = find_so(so);
+		std::optional<so_manager::so_data_ptr> so_d = find_so(so);
 		if (so_d)
 		{
 			so_manager::so_data_ptr s = *so_d;
@@ -143,7 +143,7 @@ namespace intertalk
 
 	void so_manager::handle_req_remove_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object::event_ptr e, rtmp_message_shared_object_ptr &result)
 	{
-		boost::optional<so_manager::so_data_ptr> so_d = find_so(so);
+		std::optional<so_manager::so_data_ptr> so_d = find_so(so);
 		if (so_d)
 		{
 			so_manager::so_data_ptr s = *so_d;
@@ -171,12 +171,12 @@ namespace intertalk
 		}
 	}
 
-	boost::optional<so_manager::so_data_ptr> so_manager::find_so(rtmp_message_shared_object_ptr so)
+	std::optional<so_manager::so_data_ptr> so_manager::find_so(rtmp_message_shared_object_ptr so)
 	{
 		const std::string &so_name = so->name()->value();
 		so_map_t::iterator i = m_so_map.find(so_name);
 		if (i != m_so_map.end())
-			return boost::optional<so_manager::so_data_ptr>(i->second);
-		return boost::optional<so_manager::so_data_ptr>();
+			return std::optional<so_manager::so_data_ptr>(i->second);
+		return std::optional<so_manager::so_data_ptr>();
 	}
 }

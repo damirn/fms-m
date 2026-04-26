@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <memory>
-#include <boost/unordered_map.hpp>
+#include <unordered_map>
 
 #include "rtmp_channel.h"
 
@@ -25,7 +25,7 @@ namespace intertalk
 		}
 
 	protected:
-		typedef boost::unordered_map<std::uint32_t, rtmp_channel_ptr> channel_map_t;
+		typedef std::unordered_map<std::uint32_t, rtmp_channel_ptr> channel_map_t;
 		channel_map_t m_channels;
 	};
 
