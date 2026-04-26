@@ -4,6 +4,7 @@
 #include "crypto.h"
 #include "logging.h"
 #include "rtmp_message.h"
+#include "util.h"
 
 #include <fstream>
 #include <list>
@@ -11,7 +12,7 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <chrono>
 
 namespace intertalk
 {
@@ -240,7 +241,7 @@ namespace intertalk
 			obj->add_entry("ip", (*i)->m_ip);
 			obj->add_entry("port", (*i)->m_port);
 			obj->add_entry("protocol", (*i)->m_protocol);
-			obj->add_entry("time", boost::posix_time::to_simple_string((*i)->m_create_time));
+			obj->add_entry("time", to_simple_string((*i)->m_create_time));
 			if ((*i)->m_username.length() > 0)
 				obj->add_entry("user", (*i)->m_username);
 			list->add_entry(obj);
@@ -351,7 +352,7 @@ namespace intertalk
 		}
 		if (complete_data)
 		{
-			obj->add_entry("started", boost::posix_time::to_simple_string(i->m_time));
+			obj->add_entry("started", to_simple_string(i->m_time));
 			obj->add_entry("status", i->m_is_published ? "publishing" : "playing");
 		}
 		return obj;
@@ -526,7 +527,7 @@ namespace intertalk
 			obj->add_entry("status", (std::uint32_t)data->m_status);
 			obj->add_entry("reason", data->m_reason);
 			obj->add_entry("user", data->m_username);
-			obj->add_entry("time", boost::posix_time::to_simple_string(data->m_time));
+			obj->add_entry("time", to_simple_string(data->m_time));
 
 			res->add_parameter(obj);
 
@@ -547,7 +548,7 @@ namespace intertalk
 		amf0_object_ptr obj(new amf0_object);
 		obj->add_entry("sid", data->m_sid);
 		obj->add_entry("cid", data->m_id);
-		obj->add_entry("time", boost::posix_time::to_simple_string(data->m_time));
+		obj->add_entry("time", to_simple_string(data->m_time));
 		obj->add_entry("status", (std::uint32_t)data->m_status);
 
 		res->add_parameter(obj);
@@ -567,7 +568,7 @@ namespace intertalk
 
 		amf0_object_ptr obj(new amf0_object);
 		obj->add_entry("cid", cid);
-		obj->add_entry("time", boost::posix_time::to_simple_string(boost::posix_time::microsec_clock::local_time()));
+		obj->add_entry("time", to_simple_string(std::chrono::system_clock::now()));
 		obj->add_entry("call_data", o);
 
 		res->add_parameter(obj);
@@ -583,13 +584,13 @@ namespace intertalk
 
 	void admin_application::enqueue_message(rtmp_message_invoke_ptr msg)
 	{
-		boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
+		std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
 		m_queue.push_back(std::make_pair(msg, now));
 		do 
 		{
 			msg_with_ts_t &m = m_queue.front();
-			boost::posix_time::time_duration ts = now - m.second;
-			if (static_cast<std::uint32_t>(ts.total_seconds()) > m_keep_time)
+			std::chrono::system_clock::duration ts = now - m.second;
+			if (static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::seconds>(ts).count()) > m_keep_time)
 				m_queue.pop_front();
 			else
 				break;

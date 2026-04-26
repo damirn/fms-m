@@ -71,7 +71,7 @@ namespace intertalk
 	{
 		if (endpoint_iter != boost::asio::ip::tcp::resolver::iterator())
 		{
-			m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_eReconnectInterval)));
+			m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eReconnectInterval)));
 			m_socket.async_connect(endpoint_iter->endpoint(), [this, endpoint_iter](const boost::system::error_code &ec) { handle_connect(ec, endpoint_iter); });
 		}
 		else
@@ -82,10 +82,10 @@ namespace intertalk
 	{
 		if (m_stopped)
 			return;
-		if (m_connect_timer.expires_at() <= boost::asio::deadline_timer::traits_type::now())
+		if (m_connect_timer.expiry() <= std::chrono::steady_clock::now())
 		{
 			m_socket.close();
-			m_timer.expires_at(boost::posix_time::pos_infin);
+			m_timer.expires_at(std::chrono::steady_clock::time_point::max());
 		}
 		m_connect_timer.async_wait([this](const boost::system::error_code &) { check_deadline(); });
 	}
@@ -107,7 +107,7 @@ namespace intertalk
 			std::cout << "Connected!" << std::endl;
 			delete m_resolver;
 			m_connected = true;
-			m_connect_timer.expires_at(boost::posix_time::pos_infin);
+			m_connect_timer.expires_at(std::chrono::steady_clock::time_point::max());
 			arm_timer();
 			read_data();
 		}
@@ -286,13 +286,13 @@ namespace intertalk
 
 	void node_js_proxy_application::arm_timer()
 	{
-		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_ePingInterval)));
+		m_timer.expires_after(std::chrono::seconds(static_cast<long>(_ePingInterval)));
 		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_ping_timer(ec); });
 	}
 
 	void node_js_proxy_application::arm_timer_for_reconnect()
 	{
-		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_eReconnectInterval)));
+		m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eReconnectInterval)));
 		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer_for_reconnect(ec); });
 	}
 
@@ -301,7 +301,7 @@ namespace intertalk
 		if (!e)
 		{
 			send_ping_request();
-			m_timer.expires_at(m_timer.expires_at() + boost::posix_time::seconds(static_cast<long>(_ePingInterval)));
+			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(_ePingInterval)));
 			m_timer.async_wait([this](const boost::system::error_code &ec) { handle_ping_timer(ec); });
 		}
 	}

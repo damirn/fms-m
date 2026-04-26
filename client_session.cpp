@@ -9,7 +9,7 @@ namespace intertalk
 		: m_id(id)
 		, m_app_manager(app_mngr)
 		, m_app(0)
-		, m_time(boost::posix_time::microsec_clock::local_time())
+		, m_time(std::chrono::system_clock::now())
 		, m_bytes_read(0)
 		, m_bytes_written(0)
 		, m_messages_read(0)
@@ -24,9 +24,9 @@ namespace intertalk
 
 	std::uint32_t client_session::get_timestamp()
 	{
-		boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
-		boost::posix_time::time_duration delta = now - m_time;
-		return static_cast<std::uint32_t>(delta.total_milliseconds());
+		std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
+		std::chrono::system_clock::duration delta = now - m_time;
+		return static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 	}
 
 	void client_session::handle_bytes_read(std::size_t bytes_transferred)

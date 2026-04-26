@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <memory>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <chrono>
 #include <openssl/rc4.h>
 
 #include "client_session.h"
@@ -84,10 +84,10 @@ namespace intertalk
 		boost::asio::io_service &m_io_service;
 
 		// Timer for handshake
-		boost::asio::deadline_timer m_hs_timer;
+		boost::asio::steady_timer m_hs_timer;
 
 		// Timer for ping
-		boost::asio::deadline_timer m_timer;
+		boost::asio::steady_timer m_timer;
 
 		enum { eHandShakeHeaderSize = 8, eHandShakeSize = 1536 };
 		enum { ePlainMagic = 0x03, eCryptoMagic = 0x06 };

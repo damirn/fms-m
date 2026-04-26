@@ -57,13 +57,13 @@ namespace intertalk
 	void basic_rtmp_connection::arm_hs_timer()
 	{
 		// arm timeout timer
-		m_hs_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(eHandShakeTimeout)));
+		m_hs_timer.expires_after(std::chrono::seconds(static_cast<long>(eHandShakeTimeout)));
 		m_hs_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_hs_timer(ec); });
 	}
 
 	void basic_rtmp_connection::arm_timer()
 	{
-		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(ePingInterval)));
+		m_timer.expires_after(std::chrono::seconds(static_cast<long>(ePingInterval)));
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 	}
 
@@ -76,7 +76,7 @@ namespace intertalk
 				close();
 				return;
 			}
-			m_timer.expires_at(m_timer.expires_at() + boost::posix_time::seconds(static_cast<long>(ePingInterval)));
+			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(ePingInterval)));
 			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 
 			rtmp_message_ping_ptr msg(new rtmp_message_ping(rtmp_message_ping::ePingRequest, get_timestamp()));

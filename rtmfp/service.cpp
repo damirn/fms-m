@@ -23,7 +23,7 @@ namespace intertalk
 		, m_socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port))
 		, m_read_in_progress(false)
 		, m_write_in_progress(false)
-		, m_start(boost::posix_time::microsec_clock::local_time())
+		, m_start(std::chrono::system_clock::now())
 		, m_sessions_iterator(m_sessions.begin())
 	{
 		m_parser = new parser(*this);
@@ -398,9 +398,9 @@ namespace intertalk
 
 	std::uint32_t service::get_timestamp_ms()
 	{
-		boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
-		boost::posix_time::time_duration delta = now - m_start;
-		return static_cast<std::uint32_t>(delta.total_milliseconds());
+		std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
+		std::chrono::system_clock::duration delta = now - m_start;
+		return static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 	}
 
 	std::uint16_t service::get_timestamp()

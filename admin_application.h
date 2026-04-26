@@ -3,7 +3,7 @@
 #include <map>
 #include <functional>
 #include <memory>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <chrono>
 #include "rtmp_application.h"
 #include "stats.h"
 
@@ -12,7 +12,7 @@ namespace intertalk
 	struct auth_status_data
 	{
 		auth_status_data()
-			: m_time(boost::posix_time::microsec_clock::local_time()) {}
+			: m_time(std::chrono::system_clock::now()) {}
 
 		enum auth_status { _eClientLoggedIn, _eClientLoggedOut, _eClientAuthFailure };
 		std::uint32_t m_id;
@@ -20,7 +20,7 @@ namespace intertalk
 		auth_status m_status;
 		std::string m_username;
 		std::uint32_t m_reason;
-		boost::posix_time::ptime m_time;
+		std::chrono::system_clock::time_point m_time;
 	};
 	using auth_status_data_ptr = std::shared_ptr<auth_status_data>;
 
@@ -88,7 +88,7 @@ namespace intertalk
 		std::map<std::string, std::string> m_password_map;
 		std::map<std::uint32_t, bool> m_clients;
 
-		using msg_with_ts_t = std::pair<rtmp_message_invoke_ptr, boost::posix_time::ptime>;
+		using msg_with_ts_t = std::pair<rtmp_message_invoke_ptr, std::chrono::system_clock::time_point>;
 		using msg_queue_t = std::deque<msg_with_ts_t>;
 		msg_queue_t m_queue;
 

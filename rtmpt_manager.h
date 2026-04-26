@@ -57,7 +57,7 @@ namespace intertalk
 
 		std::mutex m_mutex;
 
-		boost::asio::deadline_timer m_timer;
+		boost::asio::steady_timer m_timer;
 
 		std::string m_version;
 

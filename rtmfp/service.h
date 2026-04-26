@@ -5,7 +5,7 @@
 
 #include <boost/asio.hpp>
 #include <cstdint>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <chrono>
 #include <boost/noncopyable.hpp>
 #include <optional>
 #include <memory>
@@ -85,7 +85,7 @@ namespace intertalk
 
 		stream_array m_buffer;
 
-		boost::posix_time::ptime m_start;
+		std::chrono::system_clock::time_point m_start;
 
 		using endpoint_to_session_map_t = std::map<boost::asio::ip::udp::endpoint, session_ptr>;
 		endpoint_to_session_map_t m_initial_sessions;

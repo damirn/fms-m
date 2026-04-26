@@ -36,7 +36,7 @@ namespace intertalk
 	protected:
 		void start_timer()
 		{
-			m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_eTimeout)));
+			m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eTimeout)));
 			m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 		}
 
@@ -169,6 +169,6 @@ namespace intertalk
 		using flv_writer_map_t = std::map<stream_client_id_t, flv_writer *>;
 		flv_writer_map_t m_flv_writers;
 
-		boost::asio::deadline_timer m_timer;
+		boost::asio::steady_timer m_timer;
 	};
 }

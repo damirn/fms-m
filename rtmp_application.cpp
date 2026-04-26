@@ -283,12 +283,12 @@ namespace intertalk
 		client_stats stats;
 		m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
 
-		boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time();
-		boost::posix_time::time_duration delta = now - bw_res->m_time;
+		std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+		std::chrono::system_clock::duration delta = now - bw_res->m_time;
 
 		std::uint32_t kbps = 100;
-		if (delta.total_milliseconds() != 0)
-			kbps = static_cast<std::uint32_t>((stats.m_bytes_read - bw_res->m_bytes) * 8 / delta.total_milliseconds());
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() != 0)
+			kbps = static_cast<std::uint32_t>((stats.m_bytes_read - bw_res->m_bytes) * 8 / std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWDoneU", 0.0f));
 		amf0_null_ptr null(new amf0_null);
@@ -310,7 +310,7 @@ namespace intertalk
 		if (bw_res->m_num_called == 0) // first time we got this result set
 		{
 			bw_res->m_num_called++;
-			bw_res->m_time = boost::posix_time::microsec_clock::local_time();
+			bw_res->m_time = std::chrono::system_clock::now();
 
 			// we call onBWCheck w/o parameters only to try to measure the latency
 			std::uint32_t id = ++m_invoke_id;
@@ -328,7 +328,7 @@ namespace intertalk
 		if (bw_res->m_num_called == 1)
 		{
 			bw_res->m_num_called++;
-			boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time();
+			std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 			bw_res->m_latency = now - bw_res->m_time;
 			bw_res->m_time = now;
 			client_stats stats;
@@ -349,15 +349,15 @@ namespace intertalk
 		client_stats stats;
 		m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
 
-		boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time();
-		boost::posix_time::time_duration dt = now - bw_res->m_time;
+		std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+		std::chrono::system_clock::duration dt = now - bw_res->m_time;
 		dt -= bw_res->m_latency;
-		if (dt.total_milliseconds() <= 0)
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(dt).count() <= 0)
 			dt = now - bw_res->m_time;
 
 		std::uint32_t kbps = 100;
-		if (dt.total_milliseconds() != 0)
-			kbps = static_cast<std::uint32_t>((stats.m_bytes_written - bw_res->m_bytes) * 8 / dt.total_milliseconds());
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(dt).count() != 0)
+			kbps = static_cast<std::uint32_t>((stats.m_bytes_written - bw_res->m_bytes) * 8 / std::chrono::duration_cast<std::chrono::milliseconds>(dt).count());
 
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWDone", 0.0f));
 		amf0_null_ptr null(new amf0_null);

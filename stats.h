@@ -6,7 +6,7 @@
 
 #include <cstdint>
 #include <memory>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <chrono>
 
 namespace intertalk
 {
@@ -21,7 +21,7 @@ namespace intertalk
 		std::string m_ip;
 		std::string m_app;
 		std::string m_protocol;
-		boost::posix_time::ptime m_create_time;
+		std::chrono::system_clock::time_point m_create_time;
 	};
 
 	using client_data_ptr = std::shared_ptr<client_data>;
@@ -69,7 +69,7 @@ namespace intertalk
 			, m_delay(0)
 			, m_drift(0)
 			, m_kbps(0)
-			, m_time(boost::posix_time::microsec_clock::local_time())
+			, m_time(std::chrono::system_clock::now())
 		{}
 		std::uint32_t m_client;
 		std::string m_name;
@@ -81,8 +81,8 @@ namespace intertalk
 		std::uint32_t m_delay;
 		std::uint32_t m_drift;
 		std::uint32_t m_kbps;
-		boost::posix_time::ptime m_time;
-		boost::posix_time::ptime m_start_streaming_time;
+		std::chrono::system_clock::time_point m_time;
+		std::chrono::system_clock::time_point m_start_streaming_time;
 	};
 
 	using netstream_stats_ptr = std::shared_ptr<netstream_stats>;

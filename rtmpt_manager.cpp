@@ -130,7 +130,7 @@ namespace intertalk
 
 	void rtmpt_manager::arm_timer()
 	{
-		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(eTimerInterval)));
+		m_timer.expires_after(std::chrono::seconds(static_cast<long>(eTimerInterval)));
 		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 	}
 
@@ -138,7 +138,7 @@ namespace intertalk
 	{
 		if (!e)
 		{
-			m_timer.expires_at(m_timer.expires_at() + boost::posix_time::seconds(static_cast<long>(eTimerInterval)));
+			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(eTimerInterval)));
 			m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 
 			std::unique_lock<std::mutex> lock(m_mutex);

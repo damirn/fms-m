@@ -4,11 +4,23 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <ctime>
 #include <functional>
 #include <iomanip>
+#include <sstream>
 
 namespace intertalk
 {
+	std::string to_simple_string(std::chrono::system_clock::time_point tp)
+	{
+		std::time_t t = std::chrono::system_clock::to_time_t(tp);
+		std::tm tm{};
+		localtime_r(&t, &tm);
+		std::ostringstream os;
+		os << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+		return os.str();
+	}
+
 	void *memmem(char *s1, int l1, char *s2, int l2)
 	{
 		if (!l2) return s1;

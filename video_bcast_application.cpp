@@ -54,11 +54,11 @@ namespace intertalk
 						std::cout << "stats is null" << std::endl;
 						continue;
 					}
-					boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
-					boost::posix_time::time_duration td = now - (*stats)->m_start_streaming_time;
-					if (td.total_seconds() == 0)
+					std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
+					std::chrono::system_clock::duration td = now - (*stats)->m_start_streaming_time;
+					if (std::chrono::duration_cast<std::chrono::seconds>(td).count() == 0)
 						continue;
-					std::uint32_t kbps = (*stats)->m_bytes / td.total_seconds();
+					std::uint32_t kbps = (*stats)->m_bytes / std::chrono::duration_cast<std::chrono::seconds>(td).count();
 					amf0_number_ptr bw = std::make_shared<amf0_number>(kbps);
 					amf0_number_ptr d = std::make_shared<amf0_number>((*stats)->m_delay);
 					rtmp_message_notify_ptr msg = std::make_shared<rtmp_message_notify>(notify_functions::onQOS);
