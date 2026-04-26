@@ -309,7 +309,7 @@ namespace intertalk
 	};
 
 	struct fragment;
-	typedef std::shared_ptr<fragment> fragment_ptr;
+	using fragment_ptr = std::shared_ptr<fragment>;
 
 	class data_chunk
 	{
@@ -483,8 +483,8 @@ namespace intertalk
 			return m_cumulative_ack;
 		}
 
-		typedef std::pair<vlu_t, vlu_t> range_pair_t;
-		typedef std::list<range_pair_t> range_list_t;
+		using range_pair_t = std::pair<vlu_t, vlu_t>;
+		using range_list_t = std::list<range_pair_t>;
 
 		const range_list_t &ranges() const
 		{

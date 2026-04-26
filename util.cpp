@@ -18,7 +18,7 @@ namespace intertalk
 				return s1;
 			s1++;
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	void hexdump(std::ostream &s, void *ptr, int buflen)

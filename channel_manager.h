@@ -25,9 +25,9 @@ namespace intertalk
 		}
 
 	protected:
-		typedef std::unordered_map<std::uint32_t, rtmp_channel_ptr> channel_map_t;
+		using channel_map_t = std::unordered_map<std::uint32_t, rtmp_channel_ptr>;
 		channel_map_t m_channels;
 	};
 
-	typedef std::shared_ptr<channel_manager> channel_manager_ptr;
+	using channel_manager_ptr = std::shared_ptr<channel_manager>;
 }

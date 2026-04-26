@@ -137,5 +137,5 @@ namespace intertalk
 		bool m_uses_amf3;
 	};
 
-	typedef std::shared_ptr<client_session> client_session_ptr;
+	using client_session_ptr = std::shared_ptr<client_session>;
 }

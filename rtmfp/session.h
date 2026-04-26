@@ -31,18 +31,18 @@ namespace intertalk
 	class range_ack_chunk;
 	class user_data_chunk;
 
-	typedef std::shared_ptr<flow> flow_ptr;
+	using flow_ptr = std::shared_ptr<flow>;
 
 	class rtmp_app_manager;
 	class rtmp_header;
 	class rtmp_message;
-	typedef std::shared_ptr<rtmp_message> rtmp_message_ptr;
+	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
 
 	class session;
-	typedef std::shared_ptr<session> session_ptr;
+	using session_ptr = std::shared_ptr<session>;
 
 	class group;
-	typedef std::weak_ptr<group> group_weak_ptr;
+	using group_weak_ptr = std::weak_ptr<group>;
 
 	class session : private boost::noncopyable, public client_session, public chunk_handler, public std::enable_shared_from_this<session>
 	{
@@ -55,7 +55,7 @@ namespace intertalk
 			arm_timer();
 		}
 
-		typedef std::list<address> address_list_t;
+		using address_list_t = std::list<address>;
 
 		enum state_t { eInitialState, eIHelloSent, eKeyingSent, eOpen, eNearClose, eFarCloseLinger, eClosed, eOpenFailed };
 		const state_t &state() const
@@ -251,19 +251,19 @@ namespace intertalk
 		vlu_t m_max_tsn_ack;
 
 		std::uint32_t m_next_flow_id;
-		typedef std::map<vlu_t, flow_ptr> flow_map_t;
+		using flow_map_t = std::map<vlu_t, flow_ptr>;
 		flow_map_t m_receiving_flows;
 		flow_map_t m_sending_flows;
 
-		typedef std::map<vlu_t, vlu_t> flow_assoc_map_t;
+		using flow_assoc_map_t = std::map<vlu_t, vlu_t>;
 		flow_assoc_map_t m_receiving_to_sending_flow;
 
 		std::function<void ()> m_notifier;
 
-		typedef std::map<vlu_t, std::uint32_t> flow_id_to_stream_id_map_t;
+		using flow_id_to_stream_id_map_t = std::map<vlu_t, std::uint32_t>;
 		flow_id_to_stream_id_map_t m_flow_id_to_stream_id;
 
-		typedef std::map<std::uint32_t, std::set<flow_ptr> > stream_id_to_flow_id_map_t;
+		using stream_id_to_flow_id_map_t = std::map<std::uint32_t, std::set<flow_ptr> >;
 		stream_id_to_flow_id_map_t m_stream_id_to_flow_id;
 
 		address_list_t m_addresses;

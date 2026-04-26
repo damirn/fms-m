@@ -99,7 +99,7 @@ namespace intertalk
 		enum { eInvokeChannel = 3 };
 	};
 
-	typedef std::shared_ptr<rtmp_message> rtmp_message_ptr;
+	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
 
 	class rtmp_message_chunk_size : public rtmp_message
 	{
@@ -129,7 +129,7 @@ namespace intertalk
 		std::uint32_t m_chunk_size;
 	};
 
-	typedef std::shared_ptr<rtmp_message_chunk_size> rtmp_message_chunk_size_ptr;
+	using rtmp_message_chunk_size_ptr = std::shared_ptr<rtmp_message_chunk_size>;
 
 	class rtmp_message_bytes_read : public rtmp_message
 	{
@@ -159,7 +159,7 @@ namespace intertalk
 		std::uint32_t m_bytes_read;
 	};
 
-	typedef std::shared_ptr<rtmp_message_bytes_read> rtmp_message_bytes_read_ptr;
+	using rtmp_message_bytes_read_ptr = std::shared_ptr<rtmp_message_bytes_read>;
 
 	class rtmp_message_ping : public rtmp_message
 	{
@@ -226,7 +226,7 @@ namespace intertalk
 		std::uint32_t m_value4;
 	};
 
-	typedef std::shared_ptr<rtmp_message_ping> rtmp_message_ping_ptr;
+	using rtmp_message_ping_ptr = std::shared_ptr<rtmp_message_ping>;
 
 	class rtmp_message_window_acknowledgement_size : public rtmp_message
 	{
@@ -256,7 +256,7 @@ namespace intertalk
 		std::uint32_t m_size;
 	};
 
-	typedef std::shared_ptr<rtmp_message_window_acknowledgement_size> rtmp_message_window_acknowledgement_size_ptr;
+	using rtmp_message_window_acknowledgement_size_ptr = std::shared_ptr<rtmp_message_window_acknowledgement_size>;
 
 	class rtmp_message_set_peer_bandwidth : public rtmp_message
 	{
@@ -294,7 +294,7 @@ namespace intertalk
 		std::uint8_t m_type;
 	};
 
-	typedef std::shared_ptr<rtmp_message_set_peer_bandwidth> rtmp_message_set_peer_bandwidth_ptr;
+	using rtmp_message_set_peer_bandwidth_ptr = std::shared_ptr<rtmp_message_set_peer_bandwidth>;
 
 	class rtmp_message_audio_data : public rtmp_message
 	{
@@ -374,7 +374,7 @@ namespace intertalk
 		std::uint16_t m_size;
 	};
 
-	typedef std::shared_ptr<rtmp_message_audio_data> rtmp_message_audio_data_ptr;
+	using rtmp_message_audio_data_ptr = std::shared_ptr<rtmp_message_audio_data>;
 
 	class rtmp_message_video_data : public rtmp_message
 	{
@@ -426,12 +426,12 @@ namespace intertalk
 		std::uint32_t m_size;
 	};
 
-	typedef std::shared_ptr<rtmp_message_video_data> rtmp_message_video_data_ptr;
+	using rtmp_message_video_data_ptr = std::shared_ptr<rtmp_message_video_data>;
 
 	class rtmp_message_with_params : public rtmp_message
 	{
 	public:
-		typedef std::list<amf0_type_ptr> parameters_list_t;
+		using parameters_list_t = std::list<amf0_type_ptr>;
 
 		explicit rtmp_message_with_params(rtmp_message::message_type type)
 			: rtmp_message(type), m_function(new amf0_string)
@@ -485,7 +485,7 @@ namespace intertalk
 		virtual void serialize(stream_array &);
 	};
 
-	typedef std::shared_ptr<rtmp_message_notify> rtmp_message_notify_ptr;
+	using rtmp_message_notify_ptr = std::shared_ptr<rtmp_message_notify>;
 
 	class rtmp_message_notify_amf3 : public rtmp_message_notify
 	{
@@ -513,10 +513,10 @@ namespace intertalk
 		virtual void serialize(stream_array &);
 	};
 
-	typedef std::shared_ptr<rtmp_message_notify_amf3> rtmp_message_notify_amf3_ptr;
+	using rtmp_message_notify_amf3_ptr = std::shared_ptr<rtmp_message_notify_amf3>;
 
 	class rtmp_message_invoke;
-	typedef std::shared_ptr<rtmp_message_invoke> rtmp_message_invoke_ptr;
+	using rtmp_message_invoke_ptr = std::shared_ptr<rtmp_message_invoke>;
 
 	class rtmp_message_invoke : public rtmp_message_with_params
 	{
@@ -587,7 +587,7 @@ namespace intertalk
 		virtual void serialize(stream_array &);
 	};
 
-	typedef std::shared_ptr<rtmp_message_invoke_amf3> rtmp_message_invoke_amf3_ptr;
+	using rtmp_message_invoke_amf3_ptr = std::shared_ptr<rtmp_message_invoke_amf3>;
 
 	class rtmp_message_aggregate : public rtmp_message
 	{
@@ -601,7 +601,7 @@ namespace intertalk
 
 		virtual void serialize(stream_array &);
 
-		typedef std::list<rtmp_message_ptr> message_list_t;
+		using message_list_t = std::list<rtmp_message_ptr>;
 
 		message_list_t &get_messages()
 		{
@@ -612,7 +612,7 @@ namespace intertalk
 		std::uint32_t m_ts;
 	};
 
-	typedef std::shared_ptr<rtmp_message_aggregate> rtmp_message_aggregate_ptr;
+	using rtmp_message_aggregate_ptr = std::shared_ptr<rtmp_message_aggregate>;
 
 	// fake RTMP message, used internally by the server to signal socket closure
 	class rtmp_message_close : public rtmp_message
@@ -626,5 +626,5 @@ namespace intertalk
 		virtual void serialize(stream_array &){}
 	};
 
-	typedef std::shared_ptr<rtmp_message_close> rtmp_message_close_ptr;
+	using rtmp_message_close_ptr = std::shared_ptr<rtmp_message_close>;
 }

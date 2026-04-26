@@ -8,8 +8,8 @@
 
 #include "authentication_plugin.h"
 
-typedef intertalk::authentication_plugin *(*create)();
-typedef void *(*destroy)(intertalk::authentication_plugin *);
+using create = intertalk::authentication_plugin *(*)();
+using destroy = void *(*)(intertalk::authentication_plugin *);
 
 namespace intertalk
 {

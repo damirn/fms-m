@@ -69,12 +69,12 @@ namespace intertalk
 		std::uint16_t m_transmit_size;
 	};
 
-	typedef std::shared_ptr<fragment> fragment_ptr;
+	using fragment_ptr = std::shared_ptr<fragment>;
 
 	class flow
 	{
 	protected:
-		typedef seq_manager<vlu_t> vlu_seq_manager;
+		using vlu_seq_manager = seq_manager<vlu_t>;
 
 	public:
 		enum role_t { eReceiver, eSender };
@@ -246,7 +246,7 @@ namespace intertalk
 		void parse_option_list();
 		vlu_t get_stream_id_from_option(option_ptr);
 
-		typedef std::map<vlu_t, fragment_ptr> fragment_map_t;
+		using fragment_map_t = std::map<vlu_t, fragment_ptr>;
 		const std::uint8_t *create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
 
 		vlu_t m_flow_id;
@@ -287,5 +287,5 @@ namespace intertalk
 		std::uint8_t *m_data;
 	};
 
-	typedef std::shared_ptr<flow> flow_ptr;
+	using flow_ptr = std::shared_ptr<flow>;
 }

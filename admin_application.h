@@ -22,7 +22,7 @@ namespace intertalk
 		std::uint32_t m_reason;
 		boost::posix_time::ptime m_time;
 	};
-	typedef std::shared_ptr<auth_status_data> auth_status_data_ptr;
+	using auth_status_data_ptr = std::shared_ptr<auth_status_data>;
 
 	class admin_application : public rtmp_application
 	{
@@ -88,8 +88,8 @@ namespace intertalk
 		std::map<std::string, std::string> m_password_map;
 		std::map<std::uint32_t, bool> m_clients;
 
-		typedef std::pair<rtmp_message_invoke_ptr, boost::posix_time::ptime> msg_with_ts_t;
-		typedef std::deque<msg_with_ts_t> msg_queue_t;
+		using msg_with_ts_t = std::pair<rtmp_message_invoke_ptr, boost::posix_time::ptime>;
+		using msg_queue_t = std::deque<msg_with_ts_t>;
 		msg_queue_t m_queue;
 
 		std::mutex m_admin_mutex;

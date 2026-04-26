@@ -13,11 +13,11 @@
 namespace intertalk
 {
 	class group;
-	typedef std::shared_ptr<group> group_ptr;
+	using group_ptr = std::shared_ptr<group>;
 
 	class session;
-	typedef std::shared_ptr<session> session_ptr;
-	typedef std::weak_ptr<session> session_weak_ptr;
+	using session_ptr = std::shared_ptr<session>;
+	using session_weak_ptr = std::weak_ptr<session>;
 
 	class group : public item, private boost::noncopyable
 	{

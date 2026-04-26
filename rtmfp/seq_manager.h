@@ -10,8 +10,8 @@ namespace intertalk
 	class seq_manager
 	{
 	protected:
-		typedef std::set<T> set_t;
-		typedef typename std::set<T>::iterator set_iterator;
+		using set_t = std::set<T>;
+		using set_iterator = typename std::set<T>::iterator;
 
 	public:
 		seq_manager()

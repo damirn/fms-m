@@ -10,7 +10,7 @@
 
 namespace intertalk
 {
-	typedef std::list<std::string> string_list_t;
+	using string_list_t = std::list<std::string>;
 
 	struct client_data
 	{
@@ -24,9 +24,9 @@ namespace intertalk
 		boost::posix_time::ptime m_create_time;
 	};
 
-	typedef std::shared_ptr<client_data> client_data_ptr;
+	using client_data_ptr = std::shared_ptr<client_data>;
 
-	typedef std::list<client_data_ptr> client_list_t;
+	using client_list_t = std::list<client_data_ptr>;
 
 	struct client_stats
 	{
@@ -85,11 +85,11 @@ namespace intertalk
 		boost::posix_time::ptime m_start_streaming_time;
 	};
 
-	typedef std::shared_ptr<netstream_stats> netstream_stats_ptr;
+	using netstream_stats_ptr = std::shared_ptr<netstream_stats>;
 
-	typedef std::list<netstream_stats_ptr> netstream_list_t;
+	using netstream_list_t = std::list<netstream_stats_ptr>;
 	// connection_id + stream_id
-	typedef std::pair<std::uint32_t, std::uint32_t> stream_client_id_t;
+	using stream_client_id_t = std::pair<std::uint32_t, std::uint32_t>;
 
 	// std::unordered_map has no std::hash for std::pair (unlike boost::hash),
 	// and specializing std::hash for a non-program-defined type is UB, so we
@@ -107,7 +107,7 @@ namespace intertalk
 	template<typename V>
 	using stream_client_id_map = std::unordered_map<stream_client_id_t, V, stream_client_id_hash>;
 
-	typedef stream_client_id_map<netstream_stats_ptr> netstream_stats_map_t;
+	using netstream_stats_map_t = stream_client_id_map<netstream_stats_ptr>;
 
 	struct livestream_stats
 	{
@@ -116,7 +116,7 @@ namespace intertalk
 		std::map<std::uint32_t, std::uint32_t> m_clients;
 	};
 
-	typedef std::map<std::string, livestream_stats> livestream_stats_map_t;
+	using livestream_stats_map_t = std::map<std::string, livestream_stats>;
 
 	struct queue_stats
 	{
@@ -128,5 +128,5 @@ namespace intertalk
 		std::uint32_t m_messages;
 	};
 
-	typedef std::list<queue_stats> queue_stats_list_t;
+	using queue_stats_list_t = std::list<queue_stats>;
 }

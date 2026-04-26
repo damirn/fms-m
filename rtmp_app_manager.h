@@ -20,7 +20,7 @@
 namespace intertalk
 {
 	class client_session;
-	typedef std::shared_ptr<client_session> client_session_ptr;
+	using client_session_ptr = std::shared_ptr<client_session>;
 
 	class admin_application;
 	class fake_application;
@@ -29,10 +29,10 @@ namespace intertalk
 	class rtmpt_manager;
 
 	class rtmp_message;
-	typedef std::shared_ptr<rtmp_message> rtmp_message_ptr;
+	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
 
 	class amf0_type;
-	typedef std::shared_ptr<amf0_type> amf0_type_ptr;
+	using amf0_type_ptr = std::shared_ptr<amf0_type>;
 
 	class rtmp_app_manager : private boost::noncopyable
 	{
@@ -103,16 +103,16 @@ namespace intertalk
 		io_service_pool &m_io_service_pool;
 		std::uint32_t m_connection_counter;
 
-		typedef std::map<std::string, rtmp_application *> app_map_t;
+		using app_map_t = std::map<std::string, rtmp_application *>;
 		app_map_t m_apps;
 
 		admin_application *m_admin_app;
 		fake_application *m_fake_app;
 
-		typedef std::unordered_map<std::uint32_t, client_session_ptr> connection_map_t;
+		using connection_map_t = std::unordered_map<std::uint32_t, client_session_ptr>;
 		connection_map_t m_connections;
 
-		typedef std::unordered_map<std::uint32_t, http_connection_ptr> http_connection_map_t;
+		using http_connection_map_t = std::unordered_map<std::uint32_t, http_connection_ptr>;
 		http_connection_map_t m_http_conns;
 
 		rtmpt_manager *m_rtmpt_manager;

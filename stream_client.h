@@ -38,5 +38,5 @@ namespace intertalk
 		std::uint32_t m_start_epoch;
 	};
 
-	typedef std::shared_ptr<stream_client> stream_client_ptr;
+	using stream_client_ptr = std::shared_ptr<stream_client>;
 }

@@ -63,11 +63,11 @@ namespace intertalk
 			char *m_buffer;
 			speex_codec_ptr m_speex_codec;
 
-			typedef queue<rtmp_message_audio_data_ptr> audio_queue_t;
+			using audio_queue_t = queue<rtmp_message_audio_data_ptr>;
 			audio_queue_t m_queue;
 		};
 
-		typedef std::map<std::uint32_t, stream_data *> stream_map_t;
+		using stream_map_t = std::map<std::uint32_t, stream_data *>;
 
 		stream_map_t m_streams;
 		std::mutex m_streams_mutex;

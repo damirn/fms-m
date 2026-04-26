@@ -22,5 +22,5 @@ namespace intertalk
 		std::uint16_t m_reserved_for_header;
 	};
 
-	typedef std::shared_ptr<audio_codec> audio_codec_ptr;
+	using audio_codec_ptr = std::shared_ptr<audio_codec>;
 }

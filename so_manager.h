@@ -40,9 +40,9 @@ namespace intertalk
 			std::map<std::string, amf0_type_ptr> m_values;
 		};
 
-		typedef std::shared_ptr<so_data> so_data_ptr;
+		using so_data_ptr = std::shared_ptr<so_data>;
 
-		typedef std::map<std::string, so_data_ptr> so_map_t;
+		using so_map_t = std::map<std::string, so_data_ptr>;
 		so_map_t m_so_map;
 		bool m_new_message;
 		std::mutex m_mutex;

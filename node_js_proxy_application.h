@@ -80,7 +80,7 @@ namespace intertalk
 		};
 
 		// sequence to connection_id
-		typedef std::unordered_map<std::uint32_t, request_data> seq_to_cid_map_t;
+		using seq_to_cid_map_t = std::unordered_map<std::uint32_t, request_data>;
 		seq_to_cid_map_t m_seq_to_cid;
 
 		std::set<std::uint32_t> m_clients;
