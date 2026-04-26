@@ -7,6 +7,7 @@
 #include "rtmp_application.h"
 #include "rtmp_protocol.h"
 #include "util.h"
+#include "crypto.h"
 
 #include <iostream>
 
@@ -84,7 +85,7 @@ namespace intertalk
 
 		std::uint8_t *end = buffer.write_pos();
 		if (m_key_out != 0 && (end - start) > 0)
-			RC4(m_key_out, end - start, start, start);
+			rc4_crypt(m_key_out, end - start, start, start);
 	}
 
 	void rtmpt_session::serialize_result(stream_array &buffer)
@@ -121,7 +122,7 @@ namespace intertalk
 			m_results.clear();
 			boost::tribool res;
 			if (m_key_in != 0)
-				RC4(m_key_in, input.available(), input.read_pos(), input.read_pos());
+				rc4_crypt(m_key_in, input.available(), input.read_pos(), input.read_pos());
 			if (m_remaining_data.available() > 0)
 			{
 				m_remaining_data.copy(input, input.available());

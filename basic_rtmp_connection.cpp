@@ -30,8 +30,8 @@ namespace intertalk
 
 	basic_rtmp_connection::~basic_rtmp_connection()
 	{
-		delete m_key_in;
-		delete m_key_out;
+		EVP_CIPHER_CTX_free(m_key_in);
+		EVP_CIPHER_CTX_free(m_key_out);
 	}
 
 	void basic_rtmp_connection::close()
@@ -311,14 +311,14 @@ namespace intertalk
 			for (int i = 0; i < 128; ++i)
 				std::cout << std::setw(2) << std::setfill('0') << (int) shared_key[i] << " ";
 			std::cout << std::dec << std::endl;
-			m_key_in = new RC4_KEY;
-			m_key_out = new RC4_KEY;
+			m_key_in = EVP_CIPHER_CTX_new();
+			m_key_out = EVP_CIPHER_CTX_new();
 			init_RC4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out);
 
 			// update keys
 			std::uint8_t d[eHandShakeSize];
-			RC4(m_key_in, eHandShakeSize, d, d);
-			RC4(m_key_out, eHandShakeSize, d, d);
+			rc4_crypt(m_key_in, eHandShakeSize, d, d);
+			rc4_crypt(m_key_out, eHandShakeSize, d, d);
 		}
 	}
 }

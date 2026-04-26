@@ -8,7 +8,7 @@
 #include <memory>
 #include <memory>
 #include <chrono>
-#include <openssl/rc4.h>
+#include <openssl/evp.h>
 
 #include "client_session.h"
 #include "rtmp_raw_data.h"
@@ -110,8 +110,8 @@ namespace intertalk
 		std::uint8_t m_validation_scheme;
 
 		// RC4 keys
-		RC4_KEY *m_key_in;
-		RC4_KEY *m_key_out;
+		EVP_CIPHER_CTX *m_key_in;
+		EVP_CIPHER_CTX *m_key_out;
 	};
 
 	using basic_rtmp_connection_ptr = std::shared_ptr<basic_rtmp_connection>;

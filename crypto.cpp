@@ -2,7 +2,9 @@
 #include "crypto.h"
 
 #include <sstream>
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/provider.h>
 #include <openssl/sha.h>
 
 namespace intertalk
@@ -33,33 +35,52 @@ namespace intertalk
 	std::uint8_t genuine_keys::FMS_key_len = sizeof(genuine_keys::FMS_key);
 	std::uint8_t genuine_keys::FMP_key_len = sizeof(genuine_keys::FP_key);
 
+	void init_crypto_providers()
+	{
+		// RC4 lives in the legacy provider in OpenSSL 3; loading any provider
+		// explicitly means we must also load the default one ourselves.
+		OSSL_PROVIDER_load(nullptr, "legacy");
+		OSSL_PROVIDER_load(nullptr, "default");
+	}
+
 	unsigned int HMAC_SHA256(const std::uint8_t *data, std::uint32_t data_len, const std::uint8_t *key, std::uint32_t key_len, std::uint8_t *res)
 	{
-		// HMAC_CTX is opaque in OpenSSL 1.1+/3.0; use the one-shot HMAC() helper.
+		// The one-shot HMAC() is not deprecated in OpenSSL 3 (only the HMAC_CTX API is).
 		unsigned int digest_len = 0;
 		HMAC(EVP_sha256(), key, static_cast<int>(key_len), data, data_len, res, &digest_len);
 		return digest_len;
 	}
 
+	static void rc4_init(EVP_CIPHER_CTX *ctx, const std::uint8_t *key16)
+	{
+		EVP_CIPHER_CTX_reset(ctx);
+		EVP_EncryptInit_ex(ctx, EVP_rc4(), nullptr, nullptr, nullptr);
+		EVP_CIPHER_CTX_set_key_length(ctx, 16);   // RC4 has a variable key length
+		EVP_EncryptInit_ex(ctx, nullptr, nullptr, key16, nullptr);
+	}
+
+	void rc4_crypt(EVP_CIPHER_CTX *ctx, std::size_t len, const std::uint8_t *in, std::uint8_t *out)
+	{
+		int outlen = 0;
+		EVP_EncryptUpdate(ctx, out, &outlen, in, static_cast<int>(len));   // stream cipher, in-place ok
+	}
+
 	void init_RC4_encryption(const std::uint8_t *secretKey, const std::uint8_t *pubKeyIn, const std::uint8_t *pubKeyOut,
-		RC4_KEY *rc4keyIn, RC4_KEY *rc4keyOut)
+		EVP_CIPHER_CTX *rc4keyIn, EVP_CIPHER_CTX *rc4keyOut)
 	{
 			std::uint8_t digest[SHA256_DIGEST_LENGTH];
 
 			HMAC_SHA256(pubKeyIn, 128, secretKey, 128, digest);
-			RC4_set_key(rc4keyOut, 16, digest);
+			rc4_init(rc4keyOut, digest);
 
 			HMAC_SHA256(pubKeyOut, 128, secretKey, 128, digest);
-			RC4_set_key(rc4keyIn, 16, digest);
+			rc4_init(rc4keyIn, digest);
 	}
 
 	std::string sha256(const std::string &s)
 	{
 		unsigned char hash[SHA256_DIGEST_LENGTH];
-		SHA256_CTX sha256;
-		SHA256_Init(&sha256);
-		SHA256_Update(&sha256, s.c_str(), s.length());
-		SHA256_Final(hash, &sha256);
+		EVP_Digest(s.c_str(), s.length(), hash, nullptr, EVP_sha256(), nullptr);
 		std::ostringstream tmp;
 		tmp << std::hex;
 		for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
