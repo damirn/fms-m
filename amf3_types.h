@@ -66,7 +66,7 @@ namespace intertalk
 		etype m_type;
 	};
 
-	typedef std::shared_ptr<amf3_type> amf3_type_ptr;
+	using amf3_type_ptr = std::shared_ptr<amf3_type>;
 
 	class amf3_empty_type : public amf3_type
 	{
@@ -76,7 +76,7 @@ namespace intertalk
 		{}
 	};
 
-	typedef std::shared_ptr<amf3_empty_type> amf3_empty_type_ptr;
+	using amf3_empty_type_ptr = std::shared_ptr<amf3_empty_type>;
 
 	class amf3_integer_type : public amf3_type
 	{
@@ -104,7 +104,7 @@ namespace intertalk
 		std::uint32_t m_value;
 	};
 
-	typedef std::shared_ptr<amf3_integer_type> amf3_integer_type_ptr;
+	using amf3_integer_type_ptr = std::shared_ptr<amf3_integer_type>;
 
 	class amf3_string_type : public amf3_type
 	{
@@ -136,7 +136,7 @@ namespace intertalk
 		std::string m_value;
 	};
 
-	typedef std::shared_ptr<amf3_string_type> amf3_string_type_ptr;
+	using amf3_string_type_ptr = std::shared_ptr<amf3_string_type>;
 
 	namespace amf3_util
 	{
@@ -182,7 +182,7 @@ namespace intertalk
 			: amf3_type(amf3_type::eAMF3Object)
 		{}
 
-		typedef std::map<std::string, amf3_type_ptr> value_map_t;
+		using value_map_t = std::map<std::string, amf3_type_ptr>;
 
 		value_map_t &value()
 		{
@@ -229,5 +229,5 @@ namespace intertalk
 		value_map_t m_properties;
 	};
 
-	typedef std::shared_ptr<amf3_object_type> amf3_object_type_ptr;
+	using amf3_object_type_ptr = std::shared_ptr<amf3_object_type>;
 }

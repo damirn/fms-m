@@ -105,5 +105,5 @@ namespace intertalk
 		boost::asio::streambuf m_header;
 	};
 
-	typedef std::shared_ptr<http_connection> http_connection_ptr;
+	using http_connection_ptr = std::shared_ptr<http_connection>;
 }

@@ -338,13 +338,13 @@ namespace intertalk
 					m_write_high_mark = m_write;
 			}
 
-			typedef typename dynamic_array<T>::iterator iterator;
+			using iterator = typename dynamic_array<T>::iterator;
 			iterator m_mark;
 			iterator m_read;
 			iterator m_write;
 			iterator m_read_barrier;
 			iterator m_write_high_mark;
-			typedef std::deque<std::size_t> position_deque;
+			using position_deque = std::deque<std::size_t>;
 			position_deque m_write_dequeue;
 		};
 	}

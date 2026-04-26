@@ -20,7 +20,7 @@ namespace intertalk
 	class rtmp_app_manager;
 
 	class rtmp_message;
-	typedef std::shared_ptr<rtmp_message> rtmp_message_ptr;
+	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
 
 	class basic_rtmp_connection : public client_session, public rtmp_raw_data, public std::enable_shared_from_this<basic_rtmp_connection>
 	{
@@ -114,5 +114,5 @@ namespace intertalk
 		RC4_KEY *m_key_out;
 	};
 
-	typedef std::shared_ptr<basic_rtmp_connection> basic_rtmp_connection_ptr;
+	using basic_rtmp_connection_ptr = std::shared_ptr<basic_rtmp_connection>;
 }

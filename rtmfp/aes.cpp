@@ -26,7 +26,7 @@ namespace intertalk
 	{
 		to.clear();
 		int outlen1;
-		EVP_CipherInit_ex(m_decrypt_ctx, EVP_aes_128_cbc(), NULL, m_dec_key_data, m_iv, 0);
+		EVP_CipherInit_ex(m_decrypt_ctx, EVP_aes_128_cbc(), nullptr, m_dec_key_data, m_iv, 0);
 		EVP_CIPHER_CTX_set_padding(m_decrypt_ctx, 0);
 		EVP_CipherUpdate(m_decrypt_ctx, to.write_pos(), &outlen1, from.read_pos(), from.available());
 		to.update(outlen1);
@@ -35,7 +35,7 @@ namespace intertalk
 	void aes::encrypt(stream_array &from, stream_array &to)
 	{
 		int outlen1;
-		EVP_CipherInit_ex(m_encrypt_ctx, EVP_aes_128_cbc(), NULL, m_enc_key_data, m_iv, 1);
+		EVP_CipherInit_ex(m_encrypt_ctx, EVP_aes_128_cbc(), nullptr, m_enc_key_data, m_iv, 1);
 
 		EVP_CipherUpdate(m_encrypt_ctx, to.write_pos(), &outlen1, from.read_pos(), from.wrote_size());
 		to.update(outlen1);

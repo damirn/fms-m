@@ -46,13 +46,13 @@ namespace intertalk
 			audio_sink *m_sink;
 		};
 
-		typedef std::shared_ptr<call_instance_data> call_instance_data_ptr;
+		using call_instance_data_ptr = std::shared_ptr<call_instance_data>;
 
-		typedef std::map<std::string, call_instance_data_ptr> instance_client_map_t;
+		using instance_client_map_t = std::map<std::string, call_instance_data_ptr>;
 		instance_client_map_t m_instance_to_client;
 
 		// Client to App Instance map
-		typedef std::map<std::uint32_t, std::string> client_instance_map_t;
+		using client_instance_map_t = std::map<std::uint32_t, std::string>;
 		client_instance_map_t m_client_to_instance;
 	};
 }

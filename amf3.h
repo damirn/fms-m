@@ -40,7 +40,7 @@ namespace intertalk
 
 		std::uint32_t read_u29(stream_array &);
 
-		typedef std::list<std::string> string_list_t;
+		using string_list_t = std::list<std::string>;
 
 		struct class_data
 		{
@@ -49,7 +49,7 @@ namespace intertalk
 			std::string m_class_name;
 		};
 
-		typedef std::shared_ptr<class_data> class_data_ptr;
+		using class_data_ptr = std::shared_ptr<class_data>;
 
 		std::map<std::uint32_t, class_data_ptr> m_stored_classes;
 	};

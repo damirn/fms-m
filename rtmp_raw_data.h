@@ -8,13 +8,13 @@ namespace intertalk
 {
 	// Forward declarations
 	class rtmp_channel;
-	typedef std::shared_ptr<rtmp_channel> rtmp_channel_ptr;
+	using rtmp_channel_ptr = std::shared_ptr<rtmp_channel>;
 
 	class channel_manager;
-	typedef std::shared_ptr<channel_manager> channel_manager_ptr;
+	using channel_manager_ptr = std::shared_ptr<channel_manager>;
 
 	class rtmp_message;
-	typedef std::shared_ptr<rtmp_message> rtmp_message_ptr;
+	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
 
 	class stream_array;
 

@@ -10,7 +10,7 @@
 
 namespace intertalk
 {
-	typedef std::uint64_t vlu_t;
+	using vlu_t = std::uint64_t;
 
 #pragma pack(push)
 #pragma pack(1)
@@ -85,7 +85,7 @@ namespace intertalk
 		enum { eMetadata = 0, eReturnFlowAssociation = 10 };
 	};
 
-	typedef std::shared_ptr<option> option_ptr;
+	using option_ptr = std::shared_ptr<option>;
 
 	struct option_list
 	{
@@ -100,7 +100,7 @@ namespace intertalk
 		std::list<option_ptr> m_options;
 	};
 
-	typedef std::shared_ptr<option_list> option_list_ptr;
+	using option_list_ptr = std::shared_ptr<option_list>;
 
 	class item
 	{

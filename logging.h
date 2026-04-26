@@ -36,17 +36,17 @@ namespace intertalk
 		void init_logging(const std::string &);
 
 	protected:
-		typedef sinks::text_file_backend backend_t;
+		using backend_t = sinks::text_file_backend;
 		// Boost.Log's core/add_sink API traffics in boost::shared_ptr, so these
 		// deliberately stay Boost while the rest of the tree uses std::shared_ptr.
-		typedef boost::shared_ptr<backend_t> backend_ptr;
+		using backend_ptr = boost::shared_ptr<backend_t>;
 		typedef sinks::asynchronous_sink<
 			backend_t,
 			sinks::unbounded_ordering_queue<
 			boost::log::attribute_value_ordering< unsigned int, std::less< unsigned int > >
 			>
 		> sink_t;
-		typedef boost::shared_ptr<sink_t> sink_ptr;
+		using sink_ptr = boost::shared_ptr<sink_t>;
 		sink_ptr m_sink;
 		bool m_created;
 	};

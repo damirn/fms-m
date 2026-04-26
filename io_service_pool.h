@@ -24,8 +24,8 @@ namespace intertalk
 		boost::asio::io_service &get_io_service();
 
 	private:
-		typedef std::shared_ptr<boost::asio::io_service> io_service_ptr;
-		typedef std::shared_ptr<boost::asio::io_service::work> work_ptr;
+		using io_service_ptr = std::shared_ptr<boost::asio::io_service>;
+		using work_ptr = std::shared_ptr<boost::asio::io_service::work>;
 
 		/// The pool of io_services.
 		std::vector<io_service_ptr> m_io_services;

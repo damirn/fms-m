@@ -75,12 +75,12 @@ namespace intertalk
 			std::uint8_t m_not_alive;
 			boost::asio::ip::address m_address;
 			rtmpt_session_ptr m_session;
-			typedef std::map<std::uint32_t, std::pair<std::uint8_t *, std::uint16_t> > unoreder_data_t;
+			using unoreder_data_t = std::map<std::uint32_t, std::pair<std::uint8_t *, std::uint16_t> >;
 			unoreder_data_t m_out_of_order_data;
 		};
 
-		typedef std::shared_ptr<rtmpt_session_data> rtmpt_session_data_ptr;
-		typedef std::unordered_map<std::string, rtmpt_session_data_ptr> id_map_t;
+		using rtmpt_session_data_ptr = std::shared_ptr<rtmpt_session_data>;
+		using id_map_t = std::unordered_map<std::string, rtmpt_session_data_ptr>;
 
 		id_map_t m_ids;
 

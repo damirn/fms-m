@@ -20,7 +20,7 @@
 namespace intertalk
 {
 	class client_session;
-	typedef std::shared_ptr<client_session> client_session_ptr;
+	using client_session_ptr = std::shared_ptr<client_session>;
 
 	class rtmp_header;
 	class so_manager;
@@ -80,8 +80,8 @@ namespace intertalk
 		void gracefully_close_connection_with_reason(std::uint32_t, std::uint32_t);
 
 
-		typedef std::list<std::pair<std::string, amf0_type_ptr> > amf0_parameter_list_t;
-		typedef std::optional<amf0_parameter_list_t> optional_param_list_t;
+		using amf0_parameter_list_t = std::list<std::pair<std::string, amf0_type_ptr> >;
+		using optional_param_list_t = std::optional<amf0_parameter_list_t>;
 
 	protected:
 		virtual boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
@@ -146,12 +146,12 @@ namespace intertalk
 		rtmp_app_manager *m_app_manager;
 		std::string m_app_name;
 
-		typedef std::pair<std::uint32_t, std::list<rtmp_message_ptr> > size_list_pair_t;
-		typedef std::unordered_map<std::uint32_t, size_list_pair_t> async_messages_map_t;
+		using size_list_pair_t = std::pair<std::uint32_t, std::list<rtmp_message_ptr> >;
+		using async_messages_map_t = std::unordered_map<std::uint32_t, size_list_pair_t>;
 		async_messages_map_t m_async_messages;
 		std::mutex m_async_messages_mutex;
 
-		typedef std::unordered_map<std::uint32_t, std::uint32_t> delay_map_t;
+		using delay_map_t = std::unordered_map<std::uint32_t, std::uint32_t>;
 		delay_map_t m_delays;
 		std::mutex m_delay_mutex;
 
@@ -165,12 +165,12 @@ namespace intertalk
 		so_manager *m_so_manager;
 
 		struct result_handler;
-		typedef std::shared_ptr<result_handler> result_handler_ptr;
+		using result_handler_ptr = std::shared_ptr<result_handler>;
 
 		struct result_handler
 		{
 			virtual ~result_handler(){}
-			typedef std::function<bool (rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &)> callback_t;
+			using callback_t = std::function<bool (rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &)>;
 			result_handler(std::uint32_t id, callback_t f)
 				: m_connection_id(id)
 				, m_call_back(f)
@@ -179,7 +179,7 @@ namespace intertalk
 			callback_t m_call_back;
 		};
 
-		typedef std::unordered_map<std::uint32_t, result_handler_ptr> result_handlers_t;
+		using result_handlers_t = std::unordered_map<std::uint32_t, result_handler_ptr>;
 
 		struct bwcheck_result_handler : public result_handler
 		{
@@ -194,7 +194,7 @@ namespace intertalk
 			boost::posix_time::time_duration m_latency;
 		};
 
-		typedef std::shared_ptr<bwcheck_result_handler> bwcheck_result_handler_ptr;
+		using bwcheck_result_handler_ptr = std::shared_ptr<bwcheck_result_handler>;
 
 		result_handlers_t m_result_handlers;
 

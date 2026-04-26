@@ -12,10 +12,10 @@ namespace intertalk
 	class rtmp_app_manager;
 
 	class rtmp_connection;
-	typedef std::shared_ptr<rtmp_connection> rtmp_connection_ptr;
+	using rtmp_connection_ptr = std::shared_ptr<rtmp_connection>;
 
 	class http_connection;
-	typedef std::shared_ptr<http_connection> http_connection_ptr;
+	using http_connection_ptr = std::shared_ptr<http_connection>;
 
 	class service;
 

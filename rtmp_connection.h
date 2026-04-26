@@ -108,5 +108,5 @@ namespace intertalk
 		bool m_to_close;
 	};
 
-	typedef std::shared_ptr<rtmp_connection> rtmp_connection_ptr;
+	using rtmp_connection_ptr = std::shared_ptr<rtmp_connection>;
 }

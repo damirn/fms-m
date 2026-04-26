@@ -17,7 +17,7 @@ namespace intertalk
 		std::string m_auth_user;
 	};
 
-	typedef std::shared_ptr<auth_data> auth_data_ptr;
+	using auth_data_ptr = std::shared_ptr<auth_data>;
 
 	class authentication_plugin
 	{

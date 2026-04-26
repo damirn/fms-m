@@ -88,20 +88,20 @@ namespace intertalk
 
 		boost::posix_time::ptime m_start;
 
-		typedef std::map<boost::asio::ip::udp::endpoint, session_ptr> endpoint_to_session_map_t;
+		using endpoint_to_session_map_t = std::map<boost::asio::ip::udp::endpoint, session_ptr>;
 		endpoint_to_session_map_t m_initial_sessions;
 
-		typedef std::map<item, session_ptr, item::less> session_map_t;
+		using session_map_t = std::map<item, session_ptr, item::less>;
 		session_map_t m_session_map;
 
-		typedef std::map<std::uint32_t, session_ptr> sid_to_session_map_t;
+		using sid_to_session_map_t = std::map<std::uint32_t, session_ptr>;
 		sid_to_session_map_t m_sessions;
 		sid_to_session_map_t::iterator m_sessions_iterator;
 
-		typedef std::set<group_ptr, group::less> group_set_t;
+		using group_set_t = std::set<group_ptr, group::less>;
 		group_set_t m_groups;
 
-		typedef std::pair<boost::asio::ip::udp::endpoint, chunk *> endpoint_chunk_pair_t;
+		using endpoint_chunk_pair_t = std::pair<boost::asio::ip::udp::endpoint, chunk *>;
 		std::queue<endpoint_chunk_pair_t> m_queue;
 
 		enum { ePacketMinLen = 13 };

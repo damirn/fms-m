@@ -96,5 +96,5 @@ namespace intertalk
 		stream_array m_remaining_data;
 	};
 
-	typedef std::shared_ptr<rtmpt_session> rtmpt_session_ptr;
+	using rtmpt_session_ptr = std::shared_ptr<rtmpt_session>;
 }

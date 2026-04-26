@@ -79,7 +79,7 @@ namespace intertalk
 		std::uint32_t m_type;
 	};
 
-	typedef std::shared_ptr<amf0_type> amf0_type_ptr;
+	using amf0_type_ptr = std::shared_ptr<amf0_type>;
 
 	class amf0_boolean : public amf0_type
 	{
@@ -106,7 +106,7 @@ namespace intertalk
 		bool m_value;
 	};
 
-	typedef std::shared_ptr<amf0_boolean> amf0_boolean_ptr;
+	using amf0_boolean_ptr = std::shared_ptr<amf0_boolean>;
 
 	class amf0_number : public amf0_type
 	{
@@ -133,7 +133,7 @@ namespace intertalk
 		double m_value;
 	};
 
-	typedef std::shared_ptr<amf0_number> amf0_number_ptr;
+	using amf0_number_ptr = std::shared_ptr<amf0_number>;
 
 	class amf0_string : public amf0_type
 	{
@@ -160,7 +160,7 @@ namespace intertalk
 		std::string m_value;
 	};
 
-	typedef std::shared_ptr<amf0_string> amf0_string_ptr;
+	using amf0_string_ptr = std::shared_ptr<amf0_string>;
 
 	namespace amf0_util
 	{
@@ -253,10 +253,10 @@ namespace intertalk
 			>
 		> value_map_t;
 
-		typedef value_map_t::nth_index<0>::type indexed_value_type;
-		typedef value_map_t::nth_index<0>::type::iterator indexed_iterator;
-		typedef value_map_t::nth_index<1>::type value_type;
-		typedef value_map_t::nth_index<1>::type::iterator iterator;
+		using indexed_value_type = value_map_t::nth_index<0>::type;
+		using indexed_iterator = value_map_t::nth_index<0>::type::iterator;
+		using value_type = value_map_t::nth_index<1>::type;
+		using iterator = value_map_t::nth_index<1>::type::iterator;
 
 		amf0_object()
 			: amf0_type(eAMF0Object)
@@ -367,7 +367,7 @@ namespace intertalk
 		value_map_t m_value;
 	};
 
-	typedef std::shared_ptr<amf0_object> amf0_object_ptr;
+	using amf0_object_ptr = std::shared_ptr<amf0_object>;
 
 	class amf0_null : public amf0_type
 	{
@@ -377,7 +377,7 @@ namespace intertalk
 		{}
 	};
 
-	typedef std::shared_ptr<amf0_null> amf0_null_ptr;
+	using amf0_null_ptr = std::shared_ptr<amf0_null>;
 
 	class amf0_undefined : public amf0_type
 	{
@@ -387,13 +387,13 @@ namespace intertalk
 		{}
 	};
 
-	typedef std::shared_ptr<amf0_undefined> amf0_undefined_ptr;
+	using amf0_undefined_ptr = std::shared_ptr<amf0_undefined>;
 
 	class amf0_ecma_array : public amf0_type
 	{
 	public:
-		typedef std::pair<std::string, amf0_type_ptr> entry;
-		typedef std::list<entry> array_t;
+		using entry = std::pair<std::string, amf0_type_ptr>;
+		using array_t = std::list<entry>;
 
 		amf0_ecma_array()
 			: amf0_type(eAMF0EcmaArray)
@@ -425,12 +425,12 @@ namespace intertalk
 		array_t m_array;
 	};
 
-	typedef std::shared_ptr<amf0_ecma_array> amf0_ecma_array_ptr;
+	using amf0_ecma_array_ptr = std::shared_ptr<amf0_ecma_array>;
 
 	class amf0_strict_array : public amf0_type
 	{
 	public:
-		typedef std::list<amf0_type_ptr> array_t;
+		using array_t = std::list<amf0_type_ptr>;
 
 		amf0_strict_array()
 			: amf0_type(eAMF0StrictArray)
@@ -462,7 +462,7 @@ namespace intertalk
 		array_t m_array;
 	};
 
-	typedef std::shared_ptr<amf0_strict_array> amf0_strict_array_ptr;
+	using amf0_strict_array_ptr = std::shared_ptr<amf0_strict_array>;
 
 	class amf0_long_string : public amf0_type
 	{
@@ -500,10 +500,10 @@ namespace intertalk
 		std::vector<std::uint8_t> m_data;
 	};
 
-	typedef std::shared_ptr<amf0_long_string> amf0_long_string_ptr;
+	using amf0_long_string_ptr = std::shared_ptr<amf0_long_string>;
 
 	class amf3_type;
-	typedef std::shared_ptr<amf3_type> amf3_type_ptr;
+	using amf3_type_ptr = std::shared_ptr<amf3_type>;
 
 	class amf0_amf3_container : public amf0_type
 	{
@@ -531,5 +531,5 @@ namespace intertalk
 		amf3_type_ptr m_data;
 	};
 
-	typedef std::shared_ptr<amf0_amf3_container> amf0_amf3_container_ptr;
+	using amf0_amf3_container_ptr = std::shared_ptr<amf0_amf3_container>;
 }

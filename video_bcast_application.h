@@ -86,35 +86,35 @@ namespace intertalk
 		std::mutex m_mutex;
 
 		// broadcaster -> subscribers
-		typedef boost::bimaps::bimap<boost::bimaps::multiset_of<stream_client_id_t>, boost::bimaps::set_of<stream_client_id_t> > stream_client_map_t;
+		using stream_client_map_t = boost::bimaps::bimap<boost::bimaps::multiset_of<stream_client_id_t>, boost::bimaps::set_of<stream_client_id_t> >;
 		stream_client_map_t m_stream_clients;
 
 		// subscriber -> stream client
-		typedef stream_client_id_map<stream_client_ptr> subscriber_map_t;
+		using subscriber_map_t = stream_client_id_map<stream_client_ptr>;
 		subscriber_map_t m_subscribers;
 
 		// broadcaster -> stream name
-		typedef boost::bimaps::bimap<stream_client_id_t, std::string> streams_map_t;
+		using streams_map_t = boost::bimaps::bimap<stream_client_id_t, std::string>;
 		streams_map_t m_streams;
 
 		// app client -> streams
-		typedef std::unordered_map<std::uint32_t, std::set<std::uint32_t> > client_stream_map_t;
+		using client_stream_map_t = std::unordered_map<std::uint32_t, std::set<std::uint32_t> >;
 		client_stream_map_t m_clients;
 
-		typedef stream_client_id_map<std::list<rtmp_message_video_data_ptr>> video_queue_map_t;
+		using video_queue_map_t = stream_client_id_map<std::list<rtmp_message_video_data_ptr>>;
 		video_queue_map_t m_video_queue_map;
 
-		typedef stream_client_id_map<rtmp_message_video_data_ptr> avc_decoder_config_map_t;
+		using avc_decoder_config_map_t = stream_client_id_map<rtmp_message_video_data_ptr>;
 		avc_decoder_config_map_t m_avc_config;
 
-		typedef stream_client_id_map<rtmp_message_audio_data_ptr> aac_decoder_config_map_t;
+		using aac_decoder_config_map_t = stream_client_id_map<rtmp_message_audio_data_ptr>;
 		aac_decoder_config_map_t m_aac_config;
 
-		typedef stream_client_id_map<amf0_object_ptr> metadata_map_t;
+		using metadata_map_t = stream_client_id_map<amf0_object_ptr>;
 		metadata_map_t m_metadata;
 
 		// real stream -> qos stream
-		typedef stream_client_id_map<stream_client_id_t> qos_map_t;
+		using qos_map_t = stream_client_id_map<stream_client_id_t>;
 		qos_map_t m_qos_sources;
 
 		enum { _eTimeout = 1 };
@@ -160,13 +160,13 @@ namespace intertalk
 		};
 
 		// stream name -> subscriber
-		typedef std::unordered_map<std::string, std::set<subscriber, subscriber_comp>> waiting_client_map_t;
+		using waiting_client_map_t = std::unordered_map<std::string, std::set<subscriber, subscriber_comp>>;
 		waiting_client_map_t m_waiting_clients;
 
-		typedef stream_client_id_map<std::string> subscribers_to_stream_name_t;
+		using subscribers_to_stream_name_t = stream_client_id_map<std::string>;
 		subscribers_to_stream_name_t m_subscribers_to_stream;
 
-		typedef std::map<stream_client_id_t, flv_writer *> flv_writer_map_t;
+		using flv_writer_map_t = std::map<stream_client_id_t, flv_writer *>;
 		flv_writer_map_t m_flv_writers;
 
 		boost::asio::deadline_timer m_timer;

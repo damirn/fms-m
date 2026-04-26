@@ -142,5 +142,5 @@ namespace intertalk
 		std::uint32_t m_prev_timestamp;
 	};
 
-	typedef std::shared_ptr<rtmp_channel> rtmp_channel_ptr;
+	using rtmp_channel_ptr = std::shared_ptr<rtmp_channel>;
 }

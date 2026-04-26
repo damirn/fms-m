@@ -24,13 +24,13 @@ namespace intertalk
 
 	public:
 		// type definitions
-		typedef T              value_type;
-		typedef T*             iterator;
-		typedef const T*       const_iterator;
-		typedef T&             reference;
-		typedef const T&       const_reference;
-		typedef std::size_t    size_type;
-		typedef std::ptrdiff_t difference_type;
+		using value_type = T;
+		using iterator = T*;
+		using const_iterator = const T*;
+		using reference = T&;
+		using const_reference = const T&;
+		using size_type = std::size_t;
+		using difference_type = std::ptrdiff_t;
 
 		explicit dynamic_array(std::size_t size)
 			: elems(new T[size])
@@ -58,8 +58,8 @@ namespace intertalk
 
 		// reverse iterator support
 #if !defined(BOOST_NO_TEMPLATE_PARTIAL_SPECIALIZATION) && !defined(BOOST_MSVC_STD_ITERATOR) && !defined(BOOST_NO_STD_ITERATOR_TRAITS)
-		typedef std::reverse_iterator<iterator> reverse_iterator;
-		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+		using reverse_iterator = std::reverse_iterator<iterator>;
+		using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 #elif defined(_MSC_VER) && (_MSC_VER == 1300) && defined(BOOST_DINKUMWARE_STDLIB) && (BOOST_DINKUMWARE_STDLIB == 310)
 		// workaround for broken reverse_iterator in VC7
 		typedef std::reverse_iterator<std::_Ptrit<value_type, difference_type, iterator,
@@ -68,8 +68,8 @@ namespace intertalk
 			const_reference, iterator, reference> > const_reverse_iterator;
 #else
 		// workaround for broken reverse_iterator implementations
-		typedef std::reverse_iterator<iterator,T> reverse_iterator;
-		typedef std::reverse_iterator<const_iterator,T> const_reverse_iterator;
+		using reverse_iterator = std::reverse_iterator<iterator,T>;
+		using const_reverse_iterator = std::reverse_iterator<const_iterator,T>;
 #endif
 
 		reverse_iterator rbegin() { return reverse_iterator(end()); }

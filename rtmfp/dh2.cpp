@@ -45,16 +45,16 @@ namespace intertalk
 		m_dh = DH_new(); // fixme: check for null
 
 		// OpenSSL 1.1+/3.0 makes the DH struct opaque; use the accessor API.
-		BIGNUM *p = BN_bin2bn(m_dh_key, eKeySize, NULL); //prime number
+		BIGNUM *p = BN_bin2bn(m_dh_key, eKeySize, nullptr); //prime number
 		BIGNUM *g = BN_new();
 		BN_set_word(g, 2); //group DH 2
-		DH_set0_pqg(m_dh, p, NULL, g); // takes ownership of p and g
+		DH_set0_pqg(m_dh, p, nullptr, g); // takes ownership of p and g
 
 		DH_generate_key(m_dh);
 
 		// It's our key public part
-		const BIGNUM *pub_key = NULL;
-		DH_get0_key(m_dh, &pub_key, NULL);
+		const BIGNUM *pub_key = nullptr;
+		DH_get0_key(m_dh, &pub_key, nullptr);
 		m_pub_key_size = BN_num_bytes(pub_key);
 		m_pub_key = new std::uint8_t[m_pub_key_size];
 		BN_bn2bin(pub_key, m_pub_key);
@@ -62,7 +62,7 @@ namespace intertalk
 
 	void dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size)
 	{
-		BIGNUM *bnFarPubKey = BN_bin2bn(remote_pub_key, key_size, NULL);
+		BIGNUM *bnFarPubKey = BN_bin2bn(remote_pub_key, key_size, nullptr);
 		m_shared_secret_size = DH_size(m_dh);
 		m_shared_secret = new std::uint8_t[m_shared_secret_size];
 		DH_compute_key(m_shared_secret, bnFarPubKey, m_dh);
@@ -80,16 +80,16 @@ namespace intertalk
 		std::uint8_t mdp1[eAESKeySize];
 		std::uint8_t mdp2[eAESKeySize];
 
-		HMAC(EVP_sha256(), rnonce, rnonce_size, inonce, inonce_size, mdp1, NULL);
-		HMAC(EVP_sha256(), inonce, inonce_size, rnonce, rnonce_size, mdp2, NULL);
+		HMAC(EVP_sha256(), rnonce, rnonce_size, inonce, inonce_size, mdp1, nullptr);
+		HMAC(EVP_sha256(), inonce, inonce_size, rnonce, rnonce_size, mdp2, nullptr);
 
-		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp1, eAESKeySize, dec_key, NULL);
-		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp2, eAESKeySize, enc_key, NULL);
+		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp1, eAESKeySize, dec_key, nullptr);
+		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp2, eAESKeySize, enc_key, nullptr);
 	}
 
 	void dh2::generate_peer_id(const std::uint8_t *data, std::uint16_t data_size, std::uint8_t *target)
 	{
-		EVP_Digest(data, data_size, target, NULL, EVP_sha256(), NULL);
+		EVP_Digest(data, data_size, target, nullptr, EVP_sha256(), nullptr);
 	}
 
 	void dh2::generate_rnonce()
