@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -29,10 +29,10 @@ namespace intertalk
 	{
 		std::size_t i;
 		// Create a pool of threads to run all of the io_services.
-		std::vector<boost::shared_ptr<boost::thread> > threads;
+		std::vector<std::shared_ptr<boost::thread> > threads;
 		for (i = 0; i < m_io_services.size(); ++i)
 		{
-			boost::shared_ptr<boost::thread> thread(new boost::thread(
+			std::shared_ptr<boost::thread> thread(new boost::thread(
 				boost::bind(&boost::asio::io_service::run, m_io_services[i])));
 			threads.push_back(thread);
 		}

@@ -3,7 +3,7 @@
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/thread/mutex.hpp>
 #include <boost/unordered_map.hpp>
 
@@ -79,7 +79,7 @@ namespace intertalk
 			unoreder_data_t m_out_of_order_data;
 		};
 
-		typedef boost::shared_ptr<rtmpt_session_data> rtmpt_session_data_ptr;
+		typedef std::shared_ptr<rtmpt_session_data> rtmpt_session_data_ptr;
 		typedef boost::unordered_map<std::string, rtmpt_session_data_ptr> id_map_t;
 
 		id_map_t m_ids;

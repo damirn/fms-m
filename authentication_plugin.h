@@ -2,7 +2,7 @@
 
 #include <string>
 #include <cstdint>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/logic/tribool.hpp>
 
 namespace intertalk
@@ -17,7 +17,7 @@ namespace intertalk
 		std::string m_auth_user;
 	};
 
-	typedef boost::shared_ptr<auth_data> auth_data_ptr;
+	typedef std::shared_ptr<auth_data> auth_data_ptr;
 
 	class authentication_plugin
 	{

@@ -6,7 +6,7 @@
 #include <list>
 #include <cstdint>
 #include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -85,7 +85,7 @@ namespace intertalk
 		enum { eMetadata = 0, eReturnFlowAssociation = 10 };
 	};
 
-	typedef boost::shared_ptr<option> option_ptr;
+	typedef std::shared_ptr<option> option_ptr;
 
 	struct option_list
 	{
@@ -100,7 +100,7 @@ namespace intertalk
 		std::list<option_ptr> m_options;
 	};
 
-	typedef boost::shared_ptr<option_list> option_list_ptr;
+	typedef std::shared_ptr<option_list> option_list_ptr;
 
 	class item
 	{

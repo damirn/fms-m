@@ -5,7 +5,7 @@
 #include "session.h"
 #include "so_manager.h"
 
-#include <boost/make_shared.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -186,7 +186,7 @@ namespace intertalk
 
 	boost::tribool rtmp_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
+		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == 0)
 			return false;
@@ -220,7 +220,7 @@ namespace intertalk
 
 	bool rtmp_application::handle_shared_object(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
 	{
-		rtmp_message_shared_object_ptr so = boost::dynamic_pointer_cast<rtmp_message_shared_object, rtmp_message>(msg);
+		rtmp_message_shared_object_ptr so = std::dynamic_pointer_cast<rtmp_message_shared_object>(msg);
 
 		if (so.get() == 0)
 			return false;
@@ -279,7 +279,7 @@ namespace intertalk
 
 	bool rtmp_application::handle_result_bw_check_upload(rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr bw_res = boost::dynamic_pointer_cast<bwcheck_result_handler, result_handler>(res_handler);
+		bwcheck_result_handler_ptr bw_res = std::dynamic_pointer_cast<bwcheck_result_handler>(res_handler);
 		client_stats stats;
 		m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
 
@@ -306,7 +306,7 @@ namespace intertalk
 
 	bool rtmp_application::handle_result_bw_check_download(rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr bw_res = boost::dynamic_pointer_cast<bwcheck_result_handler, result_handler>(res_handler);
+		bwcheck_result_handler_ptr bw_res = std::dynamic_pointer_cast<bwcheck_result_handler>(res_handler);
 		if (bw_res->m_num_called == 0) // first time we got this result set
 		{
 			bw_res->m_num_called++;
@@ -378,7 +378,7 @@ namespace intertalk
 		try
 		{
 			client_session_ptr c = get_connection(connection_id);
-			session_ptr s = boost::dynamic_pointer_cast<session, client_session>(c);
+			session_ptr s = std::dynamic_pointer_cast<session>(c);
 			rtmp_message_invoke::parameters_list_t &params = info->parameters();
 			if (params.size() > 1)
 			{
@@ -386,32 +386,32 @@ namespace intertalk
 				++i;
 				while (i != params.end() && (*i)->type() == amf0_type::eAMF0String)
 				{
-					amf0_string_ptr addr = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+					amf0_string_ptr addr = std::dynamic_pointer_cast<amf0_string>(*i);
 					s->add_peer_address(addr->value());
 					++i;
 				}
 			}
 		}
 		catch (std::runtime_error &){}
-		rtmp_message_ping_ptr ping = boost::make_shared<rtmp_message_ping>(0x29, 0x3a98, 0x2710);
+		rtmp_message_ping_ptr ping = std::make_shared<rtmp_message_ping>(0x29, 0x3a98, 0x2710);
 		result = ping;
 	}
 
 	void rtmp_application::handle_win_ack_size(rtmp_message_ptr msg, std::uint32_t connection_id)
 	{
-		rtmp_message_window_acknowledgement_size_ptr ack = boost::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size, rtmp_message>(msg);
+		rtmp_message_window_acknowledgement_size_ptr ack = std::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
 		std::cout << "window acknowledgment size: " << ack->size() << std::endl;
 	}
 
 	void rtmp_application::handle_bytes_read(rtmp_message_ptr)
 	{
-//		rtmp_message_bytes_read_ptr br = boost::dynamic_pointer_cast<rtmp_message_bytes_read, rtmp_message>(msg);
+//		rtmp_message_bytes_read_ptr br = std::dynamic_pointer_cast<rtmp_message_bytes_read>(msg);
 //		std::cout << "client sent bytes read with " << br->bytes_read() << " ch: " << msg->channel_id() << " st: " << msg->stream_id() << std::endl;
 	}
 
 	void rtmp_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
 	{
-		rtmp_message_ping_ptr ping = boost::dynamic_pointer_cast<rtmp_message_ping, rtmp_message>(msg);
+		rtmp_message_ping_ptr ping = std::dynamic_pointer_cast<rtmp_message_ping>(msg);
 //		std::cout << "ping type: " << ping->get_type();
 		if (ping->get_type() == rtmp_message_ping::ePingResponse)
 		{
@@ -444,13 +444,13 @@ namespace intertalk
 		rtmp_message_invoke::parameters_list_t::const_iterator i = list.begin();
 		if ((*i)->type() == amf0_type::eAMF0Object)
 		{
-			amf0_object_ptr obj = boost::dynamic_pointer_cast<amf0_object, amf0_type>(*i);
+			amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(*i);
 			amf0_object::value_type &map = obj->value();
 			amf0_object::value_type::iterator j = map.find("objectEncoding");
 
 			if (j != map.end() && j->m_value->type() == amf0_type::eAMF0Number)
 			{
-				amf0_number_ptr num = boost::dynamic_pointer_cast<amf0_number, amf0_type>(j->m_value);
+				amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(j->m_value);
 				m_app_manager->set_encoding_for_connection(connection_id, num->value() == 3.0);
 			}
 			else
@@ -630,7 +630,7 @@ namespace intertalk
 	void rtmp_application::gracefully_close_connection_with_reason(std::uint32_t connection_id, std::uint32_t reason)
 	{
 		rtmp_message_invoke_ptr result = rtmp_message_invoke::create_message(invoke_functions::close, 0);
-		result->add_parameter(boost::make_shared<amf0_number>(reason));
+		result->add_parameter(std::make_shared<amf0_number>(reason));
 		enqueue_async_message(connection_id, result);
 		notify(connection_id);
 	}

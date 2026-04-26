@@ -5,7 +5,7 @@
 #include "logging.h"
 
 #include <boost/filesystem.hpp>
-#include <boost/make_shared.hpp>
+#include <memory>
 #include <boost/process.hpp>
 
 namespace intertalk
@@ -59,9 +59,9 @@ namespace intertalk
 					if (td.total_seconds() == 0)
 						continue;
 					std::uint32_t kbps = (*stats)->m_bytes / td.total_seconds();
-					amf0_number_ptr bw = boost::make_shared<amf0_number>(kbps);
-					amf0_number_ptr d = boost::make_shared<amf0_number>((*stats)->m_delay);
-					rtmp_message_notify_ptr msg = boost::make_shared<rtmp_message_notify>(notify_functions::onQOS);
+					amf0_number_ptr bw = std::make_shared<amf0_number>(kbps);
+					amf0_number_ptr d = std::make_shared<amf0_number>((*stats)->m_delay);
+					rtmp_message_notify_ptr msg = std::make_shared<rtmp_message_notify>(notify_functions::onQOS);
 					msg->stream_id() = ssid.second;
 					msg->add_parameter(d);
 					msg->add_parameter(bw);
@@ -75,7 +75,7 @@ namespace intertalk
 
 	boost::tribool video_bcast_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
+		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == 0)
 			return false;
@@ -124,7 +124,7 @@ namespace intertalk
 
 	void video_bcast_application::handle_notify(rtmp_message_ptr msg, std::uint32_t connection_id)
 	{
-		rtmp_message_notify_ptr notify = boost::dynamic_pointer_cast<rtmp_message_notify, rtmp_message>(msg);
+		rtmp_message_notify_ptr notify = std::dynamic_pointer_cast<rtmp_message_notify>(msg);
 		if (notify->function()->value().compare(notify_functions::set_data_frame) == 0)
 			handle_notify_set_data_frame(notify, connection_id);
 		else if (notify->function()->value().compare(notify_functions::clear_data_frame) == 0)
@@ -133,7 +133,7 @@ namespace intertalk
 
 	void video_bcast_application::handle_audio_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
 	{
-		rtmp_message_audio_data_ptr audio = boost::dynamic_pointer_cast<rtmp_message_audio_data, rtmp_message>(msg);
+		rtmp_message_audio_data_ptr audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
 
 //		std::cout << "audio timestamp: " << msg->timestamp() << " cid: " << connection_id << std::endl;
 
@@ -176,7 +176,7 @@ namespace intertalk
 	{
 //		std::cout << "video timestamp: " << msg->timestamp() << " cid: " << connection_id << std::endl;
 
-		rtmp_message_video_data_ptr video = boost::dynamic_pointer_cast<rtmp_message_video_data, rtmp_message>(msg);
+		rtmp_message_video_data_ptr video = std::dynamic_pointer_cast<rtmp_message_video_data>(msg);
 		if (video->size() == 0)
 		{
 			std::cout << "Video data is 0 size!" << std::endl;
@@ -258,7 +258,7 @@ namespace intertalk
 
 			rtmp_message_invoke::parameters_list_t::iterator i = params.begin();
 			++i;
-			amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
 			std::string stream_name = str->value();
 			std::string::size_type pos = stream_name.find('?');
 			if (pos != std::string::npos)
@@ -274,7 +274,7 @@ namespace intertalk
 			{
 				if ((*i)->type() == amf0_type::eAMF0String)
 				{
-					amf0_string_ptr param = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+					amf0_string_ptr param = std::dynamic_pointer_cast<amf0_string>(*i);
 					record = param->value() == "record";
 				}
 			}
@@ -417,7 +417,7 @@ namespace intertalk
 
 			boost::mutex::scoped_lock lock(m_mutex);
 
-			amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
 			std::string stream_name;
 			std::string remote_srv;
 			bool is_remote = is_remote_stream(str->value(), stream_name, remote_srv);
@@ -519,7 +519,7 @@ namespace intertalk
 
 		if (params.size() == 2 && (*i)->type() == amf0_type::eAMF0String)
 		{
-			amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
 			if (str->value().compare("onMetaData") == 0)
 			{
 				++i;
@@ -608,7 +608,7 @@ namespace intertalk
 
 	void video_bcast_application::update_metadata(const stream_client_id_t &cid, amf0_type_ptr data)
 	{
-		amf0_object_ptr obj = boost::dynamic_pointer_cast<amf0_object, amf0_type>(data);
+		amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(data);
 		metadata_map_t::iterator i = m_metadata.find(cid);
 		if (i == m_metadata.end())
 			m_metadata[cid] = obj;
@@ -702,7 +702,7 @@ namespace intertalk
 		if ((*i)->type() != amf0_type::eAMF0Boolean)
 			throw rtmp_illegal_parameter_exception("Boolean parameter expected");
 
-		amf0_boolean_ptr val = boost::dynamic_pointer_cast<amf0_boolean, amf0_type>(*i);
+		amf0_boolean_ptr val = std::dynamic_pointer_cast<amf0_boolean>(*i);
 		return val->value();
 	}
 

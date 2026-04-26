@@ -88,13 +88,13 @@ namespace intertalk
 		static std::uint8_t m_poll_time[];
 
 	private:
-		boost::shared_ptr<rtmpt_session> shared_from_this()
+		std::shared_ptr<rtmpt_session> shared_from_this()
 		{
-			return boost::static_pointer_cast<rtmpt_session>(basic_rtmp_connection::shared_from_this());
+			return std::static_pointer_cast<rtmpt_session>(basic_rtmp_connection::shared_from_this());
 		}
 
 		stream_array m_remaining_data;
 	};
 
-	typedef boost::shared_ptr<rtmpt_session> rtmpt_session_ptr;
+	typedef std::shared_ptr<rtmpt_session> rtmpt_session_ptr;
 }

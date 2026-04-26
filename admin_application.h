@@ -2,7 +2,7 @@
 
 #include <map>
 #include <boost/function.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include "rtmp_application.h"
 #include "stats.h"
@@ -22,7 +22,7 @@ namespace intertalk
 		std::uint32_t m_reason;
 		boost::posix_time::ptime m_time;
 	};
-	typedef boost::shared_ptr<auth_status_data> auth_status_data_ptr;
+	typedef std::shared_ptr<auth_status_data> auth_status_data_ptr;
 
 	class admin_application : public rtmp_application
 	{

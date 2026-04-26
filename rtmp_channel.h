@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "rtmp_header.h"
 #include "stream_array.h"
@@ -142,5 +142,5 @@ namespace intertalk
 		std::uint32_t m_prev_timestamp;
 	};
 
-	typedef boost::shared_ptr<rtmp_channel> rtmp_channel_ptr;
+	typedef std::shared_ptr<rtmp_channel> rtmp_channel_ptr;
 }

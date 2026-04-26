@@ -5,7 +5,7 @@
 #include <boost/detail/atomic_count.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/logic/tribool.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/thread/mutex.hpp>
@@ -20,7 +20,7 @@
 namespace intertalk
 {
 	class client_session;
-	typedef boost::shared_ptr<client_session> client_session_ptr;
+	typedef std::shared_ptr<client_session> client_session_ptr;
 
 	class rtmp_header;
 	class so_manager;
@@ -165,7 +165,7 @@ namespace intertalk
 		so_manager *m_so_manager;
 
 		struct result_handler;
-		typedef boost::shared_ptr<result_handler> result_handler_ptr;
+		typedef std::shared_ptr<result_handler> result_handler_ptr;
 
 		struct result_handler
 		{
@@ -194,7 +194,7 @@ namespace intertalk
 			boost::posix_time::time_duration m_latency;
 		};
 
-		typedef boost::shared_ptr<bwcheck_result_handler> bwcheck_result_handler_ptr;
+		typedef std::shared_ptr<bwcheck_result_handler> bwcheck_result_handler_ptr;
 
 		result_handlers_t m_result_handlers;
 

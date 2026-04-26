@@ -173,14 +173,14 @@ namespace intertalk
 			return false;
 		}
 
-		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
+		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == 0)
 			return false;
 
 		if (invoke->function()->value().compare("connect") == 0)
 		{
-			amf0_object_ptr object = boost::dynamic_pointer_cast<amf0_object, amf0_type>(invoke->parameters().front());
+			amf0_object_ptr object = std::dynamic_pointer_cast<amf0_object>(invoke->parameters().front());
 			if (object.get() == 0)
 				return false;
 
@@ -188,7 +188,7 @@ namespace intertalk
 			amf0_object::value_type::iterator i = map.find("app");
 			if (i != map.end())
 			{
-				amf0_string_ptr app_name = boost::dynamic_pointer_cast<amf0_string, amf0_type>(i->m_value);
+				amf0_string_ptr app_name = std::dynamic_pointer_cast<amf0_string>(i->m_value);
 				for (app_map_t::iterator j = m_apps.begin(); j != m_apps.end(); ++j)
 				{
 					std::string instance;
@@ -268,7 +268,7 @@ namespace intertalk
 			else
 				return client_data_ptr();
 
-			rtmp_connection_ptr conn = boost::dynamic_pointer_cast<rtmp_connection, client_session>(i->second);
+			rtmp_connection_ptr conn = std::dynamic_pointer_cast<rtmp_connection>(i->second);
 			if (conn.get() != 0 && conn->socket().is_open())
 			{
 				boost::system::error_code ec;
@@ -281,7 +281,7 @@ namespace intertalk
 			}
 			else
 			{
-				rtmpt_session_ptr conn = boost::dynamic_pointer_cast<rtmpt_session, client_session>(i->second);
+				rtmpt_session_ptr conn = std::dynamic_pointer_cast<rtmpt_session>(i->second);
 				if (conn.get() != 0)
 				{
 					client->m_ip = conn->address().to_string();
@@ -290,7 +290,7 @@ namespace intertalk
 				}
 				else
 				{
-					session_ptr conn = boost::dynamic_pointer_cast<session, client_session>(i->second);
+					session_ptr conn = std::dynamic_pointer_cast<session>(i->second);
 					if (conn.get() != 0)
 					{
 						client->m_ip = conn->end_point().address().to_string();

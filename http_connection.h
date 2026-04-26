@@ -2,9 +2,9 @@
 
 #include <boost/asio.hpp>
 #include <cstdint>
-#include <boost/enable_shared_from_this.hpp>
+#include <memory>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/logic/tribool.hpp>
 
 #include <string>
@@ -16,7 +16,7 @@ namespace intertalk
 	class rtmp_app_manager;
 	class rtmpt_manager;
 
-	class http_connection : public boost::enable_shared_from_this<http_connection>, private boost::noncopyable
+	class http_connection : public std::enable_shared_from_this<http_connection>, private boost::noncopyable
 	{
 	public:
 		http_connection(std::uint32_t, boost::asio::io_service &, rtmp_app_manager *, rtmpt_manager *);
@@ -105,5 +105,5 @@ namespace intertalk
 		boost::asio::streambuf m_header;
 	};
 
-	typedef boost::shared_ptr<http_connection> http_connection_ptr;
+	typedef std::shared_ptr<http_connection> http_connection_ptr;
 }

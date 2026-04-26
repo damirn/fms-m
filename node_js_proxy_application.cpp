@@ -376,7 +376,7 @@ namespace intertalk
 
 	boost::tribool node_js_proxy_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
+		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == 0)
 			return false;
@@ -389,7 +389,7 @@ namespace intertalk
 			rtmp_message_ptr err_msg;
 			rtmp_application::handle_invoke(msg, connection_id, header, err_msg);
 			enqueue_async_message(connection_id, msg);
-			rtmp_message_close_ptr ce = boost::make_shared<rtmp_message_close>();
+			rtmp_message_close_ptr ce = std::make_shared<rtmp_message_close>();
 			enqueue_async_message(connection_id, ce);
 			notify(connection_id);
 			return false;
@@ -473,9 +473,9 @@ namespace intertalk
 					if (params.size() > 1 && params[1].is_number())
 					{
 						rtmp_application::amf0_parameter_list_t list;
-						list.push_back(std::make_pair("uid", boost::make_shared<amf0_number>(params[1].get<std::uint32_t>())));
+						list.push_back(std::make_pair("uid", std::make_shared<amf0_number>(params[1].get<std::uint32_t>())));
 						if (params.size() > 2 && params[2].is_string())
-							list.push_back(std::make_pair("sepa", boost::make_shared<amf0_string>(params[2].get<std::string>())));
+							list.push_back(std::make_pair("sepa", std::make_shared<amf0_string>(params[2].get<std::string>())));
 						rtmp_application::optional_param_list_t opt_params(list);
 						create_connect_messages(i->second.m_connection_id, opt_params);
 					}
@@ -494,7 +494,7 @@ namespace intertalk
 			}
 			else
 			{
-				rtmp_message_invoke_ptr result = boost::make_shared<rtmp_message_invoke>(o["method"].get<std::string>(), i->second.m_invoke_id);
+				rtmp_message_invoke_ptr result = std::make_shared<rtmp_message_invoke>(o["method"].get<std::string>(), i->second.m_invoke_id);
 				add_params_to_invoke(result, i->second.m_connection_id, o["params"]);
 			}
 			m_seq_to_cid.erase(i);
@@ -511,7 +511,7 @@ namespace intertalk
 			std::string method = o["method"].get<std::string>();
 			if (method != dc)
 			{
-				rtmp_message_invoke_ptr result = boost::make_shared<rtmp_message_invoke>(method, 0.0f);
+				rtmp_message_invoke_ptr result = std::make_shared<rtmp_message_invoke>(method, 0.0f);
 				add_params_to_invoke(result, cid, o["params"]);
 			}
 			else
@@ -529,7 +529,7 @@ namespace intertalk
 
 	void node_js_proxy_application::add_params_to_invoke(rtmp_message_invoke_ptr result, std::uint32_t connection_id, const json &params)
 	{
-		result->parameters().push_back(boost::make_shared<amf0_null>());
+		result->parameters().push_back(std::make_shared<amf0_null>());
 		if (result->function()->value() != invoke_functions::error)
 		{
 			for (unsigned int j = 0; j < params.size(); ++j)

@@ -9,7 +9,7 @@
 #include "util.h"
 
 #include <boost/bind.hpp>
-#include <boost/make_shared.hpp>
+#include <memory>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
@@ -276,7 +276,7 @@ namespace intertalk
 		if (iikc->cert_len() < 0x84)
 			return;
 
-		session_ptr s = boost::make_shared<session>(this, m_sender_endpoint, m_app_manager->reserve_connection_id(), m_app_manager);
+		session_ptr s = std::make_shared<session>(this, m_sender_endpoint, m_app_manager->reserve_connection_id(), m_app_manager);
 		s->init();
 		s->notifier() = boost::bind(&service::notify, this);
 		m_initial_sessions[m_sender_endpoint] = s;

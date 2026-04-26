@@ -11,11 +11,11 @@
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
-#include <boost/enable_shared_from_this.hpp>
+#include <memory>
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/weak_ptr.hpp>
+#include <memory>
+#include <memory>
 
 namespace intertalk
 {
@@ -31,20 +31,20 @@ namespace intertalk
 	class range_ack_chunk;
 	class user_data_chunk;
 
-	typedef boost::shared_ptr<flow> flow_ptr;
+	typedef std::shared_ptr<flow> flow_ptr;
 
 	class rtmp_app_manager;
 	class rtmp_header;
 	class rtmp_message;
-	typedef boost::shared_ptr<rtmp_message> rtmp_message_ptr;
+	typedef std::shared_ptr<rtmp_message> rtmp_message_ptr;
 
 	class session;
-	typedef boost::shared_ptr<session> session_ptr;
+	typedef std::shared_ptr<session> session_ptr;
 
 	class group;
-	typedef boost::weak_ptr<group> group_weak_ptr;
+	typedef std::weak_ptr<group> group_weak_ptr;
 
-	class session : private boost::noncopyable, public client_session, public chunk_handler, public boost::enable_shared_from_this<session>
+	class session : private boost::noncopyable, public client_session, public chunk_handler, public std::enable_shared_from_this<session>
 	{
 	public:
 		session(service *, const boost::asio::ip::udp::endpoint &, std::uint32_t, rtmp_app_manager *);

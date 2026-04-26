@@ -72,7 +72,7 @@ namespace intertalk
 		// debug
 		for (parameters_list_t::iterator i = m_params.begin(); i != m_params.end(); ++i)
 		{
-			amf0_object_ptr obj = boost::dynamic_pointer_cast<amf0_object, amf0_type>(*i);
+			amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(*i);
 			if (obj.get() != 0)
 			{
 				std::cout << "object value: " << std::endl; // << str->value()
@@ -81,19 +81,19 @@ namespace intertalk
 					std::cout << "\tkey: '" << j->m_name << "', value: '";
 					if (j->m_value->type() == amf0_type::eAMF0String)
 					{
-						amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(j->m_value);
+						amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(j->m_value);
 						std::cout << str->value() << "'" << std::endl;
 						continue;
 					}
 					if (j->m_value->type() == amf0_type::eAMF0Number)
 					{
-						amf0_number_ptr num = boost::dynamic_pointer_cast<amf0_number, amf0_type>(j->m_value);
+						amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(j->m_value);
 						std::cout << num->value() << "'" << std::endl;
 						continue;
 					}
 					if (j->m_value->type() == amf0_type::eAMF0Boolean)
 					{
-						amf0_boolean_ptr num = boost::dynamic_pointer_cast<amf0_boolean, amf0_type>(j->m_value);
+						amf0_boolean_ptr num = std::dynamic_pointer_cast<amf0_boolean>(j->m_value);
 						std::cout << num->value() << "' (bool)" << std::endl;
 						continue;
 					}

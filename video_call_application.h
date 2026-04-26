@@ -4,7 +4,7 @@
 #include <set>
 #include <string>
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "video_bcast_application.h"
 
@@ -46,7 +46,7 @@ namespace intertalk
 			audio_sink *m_sink;
 		};
 
-		typedef boost::shared_ptr<call_instance_data> call_instance_data_ptr;
+		typedef std::shared_ptr<call_instance_data> call_instance_data_ptr;
 
 		typedef std::map<std::string, call_instance_data_ptr> instance_client_map_t;
 		instance_client_map_t m_instance_to_client;

@@ -3,7 +3,7 @@
 
 #include <cmath>
 #include <iterator>
-#include <boost/make_shared.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -177,7 +177,7 @@ namespace intertalk
 		std::uint16_t frags = 1;
 		if (len <= _eFragmentMaxSize)
 		{
-			fragment_ptr frag = boost::make_shared<fragment>(next_sn(), data, len, static_cast<std::uint8_t>(fragment::eWhole), true);
+			fragment_ptr frag = std::make_shared<fragment>(next_sn(), data, len, static_cast<std::uint8_t>(fragment::eWhole), true);
 			frag->set_send_flags();
 			add_fragment(frag);
 		}
@@ -188,7 +188,7 @@ namespace intertalk
 			std::uint32_t clen = _eFragmentMaxSize;
 			for (std::uint16_t i = 0; i < cnt; ++i)
 			{
-				fragment_ptr frag = boost::make_shared<fragment>(next_sn(), data + i * _eFragmentMaxSize, clen, ftype, true);
+				fragment_ptr frag = std::make_shared<fragment>(next_sn(), data + i * _eFragmentMaxSize, clen, ftype, true);
 				frag->set_send_flags();
 				add_fragment(frag);
 				if (i != cnt - 2)

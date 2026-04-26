@@ -20,7 +20,7 @@
 namespace intertalk
 {
 	class client_session;
-	typedef boost::shared_ptr<client_session> client_session_ptr;
+	typedef std::shared_ptr<client_session> client_session_ptr;
 
 	class admin_application;
 	class fake_application;
@@ -29,10 +29,10 @@ namespace intertalk
 	class rtmpt_manager;
 
 	class rtmp_message;
-	typedef boost::shared_ptr<rtmp_message> rtmp_message_ptr;
+	typedef std::shared_ptr<rtmp_message> rtmp_message_ptr;
 
 	class amf0_type;
-	typedef boost::shared_ptr<amf0_type> amf0_type_ptr;
+	typedef std::shared_ptr<amf0_type> amf0_type_ptr;
 
 	class rtmp_app_manager : private boost::noncopyable
 	{

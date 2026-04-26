@@ -379,25 +379,25 @@ namespace intertalk
 		{
 		case amf0_type::eAMF0Number:
 			{
-				amf0_number_ptr tmp = boost::dynamic_pointer_cast<amf0_number, amf0_type>(type);
+				amf0_number_ptr tmp = std::dynamic_pointer_cast<amf0_number>(type);
 				write_number(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0Boolean:
 			{
-				amf0_boolean_ptr tmp = boost::dynamic_pointer_cast<amf0_boolean, amf0_type>(type);
+				amf0_boolean_ptr tmp = std::dynamic_pointer_cast<amf0_boolean>(type);
 				write_boolean(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0String:
 			{
-				amf0_string_ptr tmp = boost::dynamic_pointer_cast<amf0_string, amf0_type>(type);
+				amf0_string_ptr tmp = std::dynamic_pointer_cast<amf0_string>(type);
 				write_short_string(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0Object:
 			{
-				amf0_object_ptr tmp = boost::dynamic_pointer_cast<amf0_object, amf0_type>(type);
+				amf0_object_ptr tmp = std::dynamic_pointer_cast<amf0_object>(type);
 				write_object(buffer, tmp);
 				break;
 			}
@@ -413,25 +413,25 @@ namespace intertalk
 			}
 		case amf0_type::eAMF0EcmaArray:
 			{
-				amf0_ecma_array_ptr tmp = boost::dynamic_pointer_cast<amf0_ecma_array, amf0_type>(type);
+				amf0_ecma_array_ptr tmp = std::dynamic_pointer_cast<amf0_ecma_array>(type);
 				write_mixed_array(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0StrictArray:
 			{
-				amf0_strict_array_ptr tmp = boost::dynamic_pointer_cast<amf0_strict_array, amf0_type>(type);
+				amf0_strict_array_ptr tmp = std::dynamic_pointer_cast<amf0_strict_array>(type);
 				write_strict_array(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0LongString:
 			{
-				amf0_long_string_ptr tmp = boost::dynamic_pointer_cast<amf0_long_string, amf0_type>(type);
+				amf0_long_string_ptr tmp = std::dynamic_pointer_cast<amf0_long_string>(type);
 				write_long_string(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0AMF3Container:
 			{
-				amf0_amf3_container_ptr tmp = boost::dynamic_pointer_cast<amf0_amf3_container, amf0_type>(type);
+				amf0_amf3_container_ptr tmp = std::dynamic_pointer_cast<amf0_amf3_container>(type);
 				write_amf3_container(buffer, tmp);
 				break;
 			}

@@ -4,7 +4,7 @@
 #include "stream_array.h"
 #include "video_bcast_application.h"
 
-#include <boost/make_shared.hpp>
+#include <memory>
 #include <boost/unordered_map.hpp>
 #include <set>
 #include <string>

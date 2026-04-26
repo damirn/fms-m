@@ -88,7 +88,7 @@ namespace intertalk
 			std::uint32_t m_size;
 		};
 
-		typedef boost::shared_ptr<event> event_ptr;
+		typedef std::shared_ptr<event> event_ptr;
 		typedef std::list<event_ptr> event_list_t;
 
 		event_list_t &events()
@@ -114,5 +114,5 @@ namespace intertalk
 		event_list_t m_events;
 	};
 
-	typedef boost::shared_ptr<rtmp_message_shared_object> rtmp_message_shared_object_ptr;
+	typedef std::shared_ptr<rtmp_message_shared_object> rtmp_message_shared_object_ptr;
 }

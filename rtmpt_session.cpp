@@ -72,7 +72,7 @@ namespace intertalk
 
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
-			rtmp_message_chunk_size_ptr cs = boost::dynamic_pointer_cast<rtmp_message_chunk_size, rtmp_message>(msg);
+			rtmp_message_chunk_size_ptr cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg);
 			set_outgoing_chunk_size(cs->chunk_size());
 		}
 

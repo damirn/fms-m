@@ -5,19 +5,19 @@
 
 #include <set>
 #include <cstdint>
-#include <boost/make_shared.hpp>
+#include <memory>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/weak_ptr.hpp>
+#include <memory>
+#include <memory>
 
 namespace intertalk
 {
 	class group;
-	typedef boost::shared_ptr<group> group_ptr;
+	typedef std::shared_ptr<group> group_ptr;
 
 	class session;
-	typedef boost::shared_ptr<session> session_ptr;
-	typedef boost::weak_ptr<session> session_weak_ptr;
+	typedef std::shared_ptr<session> session_ptr;
+	typedef std::weak_ptr<session> session_weak_ptr;
 
 	class group : public item, private boost::noncopyable
 	{
@@ -39,7 +39,7 @@ namespace intertalk
 				s >> type;
 				if (type == 0x15)
 				{
-					group_ptr g = boost::make_shared<group>(s.read_pos());
+					group_ptr g = std::make_shared<group>(s.read_pos());
 					g->command() = cmnd;
 					return g;
 				}
@@ -95,13 +95,13 @@ namespace intertalk
 // 			return false;
 // 		}
 
-		const std::set<session_weak_ptr> &members() const
+		const std::set<session_weak_ptr, std::owner_less<session_weak_ptr>> &members() const
 		{
 			return m_members;
 		}
 
 	protected:
 		std::uint8_t m_cmnd;
-		std::set<session_weak_ptr> m_members;
+		std::set<session_weak_ptr, std::owner_less<session_weak_ptr>> m_members;
 	};
 }

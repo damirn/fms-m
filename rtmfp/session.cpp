@@ -20,7 +20,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/make_shared.hpp>
+#include <memory>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
@@ -139,7 +139,7 @@ namespace intertalk
 		flow_sanity_check(f, udc->should_abandon());
 
 //		std::cout << "seq id " << udc->seq_number() << " flow id " << f->flow_id();
-		fragment_ptr frag = boost::make_shared<fragment>(udc->seq_number(), udc->user_data(), udc->user_data_len(), udc->frag_ctl());
+		fragment_ptr frag = std::make_shared<fragment>(udc->seq_number(), udc->user_data(), udc->user_data_len(), udc->frag_ctl());
 		if (!udc->should_abandon() && f->state() == flow::eOpen)
 		{
 			if (!f->add_fragment(frag))
@@ -189,7 +189,7 @@ namespace intertalk
 
 			std::cout << "seq id " << m_next_seq << " flow id " << f->flow_id() << std::endl;
 
-			fragment_ptr frag = boost::make_shared<fragment>(m_next_seq, ndc->user_data(), ndc->user_data_len(), ndc->frag_ctl());
+			fragment_ptr frag = std::make_shared<fragment>(m_next_seq, ndc->user_data(), ndc->user_data_len(), ndc->frag_ctl());
 			++m_next_seq;
 			if (!ndc->should_abandon() && f->state() == flow::eOpen)
 			{
@@ -248,7 +248,7 @@ namespace intertalk
 
 	flow_ptr session::create_receiving_flow(user_data_chunk *udc)
 	{
-		flow_ptr f = boost::make_shared<flow>(udc->flow_id(), flow::eReceiver, udc->options());
+		flow_ptr f = std::make_shared<flow>(udc->flow_id(), flow::eReceiver, udc->options());
 		m_receiving_flows[udc->flow_id()] = f;
 
 		if (f->state() == flow::eOpen)
@@ -286,7 +286,7 @@ namespace intertalk
 
 	flow_ptr session::create_sending_flow(const option_list &options)
 	{
-		flow_ptr f = boost::make_shared<flow>(m_next_flow_id, flow::eSender);
+		flow_ptr f = std::make_shared<flow>(m_next_flow_id, flow::eSender);
 		//f->options() = options;
 		f->options().m_options.insert(f->options().m_options.end(), options.m_options.begin(), options.m_options.end());
 		m_sending_flows[m_next_flow_id] = f;

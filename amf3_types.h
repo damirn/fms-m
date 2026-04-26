@@ -3,7 +3,7 @@
 #include <exception>
 #include <map>
 #include <string>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -66,7 +66,7 @@ namespace intertalk
 		etype m_type;
 	};
 
-	typedef boost::shared_ptr<amf3_type> amf3_type_ptr;
+	typedef std::shared_ptr<amf3_type> amf3_type_ptr;
 
 	class amf3_empty_type : public amf3_type
 	{
@@ -76,7 +76,7 @@ namespace intertalk
 		{}
 	};
 
-	typedef boost::shared_ptr<amf3_empty_type> amf3_empty_type_ptr;
+	typedef std::shared_ptr<amf3_empty_type> amf3_empty_type_ptr;
 
 	class amf3_integer_type : public amf3_type
 	{
@@ -104,7 +104,7 @@ namespace intertalk
 		std::uint32_t m_value;
 	};
 
-	typedef boost::shared_ptr<amf3_integer_type> amf3_integer_type_ptr;
+	typedef std::shared_ptr<amf3_integer_type> amf3_integer_type_ptr;
 
 	class amf3_string_type : public amf3_type
 	{
@@ -136,7 +136,7 @@ namespace intertalk
 		std::string m_value;
 	};
 
-	typedef boost::shared_ptr<amf3_string_type> amf3_string_type_ptr;
+	typedef std::shared_ptr<amf3_string_type> amf3_string_type_ptr;
 
 	namespace amf3_util
 	{
@@ -158,7 +158,7 @@ namespace intertalk
 		{
 			if (v->type() == amf3_type::eAMF3String)
 			{
-				amf3_string_type_ptr str = boost::dynamic_pointer_cast<amf3_string_type, amf3_type>(v);
+				amf3_string_type_ptr str = std::dynamic_pointer_cast<amf3_string_type>(v);
 				return str->value();
 			}
 			throw amf3_illegal_cast();
@@ -168,7 +168,7 @@ namespace intertalk
 		{
 			if (v->type() == amf3_type::eAMF3Integer)
 			{
-				amf3_integer_type_ptr num = boost::dynamic_pointer_cast<amf3_integer_type, amf3_type>(v);
+				amf3_integer_type_ptr num = std::dynamic_pointer_cast<amf3_integer_type>(v);
 				return num->value();
 			}
 			throw amf3_illegal_cast();
@@ -229,5 +229,5 @@ namespace intertalk
 		value_map_t m_properties;
 	};
 
-	typedef boost::shared_ptr<amf3_object_type> amf3_object_type_ptr;
+	typedef std::shared_ptr<amf3_object_type> amf3_object_type_ptr;
 }
