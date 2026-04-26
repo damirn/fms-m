@@ -2,7 +2,7 @@
 #include "types.h"
 #include "stream_array.h"
 
-#include <boost/make_shared.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -56,12 +56,12 @@ namespace intertalk
 
 	bool option_list::deserialize(stream_array &buffer)
 	{
-		option_ptr opt = boost::make_shared<option>();
+		option_ptr opt = std::make_shared<option>();
 		bool ret = opt->deserialize(buffer);
 		while (ret && !opt->is_marker())
 		{
 			m_options.push_back(opt);
-			opt = boost::make_shared<option>();
+			opt = std::make_shared<option>();
 			ret = opt->deserialize(buffer);
 		}
 		return ret;
@@ -79,14 +79,14 @@ namespace intertalk
 
 	option_ptr option_list::create_option(std::uint8_t type, const std::uint8_t *value, const std::uint16_t &value_len)
 	{
-		option_ptr opt = boost::make_shared<option>(type, value, value_len);
+		option_ptr opt = std::make_shared<option>(type, value, value_len);
 		m_options.push_back(opt);
 		return opt;
 	}
 
 	option_ptr option_list::create_option(std::uint8_t type, const vlu_t &value)
 	{
-		option_ptr opt = boost::make_shared<option>(type, value);
+		option_ptr opt = std::make_shared<option>(type, value);
 		m_options.push_back(opt);
 		return opt;
 	}

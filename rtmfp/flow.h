@@ -6,7 +6,7 @@
 
 #include <map>
 #include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/unordered_set.hpp>
 
 namespace intertalk
@@ -69,7 +69,7 @@ namespace intertalk
 		std::uint16_t m_transmit_size;
 	};
 
-	typedef boost::shared_ptr<fragment> fragment_ptr;
+	typedef std::shared_ptr<fragment> fragment_ptr;
 
 	class flow
 	{
@@ -287,5 +287,5 @@ namespace intertalk
 		std::uint8_t *m_data;
 	};
 
-	typedef boost::shared_ptr<flow> flow_ptr;
+	typedef std::shared_ptr<flow> flow_ptr;
 }

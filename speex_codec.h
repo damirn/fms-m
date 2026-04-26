@@ -32,5 +32,5 @@ namespace intertalk
 		std::int32_t m_frame_size;
 	};
 
-	typedef boost::shared_ptr<speex_codec> speex_codec_ptr;
+	typedef std::shared_ptr<speex_codec> speex_codec_ptr;
 }

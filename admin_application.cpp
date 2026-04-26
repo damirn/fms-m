@@ -71,7 +71,7 @@ namespace intertalk
 
 	boost::tribool admin_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
+		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == 0)
 			return false;
@@ -139,7 +139,7 @@ namespace intertalk
 			--i;
 			if ((*i)->type() != amf0_type::eAMF0Boolean && (*i)->type() != amf0_type::eAMF0Null)
 				return false;
-			amf0_boolean_ptr b = boost::dynamic_pointer_cast<amf0_boolean, amf0_type>(*i);
+			amf0_boolean_ptr b = std::dynamic_pointer_cast<amf0_boolean>(*i);
 			if (b.get() != 0)
 				active_client = b->value();
 		}
@@ -164,7 +164,7 @@ namespace intertalk
 		if ((*i)->type() != amf0_type::eAMF0String)
 			return false;
 
-		amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+		amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
 
 		std::string user = str->value();
 
@@ -172,7 +172,7 @@ namespace intertalk
 		if ((*i)->type() != amf0_type::eAMF0String)
 			return false;
 
-		str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+		str = std::dynamic_pointer_cast<amf0_string>(*i);
 		std::string pass = str->value();
 
 		return check_user_and_password(user, pass);
@@ -260,7 +260,7 @@ namespace intertalk
 		if ((*i)->type() != amf0_type::eAMF0Number)
 			return;
 
-		amf0_number_ptr id = boost::dynamic_pointer_cast<amf0_number, amf0_type>(*i);
+		amf0_number_ptr id = std::dynamic_pointer_cast<amf0_number>(*i);
 
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
@@ -295,7 +295,7 @@ namespace intertalk
 		if ((*i)->type() != amf0_type::eAMF0String)
 			return;
 
-		amf0_string_ptr app = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+		amf0_string_ptr app = std::dynamic_pointer_cast<amf0_string>(*i);
 
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
@@ -388,7 +388,7 @@ namespace intertalk
 		if ((*i)->type() != amf0_type::eAMF0Number)
 			return;
 
-		amf0_number_ptr id = boost::dynamic_pointer_cast<amf0_number, amf0_type>(*i);
+		amf0_number_ptr id = std::dynamic_pointer_cast<amf0_number>(*i);
 
 		m_app_manager->destroy_connection(static_cast<std::uint32_t>(id->value()));
 	}

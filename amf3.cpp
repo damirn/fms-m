@@ -39,25 +39,25 @@ namespace intertalk
 		case amf3_type::eAMF3False:
 		case amf3_type::eAMF3True:
 			{
-				amf3_empty_type_ptr tmp = boost::dynamic_pointer_cast<amf3_empty_type, amf3_type>(type);
+				amf3_empty_type_ptr tmp = std::dynamic_pointer_cast<amf3_empty_type>(type);
 				write_empty_type(buffer, tmp);
 				break;
 			}
 		case amf3_type::eAMF3Integer:
 			{
-				amf3_integer_type_ptr tmp = boost::dynamic_pointer_cast<amf3_integer_type, amf3_type>(type);
+				amf3_integer_type_ptr tmp = std::dynamic_pointer_cast<amf3_integer_type>(type);
 				write_integer(buffer, tmp);
 				break;
 			}
 		case amf3_type::eAMF3String:
 			{
-				amf3_string_type_ptr tmp = boost::dynamic_pointer_cast<amf3_string_type, amf3_type>(type);
+				amf3_string_type_ptr tmp = std::dynamic_pointer_cast<amf3_string_type>(type);
 				write_string(buffer, tmp);
 				break;
 			}
 		case amf3_type::eAMF3Object:
 			{
-				amf3_object_type_ptr tmp = boost::dynamic_pointer_cast<amf3_object_type, amf3_type>(type);
+				amf3_object_type_ptr tmp = std::dynamic_pointer_cast<amf3_object_type>(type);
 				write_object(buffer, tmp);
 				break;
 			}

@@ -5,7 +5,7 @@
 #include <map>
 #include <string>
 #include <cstdint>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/indexed_by.hpp>
 #include <boost/multi_index/member.hpp>
@@ -79,7 +79,7 @@ namespace intertalk
 		std::uint32_t m_type;
 	};
 
-	typedef boost::shared_ptr<amf0_type> amf0_type_ptr;
+	typedef std::shared_ptr<amf0_type> amf0_type_ptr;
 
 	class amf0_boolean : public amf0_type
 	{
@@ -106,7 +106,7 @@ namespace intertalk
 		bool m_value;
 	};
 
-	typedef boost::shared_ptr<amf0_boolean> amf0_boolean_ptr;
+	typedef std::shared_ptr<amf0_boolean> amf0_boolean_ptr;
 
 	class amf0_number : public amf0_type
 	{
@@ -133,7 +133,7 @@ namespace intertalk
 		double m_value;
 	};
 
-	typedef boost::shared_ptr<amf0_number> amf0_number_ptr;
+	typedef std::shared_ptr<amf0_number> amf0_number_ptr;
 
 	class amf0_string : public amf0_type
 	{
@@ -160,7 +160,7 @@ namespace intertalk
 		std::string m_value;
 	};
 
-	typedef boost::shared_ptr<amf0_string> amf0_string_ptr;
+	typedef std::shared_ptr<amf0_string> amf0_string_ptr;
 
 	namespace amf0_util
 	{
@@ -171,7 +171,7 @@ namespace intertalk
 
 		template<> inline bool &get_ref<bool>(amf0_type_ptr v)
 		{
-			amf0_boolean_ptr bln = boost::dynamic_pointer_cast<amf0_boolean, amf0_type>(v);
+			amf0_boolean_ptr bln = std::dynamic_pointer_cast<amf0_boolean>(v);
 			if (bln.get() != 0)
 				return bln->value();
 			throw amf0_illegal_cast();
@@ -179,7 +179,7 @@ namespace intertalk
 
 		template<> inline std::string &get_ref<std::string>(amf0_type_ptr v)
 		{
-			amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(v);
+			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(v);
 			if (str.get() != 0)
 				return str->value();
 			throw amf0_illegal_cast();
@@ -187,7 +187,7 @@ namespace intertalk
 
 		template<> inline std::uint32_t &get_ref<std::uint32_t>(amf0_type_ptr v)
 		{
-			amf0_number_ptr num = boost::dynamic_pointer_cast<amf0_number, amf0_type>(v);
+			amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != 0)
 				return reinterpret_cast<std::uint32_t &>(num->value());
 			throw amf0_illegal_cast();
@@ -200,7 +200,7 @@ namespace intertalk
 
 		template<> inline bool get<bool>(amf0_type_ptr v)
 		{
-			amf0_boolean_ptr bln = boost::dynamic_pointer_cast<amf0_boolean, amf0_type>(v);
+			amf0_boolean_ptr bln = std::dynamic_pointer_cast<amf0_boolean>(v);
 			if (bln.get() != 0)
 				return bln->value();
 			throw amf0_illegal_cast();
@@ -208,7 +208,7 @@ namespace intertalk
 
 		template<> inline std::string get<std::string>(amf0_type_ptr v)
 		{
-			amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(v);
+			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(v);
 			if (str.get() != 0)
 				return str->value();
 			throw amf0_illegal_cast();
@@ -216,7 +216,7 @@ namespace intertalk
 
 		template<> inline std::uint32_t get<std::uint32_t>(amf0_type_ptr v)
 		{
-			amf0_number_ptr num = boost::dynamic_pointer_cast<amf0_number, amf0_type>(v);
+			amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != 0)
 				return static_cast<std::uint32_t>(num->value());
 			throw amf0_illegal_cast();
@@ -224,7 +224,7 @@ namespace intertalk
 
 		template<> inline std::int32_t get<std::int32_t>(amf0_type_ptr v)
 		{
-			amf0_number_ptr num = boost::dynamic_pointer_cast<amf0_number, amf0_type>(v);
+			amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != 0)
 				return static_cast<std::int32_t>(num->value());
 			throw amf0_illegal_cast();
@@ -367,7 +367,7 @@ namespace intertalk
 		value_map_t m_value;
 	};
 
-	typedef boost::shared_ptr<amf0_object> amf0_object_ptr;
+	typedef std::shared_ptr<amf0_object> amf0_object_ptr;
 
 	class amf0_null : public amf0_type
 	{
@@ -377,7 +377,7 @@ namespace intertalk
 		{}
 	};
 
-	typedef boost::shared_ptr<amf0_null> amf0_null_ptr;
+	typedef std::shared_ptr<amf0_null> amf0_null_ptr;
 
 	class amf0_undefined : public amf0_type
 	{
@@ -387,7 +387,7 @@ namespace intertalk
 		{}
 	};
 
-	typedef boost::shared_ptr<amf0_undefined> amf0_undefined_ptr;
+	typedef std::shared_ptr<amf0_undefined> amf0_undefined_ptr;
 
 	class amf0_ecma_array : public amf0_type
 	{
@@ -425,7 +425,7 @@ namespace intertalk
 		array_t m_array;
 	};
 
-	typedef boost::shared_ptr<amf0_ecma_array> amf0_ecma_array_ptr;
+	typedef std::shared_ptr<amf0_ecma_array> amf0_ecma_array_ptr;
 
 	class amf0_strict_array : public amf0_type
 	{
@@ -462,7 +462,7 @@ namespace intertalk
 		array_t m_array;
 	};
 
-	typedef boost::shared_ptr<amf0_strict_array> amf0_strict_array_ptr;
+	typedef std::shared_ptr<amf0_strict_array> amf0_strict_array_ptr;
 
 	class amf0_long_string : public amf0_type
 	{
@@ -500,10 +500,10 @@ namespace intertalk
 		std::vector<std::uint8_t> m_data;
 	};
 
-	typedef boost::shared_ptr<amf0_long_string> amf0_long_string_ptr;
+	typedef std::shared_ptr<amf0_long_string> amf0_long_string_ptr;
 
 	class amf3_type;
-	typedef boost::shared_ptr<amf3_type> amf3_type_ptr;
+	typedef std::shared_ptr<amf3_type> amf3_type_ptr;
 
 	class amf0_amf3_container : public amf0_type
 	{
@@ -531,5 +531,5 @@ namespace intertalk
 		amf3_type_ptr m_data;
 	};
 
-	typedef boost::shared_ptr<amf0_amf3_container> amf0_amf3_container_ptr;
+	typedef std::shared_ptr<amf0_amf3_container> amf0_amf3_container_ptr;
 }

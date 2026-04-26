@@ -5,7 +5,7 @@
 
 #include <cstdint>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
 

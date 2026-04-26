@@ -3,7 +3,7 @@
 #include "types.h"
 
 #include <cstdint>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -309,7 +309,7 @@ namespace intertalk
 	};
 
 	struct fragment;
-	typedef boost::shared_ptr<fragment> fragment_ptr;
+	typedef std::shared_ptr<fragment> fragment_ptr;
 
 	class data_chunk
 	{

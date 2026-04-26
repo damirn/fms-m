@@ -2,7 +2,7 @@
 
 #include <string>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
 
 #include <boost/log/common.hpp>
 #include <boost/log/sinks.hpp>
@@ -37,6 +37,8 @@ namespace intertalk
 
 	protected:
 		typedef sinks::text_file_backend backend_t;
+		// Boost.Log's core/add_sink API traffics in boost::shared_ptr, so these
+		// deliberately stay Boost while the rest of the tree uses std::shared_ptr.
 		typedef boost::shared_ptr<backend_t> backend_ptr;
 		typedef sinks::asynchronous_sink<
 			backend_t,

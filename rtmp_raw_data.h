@@ -2,19 +2,19 @@
 
 #include <cstdint>
 #include <boost/logic/tribool.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace intertalk
 {
 	// Forward declarations
 	class rtmp_channel;
-	typedef boost::shared_ptr<rtmp_channel> rtmp_channel_ptr;
+	typedef std::shared_ptr<rtmp_channel> rtmp_channel_ptr;
 
 	class channel_manager;
-	typedef boost::shared_ptr<channel_manager> channel_manager_ptr;
+	typedef std::shared_ptr<channel_manager> channel_manager_ptr;
 
 	class rtmp_message;
-	typedef boost::shared_ptr<rtmp_message> rtmp_message_ptr;
+	typedef std::shared_ptr<rtmp_message> rtmp_message_ptr;
 
 	class stream_array;
 

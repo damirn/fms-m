@@ -84,9 +84,9 @@ namespace intertalk
 		boost::asio::deadline_timer m_wto_timer;
 
 	private:
-		boost::shared_ptr<rtmp_connection> shared_from_this()
+		std::shared_ptr<rtmp_connection> shared_from_this()
 		{
-			return boost::static_pointer_cast<rtmp_connection>(basic_rtmp_connection::shared_from_this());
+			return std::static_pointer_cast<rtmp_connection>(basic_rtmp_connection::shared_from_this());
 		}
 
 		enum connection_states
@@ -108,5 +108,5 @@ namespace intertalk
 		bool m_to_close;
 	};
 
-	typedef boost::shared_ptr<rtmp_connection> rtmp_connection_ptr;
+	typedef std::shared_ptr<rtmp_connection> rtmp_connection_ptr;
 }

@@ -5,8 +5,8 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <cstdint>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
+#include <memory>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <openssl/rc4.h>
 
@@ -20,9 +20,9 @@ namespace intertalk
 	class rtmp_app_manager;
 
 	class rtmp_message;
-	typedef boost::shared_ptr<rtmp_message> rtmp_message_ptr;
+	typedef std::shared_ptr<rtmp_message> rtmp_message_ptr;
 
-	class basic_rtmp_connection : public client_session, public rtmp_raw_data, public boost::enable_shared_from_this<basic_rtmp_connection>
+	class basic_rtmp_connection : public client_session, public rtmp_raw_data, public std::enable_shared_from_this<basic_rtmp_connection>
 	{
 	public:
 		basic_rtmp_connection(std::uint32_t id, boost::asio::io_service &, rtmp_app_manager *);
@@ -114,5 +114,5 @@ namespace intertalk
 		RC4_KEY *m_key_out;
 	};
 
-	typedef boost::shared_ptr<basic_rtmp_connection> basic_rtmp_connection_ptr;
+	typedef std::shared_ptr<basic_rtmp_connection> basic_rtmp_connection_ptr;
 }

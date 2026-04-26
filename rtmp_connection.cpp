@@ -245,7 +245,7 @@ namespace intertalk
 			m_app->update_stats(false, false, 1);
 		if (result->type() == rtmp_message::eMessageChunkSize)
 		{
-			rtmp_message_chunk_size_ptr cs = boost::dynamic_pointer_cast<rtmp_message_chunk_size, rtmp_message>(result);
+			rtmp_message_chunk_size_ptr cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(result);
 			set_outgoing_chunk_size(cs->chunk_size());
 		}
 		p.serialize(m_output_buffer, result, h, channel->sent_header());

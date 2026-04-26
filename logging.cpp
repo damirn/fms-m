@@ -14,6 +14,7 @@
 #include <boost/log/attributes.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/core/null_deleter.hpp>
+#include <boost/smart_ptr/make_shared.hpp>
 
 namespace attrs = boost::log::attributes;
 namespace expr = boost::log::expressions;

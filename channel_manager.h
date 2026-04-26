@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/unordered_map.hpp>
 
 #include "rtmp_channel.h"
@@ -29,5 +29,5 @@ namespace intertalk
 		channel_map_t m_channels;
 	};
 
-	typedef boost::shared_ptr<channel_manager> channel_manager_ptr;
+	typedef std::shared_ptr<channel_manager> channel_manager_ptr;
 }

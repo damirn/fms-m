@@ -17,7 +17,7 @@ namespace intertalk
 
 	boost::tribool video_call_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
+		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == 0)
 			return false;
@@ -39,7 +39,7 @@ namespace intertalk
 
 	void video_call_application::handle_audio_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &h)
 	{
-		rtmp_message_audio_data_ptr audio = boost::dynamic_pointer_cast<rtmp_message_audio_data, rtmp_message>(msg);
+		rtmp_message_audio_data_ptr audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
 		client_session_ptr conn = get_connection(connection_id);
 		if (conn->app_instance().length() != 0 && audio->size() > 0)
 		{
@@ -64,15 +64,15 @@ namespace intertalk
 		rtmp_message_invoke::parameters_list_t::const_iterator i = params.begin();
 		++i;
 
-		amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+		amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
 		std::string caller = str->value();
 
 		++i;
-		str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+		str = std::dynamic_pointer_cast<amf0_string>(*i);
 		std::string callee = str->value();
 
 		++i;
-		str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+		str = std::dynamic_pointer_cast<amf0_string>(*i);
 		std::string call_id = str->value();
 	}
 
@@ -107,7 +107,7 @@ namespace intertalk
 		++i;
 		if ((*i)->type() != amf0_type::eAMF0String)
 			return;
-		amf0_string_ptr str = boost::dynamic_pointer_cast<amf0_string, amf0_type>(*i);
+		amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
 
 		client_session_ptr conn = get_connection(connection_id);
 		if (conn->app_instance().length() != 0)

@@ -4,7 +4,7 @@
 #include <boost/function.hpp>
 #include <boost/logic/tribool.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "authentication_plugin.h"
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -137,5 +137,5 @@ namespace intertalk
 		bool m_uses_amf3;
 	};
 
-	typedef boost::shared_ptr<client_session> client_session_ptr;
+	typedef std::shared_ptr<client_session> client_session_ptr;
 }

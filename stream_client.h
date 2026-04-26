@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -38,5 +38,5 @@ namespace intertalk
 		std::uint32_t m_start_epoch;
 	};
 
-	typedef boost::shared_ptr<stream_client> stream_client_ptr;
+	typedef std::shared_ptr<stream_client> stream_client_ptr;
 }

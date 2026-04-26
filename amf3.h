@@ -49,7 +49,7 @@ namespace intertalk
 			std::string m_class_name;
 		};
 
-		typedef boost::shared_ptr<class_data> class_data_ptr;
+		typedef std::shared_ptr<class_data> class_data_ptr;
 
 		std::map<std::uint32_t, class_data_ptr> m_stored_classes;
 	};

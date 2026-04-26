@@ -5,7 +5,7 @@
 #include <string>
 
 #include <cstdint>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 
 namespace intertalk
@@ -24,7 +24,7 @@ namespace intertalk
 		boost::posix_time::ptime m_create_time;
 	};
 
-	typedef boost::shared_ptr<client_data> client_data_ptr;
+	typedef std::shared_ptr<client_data> client_data_ptr;
 
 	typedef std::list<client_data_ptr> client_list_t;
 
@@ -85,7 +85,7 @@ namespace intertalk
 		boost::posix_time::ptime m_start_streaming_time;
 	};
 
-	typedef boost::shared_ptr<netstream_stats> netstream_stats_ptr;
+	typedef std::shared_ptr<netstream_stats> netstream_stats_ptr;
 
 	typedef std::list<netstream_stats_ptr> netstream_list_t;
 	// connection_id + stream_id

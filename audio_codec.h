@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace intertalk
 {
@@ -22,5 +22,5 @@ namespace intertalk
 		std::uint16_t m_reserved_for_header;
 	};
 
-	typedef boost::shared_ptr<audio_codec> audio_codec_ptr;
+	typedef std::shared_ptr<audio_codec> audio_codec_ptr;
 }

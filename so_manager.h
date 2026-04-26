@@ -5,7 +5,7 @@
 #include <string>
 #include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/thread/mutex.hpp>
 
 #include "rtmp_so_message.h"
@@ -40,7 +40,7 @@ namespace intertalk
 			std::map<std::string, amf0_type_ptr> m_values;
 		};
 
-		typedef boost::shared_ptr<so_data> so_data_ptr;
+		typedef std::shared_ptr<so_data> so_data_ptr;
 
 		typedef std::map<std::string, so_data_ptr> so_map_t;
 		so_map_t m_so_map;
