@@ -47,7 +47,7 @@ namespace intertalk
 		delete m_so_manager;
 	}
 
-	boost::tribool rtmp_application::handle_message(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
+	boost::tribool rtmp_application::handle_message(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
 		switch(msg->type())
 		{
@@ -94,7 +94,7 @@ namespace intertalk
 		return false;
 	}
 
-	void rtmp_application::delete_connection(boost::uint32_t conn_id, const std::string &)
+	void rtmp_application::delete_connection(std::uint32_t conn_id, const std::string &)
 	{
 		boost::mutex::scoped_lock lock(m_async_messages_mutex);
 		async_messages_map_t::iterator i = m_async_messages.find(conn_id);
@@ -108,7 +108,7 @@ namespace intertalk
 			m_delays.erase(j);
 	}
 
-	boost::uint32_t rtmp_application::enqueue_async_message(boost::uint32_t connection_id, rtmp_message_ptr msg, bool urgent /* = false */)
+	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, rtmp_message_ptr msg, bool urgent /* = false */)
 	{
 		if (m_app_manager->has_connection(connection_id))
 		{
@@ -123,21 +123,21 @@ namespace intertalk
 		return 0;
 	}
 
-	boost::uint32_t rtmp_application::enqueue_async_message(boost::uint32_t connection_id, rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, bool urgent /* = false */)
+	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, bool urgent /* = false */)
 	{
-		boost::uint32_t size = enqueue_async_message(connection_id, msg, urgent);
+		std::uint32_t size = enqueue_async_message(connection_id, msg, urgent);
 		boost::mutex::scoped_lock lock(m_async_messages_mutex);
-		m_result_handlers[static_cast<boost::uint32_t>(msg->invoke_id()->value())] = res_handler;
+		m_result_handlers[static_cast<std::uint32_t>(msg->invoke_id()->value())] = res_handler;
 		return size;
 	}
 
-	void rtmp_application::add_result_handler(boost::uint32_t invoke_id, result_handler_ptr res_handler)
+	void rtmp_application::add_result_handler(std::uint32_t invoke_id, result_handler_ptr res_handler)
 	{
 		boost::mutex::scoped_lock lock(m_async_messages_mutex);
 		m_result_handlers[invoke_id] = res_handler;
 	}
 
-	bool rtmp_application::has_async_messages(boost::uint32_t connection_id)
+	bool rtmp_application::has_async_messages(std::uint32_t connection_id)
 	{
 		boost::mutex::scoped_lock lock(m_async_messages_mutex);
 		async_messages_map_t::iterator i = m_async_messages.find(connection_id);
@@ -146,7 +146,7 @@ namespace intertalk
 		return true;
 	}
 
-	bool rtmp_application::get_async_message(boost::uint32_t connection_id, rtmp_message_ptr &msg)
+	bool rtmp_application::get_async_message(std::uint32_t connection_id, rtmp_message_ptr &msg)
 	{
 		boost::mutex::scoped_lock lock(m_async_messages_mutex);
 		async_messages_map_t::iterator i = m_async_messages.find(connection_id);
@@ -165,7 +165,7 @@ namespace intertalk
 			list.push_back(queue_stats(i->first, i->second.first));
 	}
 
-	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, boost::uint32_t value)
+	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, std::uint32_t value)
 	{
 		boost::mutex::scoped_lock lock(m_stats_mutex);
 		if (is_inbound)
@@ -184,7 +184,7 @@ namespace intertalk
 		}
 	}
 
-	boost::tribool rtmp_application::handle_invoke(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
+	boost::tribool rtmp_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
 
@@ -218,7 +218,7 @@ namespace intertalk
 		return false;
 	}
 
-	bool rtmp_application::handle_shared_object(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
+	bool rtmp_application::handle_shared_object(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
 	{
 		rtmp_message_shared_object_ptr so = boost::dynamic_pointer_cast<rtmp_message_shared_object, rtmp_message>(msg);
 
@@ -228,10 +228,10 @@ namespace intertalk
 		return m_so_manager->handle_so(so, connection_id, result);
 	}
 
-	bool rtmp_application::handle_invoke_result(rtmp_message_invoke_ptr msg, boost::uint32_t connection_id, rtmp_message_ptr &result)
+	bool rtmp_application::handle_invoke_result(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		boost::mutex::scoped_lock lock(m_async_messages_mutex);
-		result_handlers_t::iterator i = m_result_handlers.find(static_cast<boost::uint32_t>(msg->invoke_id()->value()));
+		result_handlers_t::iterator i = m_result_handlers.find(static_cast<std::uint32_t>(msg->invoke_id()->value()));
 		if (i != m_result_handlers.end())
 		{
 			result_handler_ptr res = i->second;
@@ -242,10 +242,10 @@ namespace intertalk
 		return false;
 	}
 
-	void rtmp_application::handle_invoke_check_bandwidth(rtmp_message_invoke_ptr msg, boost::uint32_t connection_id, rtmp_message_ptr &result)
+	void rtmp_application::handle_invoke_check_bandwidth(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, boost::bind(&rtmp_application::handle_result_bw_check_download, this, _1, _2, _3)));
-		boost::uint32_t id = ++m_invoke_id;
+		std::uint32_t id = ++m_invoke_id;
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheck", id));
 
 		client_stats stats;
@@ -260,10 +260,10 @@ namespace intertalk
 		result = res;
 	}
 
-	void rtmp_application::handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id, rtmp_message_ptr &result)
+	void rtmp_application::handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, boost::bind(&rtmp_application::handle_result_bw_check_upload, this, _1, _2, _3)));
-		boost::uint32_t id = ++m_invoke_id;
+		std::uint32_t id = ++m_invoke_id;
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheckU", id));
 
 		client_stats stats;
@@ -286,9 +286,9 @@ namespace intertalk
 		boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time();
 		boost::posix_time::time_duration delta = now - bw_res->m_time;
 
-		boost::uint32_t kbps = 100;
+		std::uint32_t kbps = 100;
 		if (delta.total_milliseconds() != 0)
-			kbps = static_cast<boost::uint32_t>((stats.m_bytes_read - bw_res->m_bytes) * 8 / delta.total_milliseconds());
+			kbps = static_cast<std::uint32_t>((stats.m_bytes_read - bw_res->m_bytes) * 8 / delta.total_milliseconds());
 
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWDoneU", 0.0f));
 		amf0_null_ptr null(new amf0_null);
@@ -313,7 +313,7 @@ namespace intertalk
 			bw_res->m_time = boost::posix_time::microsec_clock::local_time();
 
 			// we call onBWCheck w/o parameters only to try to measure the latency
-			boost::uint32_t id = ++m_invoke_id;
+			std::uint32_t id = ++m_invoke_id;
 			rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheck", id));
 			amf0_null_ptr null(new amf0_null);
 			res->add_parameter(null);
@@ -335,7 +335,7 @@ namespace intertalk
 			m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
 			bw_res->m_bytes = stats.m_bytes_written;
 
-			boost::uint32_t id = ++m_invoke_id;
+			std::uint32_t id = ++m_invoke_id;
 			rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheck", id));
 			amf0_null_ptr null(new amf0_null);
 			res->add_parameter(null);
@@ -355,9 +355,9 @@ namespace intertalk
 		if (dt.total_milliseconds() <= 0)
 			dt = now - bw_res->m_time;
 
-		boost::uint32_t kbps = 100;
+		std::uint32_t kbps = 100;
 		if (dt.total_milliseconds() != 0)
-			kbps = static_cast<boost::uint32_t>((stats.m_bytes_written - bw_res->m_bytes) * 8 / dt.total_milliseconds());
+			kbps = static_cast<std::uint32_t>((stats.m_bytes_written - bw_res->m_bytes) * 8 / dt.total_milliseconds());
 
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWDone", 0.0f));
 		amf0_null_ptr null(new amf0_null);
@@ -373,7 +373,7 @@ namespace intertalk
 		return true;
 	}
 
-	void rtmp_application::handle_invoke_set_peer_info(rtmp_message_invoke_ptr info, boost::uint32_t connection_id, rtmp_message_ptr &result)
+	void rtmp_application::handle_invoke_set_peer_info(rtmp_message_invoke_ptr info, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		try
 		{
@@ -397,7 +397,7 @@ namespace intertalk
 		result = ping;
 	}
 
-	void rtmp_application::handle_win_ack_size(rtmp_message_ptr msg, boost::uint32_t connection_id)
+	void rtmp_application::handle_win_ack_size(rtmp_message_ptr msg, std::uint32_t connection_id)
 	{
 		rtmp_message_window_acknowledgement_size_ptr ack = boost::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size, rtmp_message>(msg);
 		std::cout << "window acknowledgment size: " << ack->size() << std::endl;
@@ -409,14 +409,14 @@ namespace intertalk
 //		std::cout << "client sent bytes read with " << br->bytes_read() << " ch: " << msg->channel_id() << " st: " << msg->stream_id() << std::endl;
 	}
 
-	void rtmp_application::handle_ping(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &)
+	void rtmp_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
 	{
 		rtmp_message_ping_ptr ping = boost::dynamic_pointer_cast<rtmp_message_ping, rtmp_message>(msg);
 //		std::cout << "ping type: " << ping->get_type();
 		if (ping->get_type() == rtmp_message_ping::ePingResponse)
 		{
 //			std::cout << " timestamp: " << ping->get_value();
-			boost::uint32_t delay = get_timestamp(connection_id) - ping->get_value();
+			std::uint32_t delay = get_timestamp(connection_id) - ping->get_value();
 //			std::cout << " delta: " << delay;
 			boost::mutex::scoped_lock lock(m_delay_mutex);
 			m_delays[connection_id] = delay;
@@ -425,7 +425,7 @@ namespace intertalk
 //		std::cout << std::endl;
 	}
 
-	boost::tribool rtmp_application::handle_invoke_connect(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id, rtmp_message_ptr &res)
+	boost::tribool rtmp_application::handle_invoke_connect(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
 		if (!check_connect_params(connection_id, invoke->parameters()))
 		{
@@ -436,7 +436,7 @@ namespace intertalk
 		return handle_client_login(connection_id, invoke->parameters(), res);
 	}
 
-	bool rtmp_application::check_connect_params(boost::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &list)
+	bool rtmp_application::check_connect_params(std::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &list)
 	{
 		if (list.empty())
 			return false;
@@ -473,7 +473,7 @@ namespace intertalk
 			throw rtmp_illegal_parameter_exception("String parameter expected");
 	}
 
-	rtmp_message_ptr rtmp_application::create_stream(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id, boost::uint32_t stream_id)
+	rtmp_message_ptr rtmp_application::create_stream(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, std::uint32_t stream_id)
 	{
 		m_app_manager->create_netstream(std::make_pair(connection_id, stream_id));
 
@@ -490,7 +490,7 @@ namespace intertalk
 		return result;
 	}
 
-	void rtmp_application::close_stream(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id)
+	void rtmp_application::close_stream(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
 	{
 		m_app_manager->delete_netstream(std::make_pair(connection_id, invoke->stream_id()));
 		try
@@ -502,9 +502,9 @@ namespace intertalk
 		{}
 	}
 
-	void rtmp_application::create_connect_messages(boost::uint32_t connection_id, optional_param_list_t param /* = optional_param_list_t() */)
+	void rtmp_application::create_connect_messages(std::uint32_t connection_id, optional_param_list_t param /* = optional_param_list_t() */)
 	{
-		boost::uint32_t ack_size = rtmp_connection::get_ack_size();
+		std::uint32_t ack_size = rtmp_connection::get_ack_size();
 		rtmp_message_window_acknowledgement_size_ptr was_m(new rtmp_message_window_acknowledgement_size(ack_size));
 		rtmp_message_set_peer_bandwidth_ptr spb_m(new rtmp_message_set_peer_bandwidth(ack_size, 0x02));
 //		rtmp_message_ping_ptr png_m(new rtmp_message_ping(rtmp_message_ping::ePingStreamBegin, 0));
@@ -562,7 +562,7 @@ namespace intertalk
 		return result;
 	}
 
-	void rtmp_application::send_play_start_messages(boost::uint32_t connection_id, boost::uint32_t stream_id, boost::uint32_t channel_id, const std::string &stream_name)
+	void rtmp_application::send_play_start_messages(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t channel_id, const std::string &stream_name)
 	{
 		rtmp_message_chunk_size_ptr cs(new rtmp_message_chunk_size(4096));
 		enqueue_async_message(connection_id, cs);
@@ -610,13 +610,13 @@ namespace intertalk
 		notify(connection_id);
 	}
 
-	void rtmp_application::send_close(boost::uint32_t connection_id)
+	void rtmp_application::send_close(std::uint32_t connection_id)
 	{
 		rtmp_message_invoke_ptr result = rtmp_message_invoke::create_message(invoke_functions::close, 0);
 		enqueue_async_message(connection_id, result);
 	}
 
-	void rtmp_application::gracefully_close_connection(boost::uint32_t connection_id, bool close_socket /* = true */)
+	void rtmp_application::gracefully_close_connection(std::uint32_t connection_id, bool close_socket /* = true */)
 	{
 		send_close(connection_id);
 		if (close_socket)
@@ -627,7 +627,7 @@ namespace intertalk
 		notify(connection_id);
 	}
 
-	void rtmp_application::gracefully_close_connection_with_reason(boost::uint32_t connection_id, boost::uint32_t reason)
+	void rtmp_application::gracefully_close_connection_with_reason(std::uint32_t connection_id, std::uint32_t reason)
 	{
 		rtmp_message_invoke_ptr result = rtmp_message_invoke::create_message(invoke_functions::close, 0);
 		result->add_parameter(boost::make_shared<amf0_number>(reason));
@@ -635,7 +635,7 @@ namespace intertalk
 		notify(connection_id);
 	}
 
-	void rtmp_application::notify(boost::uint32_t connection_id)
+	void rtmp_application::notify(std::uint32_t connection_id)
 	{
 		try
 		{
@@ -648,7 +648,7 @@ namespace intertalk
 		}
 	}
 
-	boost::uint32_t rtmp_application::get_timestamp(boost::uint32_t connection_id)
+	std::uint32_t rtmp_application::get_timestamp(std::uint32_t connection_id)
 	{
 		try
 		{
@@ -661,7 +661,7 @@ namespace intertalk
 		}
 	}
 
-	boost::uint32_t rtmp_application::get_delay(boost::uint32_t connetion_id)
+	std::uint32_t rtmp_application::get_delay(std::uint32_t connetion_id)
 	{
 		boost::mutex::scoped_lock lock(m_delay_mutex);
 		if (m_delays.find(connetion_id) != m_delays.end())
@@ -669,7 +669,7 @@ namespace intertalk
 		return 0;
 	}
 
-	rtmp_message_invoke_ptr rtmp_application::create_error_status(boost::uint32_t channel_id, boost::uint32_t stream_id, const char *err)
+	rtmp_message_invoke_ptr rtmp_application::create_error_status(std::uint32_t channel_id, std::uint32_t stream_id, const char *err)
 	{
 		rtmp_message_invoke_ptr result(new rtmp_message_invoke("onStatus", 0.0f));
 		result->channel_id() = channel_id;

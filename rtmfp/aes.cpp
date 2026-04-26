@@ -3,8 +3,8 @@
 
 namespace intertalk
 {
-	const boost::uint8_t aes::m_key[] = "Adobe Systems 02";
-	const boost::uint8_t aes::m_iv[eKeySize] = {0};
+	const std::uint8_t aes::m_key[] = "Adobe Systems 02";
+	const std::uint8_t aes::m_iv[eKeySize] = {0};
 
 	aes::aes()
 	{

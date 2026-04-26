@@ -15,7 +15,7 @@ namespace intertalk
 	simple_mixer::~simple_mixer()
 	{}
 
-	void simple_mixer::add_source_stream(boost::uint32_t id)
+	void simple_mixer::add_source_stream(std::uint32_t id)
 	{
 		boost::mutex::scoped_lock lock(m_streams_mutex);
 		if (m_streams.find(id) != m_streams.end())
@@ -24,7 +24,7 @@ namespace intertalk
 		m_streams[id] = new stream_data;
 	}
 
-	void simple_mixer::remove_source_stream(boost::uint32_t id)
+	void simple_mixer::remove_source_stream(std::uint32_t id)
 	{
 		boost::mutex::scoped_lock lock(m_streams_mutex);
 		stream_map_t::iterator i = m_streams.find(id);
@@ -52,12 +52,12 @@ namespace intertalk
 		}
 		else
 		{
-			boost::uint32_t size = 0;
+			std::uint32_t size = 0;
 			m_speex_codec->decode(m_buffer, audio_msg->data() + 1, audio_msg->size() - 1, size);
 		}
 	}
 
-	void simple_mixer::add_audio(boost::uint32_t id, rtmp_message_audio_data_ptr msg)
+	void simple_mixer::add_audio(std::uint32_t id, rtmp_message_audio_data_ptr msg)
 	{
 		if (m_active)
 		{
@@ -68,7 +68,7 @@ namespace intertalk
 		}
 	}
 
-	void simple_mixer::add_audio(boost::uint32_t id, const char *data, boost::uint16_t size)
+	void simple_mixer::add_audio(std::uint32_t id, const char *data, std::uint16_t size)
 	{
 		if (m_active && size > 0)
 		{
@@ -153,7 +153,7 @@ namespace intertalk
 	void mixer::mix_tick()
 	{
 		const std::size_t samples = eBufferSize / sizeof(short);
-		std::vector<boost::int32_t> acc(samples, 0);
+		std::vector<std::int32_t> acc(samples, 0);
 
 		{
 			boost::mutex::scoped_lock lock(m_streams_mutex);
@@ -169,7 +169,7 @@ namespace intertalk
 		short *mix = reinterpret_cast<short *>(m_rec_buffer);
 		for (std::size_t s = 0; s < samples; ++s)
 		{
-			boost::int32_t v = acc[s];
+			std::int32_t v = acc[s];
 			if (v > 32767)
 				v = 32767;
 			else if (v < -32768)
@@ -177,8 +177,8 @@ namespace intertalk
 			mix[s] = static_cast<short>(v);
 		}
 
-		boost::uint32_t size = 0;
-		boost::uint8_t *data = m_speex_codec->encode(reinterpret_cast<boost::uint8_t *>(m_rec_buffer), eBufferSize, size);
+		std::uint32_t size = 0;
+		std::uint8_t *data = m_speex_codec->encode(reinterpret_cast<std::uint8_t *>(m_rec_buffer), eBufferSize, size);
 		if (data != 0)
 		{
 			data[0] = 0xb2;

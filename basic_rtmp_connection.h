@@ -4,7 +4,7 @@
 
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
@@ -25,7 +25,7 @@ namespace intertalk
 	class basic_rtmp_connection : public client_session, public rtmp_raw_data, public boost::enable_shared_from_this<basic_rtmp_connection>
 	{
 	public:
-		basic_rtmp_connection(boost::uint32_t id, boost::asio::io_service &, rtmp_app_manager *);
+		basic_rtmp_connection(std::uint32_t id, boost::asio::io_service &, rtmp_app_manager *);
 
 		virtual ~basic_rtmp_connection();
 
@@ -39,12 +39,12 @@ namespace intertalk
 
 		virtual void handle_bytes_read(std::size_t);
 
-		static boost::uint32_t get_ack_size()
+		static std::uint32_t get_ack_size()
 		{
 			return eAckSize;
 		}
 
-		void set_outgoing_chunk_size(boost::uint16_t size)
+		void set_outgoing_chunk_size(std::uint16_t size)
 		{
 			m_outgoing_chunk_size = size;
 		}
@@ -69,17 +69,17 @@ namespace intertalk
 		// Check hand shake response.
 		bool check_hand_shake_response(stream_array &);
 
-		bool prepare_hand_shake_response(boost::uint8_t = ePlainMagic, boost::uint8_t * = 0);
+		bool prepare_hand_shake_response(std::uint8_t = ePlainMagic, std::uint8_t * = 0);
 
-		void create_keys(boost::uint8_t *, boost::uint8_t *);
+		void create_keys(std::uint8_t *, std::uint8_t *);
 
 		// Find digest and DH key in handshake data
-		static boost::uint32_t get_digest_offest(boost::uint8_t *, boost::uint8_t);
-		static boost::uint32_t get_dh_offest(boost::uint8_t *, boost::uint8_t);
+		static std::uint32_t get_digest_offest(std::uint8_t *, std::uint8_t);
+		static std::uint32_t get_dh_offest(std::uint8_t *, std::uint8_t);
 
 		// Client validation
-		bool validate_client(boost::uint8_t *);
-		bool validate_client_scheme(boost::uint8_t *, boost::uint8_t);
+		bool validate_client(std::uint8_t *);
+		bool validate_client_scheme(std::uint8_t *, std::uint8_t);
 
 		boost::asio::io_service &m_io_service;
 
@@ -95,19 +95,19 @@ namespace intertalk
 		enum { eHandShakeTimeout = 5, ePingInterval = 30 };
 		enum { eEncodingAMF0, eEncodingAMF3 };
 
-		boost::uint32_t m_bytes_read_notify;
-		boost::uint32_t m_win_ack;
+		std::uint32_t m_bytes_read_notify;
+		std::uint32_t m_win_ack;
 
 		bool m_write_in_progress;
 
-		boost::int32_t m_current_channel;
-		boost::uint16_t m_outgoing_chunk_size;
+		std::int32_t m_current_channel;
+		std::uint16_t m_outgoing_chunk_size;
 
-		boost::array<boost::uint8_t, eHandShakeSize + 1> m_tmp_buff;
+		boost::array<std::uint8_t, eHandShakeSize + 1> m_tmp_buff;
 
 		bool m_is_fp9;
 		bool m_uses_crypto;
-		boost::uint8_t m_validation_scheme;
+		std::uint8_t m_validation_scheme;
 
 		// RC4 keys
 		RC4_KEY *m_key_in;

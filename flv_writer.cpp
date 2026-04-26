@@ -8,7 +8,7 @@
 
 namespace intertalk
 {
-	boost::uint8_t flv_writer::m_header[] = { 0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09 };
+	std::uint8_t flv_writer::m_header[] = { 0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09 };
 
 	flv_writer::flv_writer(const std::string &file_name)
 		: m_prev_tag_size(0)
@@ -28,7 +28,7 @@ namespace intertalk
 		m_file.close();
 	}
 
-	void flv_writer::write_audio(const char *buf, boost::uint32_t size, boost::uint32_t timestamp)
+	void flv_writer::write_audio(const char *buf, std::uint32_t size, std::uint32_t timestamp)
 	{
 		if (m_first_audio_frame)
 		{
@@ -51,7 +51,7 @@ namespace intertalk
 		write_previos_tag_size();
 	}
 
-	void flv_writer::write_video(const char *buf, boost::uint32_t size, boost::uint32_t timestamp)
+	void flv_writer::write_video(const char *buf, std::uint32_t size, std::uint32_t timestamp)
 	{
 		if (m_first_video_frame) // first frame with ts > 0
 		{
@@ -74,7 +74,7 @@ namespace intertalk
 		write_previos_tag_size();
 	}
 
-	void flv_writer::write_script(const char *buf, boost::uint32_t size, boost::uint32_t timestamp)
+	void flv_writer::write_script(const char *buf, std::uint32_t size, std::uint32_t timestamp)
 	{
 		write_tag(eScriptFrame, size, timestamp);
 		m_file.write(buf, size);
@@ -119,7 +119,7 @@ namespace intertalk
 		write_previos_tag_size();
 	}
 
-	void flv_writer::write_tag(boost::uint8_t type, boost::uint32_t size, boost::uint32_t timestamp)
+	void flv_writer::write_tag(std::uint8_t type, std::uint32_t size, std::uint32_t timestamp)
 	{
 		m_file << type;
 		write_uint32_3(size);
@@ -129,26 +129,26 @@ namespace intertalk
 
 	void flv_writer::write_previos_tag_size()
 	{
-		boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_prev_tag_size);
+		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_prev_tag_size);
 		m_file.write(reinterpret_cast<char *>(&tmp), sizeof(tmp));
 	}
 
-	void flv_writer::write_uint32_3(boost::uint32_t v)
+	void flv_writer::write_uint32_3(std::uint32_t v)
 	{
-		boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(v);
+		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(v);
 
-		boost::uint8_t *b = reinterpret_cast<boost::uint8_t *> (&tmp);
+		std::uint8_t *b = reinterpret_cast<std::uint8_t *> (&tmp);
 
-		for (boost::uint8_t i = 1; i < 4; ++i)
+		for (std::uint8_t i = 1; i < 4; ++i)
 			m_file << b[i];
 	}
 
-	void flv_writer::write_timestamp(boost::uint32_t timestamp)
+	void flv_writer::write_timestamp(std::uint32_t timestamp)
 	{
 		write_uint32_3(timestamp);
 
-		boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(timestamp);
-		boost::uint8_t *b = reinterpret_cast<boost::uint8_t *> (&tmp);
+		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(timestamp);
+		std::uint8_t *b = reinterpret_cast<std::uint8_t *> (&tmp);
 
 		m_file << b[0];
 	}

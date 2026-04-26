@@ -26,7 +26,7 @@ namespace intertalk
 	{
 		m_amf0.write_short_string(buffer, m_name, true);
 
-		boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_version);
+		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_version);
 		buffer << tmp;
 
 		tmp = boost::asio::detail::socket_ops::host_to_network_long(m_flags);
@@ -45,7 +45,7 @@ namespace intertalk
 		event_ptr ev(new event);
 		buffer >> ev->m_type;
 
-		boost::uint32_t len;
+		std::uint32_t len;
 		buffer >> len;
 		len = boost::asio::detail::socket_ops::network_to_host_long(len);
 
@@ -85,39 +85,39 @@ namespace intertalk
 		ev->m_name = str;
 	}
 
-	void rtmp_message_shared_object::deserialize_send_message_event(boost::uint32_t len, stream_array &buffer, event_ptr &ev)
+	void rtmp_message_shared_object::deserialize_send_message_event(std::uint32_t len, stream_array &buffer, event_ptr &ev)
 	{
 		if (len > 0)
 		{
 			ev->m_size = len;
-			ev->m_data = new boost::uint8_t[len];
+			ev->m_data = new std::uint8_t[len];
 			buffer.read(ev->m_data, len);
 		}
 	}
 
 	void rtmp_message_shared_object::serialize_event(stream_array &buffer, event_ptr &ev)
 	{
-		static boost::uint32_t zero = 0;
+		static std::uint32_t zero = 0;
 
 		buffer << ev->m_type;
 		if (ev->m_type == eUseSuccess || ev->m_type == eClear)
 			buffer << zero;
 		else if (ev->m_type == eSendMessage)
 		{
-			boost::uint32_t size = boost::asio::detail::socket_ops::host_to_network_long(ev->m_size);
+			std::uint32_t size = boost::asio::detail::socket_ops::host_to_network_long(ev->m_size);
 			buffer << size;
 			buffer.write(ev->m_data, ev->m_size);
 			return;
 		}
 		else
 		{
-			boost::uint32_t size = 0;
-			boost::uint8_t *pos = buffer.write_pos();
+			std::uint32_t size = 0;
+			std::uint8_t *pos = buffer.write_pos();
 			buffer.skip_write(sizeof(size));
 			m_amf0.write_short_string(buffer, ev->m_name, true);
 			if (ev->m_type != eSuccess && ev->m_type != eRemove)
 				m_amf0.write(buffer, ev->m_value);
-			boost::uint8_t *now = buffer.write_pos();
+			std::uint8_t *now = buffer.write_pos();
 			size = boost::asio::detail::socket_ops::host_to_network_long(now - pos - 4);
 			std::memcpy(reinterpret_cast<void *>(pos), reinterpret_cast<void *>(&size), sizeof(size));
 		}

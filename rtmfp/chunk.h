@@ -2,7 +2,7 @@
 
 #include "types.h"
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/shared_ptr.hpp>
 
 namespace intertalk
@@ -39,11 +39,11 @@ namespace intertalk
 			return m_type;
 		}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t) = 0;
-		virtual boost::uint16_t serialize(stream_array &) = 0;
+		virtual bool deserialize(stream_array &, std::uint16_t) = 0;
+		virtual std::uint16_t serialize(stream_array &) = 0;
 
 	protected:
-		boost::uint16_t serialize_chunk_header(stream_array &);
+		std::uint16_t serialize_chunk_header(stream_array &);
 
 		type_t m_type;
 		enum { eChunkHeaderSize = 3 };
@@ -52,13 +52,13 @@ namespace intertalk
 	class fihello_chunk : public chunk
 	{
 	public:
-		fihello_chunk(const boost::uint16_t &epd_len, const boost::uint8_t *epd, const address &a, const boost::uint16_t &tag_len, const boost::uint8_t *tag)
+		fihello_chunk(const std::uint16_t &epd_len, const std::uint8_t *epd, const address &a, const std::uint16_t &tag_len, const std::uint8_t *tag)
 			: chunk(eForwardedInitiatorHello)
 			, m_epd_len(epd_len)
-			, m_epd(const_cast<boost::uint8_t *>(epd))
+			, m_epd(const_cast<std::uint8_t *>(epd))
 			, m_address(a)
 			, m_tag_len(tag_len)
-			, m_tag(const_cast<boost::uint8_t *>(tag))
+			, m_tag(const_cast<std::uint8_t *>(tag))
 		{}
 
 		~fihello_chunk()
@@ -69,33 +69,33 @@ namespace intertalk
 			return m_epd_len;
 		}
 
-		const boost::uint8_t *epd() const
+		const std::uint8_t *epd() const
 		{
 			return m_epd;
 		}
 
-		const boost::uint16_t &tag_len() const
+		const std::uint16_t &tag_len() const
 		{
 			return m_tag_len;
 		}
 
-		const boost::uint8_t *tag() const
+		const std::uint8_t *tag() const
 		{
 			return m_tag;
 		}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t)
+		virtual bool deserialize(stream_array &, std::uint16_t)
 		{
 			return true; // not implemented
 		}
-		virtual boost::uint16_t serialize(stream_array &);
+		virtual std::uint16_t serialize(stream_array &);
 
 	protected:
 		vlu_t m_epd_len;
-		boost::uint8_t *m_epd;
+		std::uint8_t *m_epd;
 		address m_address;
-		boost::uint16_t m_tag_len;
-		boost::uint8_t *m_tag;
+		std::uint16_t m_tag_len;
+		std::uint8_t *m_tag;
 	};
 
 	class ihello_chunk : public chunk
@@ -117,32 +117,32 @@ namespace intertalk
 			return m_epd_len;
 		}
 
-		const boost::uint8_t *epd() const
+		const std::uint8_t *epd() const
 		{
 			return m_epd;
 		}
 
-		const boost::uint16_t &tag_len() const
+		const std::uint16_t &tag_len() const
 		{
 			return m_tag_len;
 		}
 
-		const boost::uint8_t *tag() const
+		const std::uint8_t *tag() const
 		{
 			return m_tag;
 		}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t);
-		virtual boost::uint16_t serialize(stream_array &)
+		virtual bool deserialize(stream_array &, std::uint16_t);
+		virtual std::uint16_t serialize(stream_array &)
 		{
 			return 0;
 		} // not implemented
 
 	protected:
 		vlu_t m_epd_len;
-		boost::uint8_t *m_epd;
-		boost::uint8_t *m_tag;
-		boost::uint16_t m_tag_len;
+		std::uint8_t *m_epd;
+		std::uint8_t *m_tag;
+		std::uint16_t m_tag_len;
 	};
 
 	class rhello_chunk : public chunk
@@ -152,7 +152,7 @@ namespace intertalk
 			: chunk(eResponderHello)
 		{}
 
-		rhello_chunk(const boost::uint16_t &tag_len, const boost::uint8_t *tag, const boost::uint16_t &cookie_len, const boost::uint8_t *cookie, const boost::uint16_t &cert_len, const boost::uint8_t *cert)
+		rhello_chunk(const std::uint16_t &tag_len, const std::uint8_t *tag, const std::uint16_t &cookie_len, const std::uint8_t *cookie, const std::uint16_t &cert_len, const std::uint8_t *cert)
 			: chunk(eResponderHello)
 			, m_tag_len(tag_len)
 			, m_tag(tag)
@@ -162,30 +162,30 @@ namespace intertalk
 			, m_cert(cert)
 		{}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t)
+		virtual bool deserialize(stream_array &, std::uint16_t)
 		{
 			return true;
 		}  // not implemented
-		virtual boost::uint16_t serialize(stream_array &);
+		virtual std::uint16_t serialize(stream_array &);
 
 	protected:
-		boost::uint16_t m_tag_len;
-		const boost::uint8_t *m_tag;
-		boost::uint16_t m_cookie_len;
-		const boost::uint8_t *m_cookie;
-		boost::uint16_t m_cert_len;
-		const boost::uint8_t *m_cert;
+		std::uint16_t m_tag_len;
+		const std::uint8_t *m_tag;
+		std::uint16_t m_cookie_len;
+		const std::uint8_t *m_cookie;
+		std::uint16_t m_cert_len;
+		const std::uint8_t *m_cert;
 	};
 
 	class redirect_chunk : public chunk
 	{
 	public:
-		redirect_chunk(boost::uint16_t tag_len, const boost::uint8_t *tag)
+		redirect_chunk(std::uint16_t tag_len, const std::uint8_t *tag)
 			: chunk(eResponderRedirect)
 			, m_tag_len(tag_len)
-			, m_tag(new boost::uint8_t[m_tag_len])
+			, m_tag(new std::uint8_t[m_tag_len])
 		{
-			std::memcpy(const_cast<boost::uint8_t *>(m_tag), tag, m_tag_len);
+			std::memcpy(const_cast<std::uint8_t *>(m_tag), tag, m_tag_len);
 		}
 
 		~redirect_chunk()
@@ -203,15 +203,15 @@ namespace intertalk
 			return m_addresses;
 		}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t)
+		virtual bool deserialize(stream_array &, std::uint16_t)
 		{
 			return true;
 		}  // not implemented
-		virtual boost::uint16_t serialize(stream_array &);
+		virtual std::uint16_t serialize(stream_array &);
 
 	protected:
-		boost::uint16_t m_tag_len;
-		const boost::uint8_t *m_tag;
+		std::uint16_t m_tag_len;
+		const std::uint8_t *m_tag;
 		std::list<address> m_addresses;
 	};
 
@@ -222,7 +222,7 @@ namespace intertalk
 			: chunk(eInitiatorInitialKeying)
 		{}
 
-		const boost::uint32_t &isid() const
+		const std::uint32_t &isid() const
 		{
 			return m_isid;
 		}
@@ -232,7 +232,7 @@ namespace intertalk
 			return m_cookie_len;
 		}
 
-		const boost::uint8_t *cookie_echo() const
+		const std::uint8_t *cookie_echo() const
 		{
 			return m_cookie_echo;
 		}
@@ -242,7 +242,7 @@ namespace intertalk
 			return m_cert_len;
 		}
 
-		const boost::uint8_t *initator_cert() const
+		const std::uint8_t *initator_cert() const
 		{
 			return m_initiator_cert;
 		}
@@ -252,60 +252,60 @@ namespace intertalk
 			return m_skic_len;
 		}
 
-		const boost::uint8_t *skic() const
+		const std::uint8_t *skic() const
 		{
 			return m_skic;
 		}
 
-		const boost::uint16_t &signature_len() const
+		const std::uint16_t &signature_len() const
 		{
 			return m_signature_len;
 		}
 
-		const boost::uint8_t *signature() const
+		const std::uint8_t *signature() const
 		{
 			return m_signature;
 		}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t);
-		virtual boost::uint16_t serialize(stream_array &)
+		virtual bool deserialize(stream_array &, std::uint16_t);
+		virtual std::uint16_t serialize(stream_array &)
 		{
 			return 0;
 		} // not implemented
 
 	protected:
-		boost::uint32_t m_isid;
+		std::uint32_t m_isid;
 		vlu_t m_cookie_len;
-		const boost::uint8_t *m_cookie_echo;
+		const std::uint8_t *m_cookie_echo;
 		vlu_t m_cert_len;
-		const boost::uint8_t *m_initiator_cert;
+		const std::uint8_t *m_initiator_cert;
 		vlu_t m_skic_len;
-		const boost::uint8_t *m_skic;
-		boost::uint16_t m_signature_len;
-		const boost::uint8_t *m_signature;
+		const std::uint8_t *m_skic;
+		std::uint16_t m_signature_len;
+		const std::uint8_t *m_signature;
 	};
 
 	class rikeying_chunk : public chunk
 	{
 	public:
-		rikeying_chunk(boost::uint32_t rsid, boost::uint16_t skrc_len, const boost::uint8_t *skrc)
+		rikeying_chunk(std::uint32_t rsid, std::uint16_t skrc_len, const std::uint8_t *skrc)
 			: chunk(eResponderInitialKeying)
 			, m_rsid(rsid)
 			, m_skrc_len(skrc_len)
 			, m_skrc(skrc)
 		{}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t)
+		virtual bool deserialize(stream_array &, std::uint16_t)
 		{
 			return true;
 		}  // not implemented
-		virtual boost::uint16_t serialize(stream_array &);
+		virtual std::uint16_t serialize(stream_array &);
 
 	protected:
-		static boost::uint8_t m_marker;
-		boost::uint32_t m_rsid;
-		boost::uint16_t m_skrc_len;
-		const boost::uint8_t *m_skrc;
+		static std::uint8_t m_marker;
+		std::uint32_t m_rsid;
+		std::uint16_t m_skrc_len;
+		const std::uint8_t *m_skrc;
 	};
 
 	struct fragment;
@@ -323,13 +323,13 @@ namespace intertalk
 			, m_final(false)
 		{}
 
-		data_chunk(const boost::uint8_t &flags, const boost::uint8_t *user_data, const boost::uint16_t &data_len)
+		data_chunk(const std::uint8_t &flags, const std::uint8_t *user_data, const std::uint16_t &data_len)
 			: m_flags(flags)
 			, m_user_data(user_data)
 			, m_user_data_len(data_len)
 		{}
 
-		const boost::uint8_t &flags() const
+		const std::uint8_t &flags() const
 		{
 			return m_flags;
 		}
@@ -354,17 +354,17 @@ namespace intertalk
 			return m_final;
 		}
 
-		const boost::uint8_t &frag_ctl() const
+		const std::uint8_t &frag_ctl() const
 		{
 			return m_frag_ctl;
 		}
 
-		const boost::uint8_t *user_data() const
+		const std::uint8_t *user_data() const
 		{
 			return m_user_data;
 		}
 
-		const boost::uint16_t &user_data_len() const
+		const std::uint16_t &user_data_len() const
 		{
 			return m_user_data_len;
 		}
@@ -373,17 +373,17 @@ namespace intertalk
 		void parse_flags();
 		void create_flags();
 
-		boost::uint8_t m_flags;
+		std::uint8_t m_flags;
 		option_list m_option_list;
 
-		const boost::uint8_t *m_user_data;
-		boost::uint16_t m_user_data_len;
+		const std::uint8_t *m_user_data;
+		std::uint16_t m_user_data_len;
 
 		// flags
 		bool m_options_present;
 		bool m_abandon;
 		bool m_final;
-		boost::uint8_t m_frag_ctl;
+		std::uint8_t m_frag_ctl;
 	};
 
 	class user_data_chunk : public chunk, public data_chunk
@@ -397,7 +397,7 @@ namespace intertalk
 			, m_fsn_offset(0)
 		{}
 
-		user_data_chunk(const boost::uint8_t &flags, const vlu_t &flow_id, const vlu_t &seq_no, const vlu_t &fsn_off, const boost::uint8_t *user_data, const boost::uint16_t &data_len)
+		user_data_chunk(const std::uint8_t &flags, const vlu_t &flow_id, const vlu_t &seq_no, const vlu_t &fsn_off, const std::uint8_t *user_data, const std::uint16_t &data_len)
 			: chunk(eUserData)
 			, data_chunk(flags, user_data, data_len)
 			, m_flow_id(flow_id)
@@ -407,8 +407,8 @@ namespace intertalk
 
 		user_data_chunk(fragment_ptr, const vlu_t &, const vlu_t &);
 
-		virtual bool deserialize(stream_array &, boost::uint16_t);
-		virtual boost::uint16_t serialize(stream_array &);
+		virtual bool deserialize(stream_array &, std::uint16_t);
+		virtual std::uint16_t serialize(stream_array &);
 
 		const vlu_t &flow_id() const
 		{
@@ -444,8 +444,8 @@ namespace intertalk
 			, data_chunk()
 		{}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t);
-		virtual boost::uint16_t serialize(stream_array &)
+		virtual bool deserialize(stream_array &, std::uint16_t);
+		virtual std::uint16_t serialize(stream_array &)
 		{
 			return 0;
 		} // not implemented
@@ -465,8 +465,8 @@ namespace intertalk
 			, m_cumulative_ack(cumulative_ack)
 		{}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t);
-		virtual boost::uint16_t serialize(stream_array &);
+		virtual bool deserialize(stream_array &, std::uint16_t);
+		virtual std::uint16_t serialize(stream_array &);
 
 		const vlu_t &flow_id() const
 		{
@@ -515,8 +515,8 @@ namespace intertalk
 			: chunk(eFlowExceptionReportChunk)
 		{}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t);
-		virtual boost::uint16_t serialize(stream_array &)
+		virtual bool deserialize(stream_array &, std::uint16_t);
+		virtual std::uint16_t serialize(stream_array &)
 		{
 			return 0;
 		} // not implemented
@@ -543,45 +543,45 @@ namespace intertalk
 			: chunk(ePing)
 		{}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t);
-		virtual boost::uint16_t serialize(stream_array &)
+		virtual bool deserialize(stream_array &, std::uint16_t);
+		virtual std::uint16_t serialize(stream_array &)
 		{
 			return 0;
 		} // not implemented
 
-		const boost::uint16_t &data_len() const
+		const std::uint16_t &data_len() const
 		{
 			return m_data_len;
 		}
 
-		const boost::uint8_t *data() const
+		const std::uint8_t *data() const
 		{
 			return m_data;
 		}
 
 	protected:
-		boost::uint16_t m_data_len;
-		const boost::uint8_t *m_data;
+		std::uint16_t m_data_len;
+		const std::uint8_t *m_data;
 	};
 
 	class ping_reply_chunk : public chunk
 	{
 	public:
-		ping_reply_chunk(const boost::uint8_t *data, const boost::uint16_t &data_len)
+		ping_reply_chunk(const std::uint8_t *data, const std::uint16_t &data_len)
 			: chunk(ePingReply)
 			, m_data_len(data_len)
 			, m_data(data)
 		{}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t)
+		virtual bool deserialize(stream_array &, std::uint16_t)
 		{
 			return true;
 		} // not implemented
-		virtual boost::uint16_t serialize(stream_array &);
+		virtual std::uint16_t serialize(stream_array &);
 
 	protected:
-		boost::uint16_t m_data_len;
-		const boost::uint8_t *m_data;
+		std::uint16_t m_data_len;
+		const std::uint8_t *m_data;
 	};
 
 	class close_ack_chunk : public chunk
@@ -591,8 +591,8 @@ namespace intertalk
 			: chunk(eSessionCloseAcknowledgement)
 		{}
 
-		virtual bool deserialize(stream_array &, boost::uint16_t);
-		virtual boost::uint16_t serialize(stream_array &)
+		virtual bool deserialize(stream_array &, std::uint16_t);
+		virtual std::uint16_t serialize(stream_array &)
 		{
 			return 0;
 		} // not implemented

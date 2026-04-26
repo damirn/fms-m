@@ -26,7 +26,7 @@
 
 namespace intertalk
 {
-	session::session(service *srv, const boost::asio::ip::udp::endpoint &ep, boost::uint32_t reserved_sid, rtmp_app_manager *app_mngr)
+	session::session(service *srv, const boost::asio::ip::udp::endpoint &ep, std::uint32_t reserved_sid, rtmp_app_manager *app_mngr)
 		: client_session(reserved_sid, app_mngr)
 		, m_service(srv)
 		, m_sid(0)
@@ -62,13 +62,13 @@ namespace intertalk
 		return m_parser->parse(data);
 	}
 
-	void session::unreserve_stream_id(boost::uint32_t stream_id)
+	void session::unreserve_stream_id(std::uint32_t stream_id)
 	{
 //		m_strand.post(boost::bind(&session::unreserve_stream_id_impl, shared_from_this(), stream_id));
 //		unreserve_stream_id_impl(stream_id);
 	}
 
-	void session::unreserve_stream_id_impl(boost::uint32_t stream_id)
+	void session::unreserve_stream_id_impl(std::uint32_t stream_id)
 	{
 		client_session::unreserve_stream_id(stream_id);
 		stream_id_to_flow_id_map_t::iterator i = m_stream_id_to_flow_id.find(stream_id);
@@ -265,11 +265,11 @@ namespace intertalk
 				if (f->state() == flow::eOpen)
 				{
 					vlu_t stream_id = f->stream_id();
-					m_flow_id_to_stream_id[f->flow_id()] = static_cast<boost::uint32_t>(stream_id);
-					if (m_stream_id_to_flow_id[static_cast<boost::uint32_t>(stream_id)].empty())
+					m_flow_id_to_stream_id[f->flow_id()] = static_cast<std::uint32_t>(stream_id);
+					if (m_stream_id_to_flow_id[static_cast<std::uint32_t>(stream_id)].empty())
 					{
 						flow_ptr data_flow = create_associated_sending_flow(f->flow_id(), stream_id);
-						m_stream_id_to_flow_id[static_cast<boost::uint32_t>(stream_id)].insert(data_flow);
+						m_stream_id_to_flow_id[static_cast<std::uint32_t>(stream_id)].insert(data_flow);
 					}
 				}
 			}
@@ -296,7 +296,7 @@ namespace intertalk
 
 	flow_ptr session::create_associated_sending_flow(const vlu_t &flow_id, const vlu_t &stream_id)
 	{
-		static const boost::uint8_t meta_data[] = { 0x54, 0x43, 0x04 }; // fixme: use flow::TC here
+		static const std::uint8_t meta_data[] = { 0x54, 0x43, 0x04 }; // fixme: use flow::TC here
 		option_list opts;
 		stream_array tmp;
 		tmp.write(meta_data, sizeof(meta_data));
@@ -338,13 +338,13 @@ namespace intertalk
 			{
 				m_ts_echo_rx = h.timestamp_echo();
 				std::cout << "ts echo: " << m_ts_echo_rx << std::endl;
-				boost::uint32_t rtt_ticks = std::abs(m_service->get_timestamp() - h.timestamp_echo());//) % 0x10000;
+				std::uint32_t rtt_ticks = std::abs(m_service->get_timestamp() - h.timestamp_echo());//) % 0x10000;
 				if (rtt_ticks <= 0x7fff)
 				{
-					boost::uint32_t rtt = rtt_ticks * 4;
+					std::uint32_t rtt = rtt_ticks * 4;
 					if (m_srtt.total_milliseconds() != 0)
 					{
-						boost::uint32_t rtt_delta = std::abs(static_cast<boost::int32_t>(m_srtt.total_milliseconds()) - static_cast<boost::int32_t>(rtt));
+						std::uint32_t rtt_delta = std::abs(static_cast<std::int32_t>(m_srtt.total_milliseconds()) - static_cast<std::int32_t>(rtt));
 						m_rttvar = (m_rttvar * 3 + boost::posix_time::milliseconds(static_cast<long>(rtt_delta))) / 4;
 						m_srtt = (m_srtt * 7 + boost::posix_time::milliseconds(static_cast<long>(rtt))) / 8;
 					}
@@ -369,7 +369,7 @@ namespace intertalk
 		// 3.5.2.2.
 		boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
 		boost::posix_time::time_duration delta = now - m_ts_rx_time;
-		boost::uint32_t rx_elapsed = static_cast<boost::uint32_t>(delta.total_milliseconds());
+		std::uint32_t rx_elapsed = static_cast<std::uint32_t>(delta.total_milliseconds());
 		if (rx_elapsed > 128000)
 		{
 			m_should_include_ts_echo = false;
@@ -378,7 +378,7 @@ namespace intertalk
 		}
 		else
 		{
-			boost::uint32_t ts_echo = (m_ts_rx + rx_elapsed / 4);
+			std::uint32_t ts_echo = (m_ts_rx + rx_elapsed / 4);
 			if (m_ts_echo_tx != ts_echo)
 			{
 				m_ts_echo_tx = ts_echo;
@@ -397,15 +397,15 @@ namespace intertalk
 
 	void session::handle_rtmp_flow_message(flow_ptr f)
 	{
-		boost::uint32_t len;
-		const boost::uint8_t *data = f->message_data(len);
+		std::uint32_t len;
+		const std::uint8_t *data = f->message_data(len);
 
 		while (data)
 		{
 			if (len > 5) // rtmp message min size
 			{
 				rtmp_header h;
-				stream_array s(const_cast<boost::uint8_t *>(data));
+				stream_array s(const_cast<std::uint8_t *>(data));
 				s.update(len);
 				s >> h.message_type() >> h.timestamp();
 				h.timestamp() = boost::asio::detail::socket_ops::network_to_host_long(h.timestamp());
@@ -419,7 +419,7 @@ namespace intertalk
 					if (p.deserialize(s, h))
 					{
 						rtmp_message_ptr msg = p.message();
-						std::cout << "msg type: " << (boost::uint32_t) msg->type() << " len: " << h.message_length() << " ts: " << h.timestamp() << std::endl;
+						std::cout << "msg type: " << (std::uint32_t) msg->type() << " len: " << h.message_length() << " ts: " << h.timestamp() << std::endl;
 						handle_message(msg, h);
 					}
 				}
@@ -431,15 +431,15 @@ namespace intertalk
 
 	void session::handle_net_group_flow_message(flow_ptr f)
 	{
-		static boost::uint8_t marker = 0x0b;
+		static std::uint8_t marker = 0x0b;
 
 		std::cout << "net group message" << std::endl;
-		boost::uint32_t len;
-		const boost::uint8_t *data = f->message_data(len);
+		std::uint32_t len;
+		const std::uint8_t *data = f->message_data(len);
 		if (len > 0 && data)
 		{
 			std::cout << "got net group data " << len << std::endl;
-			stream_array s(const_cast<boost::uint8_t *>(data));
+			stream_array s(const_cast<std::uint8_t *>(data));
 			s.update(len);
 			group_ptr g = group::deserialize(s);
 			m_service->handle_net_group(g, shared_from_this());
@@ -514,9 +514,9 @@ namespace intertalk
 	void session::message_to_fragment(rtmp_message_ptr result)
 	{
 		stream_array temp;
-		boost::uint8_t t = result->type();
+		std::uint8_t t = result->type();
 		temp << t;
-		boost::uint32_t ts = result->timestamp();
+		std::uint32_t ts = result->timestamp();
 		ts = boost::asio::detail::socket_ops::host_to_network_long(ts);
 		temp << ts;
 		result->serialize(temp);
@@ -556,7 +556,7 @@ namespace intertalk
 	void session::serialize_header(serializer *s)
 	{
 		calculate_echo_ts();
-		boost::uint16_t ts = m_service->get_timestamp();
+		std::uint16_t ts = m_service->get_timestamp();
 		bool ts_present = false;
 
 		if (ts != m_ts_tx)
@@ -699,7 +699,7 @@ namespace intertalk
 			boost::asio::ip::address_v4 ad = boost::asio::ip::address_v4::from_string(ip);
 			a.m_type = 0x01; // fixme: replace with enum
 			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(ad.to_ulong());
-			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(boost::lexical_cast<boost::uint16_t>(port));
+			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(boost::lexical_cast<std::uint16_t>(port));
 			m_addresses.push_back(a);
 		}
 	}
@@ -755,7 +755,7 @@ namespace intertalk
 			{
 				// 3.5.2.2
 				static const boost::posix_time::time_duration s10 = boost::posix_time::seconds(10);
-				boost::posix_time::time_duration erto_backoff = boost::posix_time::milliseconds(static_cast<boost::uint32_t>(m_erto.total_milliseconds() * 1.4142));
+				boost::posix_time::time_duration erto_backoff = boost::posix_time::milliseconds(static_cast<std::uint32_t>(m_erto.total_milliseconds() * 1.4142));
 				boost::posix_time::time_duration erto_capped;
 				if (erto_backoff < s10)
 					erto_capped = erto_backoff;

@@ -2,7 +2,7 @@
 
 #include <set>
 #include <string>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/shared_ptr.hpp>
 
@@ -14,7 +14,7 @@ namespace intertalk
 	class client_session
 	{
 	public:
-		client_session(boost::uint32_t, rtmp_app_manager *);
+		client_session(std::uint32_t, rtmp_app_manager *);
 		virtual ~client_session(){}
 
 		virtual void start() = 0;
@@ -32,32 +32,32 @@ namespace intertalk
 			return m_app;
 		}
 
-		const boost::uint32_t &id() const
+		const std::uint32_t &id() const
 		{
 			return m_id;
 		}
 
-		boost::uint32_t get_timestamp();
+		std::uint32_t get_timestamp();
 
 		virtual void handle_bytes_read(std::size_t);
 		virtual void handle_bytes_written(std::size_t);
 
-		boost::uint32_t get_bytes_read() const
+		std::uint32_t get_bytes_read() const
 		{
 			return m_bytes_read;
 		}
 
-		boost::uint32_t get_bytes_written() const
+		std::uint32_t get_bytes_written() const
 		{
 			return m_bytes_written;
 		}
 
-		boost::uint32_t get_messages_read() const
+		std::uint32_t get_messages_read() const
 		{
 			return m_messages_read;
 		}
 
-		boost::uint32_t get_messages_written() const
+		std::uint32_t get_messages_written() const
 		{
 			return m_messages_written;
 		}
@@ -82,8 +82,8 @@ namespace intertalk
 			return m_app_instance;
 		}
 
-		boost::uint32_t reserve_stream_id();
-		virtual void unreserve_stream_id(boost::uint32_t);
+		std::uint32_t reserve_stream_id();
+		virtual void unreserve_stream_id(std::uint32_t);
 
 		const std::string &sid() const
 		{
@@ -107,7 +107,7 @@ namespace intertalk
 
 	protected:
 		// session id
-		boost::uint32_t m_id;
+		std::uint32_t m_id;
 
 		std::string m_sid;
 
@@ -121,18 +121,18 @@ namespace intertalk
 		boost::posix_time::ptime m_time;
 
 		// counters for read and written bytes
-		boost::uint32_t m_bytes_read;
-		boost::uint32_t m_bytes_written;
+		std::uint32_t m_bytes_read;
+		std::uint32_t m_bytes_written;
 
 		// counters for in/out messages
-		boost::uint32_t m_messages_read;
-		boost::uint32_t m_messages_written;
+		std::uint32_t m_messages_read;
+		std::uint32_t m_messages_written;
 
 		// app instance to which this session is connected to
 		std::string m_app_instance;
 
 		// stream ids in use
-		std::set<boost::uint32_t> m_stream_ids;
+		std::set<std::uint32_t> m_stream_ids;
 
 		bool m_uses_amf3;
 	};

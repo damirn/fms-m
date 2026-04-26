@@ -2,7 +2,7 @@
 
 #include "stream_array.h"
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 
 namespace intertalk
 {
@@ -17,7 +17,7 @@ namespace intertalk
 			, m_mode(0)
 		{}
 
-		header(bool time_critical, bool time_critical_reverse, boost::uint16_t ts, boost::uint8_t mode)
+		header(bool time_critical, bool time_critical_reverse, std::uint16_t ts, std::uint8_t mode)
 			: m_time_critical(time_critical)
 			, m_time_critical_reverse(time_critical_reverse)
 			, m_timestamp_present(true)
@@ -26,7 +26,7 @@ namespace intertalk
 			, m_timestamp(ts)
 		{}
 
-		header(bool time_critical, bool time_critical_reverse, boost::uint16_t ts, boost::uint16_t ts_echo, boost::uint8_t mode)
+		header(bool time_critical, bool time_critical_reverse, std::uint16_t ts, std::uint16_t ts_echo, std::uint8_t mode)
 			: m_time_critical(time_critical)
 			, m_time_critical_reverse(time_critical_reverse)
 			, m_timestamp_present(true)
@@ -57,17 +57,17 @@ namespace intertalk
 			return m_timestamp_echo_present;
 		}
 
-		const boost::uint16_t &timestamp() const
+		const std::uint16_t &timestamp() const
 		{
 			return m_timestamp;
 		}
 
-		const boost::uint16_t &timestamp_echo() const
+		const std::uint16_t &timestamp_echo() const
 		{
 			return m_timestamp_echo;
 		}
 
-		void set_optional_ts_echo(bool use_ts_echo, boost::uint16_t ts_echo)
+		void set_optional_ts_echo(bool use_ts_echo, std::uint16_t ts_echo)
 		{
 			if (use_ts_echo)
 			{
@@ -81,8 +81,8 @@ namespace intertalk
 		bool m_time_critical_reverse;
 		bool m_timestamp_present;
 		bool m_timestamp_echo_present;
-		boost::uint8_t m_mode;
-		boost::uint16_t m_timestamp;
-		boost::uint16_t m_timestamp_echo;
+		std::uint8_t m_mode;
+		std::uint16_t m_timestamp;
+		std::uint16_t m_timestamp_echo;
 	};
 }

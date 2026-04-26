@@ -73,7 +73,7 @@ namespace intertalk
 		msg->serialize(tmp_buffer);
 
 		// write header
-		new_header.message_length() = static_cast<boost::uint32_t>(tmp_buffer.size());
+		new_header.message_length() = static_cast<std::uint32_t>(tmp_buffer.size());
 		new_header.message_type() = msg->type();
 		new_header.stream_id() = msg->stream_id();
 		new_header.channel_id() = msg->channel_id();
@@ -125,9 +125,9 @@ namespace intertalk
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_ping(stream_array &buffer, boost::uint32_t size)
+	void rtmp_protocol::deserialize_ping(stream_array &buffer, std::uint32_t size)
 	{
-		boost::uint8_t elements = 0;
+		std::uint8_t elements = 0;
 		switch (size)
 		{
 		case 2:
@@ -165,14 +165,14 @@ namespace intertalk
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_audio_data(stream_array &buffer, boost::uint32_t size)
+	void rtmp_protocol::deserialize_audio_data(stream_array &buffer, std::uint32_t size)
 	{
-		rtmp_message_audio_data_ptr msg(new rtmp_message_audio_data(static_cast<boost::uint16_t>(size)));
+		rtmp_message_audio_data_ptr msg(new rtmp_message_audio_data(static_cast<std::uint16_t>(size)));
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_video_data(stream_array &buffer, boost::uint32_t size)
+	void rtmp_protocol::deserialize_video_data(stream_array &buffer, std::uint32_t size)
 	{
 		rtmp_message_video_data_ptr msg(new rtmp_message_video_data(size));
 		msg->deserialize(buffer);
@@ -186,7 +186,7 @@ namespace intertalk
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_aggregate(stream_array &buffer, boost::uint32_t ts)
+	void rtmp_protocol::deserialize_aggregate(stream_array &buffer, std::uint32_t ts)
 	{
 		rtmp_message_aggregate_ptr msg(new rtmp_message_aggregate(ts));
 		msg->deserialize(buffer);
@@ -198,13 +198,13 @@ namespace intertalk
 		std::size_t size = input.size();
 		if (size != 0)
 		{
-			boost::uint32_t chunks = static_cast<boost::uint32_t>(size) / m_chunk_size;
+			std::uint32_t chunks = static_cast<std::uint32_t>(size) / m_chunk_size;
 			chunks += (size % m_chunk_size) == 0 ? 0 : 1;
-			boost::uint32_t chunk_size = 0;
+			std::uint32_t chunk_size = 0;
 
-			for (boost::uint32_t i = 0; i < chunks - 1; ++i)
+			for (std::uint32_t i = 0; i < chunks - 1; ++i)
 			{
-				chunk_size = static_cast<boost::uint32_t>(size > m_chunk_size ? m_chunk_size : size);
+				chunk_size = static_cast<std::uint32_t>(size > m_chunk_size ? m_chunk_size : size);
 				buffer.copy(input, chunk_size);
 				header.serialize_header_continue_size(buffer);
 				size -= chunk_size;

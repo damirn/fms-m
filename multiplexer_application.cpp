@@ -10,7 +10,7 @@ namespace intertalk
 		m_apps[app->app_name()] = app;
 	}
 
-	void multiplexing_application::delete_connection(boost::uint32_t connection_id, const std::string &instance)
+	void multiplexing_application::delete_connection(std::uint32_t connection_id, const std::string &instance)
 	{
 		for (std::map<std::string, rtmp_application *>::iterator i = m_apps.begin(); i != m_apps.end(); ++i)
 		{
@@ -21,7 +21,7 @@ namespace intertalk
 		m_id_to_uid_map.erase(connection_id);
 	}
 
-	void multiplexing_application::send_presence_notification_to_proxy(boost::uint32_t connection_id, bool is_offline)
+	void multiplexing_application::send_presence_notification_to_proxy(std::uint32_t connection_id, bool is_offline)
 	{
 		if (m_id_to_uid_map.find(connection_id) != m_id_to_uid_map.end())
 		{

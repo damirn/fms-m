@@ -7,18 +7,18 @@
 
 namespace intertalk
 {
-	boost::uint16_t chunk::serialize_chunk_header(stream_array &to)
+	std::uint16_t chunk::serialize_chunk_header(stream_array &to)
 	{
-		boost::uint8_t type = m_type;
-		boost::uint16_t len = to.rewind_write() - eChunkHeaderSize;
-		boost::uint16_t nlen = boost::asio::detail::socket_ops::host_to_network_short(len);
+		std::uint8_t type = m_type;
+		std::uint16_t len = to.rewind_write() - eChunkHeaderSize;
+		std::uint16_t nlen = boost::asio::detail::socket_ops::host_to_network_short(len);
 		to << type << nlen;
 		//to.update(to.wrote_size());
 		to.rewind_write_to_end();
 		return len + eChunkHeaderSize;
 	}
 
-	boost::uint16_t fihello_chunk::serialize(stream_array &to)
+	std::uint16_t fihello_chunk::serialize(stream_array &to)
 	{
 		to.mark_write();
 		to.skip_write(eChunkHeaderSize);
@@ -32,11 +32,11 @@ namespace intertalk
 		return serialize_chunk_header(to);
 	}
 
-	bool ihello_chunk::deserialize(stream_array &buff, boost::uint16_t len)
+	bool ihello_chunk::deserialize(stream_array &buff, std::uint16_t len)
 	{
 		try
 		{
-			boost::uint8_t *here = buff.read_pos();
+			std::uint8_t *here = buff.read_pos();
 			m_epd_len = buff.read_vlu();
 			m_epd = buff.read_pos();
 			buff.skip(static_cast<size_t>(m_epd_len));
@@ -44,7 +44,7 @@ namespace intertalk
 			// make a copy of the tag, since it will be needed later
 			m_tag_len = here + len - buff.read_pos();
 			std::cout << m_tag_len << std::endl;
-			m_tag = new boost::uint8_t[m_tag_len];
+			m_tag = new std::uint8_t[m_tag_len];
 			std::memcpy(m_tag, buff.read_pos(), m_tag_len);
 			buff.skip(m_tag_len);
 			return true;
@@ -55,7 +55,7 @@ namespace intertalk
 		}
 	}
 
-	boost::uint16_t rhello_chunk::serialize(stream_array &to)
+	std::uint16_t rhello_chunk::serialize(stream_array &to)
 	{
 		to.mark_write();
 		to.skip_write(eChunkHeaderSize);
@@ -71,7 +71,7 @@ namespace intertalk
 		return serialize_chunk_header(to);
 	}
 
-	boost::uint16_t redirect_chunk::serialize(stream_array &to)
+	std::uint16_t redirect_chunk::serialize(stream_array &to)
 	{
 		to.mark_write();
 		to.skip_write(eChunkHeaderSize);
@@ -85,11 +85,11 @@ namespace intertalk
 		return serialize_chunk_header(to);
 	}
 
-	bool iikeying_chunk::deserialize(stream_array &buff, boost::uint16_t len)
+	bool iikeying_chunk::deserialize(stream_array &buff, std::uint16_t len)
 	{
 		try
 		{
-			boost::uint8_t *here = buff.read_pos();
+			std::uint8_t *here = buff.read_pos();
 			buff >> m_isid;
 			m_cookie_len = buff.read_vlu();
 			m_cookie_echo = buff.read_pos();
@@ -115,14 +115,14 @@ namespace intertalk
 		}
 	}
 
-	boost::uint8_t rikeying_chunk::m_marker = 'X';
+	std::uint8_t rikeying_chunk::m_marker = 'X';
 
-	boost::uint16_t rikeying_chunk::serialize(stream_array &to)
+	std::uint16_t rikeying_chunk::serialize(stream_array &to)
 	{
 		to.mark_write();
 		to.skip_write(eChunkHeaderSize);
 
-		boost::uint32_t sid = boost::asio::detail::socket_ops::host_to_network_long(m_rsid);
+		std::uint32_t sid = boost::asio::detail::socket_ops::host_to_network_long(m_rsid);
 		to << sid;
 
 		to.write_vlu(m_skrc_len);
@@ -174,11 +174,11 @@ namespace intertalk
 		m_frag_ctl = frag->m_frag_ctrl;
 	}
 
-	bool user_data_chunk::deserialize(stream_array &buff, boost::uint16_t len)
+	bool user_data_chunk::deserialize(stream_array &buff, std::uint16_t len)
 	{
 		try
 		{
-			boost::uint8_t *here = buff.read_pos();
+			std::uint8_t *here = buff.read_pos();
 			buff >> m_flags;
 			parse_flags();
 			m_flow_id = buff.read_vlu();
@@ -200,7 +200,7 @@ namespace intertalk
 		}
 	}
 
-	boost::uint16_t user_data_chunk::serialize(stream_array &to)
+	std::uint16_t user_data_chunk::serialize(stream_array &to)
 	{
 		to.mark_write();
 		to.skip_write(eChunkHeaderSize);
@@ -219,11 +219,11 @@ namespace intertalk
 		return serialize_chunk_header(to);
 	}
 
-	bool next_user_data_chunk::deserialize(stream_array &buff, boost::uint16_t len)
+	bool next_user_data_chunk::deserialize(stream_array &buff, std::uint16_t len)
 	{
 		try
 		{
-			boost::uint8_t *here = buff.read_pos();
+			std::uint8_t *here = buff.read_pos();
 			buff >> m_flags;
 			parse_flags();
 			if (m_options_present)
@@ -242,11 +242,11 @@ namespace intertalk
 		}
 	}
 
-	bool range_ack_chunk::deserialize(stream_array &buff, boost::uint16_t len)
+	bool range_ack_chunk::deserialize(stream_array &buff, std::uint16_t len)
 	{
 		try
 		{
-			boost::uint8_t *here = buff.read_pos();
+			std::uint8_t *here = buff.read_pos();
 			m_flowid = buff.read_vlu();
 			m_buff_blocks_available = buff.read_vlu();
 			m_cumulative_ack = buff.read_vlu();
@@ -270,7 +270,7 @@ namespace intertalk
 		}
 	}
 
-	boost::uint16_t range_ack_chunk::serialize(stream_array &to)
+	std::uint16_t range_ack_chunk::serialize(stream_array &to)
 	{
 		to.mark_write();
 		to.skip_write(eChunkHeaderSize);
@@ -288,7 +288,7 @@ namespace intertalk
 		return serialize_chunk_header(to);
 	}
 
-	bool flow_exception_report_chunk::deserialize(stream_array &buff, boost::uint16_t len)
+	bool flow_exception_report_chunk::deserialize(stream_array &buff, std::uint16_t len)
 	{
 		try
 		{
@@ -302,7 +302,7 @@ namespace intertalk
 		}
 	}
 
-	bool ping_chunk::deserialize(stream_array &buff, boost::uint16_t len)
+	bool ping_chunk::deserialize(stream_array &buff, std::uint16_t len)
 	{
 		try
 		{
@@ -317,7 +317,7 @@ namespace intertalk
 		}
 	}
 
-	boost::uint16_t ping_reply_chunk::serialize(stream_array &to)
+	std::uint16_t ping_reply_chunk::serialize(stream_array &to)
 	{
 		to.mark_write();
 		to.skip_write(eChunkHeaderSize);
@@ -327,7 +327,7 @@ namespace intertalk
 		return serialize_chunk_header(to);
 	}
 
-	bool close_ack_chunk::deserialize(stream_array &, boost::uint16_t)
+	bool close_ack_chunk::deserialize(stream_array &, std::uint16_t)
 	{
 		return true; // no payload
 	}

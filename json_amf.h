@@ -64,7 +64,7 @@ namespace intertalk
 				double d = n->value();
 				double t;
 				if (std::modf(d, &t) == 0.0) // integer
-					return json(static_cast<boost::int32_t >(d));
+					return json(static_cast<std::int32_t >(d));
 				return json(d);
 			}
 			case amf0_type::eAMF0String:

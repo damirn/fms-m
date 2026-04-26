@@ -70,7 +70,7 @@ namespace intertalk
 		m_connections[s->id()] = s;
 	}
 
-	boost::uint32_t rtmp_app_manager::reserve_connection_id()
+	std::uint32_t rtmp_app_manager::reserve_connection_id()
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		return m_connection_counter++;
@@ -84,7 +84,7 @@ namespace intertalk
 		return tmp;
 	}
 
-	void rtmp_app_manager::delete_http_connection(boost::uint32_t id)
+	void rtmp_app_manager::delete_http_connection(std::uint32_t id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		http_connection_map_t::iterator i = m_http_conns.find(id);
@@ -92,7 +92,7 @@ namespace intertalk
 			m_http_conns.erase(i);
 	}
 
-	client_session_ptr rtmp_app_manager::get_connection(boost::uint32_t conn_id)
+	client_session_ptr rtmp_app_manager::get_connection(std::uint32_t conn_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
@@ -101,7 +101,7 @@ namespace intertalk
 		throw std::runtime_error("No such connection");
 	}
 
-	const std::string &rtmp_app_manager::get_app_instance(boost::uint32_t conn_id)
+	const std::string &rtmp_app_manager::get_app_instance(std::uint32_t conn_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
@@ -110,7 +110,7 @@ namespace intertalk
 		throw std::runtime_error("No such connection");
 	}
 
-	bool rtmp_app_manager::has_connection(boost::uint32_t conn_id)
+	bool rtmp_app_manager::has_connection(std::uint32_t conn_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
@@ -119,7 +119,7 @@ namespace intertalk
 		return false;
 	}
 
-	void rtmp_app_manager::delete_connection(boost::uint32_t conn_id)
+	void rtmp_app_manager::delete_connection(std::uint32_t conn_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
@@ -136,7 +136,7 @@ namespace intertalk
 		}
 	}
 
-	void rtmp_app_manager::destroy_connection(boost::uint32_t conn_id)
+	void rtmp_app_manager::destroy_connection(std::uint32_t conn_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
@@ -148,7 +148,7 @@ namespace intertalk
 		}
 	}
 
-	void rtmp_app_manager::set_encoding_for_connection(boost::uint32_t conn_id, bool is_amf3)
+	void rtmp_app_manager::set_encoding_for_connection(std::uint32_t conn_id, bool is_amf3)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
@@ -156,7 +156,7 @@ namespace intertalk
 			i->second->uses_amf3_encoding() = is_amf3;
 	}
 
-	bool rtmp_app_manager::is_amf3_encoding(boost::uint32_t conn_id)
+	bool rtmp_app_manager::is_amf3_encoding(std::uint32_t conn_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
@@ -165,7 +165,7 @@ namespace intertalk
 		return false;
 	}
 
-	boost::tribool rtmp_app_manager::handle_message(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &res)
+	boost::tribool rtmp_app_manager::handle_message(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &res)
 	{
 		if (msg->type() != rtmp_message::eMessageInvoke)
 		{
@@ -246,13 +246,13 @@ namespace intertalk
 		}
 	}
 
-	client_data_ptr rtmp_app_manager::get_client_data(boost::uint32_t connection_id)
+	client_data_ptr rtmp_app_manager::get_client_data(std::uint32_t connection_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		return get_client_data_impl(connection_id);
 	}
 
-	client_data_ptr rtmp_app_manager::get_client_data_impl(boost::uint32_t connection_id)
+	client_data_ptr rtmp_app_manager::get_client_data_impl(std::uint32_t connection_id)
 	{
 		connection_map_t::iterator i = m_connections.find(connection_id);
 		if (i != m_connections.end())
@@ -304,7 +304,7 @@ namespace intertalk
 		return client_data_ptr();
 	}
 
-	bool rtmp_app_manager::get_client_stats(boost::uint32_t cid, client_stats &stats)
+	bool rtmp_app_manager::get_client_stats(std::uint32_t cid, client_stats &stats)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(cid);
@@ -361,7 +361,7 @@ namespace intertalk
 		}
 	}
 
-	void rtmp_app_manager::delete_netstreams(boost::uint32_t connection_id)
+	void rtmp_app_manager::delete_netstreams(std::uint32_t connection_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		netstream_list_t list;
@@ -394,7 +394,7 @@ namespace intertalk
 		}
 	}
 
-	void rtmp_app_manager::update_netstream_stats(const stream_client_id_t &id, boost::uint32_t bytes, boost::uint32_t ts)
+	void rtmp_app_manager::update_netstream_stats(const stream_client_id_t &id, std::uint32_t bytes, std::uint32_t ts)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		netstream_stats_map_t::iterator i = m_netstream_stats.find(id);
@@ -414,10 +414,10 @@ namespace intertalk
 				if (delta.is_negative())
 				{
 					delta = delta.invert_sign();
-					i->second->m_drift = static_cast<boost::uint32_t>(delta.total_milliseconds());
+					i->second->m_drift = static_cast<std::uint32_t>(delta.total_milliseconds());
 				}
 				else
-					i->second->m_delay = static_cast<boost::uint32_t>(delta.total_milliseconds());
+					i->second->m_delay = static_cast<std::uint32_t>(delta.total_milliseconds());
 			}
 			i->second->m_messages++;
 			i->second->m_bytes += bytes;
@@ -476,7 +476,7 @@ namespace intertalk
 					{
 						netstream_stats_ptr stats(new netstream_stats(*(i->second)));
 						boost::posix_time::time_duration td = now - stats->m_start_streaming_time;
-						boost::uint32_t kbps = 0;
+						std::uint32_t kbps = 0;
 						if (td.total_seconds() != 0)
 							kbps = stats->m_bytes / td.total_seconds();
 						stats->m_kbps = kbps;

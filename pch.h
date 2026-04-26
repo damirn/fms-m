@@ -1,6 +1,7 @@
 #pragma once
 
 // std includes
+#include <cstdint>
 #include <iostream>
 #include <list>
 #include <map>
@@ -15,7 +16,6 @@
 #include <boost/asio.hpp>
 #include <boost/bimap.hpp>
 #include <boost/bind.hpp>
-#include <boost/cstdint.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>

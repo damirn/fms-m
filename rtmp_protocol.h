@@ -15,7 +15,7 @@ namespace intertalk
 			: m_chunk_size(eChunkSize)
 		{}
 
-		rtmp_protocol(boost::uint16_t chunk_size)
+		rtmp_protocol(std::uint16_t chunk_size)
 			: m_chunk_size(chunk_size)
 		{}
 
@@ -29,7 +29,7 @@ namespace intertalk
 		}
 
 	protected:
-		void deserialize_ping(stream_array &, boost::uint32_t);
+		void deserialize_ping(stream_array &, std::uint32_t);
 
 		void deserialize_window_acknowladge_size(stream_array &);
 
@@ -47,19 +47,19 @@ namespace intertalk
 
 		void deserialize_bytes_read(stream_array &);
 
-		void deserialize_audio_data(stream_array &, boost::uint32_t);
+		void deserialize_audio_data(stream_array &, std::uint32_t);
 
-		void deserialize_video_data(stream_array &, boost::uint32_t);
+		void deserialize_video_data(stream_array &, std::uint32_t);
 
 		void deserialize_chunk_size(stream_array &);
 
 		void chunk_buffer(stream_array &, stream_array &, rtmp_header &);
 
-		void deserialize_aggregate(stream_array &, boost::uint32_t);
+		void deserialize_aggregate(stream_array &, std::uint32_t);
 
 		enum { eChunkSize = 128 };
 
-		boost::uint16_t m_chunk_size;
+		std::uint16_t m_chunk_size;
 		rtmp_message_ptr m_message;
 	};
 }

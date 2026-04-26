@@ -85,23 +85,23 @@ namespace intertalk
 			: amf3_type(amf3_type::eAMF3Integer)
 		{}
 
-		amf3_integer_type(boost::uint32_t value)
+		amf3_integer_type(std::uint32_t value)
 			: amf3_type(amf3_type::eAMF3Integer)
 			, m_value(value)
 		{}
 
-		boost::uint32_t &value()
+		std::uint32_t &value()
 		{
 			return m_value;
 		}
 
-		const boost::uint32_t &value() const
+		const std::uint32_t &value() const
 		{
 			return m_value;
 		}
 
 	protected:
-		boost::uint32_t m_value;
+		std::uint32_t m_value;
 	};
 
 	typedef boost::shared_ptr<amf3_integer_type> amf3_integer_type_ptr;
@@ -164,7 +164,7 @@ namespace intertalk
 			throw amf3_illegal_cast();
 		}
 
-		template<> inline boost::uint32_t get<boost::uint32_t>(amf3_type_ptr v)
+		template<> inline std::uint32_t get<std::uint32_t>(amf3_type_ptr v)
 		{
 			if (v->type() == amf3_type::eAMF3Integer)
 			{
@@ -200,7 +200,7 @@ namespace intertalk
 			m_properties[key] = tmp;
 		}
 
-		void add_entry(const std::string &key, boost::uint32_t value)
+		void add_entry(const std::string &key, std::uint32_t value)
 		{
 			amf3_integer_type_ptr tmp(new amf3_integer_type(value));
 			m_properties[key] = tmp;

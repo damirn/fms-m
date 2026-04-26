@@ -13,7 +13,7 @@ namespace intertalk
 {
 	struct fragment
 	{
-		fragment(const vlu_t &seq, const boost::uint8_t *data, const boost::uint16_t &data_len, const boost::uint8_t &frag_ctrl, bool make_copy = false)
+		fragment(const vlu_t &seq, const std::uint8_t *data, const std::uint16_t &data_len, const std::uint8_t &frag_ctrl, bool make_copy = false)
 			: m_seq(seq)
 			, m_tsn(0)
 			, m_data_len(data_len)
@@ -26,7 +26,7 @@ namespace intertalk
 			}
 			else
 			{
-				m_data = new boost::uint8_t[m_data_len];
+				m_data = new std::uint8_t[m_data_len];
 				std::memcpy((void *)m_data, data, m_data_len);
 				m_data_owner = true;
 			}
@@ -46,8 +46,8 @@ namespace intertalk
 
 		void take_ownership()
 		{
-			const boost::uint8_t *tmp = m_data;
-			m_data = new boost::uint8_t[m_data_len];
+			const std::uint8_t *tmp = m_data;
+			m_data = new std::uint8_t[m_data_len];
 			std::memcpy((void *)m_data, tmp, m_data_len);
 			m_data_owner = true;
 		}
@@ -57,16 +57,16 @@ namespace intertalk
 
 		vlu_t m_seq;
 		vlu_t m_tsn;
-		const boost::uint8_t *m_data;
-		boost::uint16_t m_data_len;
-		boost::uint8_t m_frag_ctrl;
+		const std::uint8_t *m_data;
+		std::uint16_t m_data_len;
+		std::uint8_t m_frag_ctrl;
 		bool m_data_owner;
 		bool m_abandoned;
 		bool m_sent_abandoned;
 		bool m_ever_sent;
-		boost::uint16_t m_nak_count;
+		std::uint16_t m_nak_count;
 		bool m_in_flight;
-		boost::uint16_t m_transmit_size;
+		std::uint16_t m_transmit_size;
 	};
 
 	typedef boost::shared_ptr<fragment> fragment_ptr;
@@ -141,12 +141,12 @@ namespace intertalk
 
 		enum { eOpen, eRejected, eCompleteLinger, eClosed };
 
-		const boost::uint8_t &state() const
+		const std::uint8_t &state() const
 		{
 			return m_state;
 		}
 
-		boost::uint8_t &state()
+		std::uint8_t &state()
 		{
 			return m_state;
 		}
@@ -169,7 +169,7 @@ namespace intertalk
 		// false indicates a duplicate
 		vlu_seq_manager::result add_fragment(fragment_ptr);
 		void remove_fragments_until_seq(const vlu_t &);
-		const boost::uint8_t *message_data(boost::uint32_t &);
+		const std::uint8_t *message_data(std::uint32_t &);
 		void remove_last_message();
 
 		vlu_t last_ack_seq()
@@ -177,7 +177,7 @@ namespace intertalk
 			return m_last_ack_seq;
 		}
 
-		boost::uint16_t add_and_fragment_data(const boost::uint8_t *, const boost::uint32_t &);
+		std::uint16_t add_and_fragment_data(const std::uint8_t *, const std::uint32_t &);
 
 		boost::optional<fragment_ptr> get_fragment_for_sending(vlu_t &);
 
@@ -209,12 +209,12 @@ namespace intertalk
 			return m_flow_id;
 		}
 
-		const boost::uint16_t &prev_rwnd() const
+		const std::uint16_t &prev_rwnd() const
 		{
 			return m_prev_rwnd;
 		}
 
-		boost::uint16_t &prev_rwnd()
+		std::uint16_t &prev_rwnd()
 		{
 			return m_prev_rwnd;
 		}
@@ -229,9 +229,9 @@ namespace intertalk
 			return m_seq_manager.get_range_ack(list);
 		}
 
-		boost::uint32_t stream_id()
+		std::uint32_t stream_id()
 		{
-			return static_cast<boost::uint32_t>(m_stream_id);
+			return static_cast<std::uint32_t>(m_stream_id);
 		}
 
 		const vlu_t &associated_flow_id() const
@@ -247,7 +247,7 @@ namespace intertalk
 		vlu_t get_stream_id_from_option(option_ptr);
 
 		typedef std::map<vlu_t, fragment_ptr> fragment_map_t;
-		const boost::uint8_t *create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
+		const std::uint8_t *create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
 
 		vlu_t m_flow_id;
 		vlu_t m_stream_id;
@@ -256,7 +256,7 @@ namespace intertalk
 		usage_t m_usage;
 		type_t m_type;
 		vlu_t m_final_sn;
-		boost::uint16_t m_prev_rwnd;
+		std::uint16_t m_prev_rwnd;
 		bool m_should_ack;
 		bool m_has_associated_flow_id;
 
@@ -266,7 +266,7 @@ namespace intertalk
 		fragment_map_t m_fragments;
 		vlu_t m_last_ack_seq;
 
-		boost::uint8_t m_state;
+		std::uint8_t m_state;
 		option_ptr m_metadata;
 		option_list m_options;
 		vlu_t m_next_sn;
@@ -278,13 +278,13 @@ namespace intertalk
 		vlu_seq_manager m_seq_manager;
 
 	public:
-		static const boost::uint8_t TC[];
-		static const boost::uint8_t GC[];
+		static const std::uint8_t TC[];
+		static const std::uint8_t GC[];
 
 	private:
 		bool m_msg_is_fragmented;
-		boost::uint32_t m_msg_len;
-		boost::uint8_t *m_data;
+		std::uint32_t m_msg_len;
+		std::uint8_t *m_data;
 	};
 
 	typedef boost::shared_ptr<flow> flow_ptr;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/logic/tribool.hpp>
 #include <boost/shared_ptr.hpp>
 
@@ -31,15 +31,15 @@ namespace intertalk
 	protected:
 		boost::tribool parse_data(stream_array &);
 		void handle_message(rtmp_channel_ptr);
-		boost::uint32_t peek_channel_id(stream_array &);
+		std::uint32_t peek_channel_id(stream_array &);
 
 		virtual void handle_message(rtmp_channel_ptr, rtmp_message_ptr) = 0;
 		virtual void handle_internal_message(rtmp_message_ptr) = 0;
 
 		bool m_read_header;
 		channel_manager_ptr m_channel_manager;
-		boost::uint32_t m_chunk_size;
-		boost::uint32_t m_channel_id;
+		std::uint32_t m_chunk_size;
+		std::uint32_t m_channel_id;
 
 		enum { eChunkSize = 128 };
 	};

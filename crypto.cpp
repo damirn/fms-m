@@ -7,7 +7,7 @@
 
 namespace intertalk
 {
-	boost::uint8_t genuine_keys::FMS_key[] = {
+	std::uint8_t genuine_keys::FMS_key[] = {
 		0x47, 0x65, 0x6e, 0x75, 0x69, 0x6e, 0x65, 0x20,
 		0x41, 0x64, 0x6f, 0x62, 0x65, 0x20, 0x46, 0x6c,
 		0x61, 0x73, 0x68, 0x20, 0x4d, 0x65, 0x64, 0x69,
@@ -19,7 +19,7 @@ namespace intertalk
 		0x93, 0xb8, 0xe6, 0x36, 0xcf, 0xeb, 0x31, 0xae
 	};
 
-	boost::uint8_t genuine_keys::FP_key[] = {
+	std::uint8_t genuine_keys::FP_key[] = {
 		0x47, 0x65, 0x6E, 0x75, 0x69, 0x6E, 0x65, 0x20,
 		0x41, 0x64, 0x6F, 0x62, 0x65, 0x20, 0x46, 0x6C,
 		0x61, 0x73, 0x68, 0x20, 0x50, 0x6C, 0x61, 0x79,
@@ -30,10 +30,10 @@ namespace intertalk
 		0x93, 0xB8, 0xE6, 0x36, 0xCF, 0xEB, 0x31, 0xAE
 	};
 
-	boost::uint8_t genuine_keys::FMS_key_len = sizeof(genuine_keys::FMS_key);
-	boost::uint8_t genuine_keys::FMP_key_len = sizeof(genuine_keys::FP_key);
+	std::uint8_t genuine_keys::FMS_key_len = sizeof(genuine_keys::FMS_key);
+	std::uint8_t genuine_keys::FMP_key_len = sizeof(genuine_keys::FP_key);
 
-	unsigned int HMAC_SHA256(const boost::uint8_t *data, boost::uint32_t data_len, const boost::uint8_t *key, boost::uint32_t key_len, boost::uint8_t *res)
+	unsigned int HMAC_SHA256(const std::uint8_t *data, std::uint32_t data_len, const std::uint8_t *key, std::uint32_t key_len, std::uint8_t *res)
 	{
 		// HMAC_CTX is opaque in OpenSSL 1.1+/3.0; use the one-shot HMAC() helper.
 		unsigned int digest_len = 0;
@@ -41,10 +41,10 @@ namespace intertalk
 		return digest_len;
 	}
 
-	void init_RC4_encryption(const boost::uint8_t *secretKey, const boost::uint8_t *pubKeyIn, const boost::uint8_t *pubKeyOut,
+	void init_RC4_encryption(const std::uint8_t *secretKey, const std::uint8_t *pubKeyIn, const std::uint8_t *pubKeyOut,
 		RC4_KEY *rc4keyIn, RC4_KEY *rc4keyOut)
 	{
-			boost::uint8_t digest[SHA256_DIGEST_LENGTH];
+			std::uint8_t digest[SHA256_DIGEST_LENGTH];
 
 			HMAC_SHA256(pubKeyIn, 128, secretKey, 128, digest);
 			RC4_set_key(rc4keyOut, 16, digest);
@@ -63,7 +63,7 @@ namespace intertalk
 		std::ostringstream tmp;
 		tmp << std::hex;
 		for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
-			tmp << std::setw(2) << std::setfill('0') << (boost::uint16_t)hash[i];
+			tmp << std::setw(2) << std::setfill('0') << (std::uint16_t)hash[i];
 		return tmp.str();
 	}
 }

@@ -15,10 +15,10 @@
 
 namespace intertalk
 {
-	const boost::uint8_t service::m_c1[] = {0x01, 0x0a, 0x41, 0x0e};
-	const boost::uint8_t service::m_c2[] = {0x02, 0x15, 0x02, 0x02, 0x15, 0x05, 0x02, 0x15, 0x0e};
+	const std::uint8_t service::m_c1[] = {0x01, 0x0a, 0x41, 0x0e};
+	const std::uint8_t service::m_c2[] = {0x02, 0x15, 0x02, 0x02, 0x15, 0x05, 0x02, 0x15, 0x0e};
 
-	service::service(boost::asio::io_service &io_service, boost::uint16_t port, rtmp_app_manager *app_manager)
+	service::service(boost::asio::io_service &io_service, std::uint16_t port, rtmp_app_manager *app_manager)
 		: m_app_manager(app_manager)
 		, m_io_service(io_service)
 		, m_socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port))
@@ -41,7 +41,7 @@ namespace intertalk
 
 	void service::create_certificate()
 	{
-		boost::random::mt19937 gen(static_cast<boost::uint32_t>(std::time(0)));
+		boost::random::mt19937 gen(static_cast<std::uint32_t>(std::time(0)));
 		boost::random::uniform_int_distribution<> dist(0, 0xff);
 		std::memcpy(m_cert, m_c1, sizeof(m_c1));
 		for (unsigned int i = 0; i < eCertRandomLen; ++i)
@@ -78,7 +78,7 @@ namespace intertalk
 		{
 			m_buffer.update(bytes_received);
 			std::cout << std::dec << "from: " << m_sender_endpoint.address().to_string() << ":" << m_sender_endpoint.port() << std::endl;
-			boost::uint32_t sid = get_sid();
+			std::uint32_t sid = get_sid();
 			if (sid == 0) // startup session
 			{
 				handle_startup_session();
@@ -124,7 +124,7 @@ namespace intertalk
 		endpoint_chunk_pair_t p = m_queue.front();
 		m_queue.pop();
 
-		boost::uint16_t ts = get_timestamp();
+		std::uint16_t ts = get_timestamp();
 		std::cout << "ts: " << ts << std::endl;
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h);
@@ -140,20 +140,20 @@ namespace intertalk
 		read();
 	}
 
-	boost::uint32_t service::get_sid()
+	std::uint32_t service::get_sid()
 	{
-		boost::uint32_t sid;
+		std::uint32_t sid;
 		m_buffer >> sid;
 		m_buffer.mark();
-		boost::uint32_t x;
-		boost::uint32_t y;
+		std::uint32_t x;
+		std::uint32_t y;
 		m_buffer >> x >> y;
 		m_buffer.rewind();
 		sid = sid ^ x ^ y;
 		return sid;
 	}
 
-	boost::optional<session_ptr> service::get_session(boost::uint32_t sid)
+	boost::optional<session_ptr> service::get_session(std::uint32_t sid)
 	{
 		std::cout << "sid: " << sid << std::endl;
 		
@@ -175,7 +175,7 @@ namespace intertalk
 		return boost::optional<session_ptr>();
 	}
 
-	void service::remove_session(boost::uint32_t sid)
+	void service::remove_session(std::uint32_t sid)
 	{
 		// fixme: stalled initial sessions should be removed too
 		sid_to_session_map_t::iterator i = m_sessions.find(sid);
@@ -242,10 +242,10 @@ namespace intertalk
 
 	void service::handle_ihello(ihello_chunk *ic)
 	{
-		stream_array s(const_cast<boost::uint8_t *>(ic->epd()));
+		stream_array s(const_cast<std::uint8_t *>(ic->epd()));
 		s.update(static_cast<std::size_t>(ic->epd_len()));
 		s.read_vlu();
-		boost::uint8_t ihellotype;
+		std::uint8_t ihellotype;
 		s >> ihellotype;
 		if (ihellotype == ihello_chunk::eServerIHello)
 			std::cout << "Server ihello" << std::endl;
@@ -256,11 +256,11 @@ namespace intertalk
 				return redirect_ihello(ic, s.read_pos());
 		}
 
-		boost::uint8_t cookie[eCookieSize];
+		std::uint8_t cookie[eCookieSize];
 		create_cookie(cookie);
 
 		rhello_chunk rc(ic->tag_len(), ic->tag(), eCookieSize, cookie, eCertLen, m_cert);
-		boost::uint16_t ts = get_timestamp();
+		std::uint16_t ts = get_timestamp();
 		std::cout << "ts: " << ts << std::endl;
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h);
@@ -285,17 +285,17 @@ namespace intertalk
  		s->sid() = iikc->isid();
 
 		dh2 *d = new dh2;
-		d->generate_peer_id(iikc->initator_cert(), static_cast<boost::uint16_t>(iikc->cert_len()), s->peer_id_data());
+		d->generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data());
 		std::cout << "peer id (sid " << s->id() << ") is:" << std::endl;
 		hexdump(std::cout, s->peer_id_data(), 0x20);
 
-		d->generate_shared_secret(iikc->initator_cert() + 4, static_cast<boost::uint16_t>(iikc->cert_len() - 4));
+		d->generate_shared_secret(iikc->initator_cert() + 4, static_cast<std::uint16_t>(iikc->cert_len() - 4));
 
-		boost::uint16_t size;
-		const boost::uint8_t *rnonce = d->rnonce(size);
+		std::uint16_t size;
+		const std::uint8_t *rnonce = d->rnonce(size);
 		rikeying_chunk ric(boost::asio::detail::socket_ops::host_to_network_long(s->outgoing_sid()), size, rnonce);
 
-		boost::uint16_t ts = get_timestamp();
+		std::uint16_t ts = get_timestamp();
 		std::cout << "ts: " << ts << std::endl;
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h);
@@ -303,7 +303,7 @@ namespace intertalk
 		ric.serialize(m_serializer->raw_packet());
 		m_serializer->finish_raw_packet(s->sid(), m_parser->get_aes());
 
-		d->generate_symetric_keys(iikc->skic(), static_cast<boost::uint16_t>(iikc->skic_len()), rnonce, size, s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data());
+		d->generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()), rnonce, size, s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data());
 
 		s->state() = session::eOpen;
 
@@ -313,17 +313,17 @@ namespace intertalk
 		delete d;
 	}
 
-	void service::redirect_ihello(ihello_chunk *ic, const boost::uint8_t *peer_id)
+	void service::redirect_ihello(ihello_chunk *ic, const std::uint8_t *peer_id)
 	{
 		std::cout << "redirect_ihello, peer id" << std::endl;
-		hexdump(std::cout, const_cast<boost::uint8_t *>(peer_id), 0x20);
+		hexdump(std::cout, const_cast<std::uint8_t *>(peer_id), 0x20);
 		std::cout << std::endl;
 		item tmp(peer_id, false);
 		session_map_t::iterator i = m_session_map.find(tmp);
 		if (i != m_session_map.end())
 		{
 			std::cout << "i have this client" << std::endl;
-			boost::uint16_t ts = get_timestamp();
+			std::uint16_t ts = get_timestamp();
 			i->second->calculate_echo_ts();
 
 			header h(false, true, ts, header::eResponder);
@@ -335,7 +335,7 @@ namespace intertalk
 			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(m_sender_endpoint.address().to_v4().to_ulong());
 			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(m_sender_endpoint.port());
 
-			fihello_chunk fi(static_cast<boost::uint16_t>(ic->epd_len()), ic->epd(), a, ic->tag_len(), ic->tag());
+			fihello_chunk fi(static_cast<std::uint16_t>(ic->epd_len()), ic->epd(), a, ic->tag_len(), ic->tag());
 			fi.serialize(m_serializer->raw_packet());
 			m_serializer->finish_raw_packet(i->second->sid(), i->second->get_aes());
 
@@ -353,64 +353,64 @@ namespace intertalk
 		}
 	}
 
-	bool service::echo_cookie_valid(const boost::uint8_t *cookie, const vlu_t &cookie_len)
+	bool service::echo_cookie_valid(const std::uint8_t *cookie, const vlu_t &cookie_len)
 	{
 		if (cookie_len != eCookieSize)
 			return false;
 
-		boost::uint32_t addr;
-		std::memcpy(static_cast<void *>(&addr), const_cast<boost::uint8_t *>(cookie), sizeof(addr));
+		std::uint32_t addr;
+		std::memcpy(static_cast<void *>(&addr), const_cast<std::uint8_t *>(cookie), sizeof(addr));
 		if (addr != m_sender_endpoint.address().to_v4().to_ulong())
 			return false;
 
-		boost::uint16_t port;
-		boost::uint32_t off = sizeof(addr);
-		std::memcpy(static_cast<void *>(&port), const_cast<boost::uint8_t *>(cookie + off), sizeof(port));
+		std::uint16_t port;
+		std::uint32_t off = sizeof(addr);
+		std::memcpy(static_cast<void *>(&port), const_cast<std::uint8_t *>(cookie + off), sizeof(port));
 		if (port != m_sender_endpoint.port())
 			return false;
 		off += sizeof(port);
 
-		boost::uint32_t ts;
-		std::memcpy(static_cast<void *>(&ts), const_cast<boost::uint8_t *>(cookie + off), sizeof(ts));
+		std::uint32_t ts;
+		std::memcpy(static_cast<void *>(&ts), const_cast<std::uint8_t *>(cookie + off), sizeof(ts));
 		if ((get_timestamp_ms() - ts) > 95000)
 			return false;
 
 		return true;
 	}
 
-	void service::create_cookie(boost::uint8_t *cookie)
+	void service::create_cookie(std::uint8_t *cookie)
 	{
 		// address part
-		boost::uint32_t addr = m_sender_endpoint.address().to_v4().to_ulong();
+		std::uint32_t addr = m_sender_endpoint.address().to_v4().to_ulong();
 		std::memcpy(cookie, static_cast<void *>(&addr), sizeof(addr));
 
 		// port part
-		boost::uint16_t port = m_sender_endpoint.port();
-		boost::uint32_t off = sizeof(addr);
+		std::uint16_t port = m_sender_endpoint.port();
+		std::uint32_t off = sizeof(addr);
 		std::memcpy(cookie + off, static_cast<void *>(&port), sizeof(port));
 		off += sizeof(port);
 
 		// ts part
-		boost::uint32_t ts = get_timestamp_ms();
+		std::uint32_t ts = get_timestamp_ms();
 		std::memcpy(cookie + off, static_cast<void *>(&ts), sizeof(ts));
 		off += sizeof(ts);
 
-		boost::random::mt19937 gen(static_cast<boost::uint32_t>(std::time(0)));
+		boost::random::mt19937 gen(static_cast<std::uint32_t>(std::time(0)));
 		boost::random::uniform_int_distribution<> dist(0, 0xff);
 		for (unsigned int i = 0; i < eCookieSize - off; ++i)
 			cookie[i + off] = dist(gen);
 	}
 
-	boost::uint32_t service::get_timestamp_ms()
+	std::uint32_t service::get_timestamp_ms()
 	{
 		boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
 		boost::posix_time::time_duration delta = now - m_start;
-		return static_cast<boost::uint32_t>(delta.total_milliseconds());
+		return static_cast<std::uint32_t>(delta.total_milliseconds());
 	}
 
-	boost::uint16_t service::get_timestamp()
+	std::uint16_t service::get_timestamp()
 	{
-		boost::uint32_t ts = get_timestamp_ms() / 4; // 4ms clock resolution
+		std::uint32_t ts = get_timestamp_ms() / 4; // 4ms clock resolution
 		return ts & 0xffff;
 	}
 

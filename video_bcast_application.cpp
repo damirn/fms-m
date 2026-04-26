@@ -29,7 +29,7 @@ namespace intertalk
 		start_timer();
 	}
 
-	void video_bcast_application::delete_connection(boost::uint32_t connection_id, const std::string &app_instance)
+	void video_bcast_application::delete_connection(std::uint32_t connection_id, const std::string &app_instance)
 	{
 		rtmp_application::delete_connection(connection_id, app_instance);
 		remove_client(connection_id);
@@ -58,7 +58,7 @@ namespace intertalk
 					boost::posix_time::time_duration td = now - (*stats)->m_start_streaming_time;
 					if (td.total_seconds() == 0)
 						continue;
-					boost::uint32_t kbps = (*stats)->m_bytes / td.total_seconds();
+					std::uint32_t kbps = (*stats)->m_bytes / td.total_seconds();
 					amf0_number_ptr bw = boost::make_shared<amf0_number>(kbps);
 					amf0_number_ptr d = boost::make_shared<amf0_number>((*stats)->m_delay);
 					rtmp_message_notify_ptr msg = boost::make_shared<rtmp_message_notify>(notify_functions::onQOS);
@@ -73,7 +73,7 @@ namespace intertalk
 		}
 	}
 
-	boost::tribool video_bcast_application::handle_invoke(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
+	boost::tribool video_bcast_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
 
@@ -122,7 +122,7 @@ namespace intertalk
 		return rtmp_application::handle_invoke(msg, connection_id, header, result);
 	}
 
-	void video_bcast_application::handle_notify(rtmp_message_ptr msg, boost::uint32_t connection_id)
+	void video_bcast_application::handle_notify(rtmp_message_ptr msg, std::uint32_t connection_id)
 	{
 		rtmp_message_notify_ptr notify = boost::dynamic_pointer_cast<rtmp_message_notify, rtmp_message>(msg);
 		if (notify->function()->value().compare(notify_functions::set_data_frame) == 0)
@@ -131,7 +131,7 @@ namespace intertalk
 			handle_notify_clear_data_frame(notify, connection_id);
 	}
 
-	void video_bcast_application::handle_audio_data(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &)
+	void video_bcast_application::handle_audio_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
 	{
 		rtmp_message_audio_data_ptr audio = boost::dynamic_pointer_cast<rtmp_message_audio_data, rtmp_message>(msg);
 
@@ -172,7 +172,7 @@ namespace intertalk
 			i->second->write_audio(reinterpret_cast<char *>(audio->data()), audio->size(), audio->timestamp());
 	}
 
-	void video_bcast_application::handle_video_data(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &)
+	void video_bcast_application::handle_video_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
 	{
 //		std::cout << "video timestamp: " << msg->timestamp() << " cid: " << connection_id << std::endl;
 
@@ -216,14 +216,14 @@ namespace intertalk
 			i->second->write_video(reinterpret_cast<char *>(video->data()), video->size(), video->timestamp());
 	}
 
-	void video_bcast_application::handle_ping(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &h)
+	void video_bcast_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &h)
 	{
 		rtmp_application::handle_ping(msg, connection_id, h);
 
 		return;
 	}
 
-	boost::tribool video_bcast_application::handle_client_login(boost::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &)
+	boost::tribool video_bcast_application::handle_client_login(std::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &)
 	{
 		create_connect_messages(connection_id);
 		notify(connection_id);
@@ -231,10 +231,10 @@ namespace intertalk
 		return false;
 	}
 
-	void video_bcast_application::handle_invoke_create_stream(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id, rtmp_message_ptr &res)
+	void video_bcast_application::handle_invoke_create_stream(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
 		client_session_ptr conn = get_connection(connection_id);
-		boost::uint32_t stream_id = conn->reserve_stream_id();
+		std::uint32_t stream_id = conn->reserve_stream_id();
 
 		res = create_stream(invoke, connection_id, stream_id);
 
@@ -242,14 +242,14 @@ namespace intertalk
 		m_clients[connection_id].insert(stream_id);
 	}
 
-	void video_bcast_application::handle_invoke_close_stream(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id, rtmp_message_ptr &res)
+	void video_bcast_application::handle_invoke_close_stream(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
 		rtmp_application::close_stream(invoke, connection_id);
 		boost::mutex::scoped_lock lock(m_mutex);
 		res = close_stream(connection_id, invoke->stream_id());
 	}
 
-	void video_bcast_application::handle_invoke_publish(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id, rtmp_message_ptr &res)
+	void video_bcast_application::handle_invoke_publish(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
 		try
 		{
@@ -321,7 +321,7 @@ namespace intertalk
 		}
 	}
 
-	void video_bcast_application::handle_publish_record(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id, const std::string &stream)
+	void video_bcast_application::handle_publish_record(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, const std::string &stream)
 	{
 		rtmp_message_invoke_ptr rec_result(new rtmp_message_invoke("onStatus", 0.0f));
 		rec_result->channel_id() = invoke->channel_id();
@@ -406,7 +406,7 @@ namespace intertalk
 		}
 	}
 
-	void video_bcast_application::handle_invoke_play(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id)
+	void video_bcast_application::handle_invoke_play(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
 	{
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		try
@@ -452,7 +452,7 @@ namespace intertalk
 		}
 	}
 
-	void video_bcast_application::handle_invoke_receive_audio(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id)
+	void video_bcast_application::handle_invoke_receive_audio(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
 	{
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		try
@@ -471,7 +471,7 @@ namespace intertalk
 		}
 	}
 
-	void video_bcast_application::handle_invoke_receive_video(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id)
+	void video_bcast_application::handle_invoke_receive_video(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
 	{
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		try
@@ -512,7 +512,7 @@ namespace intertalk
 		}
 	}
 
-	void video_bcast_application::handle_notify_set_data_frame(rtmp_message_notify_ptr msg, boost::uint32_t connection_id)
+	void video_bcast_application::handle_notify_set_data_frame(rtmp_message_notify_ptr msg, std::uint32_t connection_id)
 	{
 		rtmp_message_notify::parameters_list_t params = msg->parameters();
 		rtmp_message_notify::parameters_list_t::iterator i = params.begin();
@@ -558,11 +558,11 @@ namespace intertalk
 		}
 	}
 
-	void video_bcast_application::handle_notify_clear_data_frame(rtmp_message_notify_ptr, boost::uint32_t)
+	void video_bcast_application::handle_notify_clear_data_frame(rtmp_message_notify_ptr, std::uint32_t)
 	{
 	}
 
-	rtmp_message_ptr video_bcast_application::send_stream_notify(boost::uint32_t connection_id, boost::uint32_t stream_id, const std::string &code, const std::string &description, bool enqueue)
+	rtmp_message_ptr video_bcast_application::send_stream_notify(std::uint32_t connection_id, std::uint32_t stream_id, const std::string &code, const std::string &description, bool enqueue)
 	{
 		rtmp_message_invoke_ptr result(new rtmp_message_invoke("onStatus", 0.0f));
 		result->stream_id() = stream_id;
@@ -586,14 +586,14 @@ namespace intertalk
 		return result;
 	}
 
-	void video_bcast_application::send_publish_notify(boost::uint32_t connection_id, boost::uint32_t stream_id, const std::string &stream_name)
+	void video_bcast_application::send_publish_notify(std::uint32_t connection_id, std::uint32_t stream_id, const std::string &stream_name)
 	{
 		static const std::string code("NetStream.Play.PublishNotify");
 		const std::string desc(stream_name + " is now published.");
 		send_stream_notify(connection_id, stream_id, code, desc, true);
 	}
 
-	void video_bcast_application::send_metadata(boost::uint32_t connection_id, boost::uint32_t stream_id, const stream_client_id_t &cid)
+	void video_bcast_application::send_metadata(std::uint32_t connection_id, std::uint32_t stream_id, const stream_client_id_t &cid)
 	{
 		metadata_map_t::iterator i = m_metadata.find(cid);
 		if (i != m_metadata.end())
@@ -616,7 +616,7 @@ namespace intertalk
 			m_metadata[cid]->merge(*obj);
 	}
 
-	void video_bcast_application::check_waiting_clients(boost::uint32_t bcaster_id, const std::string &stream_name)
+	void video_bcast_application::check_waiting_clients(std::uint32_t bcaster_id, const std::string &stream_name)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		waiting_client_map_t::iterator i = m_waiting_clients.find(stream_name);
@@ -639,7 +639,7 @@ namespace intertalk
 		});
 	}
 
-	bool video_bcast_application::add_stream(const std::string &stream, boost::uint32_t connection_id, boost::uint32_t stream_id, streams_map_t &streams)
+	bool video_bcast_application::add_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id, streams_map_t &streams)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		stream_client_id_t id = std::make_pair(connection_id, stream_id);
@@ -651,7 +651,7 @@ namespace intertalk
 		return true;
 	}
 
-	bool video_bcast_application::add_recording_stream(const std::string &stream, boost::uint32_t connection_id, boost::uint32_t stream_id)
+	bool video_bcast_application::add_recording_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		stream_client_id_t id = std::make_pair(connection_id, stream_id);
@@ -669,10 +669,10 @@ namespace intertalk
 		return true;
 	}
 
-	bool video_bcast_application::add_qos_stream(const std::string &stream, boost::uint32_t connection_id, boost::uint32_t stream_id)
+	bool video_bcast_application::add_qos_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id)
 	{
 		client_session_ptr conn = get_connection(connection_id);
-		boost::uint32_t new_stream_id = conn->reserve_stream_id();
+		std::uint32_t new_stream_id = conn->reserve_stream_id();
 		if (!add_stream(std::string("QOS!" + stream), connection_id, new_stream_id, m_streams))
 			return false;
 		boost::mutex::scoped_lock lock(m_mutex);
@@ -706,7 +706,7 @@ namespace intertalk
 		return val->value();
 	}
 
-	rtmp_message_ptr video_bcast_application::close_stream(boost::uint32_t connection_id, boost::uint32_t stream_id /* = 0 */)
+	rtmp_message_ptr video_bcast_application::close_stream(std::uint32_t connection_id, std::uint32_t stream_id /* = 0 */)
 	{
 		bool is_broadcaster = false;
 		rtmp_message_ptr ret;
@@ -779,15 +779,15 @@ namespace intertalk
 		return ret;
 	}
 
-	void video_bcast_application::remove_client(boost::uint32_t connection_id)
+	void video_bcast_application::remove_client(std::uint32_t connection_id)
 	{
 		m_app_manager->delete_netstreams(connection_id);
 		boost::mutex::scoped_lock lock(m_mutex);
 		client_stream_map_t::iterator i = m_clients.find(connection_id);
 		if (i != m_clients.end())
 		{
-			std::set<boost::uint32_t> &streams = i->second;
-			for (std::set<boost::uint32_t>::iterator j = streams.begin(); j != streams.end(); ++j)
+			std::set<std::uint32_t> &streams = i->second;
+			for (std::set<std::uint32_t>::iterator j = streams.begin(); j != streams.end(); ++j)
 			{
 				close_stream(connection_id, *j);
 				// remove client from subscriber list
@@ -805,14 +805,14 @@ namespace intertalk
 		}
 	}
 
-	void video_bcast_application::notify_client(boost::uint32_t connection_id, boost::uint32_t stream_id, const std::string &stream)
+	void video_bcast_application::notify_client(std::uint32_t connection_id, std::uint32_t stream_id, const std::string &stream)
 	{
 		static const std::string code("NetStream.Play.UnpublishNotify");
 		const std::string desc(stream + " is now unpublished.");
 		send_stream_notify(connection_id, stream_id, code, desc, true);
 	}
 
-	void video_bcast_application::add_waiting_client(boost::uint32_t connection_id, rtmp_message_invoke_ptr invoke, const std::string &str)
+	void video_bcast_application::add_waiting_client(std::uint32_t connection_id, rtmp_message_invoke_ptr invoke, const std::string &str)
 	{
 		subscriber wc(connection_id, invoke->stream_id(), invoke->channel_id());
 		m_waiting_clients[str].insert(wc);
@@ -860,7 +860,7 @@ namespace intertalk
 				client->m_start_epoch = video->timestamp();
 
 			std::list<rtmp_message_video_data_ptr> &list = m_video_queue_map[bcid];
-			boost::uint32_t size = list.size();
+			std::uint32_t size = list.size();
 
 			if (client->m_stream_was_playing && size > 1) // if stream was playing when this client connected, send video frames from the queue
 			{
@@ -880,7 +880,7 @@ namespace intertalk
 		}
 		else
 		{
-			boost::int32_t t = video->timestamp() - client->m_video_epoch;
+			std::int32_t t = video->timestamp() - client->m_video_epoch;
 			if (t >= 0)
 				client->m_video_time += t;
 			else
@@ -903,7 +903,7 @@ namespace intertalk
 	void video_bcast_application::send_enqueued_video_frames(const stream_client_id_t &bcid, rtmp_message_video_data_ptr video, stream_client_ptr client)
 	{
 		std::list<rtmp_message_video_data_ptr> &list = m_video_queue_map[bcid];
-		boost::uint32_t size = list.size();
+		std::uint32_t size = list.size();
 
 		avc_decoder_config_map_t::iterator i = m_avc_config.find(bcid);
 		if (i != m_avc_config.end())
@@ -915,7 +915,7 @@ namespace intertalk
 			enqueue_async_message(client->m_connection_id, conf);
 		}
 		rtmp_message_video_data_ptr info_msg(new rtmp_message_video_data(2));
-		boost::uint8_t tag = (static_cast<boost::uint8_t>(rtmp_message_video_data::eVideoInfo) << 4) | video->get_codec();
+		std::uint8_t tag = (static_cast<std::uint8_t>(rtmp_message_video_data::eVideoInfo) << 4) | video->get_codec();
 		info_msg->data()[0] = tag;
 		info_msg->data()[1] = 0x00;
 		info_msg->timestamp() = 0;
@@ -931,7 +931,7 @@ namespace intertalk
 		info_msg2->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 
 		std::list<rtmp_message_video_data_ptr>::iterator it = list.begin();
-		for (boost::uint32_t cnt = 0; cnt < size; ++cnt)
+		for (std::uint32_t cnt = 0; cnt < size; ++cnt)
 		{
 			rtmp_message_video_data_ptr tmp2(new rtmp_message_video_data(**it));
 			tmp2->stream_id() = client->m_stream_id;
@@ -965,7 +965,7 @@ namespace intertalk
 			client->m_audio_epoch = audio->timestamp();
 			std::cout << "audio epoch: " << client->m_audio_epoch << std::endl;
 
-			boost::uint32_t start_time = 0;
+			std::uint32_t start_time = 0;
 			std::cout << "start epoch: " << client->m_start_epoch << std::endl;
 			if (audio->timestamp() > client->m_start_epoch)
 				start_time = client->m_audio_time = audio->timestamp() - client->m_start_epoch;

@@ -21,8 +21,8 @@ namespace intertalk
 		void send_dev_presence_info(const std::string &, bool);
 
 	protected:
-		virtual void delete_connection(boost::uint32_t, const std::string & = "");
-		virtual boost::tribool handle_invoke(rtmp_message_ptr, boost::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		virtual void delete_connection(std::uint32_t, const std::string & = "");
+		virtual boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
 
 		// server connection stuff
 		void connect();
@@ -39,7 +39,7 @@ namespace intertalk
 
 		void read_data();
 		void read_complete(const boost::system::error_code &, std::size_t);
-		bool parse(const boost::uint8_t *);
+		bool parse(const std::uint8_t *);
 		void send_json(const json &);
 		void send_json_impl(const json &);
 		void write_data();
@@ -52,14 +52,14 @@ namespace intertalk
 		void reconnect();
 		void disconnect_all_clients();
 
-		bool handle_passthrough_invoke(rtmp_message_invoke_ptr, boost::uint32_t);
+		bool handle_passthrough_invoke(rtmp_message_invoke_ptr, std::uint32_t);
 		void handle_json_result(const json &);
 		void handle_json_notify(const json &);
-		void add_params_to_invoke(rtmp_message_invoke_ptr, boost::uint32_t, const json &);
+		void add_params_to_invoke(rtmp_message_invoke_ptr, std::uint32_t, const json &);
 
 		enum { _eReconnectInterval = 5, _ePingInterval = 30 };
 
-		boost::uint32_t m_seq_number;
+		std::uint32_t m_seq_number;
 		boost::mutex m_mutex;
 
 		struct request_data
@@ -69,21 +69,21 @@ namespace intertalk
 				, m_invoke_id(0)
 				, m_is_connect_method(false)
 			{}
-			request_data(boost::uint32_t connection_id, boost::uint32_t invoke_id, bool is_connect)
+			request_data(std::uint32_t connection_id, std::uint32_t invoke_id, bool is_connect)
 				: m_connection_id(connection_id)
 				, m_invoke_id(invoke_id)
 				, m_is_connect_method(is_connect)
 			{}
-			boost::uint32_t m_connection_id;
-			boost::uint32_t m_invoke_id;
+			std::uint32_t m_connection_id;
+			std::uint32_t m_invoke_id;
 			bool m_is_connect_method;
 		};
 
 		// sequence to connection_id
-		typedef boost::unordered_map<boost::uint32_t, request_data> seq_to_cid_map_t;
+		typedef boost::unordered_map<std::uint32_t, request_data> seq_to_cid_map_t;
 		seq_to_cid_map_t m_seq_to_cid;
 
-		std::set<boost::uint32_t> m_clients;
+		std::set<std::uint32_t> m_clients;
 
 		boost::asio::io_service &m_io_service;
 		boost::asio::ip::tcp::socket m_socket;

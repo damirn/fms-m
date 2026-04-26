@@ -164,12 +164,12 @@ namespace intertalk
 			std::cout << "read " << bytes_transferred << " bytes" << std::endl;
 			m_input_buffer.update(bytes_transferred);
 			// preliminary parse in order to determine json object boundaries
-			boost::uint8_t *c = m_input_buffer.read_pos();
+			std::uint8_t *c = m_input_buffer.read_pos();
 			if (*c == '{')
 			{
-				boost::uint8_t prev = *c;
+				std::uint8_t prev = *c;
 				++c;
-				boost::uint32_t level = 1;
+				std::uint32_t level = 1;
 				bool in_string = false;
 				bool is_esc = false;
 				while (c != m_input_buffer.read_pos() + m_input_buffer.available())
@@ -203,7 +203,7 @@ namespace intertalk
 					if (level == 0)
 					{
 						std::cout << "have whole json object" << std::endl;
-						boost::uint8_t t = *c;
+						std::uint8_t t = *c;
 						*c = '\0'; // terminate json, because parser needs it
 						if (parse(c))
 							m_input_buffer.skip(c - m_input_buffer.read_pos());
@@ -225,9 +225,9 @@ namespace intertalk
 		}
 	}
 
-	bool node_js_proxy_application::parse(const boost::uint8_t *end)
+	bool node_js_proxy_application::parse(const std::uint8_t *end)
 	{
-		const boost::uint8_t *begin = m_input_buffer.read_pos();
+		const std::uint8_t *begin = m_input_buffer.read_pos();
 		try
 		{
 			json val = json::parse(begin, end);
@@ -342,7 +342,7 @@ namespace intertalk
 	void node_js_proxy_application::disconnect_all_clients()
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
-		for (std::set<boost::uint32_t>::const_iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+		for (std::set<std::uint32_t>::const_iterator i = m_clients.begin(); i != m_clients.end(); ++i)
 			gracefully_close_connection(*i, false);
 	}
 
@@ -357,7 +357,7 @@ namespace intertalk
 		send_json(obj);
 	}
 
-	void node_js_proxy_application::delete_connection(boost::uint32_t connection_id, const std::string & /* = "" */)
+	void node_js_proxy_application::delete_connection(std::uint32_t connection_id, const std::string & /* = "" */)
 	{
 		video_bcast_application::delete_connection(connection_id);
 		boost::mutex::scoped_lock lock(m_mutex);
@@ -374,7 +374,7 @@ namespace intertalk
 		}
 	}
 
-	boost::tribool node_js_proxy_application::handle_invoke(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
+	boost::tribool node_js_proxy_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
 
@@ -397,7 +397,7 @@ namespace intertalk
 		return boost::indeterminate;
 	}
 
-	bool node_js_proxy_application::handle_passthrough_invoke(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id)
+	bool node_js_proxy_application::handle_passthrough_invoke(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		bool is_connect = false;
@@ -436,7 +436,7 @@ namespace intertalk
 		if (invoke->invoke_id()->value() != 0.0f)
 		{
 			obj["seq"] = m_seq_number;
-			request_data rd(connection_id, static_cast<boost::uint32_t>(invoke->invoke_id()->value()), is_connect);
+			request_data rd(connection_id, static_cast<std::uint32_t>(invoke->invoke_id()->value()), is_connect);
 			m_seq_to_cid[m_seq_number++] = rd;
 		}
 		lock.unlock();
@@ -460,7 +460,7 @@ namespace intertalk
 	void node_js_proxy_application::handle_json_result(const json &o)
 	{
 		std::cout << "got json: " << o.dump() << std::endl;
-		boost::uint32_t seq = o["seq"].get<boost::uint32_t>();
+		std::uint32_t seq = o["seq"].get<std::uint32_t>();
 		boost::mutex::scoped_lock lock(m_mutex);
 		seq_to_cid_map_t::iterator i = m_seq_to_cid.find(seq);
 		if (i != m_seq_to_cid.end() && o.find("params") != o.end() && o["params"].is_array())
@@ -473,7 +473,7 @@ namespace intertalk
 					if (params.size() > 1 && params[1].is_number())
 					{
 						rtmp_application::amf0_parameter_list_t list;
-						list.push_back(std::make_pair("uid", boost::make_shared<amf0_number>(params[1].get<boost::uint32_t>())));
+						list.push_back(std::make_pair("uid", boost::make_shared<amf0_number>(params[1].get<std::uint32_t>())));
 						if (params.size() > 2 && params[2].is_string())
 							list.push_back(std::make_pair("sepa", boost::make_shared<amf0_string>(params[2].get<std::string>())));
 						rtmp_application::optional_param_list_t opt_params(list);
@@ -507,7 +507,7 @@ namespace intertalk
 
 		if (o.find("cid") != o.end() && o.find("method") != o.end() && o.find("params") != o.end() && o["params"].is_array())
 		{
-			boost::uint32_t cid = o["cid"].get<boost::uint32_t>();
+			std::uint32_t cid = o["cid"].get<std::uint32_t>();
 			std::string method = o["method"].get<std::string>();
 			if (method != dc)
 			{
@@ -520,14 +520,14 @@ namespace intertalk
 				if (err.size() == 1)
 					gracefully_close_connection(cid, false);
 				else if (err.size() == 2)
-					gracefully_close_connection_with_reason(cid, err[1].get<boost::uint32_t>());
+					gracefully_close_connection_with_reason(cid, err[1].get<std::uint32_t>());
 				else
 					gracefully_close_connection(cid, true);
 			}
 		}
 	}
 
-	void node_js_proxy_application::add_params_to_invoke(rtmp_message_invoke_ptr result, boost::uint32_t connection_id, const json &params)
+	void node_js_proxy_application::add_params_to_invoke(rtmp_message_invoke_ptr result, std::uint32_t connection_id, const json &params)
 	{
 		result->parameters().push_back(boost::make_shared<amf0_null>());
 		if (result->function()->value() != invoke_functions::error)

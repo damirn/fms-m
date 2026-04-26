@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/shared_ptr.hpp>
 #include <boost/logic/tribool.hpp>
 
@@ -9,8 +9,8 @@ namespace intertalk
 {
 	struct auth_data
 	{
-		boost::uint32_t m_id;
-		boost::uint32_t m_id_provider;
+		std::uint32_t m_id;
+		std::uint32_t m_id_provider;
 		std::string m_user;
 		std::string m_pass;
 		std::string m_display_name;

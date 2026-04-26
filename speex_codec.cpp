@@ -8,7 +8,7 @@ namespace intertalk
 	// reserved_for_header - size in bytes reserved for header
 	//
 
-	speex_codec::speex_codec(boost::uint16_t reserved_for_header /* = 1 */)
+	speex_codec::speex_codec(std::uint16_t reserved_for_header /* = 1 */)
 		: audio_codec(reserved_for_header)
 		, m_frame_size(0)
 	{
@@ -25,17 +25,17 @@ namespace intertalk
 		speex_bits_destroy(&m_enc_bits);
 	}
 
-	boost::uint8_t *speex_codec::encode(boost::uint8_t *data, boost::uint32_t size, boost::uint32_t &enc_size)
+	std::uint8_t *speex_codec::encode(std::uint8_t *data, std::uint32_t size, std::uint32_t &enc_size)
 	{
 		if (size == 0 || size != 640)
 			return 0;
 
-		boost::uint8_t *enc_buff = new boost::uint8_t[m_frame_size * sizeof(spx_int16_t) * 2 + m_reserved_for_header];
+		std::uint8_t *enc_buff = new std::uint8_t[m_frame_size * sizeof(spx_int16_t) * 2 + m_reserved_for_header];
 
 		speex_bits_reset(&m_enc_bits);
 
-		speex_encode_int(m_enc_state, reinterpret_cast<boost::int16_t *>(data), &m_enc_bits);
-		speex_encode_int(m_enc_state, reinterpret_cast<boost::int16_t *>(data + m_frame_size * sizeof(spx_int16_t)), &m_enc_bits);
+		speex_encode_int(m_enc_state, reinterpret_cast<std::int16_t *>(data), &m_enc_bits);
+		speex_encode_int(m_enc_state, reinterpret_cast<std::int16_t *>(data + m_frame_size * sizeof(spx_int16_t)), &m_enc_bits);
 
 		enc_size = speex_bits_write(&m_enc_bits, reinterpret_cast<char *>(enc_buff + m_reserved_for_header), m_frame_size);
 		enc_size += m_reserved_for_header;
@@ -44,7 +44,7 @@ namespace intertalk
 		return enc_buff;
 	}
 
-	boost::uint8_t *speex_codec::decode(char *to, boost::uint8_t *data, boost::uint8_t size, boost::uint32_t &dec_size)
+	std::uint8_t *speex_codec::decode(char *to, std::uint8_t *data, std::uint8_t size, std::uint32_t &dec_size)
 	{
 		if (size == 0)
 			return 0;
@@ -55,7 +55,7 @@ namespace intertalk
 		int i = 0;
 		while(speex_bits_remaining(&m_dec_bits) && i < 2)
 		{
-			ret = speex_decode_int(m_dec_state, &m_dec_bits, reinterpret_cast<boost::int16_t *>(to + i * m_frame_size * sizeof(boost::int16_t)));
+			ret = speex_decode_int(m_dec_state, &m_dec_bits, reinterpret_cast<std::int16_t *>(to + i * m_frame_size * sizeof(std::int16_t)));
 			if (ret <= -2)
 			{
 				std::cout << "error decoding speex stream" << std::endl;
@@ -66,8 +66,8 @@ namespace intertalk
 			++i;
 		}
 
-		dec_size = i * m_frame_size * sizeof(boost::uint16_t);
-		return reinterpret_cast<boost::uint8_t *>(to);
+		dec_size = i * m_frame_size * sizeof(std::uint16_t);
+		return reinterpret_cast<std::uint8_t *>(to);
 	}
 
 	void speex_codec::init_decoder()

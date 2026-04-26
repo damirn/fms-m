@@ -4,7 +4,7 @@
 #include <list>
 #include <string>
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/shared_ptr.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 
@@ -14,8 +14,8 @@ namespace intertalk
 
 	struct client_data
 	{
-		boost::uint32_t m_id;
-		boost::uint16_t m_port;
+		std::uint32_t m_id;
+		std::uint16_t m_port;
 		std::string m_sid;
 		std::string m_username;
 		std::string m_ip;
@@ -37,11 +37,11 @@ namespace intertalk
 			, m_messages_read(0)
 			, m_messages_written(0)
 		{}
-		boost::uint32_t m_online_time;
-		boost::uint32_t m_bytes_read;
-		boost::uint32_t m_bytes_written;
-		boost::uint32_t m_messages_read;
-		boost::uint32_t m_messages_written;
+		std::uint32_t m_online_time;
+		std::uint32_t m_bytes_read;
+		std::uint32_t m_bytes_written;
+		std::uint32_t m_messages_read;
+		std::uint32_t m_messages_written;
 	};
 
 	struct app_stats
@@ -52,15 +52,15 @@ namespace intertalk
 			, m_messages_read(0)
 			, m_messages_written(0)
 		{}
-		boost::uint32_t m_bytes_read;
-		boost::uint32_t m_bytes_written;
-		boost::uint32_t m_messages_read;
-		boost::uint32_t m_messages_written;
+		std::uint32_t m_bytes_read;
+		std::uint32_t m_bytes_written;
+		std::uint32_t m_messages_read;
+		std::uint32_t m_messages_written;
 	};
 
 	struct netstream_stats
 	{
-		netstream_stats(boost::uint32_t client)
+		netstream_stats(std::uint32_t client)
 			: m_client(client)
 			, m_bytes(0)
 			, m_messages(0)
@@ -71,16 +71,16 @@ namespace intertalk
 			, m_kbps(0)
 			, m_time(boost::posix_time::microsec_clock::local_time())
 		{}
-		boost::uint32_t m_client;
+		std::uint32_t m_client;
 		std::string m_name;
 		bool m_is_published;
-		boost::uint32_t m_bytes;
-		boost::uint32_t m_messages;
-		boost::uint32_t m_messages_dropped;
-		boost::uint32_t m_ts;
-		boost::uint32_t m_delay;
-		boost::uint32_t m_drift;
-		boost::uint32_t m_kbps;
+		std::uint32_t m_bytes;
+		std::uint32_t m_messages;
+		std::uint32_t m_messages_dropped;
+		std::uint32_t m_ts;
+		std::uint32_t m_delay;
+		std::uint32_t m_drift;
+		std::uint32_t m_kbps;
 		boost::posix_time::ptime m_time;
 		boost::posix_time::ptime m_start_streaming_time;
 	};
@@ -89,26 +89,26 @@ namespace intertalk
 
 	typedef std::list<netstream_stats_ptr> netstream_list_t;
 	// connection_id + stream_id
-	typedef std::pair<boost::uint32_t, boost::uint32_t> stream_client_id_t;
+	typedef std::pair<std::uint32_t, std::uint32_t> stream_client_id_t;
 	typedef boost::unordered_map<stream_client_id_t, netstream_stats_ptr> netstream_stats_map_t;
 
 	struct livestream_stats
 	{
-		boost::uint32_t m_publisher;
-		boost::uint32_t m_publish_time;
-		std::map<boost::uint32_t, boost::uint32_t> m_clients;
+		std::uint32_t m_publisher;
+		std::uint32_t m_publish_time;
+		std::map<std::uint32_t, std::uint32_t> m_clients;
 	};
 
 	typedef std::map<std::string, livestream_stats> livestream_stats_map_t;
 
 	struct queue_stats
 	{
-		queue_stats(boost::uint32_t cid, boost::uint32_t messages)
+		queue_stats(std::uint32_t cid, std::uint32_t messages)
 			: m_client(cid)
 			, m_messages(messages)
 		{}
-		boost::uint32_t m_client;
-		boost::uint32_t m_messages;
+		std::uint32_t m_client;
+		std::uint32_t m_messages;
 	};
 
 	typedef std::list<queue_stats> queue_stats_list_t;

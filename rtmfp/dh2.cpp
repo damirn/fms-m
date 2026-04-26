@@ -6,7 +6,7 @@
 
 namespace intertalk
 {
-	const boost::uint8_t dh2::m_dh_key[eKeySize] = {
+	const std::uint8_t dh2::m_dh_key[eKeySize] = {
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 		0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34,
 		0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1,
@@ -56,29 +56,29 @@ namespace intertalk
 		const BIGNUM *pub_key = NULL;
 		DH_get0_key(m_dh, &pub_key, NULL);
 		m_pub_key_size = BN_num_bytes(pub_key);
-		m_pub_key = new boost::uint8_t[m_pub_key_size];
+		m_pub_key = new std::uint8_t[m_pub_key_size];
 		BN_bn2bin(pub_key, m_pub_key);
 	}
 
-	void dh2::generate_shared_secret(const boost::uint8_t *remote_pub_key, boost::uint16_t key_size)
+	void dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size)
 	{
 		BIGNUM *bnFarPubKey = BN_bin2bn(remote_pub_key, key_size, NULL);
 		m_shared_secret_size = DH_size(m_dh);
-		m_shared_secret = new boost::uint8_t[m_shared_secret_size];
+		m_shared_secret = new std::uint8_t[m_shared_secret_size];
 		DH_compute_key(m_shared_secret, bnFarPubKey, m_dh);
 		BN_free(bnFarPubKey);
 		generate_rnonce();
 	}
 
-	void dh2::generate_symetric_keys(const boost::uint8_t *inonce,
-		boost::uint16_t inonce_size,
-		const boost::uint8_t *rnonce,
-		boost::uint16_t rnonce_size,
-		boost::uint8_t *dec_key,
-		boost::uint8_t *enc_key)
+	void dh2::generate_symetric_keys(const std::uint8_t *inonce,
+		std::uint16_t inonce_size,
+		const std::uint8_t *rnonce,
+		std::uint16_t rnonce_size,
+		std::uint8_t *dec_key,
+		std::uint8_t *enc_key)
 	{
-		boost::uint8_t mdp1[eAESKeySize];
-		boost::uint8_t mdp2[eAESKeySize];
+		std::uint8_t mdp1[eAESKeySize];
+		std::uint8_t mdp2[eAESKeySize];
 
 		HMAC(EVP_sha256(), rnonce, rnonce_size, inonce, inonce_size, mdp1, NULL);
 		HMAC(EVP_sha256(), inonce, inonce_size, rnonce, rnonce_size, mdp2, NULL);
@@ -87,17 +87,17 @@ namespace intertalk
 		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp2, eAESKeySize, enc_key, NULL);
 	}
 
-	void dh2::generate_peer_id(const boost::uint8_t *data, boost::uint16_t data_size, boost::uint8_t *target)
+	void dh2::generate_peer_id(const std::uint8_t *data, std::uint16_t data_size, std::uint8_t *target)
 	{
 		EVP_Digest(data, data_size, target, NULL, EVP_sha256(), NULL);
 	}
 
 	void dh2::generate_rnonce()
 	{
-		static const boost::uint8_t salt[] = { 0x03, 0x1A, 0x00, 0x00, 0x02, 0x1E, 0x00, 0x81, 0x02, 0x0D, 0x02 };
+		static const std::uint8_t salt[] = { 0x03, 0x1A, 0x00, 0x00, 0x02, 0x1E, 0x00, 0x81, 0x02, 0x0D, 0x02 };
 		int size;
-		const boost::uint8_t *pk = pub_key(size);
-		m_rnonce = new boost::uint8_t[size + sizeof(salt)];
+		const std::uint8_t *pk = pub_key(size);
+		m_rnonce = new std::uint8_t[size + sizeof(salt)];
 		std::memcpy(m_rnonce, salt, sizeof(salt));
 		std::memcpy(m_rnonce + sizeof(salt), pk, size);
 		m_rnonce_size = size + sizeof(salt);

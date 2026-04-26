@@ -4,7 +4,7 @@
 #include "types.h"
 
 #include <set>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/make_shared.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
@@ -24,18 +24,18 @@ namespace intertalk
 	public:
 		enum commands { eJoinGroup = 0x01 };
 
-		group(boost::uint8_t *id)
+		group(std::uint8_t *id)
 			: item(id, false)
 		{}
 
 		static group_ptr deserialize(stream_array &s)
 		{
-			boost::uint8_t cmnd;
+			std::uint8_t cmnd;
 			s >> cmnd;
 			vlu_t size = s.read_vlu();
 			if (s.available() >= size && size == (item::eIDLength + 1))
 			{
-				boost::uint8_t type;
+				std::uint8_t type;
 				s >> type;
 				if (type == 0x15)
 				{
@@ -49,18 +49,18 @@ namespace intertalk
 
 		void take_ownership()
 		{
-			boost::uint8_t *tmp = m_id;
-			m_id = new boost::uint8_t[item::eIDLength];
+			std::uint8_t *tmp = m_id;
+			m_id = new std::uint8_t[item::eIDLength];
 			std::memcpy(reinterpret_cast<void *>(m_id), tmp, item::eIDLength);
 			m_owner = true;
 		}
 
-		const boost::uint8_t &command() const
+		const std::uint8_t &command() const
 		{
 			return m_cmnd;
 		}
 
-		boost::uint8_t &command()
+		std::uint8_t &command()
 		{
 			return m_cmnd;
 		}
@@ -101,7 +101,7 @@ namespace intertalk
 		}
 
 	protected:
-		boost::uint8_t m_cmnd;
+		std::uint8_t m_cmnd;
 		std::set<session_weak_ptr> m_members;
 	};
 }

@@ -12,9 +12,9 @@
 
 namespace intertalk
 {
-	boost::uint8_t rtmpt_session::m_poll_time[] = {0x01, 0x03, 0x05, 0x09, 0x11, 0x21};
+	std::uint8_t rtmpt_session::m_poll_time[] = {0x01, 0x03, 0x05, 0x09, 0x11, 0x21};
 
-	rtmpt_session::rtmpt_session(boost::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager)
+	rtmpt_session::rtmpt_session(std::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager)
 		: basic_rtmp_connection(id, io_service, app_manager)
 		, m_rtmpt_manager(app_manager->get_rtmpt_manager())
 		, m_read_http_header(true)
@@ -43,12 +43,12 @@ namespace intertalk
 	{
 		if (!m_app || (m_results.empty() && !m_app->has_async_messages(m_id)))
 		{
-			boost::uint8_t poll_time = get_poll_time(false);
+			std::uint8_t poll_time = get_poll_time(false);
 			buffer << poll_time;
 		}
 		else
 		{
-			boost::uint8_t i = get_poll_time(true);
+			std::uint8_t i = get_poll_time(true);
 			buffer << i;
 
 			rtmp_message_ptr msg;
@@ -78,11 +78,11 @@ namespace intertalk
 
 		rtmp_header h;
 		rtmp_protocol p(m_outgoing_chunk_size);
-		boost::uint8_t *start = buffer.write_pos();
+		std::uint8_t *start = buffer.write_pos();
 		p.serialize(buffer, msg, h, channel->sent_header());
 		channel->sent_header() = h;
 
-		boost::uint8_t *end = buffer.write_pos();
+		std::uint8_t *end = buffer.write_pos();
 		if (m_key_out != 0 && (end - start) > 0)
 			RC4(m_key_out, end - start, start, start);
 	}
@@ -93,7 +93,7 @@ namespace intertalk
 		{
 			rtmp_message_ptr result;
 
-			boost::uint8_t i = get_poll_time(true);
+			std::uint8_t i = get_poll_time(true);
 			buffer << i;
 
 			while (m_app->get_async_message(m_id, result))
@@ -103,13 +103,13 @@ namespace intertalk
 			return;
 		}
 
-		boost::uint8_t idle_time = get_poll_time(false);
+		std::uint8_t idle_time = get_poll_time(false);
 		buffer << idle_time;
 	}
 
 	void rtmpt_session::serialize_poll_time(stream_array &buffer)
 	{
-		boost::uint8_t i = get_poll_time(false);
+		std::uint8_t i = get_poll_time(false);
 		buffer << i;
 	}
 
@@ -169,7 +169,7 @@ namespace intertalk
 		m_results.push_back(result);
 	}
 
-	boost::uint8_t rtmpt_session::get_poll_time(bool has_data)
+	std::uint8_t rtmpt_session::get_poll_time(bool has_data)
 	{
 		if (has_data)
 		{
@@ -192,8 +192,8 @@ namespace intertalk
  		if (input.available() < eHandShakeSize + 1)
  			return false;
 
-		boost::uint8_t *client_sig = input.read_pos() + 1;
-		boost::uint8_t magic;
+		std::uint8_t *client_sig = input.read_pos() + 1;
+		std::uint8_t magic;
 		input >> magic;
 		if (magic == ePlainMagic)
 		{
@@ -211,7 +211,7 @@ namespace intertalk
 		if (!prepare_hand_shake_response(magic, client_sig))
 			return false;
 
-		boost::uint8_t c = get_poll_time(true);
+		std::uint8_t c = get_poll_time(true);
 		output.write(&c, 1);
 		output.write(m_tmp_buff.data(), eHandShakeSize + 1);
 

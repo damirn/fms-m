@@ -9,7 +9,7 @@
 #include <map>
 #include <set>
 #include <boost/asio.hpp>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/function.hpp>
@@ -47,7 +47,7 @@ namespace intertalk
 	class session : private boost::noncopyable, public client_session, public chunk_handler, public boost::enable_shared_from_this<session>
 	{
 	public:
-		session(service *, const boost::asio::ip::udp::endpoint &, boost::uint32_t, rtmp_app_manager *);
+		session(service *, const boost::asio::ip::udp::endpoint &, std::uint32_t, rtmp_app_manager *);
 		~session();
 
 		void init()
@@ -70,22 +70,22 @@ namespace intertalk
 
 		bool parse(stream_array &);
 
-		const boost::uint32_t &sid() const
+		const std::uint32_t &sid() const
 		{
 			return m_sid;
 		}
 
-		boost::uint32_t &sid()
+		std::uint32_t &sid()
 		{
 			return m_sid;
 		}
 
-		const boost::uint8_t *peer_id_data() const
+		const std::uint8_t *peer_id_data() const
 		{
 			return m_peer_id.id();
 		}
 
-		boost::uint8_t *peer_id_data()
+		std::uint8_t *peer_id_data()
 		{
 			return m_peer_id.id();
 		}
@@ -95,7 +95,7 @@ namespace intertalk
 			return m_peer_id;
 		}
 
-		const boost::uint32_t &outgoing_sid() const
+		const std::uint32_t &outgoing_sid() const
 		{
 			return m_outgoing_sid;
 		}
@@ -138,7 +138,7 @@ namespace intertalk
 
 		void add_peer_address(const std::string &);
 
-		const boost::uint16_t &ts_echo_tx() const
+		const std::uint16_t &ts_echo_tx() const
 		{
 			return m_ts_echo_tx;
 		}
@@ -191,16 +191,16 @@ namespace intertalk
 			calculate_ts(h);
 		}
 
-		virtual void unreserve_stream_id(boost::uint32_t);
+		virtual void unreserve_stream_id(std::uint32_t);
 		virtual bool handle_chunk(chunk *);
 
-		void unreserve_stream_id_impl(boost::uint32_t);
+		void unreserve_stream_id_impl(std::uint32_t);
 
 		void initialize_ts_flags();
 		void calculate_ts(const header &);
 		void serialize_header(serializer *);
-		boost::uint32_t get_timestamp_ms();
-		boost::uint16_t get_timestamp();
+		std::uint32_t get_timestamp_ms();
+		std::uint16_t get_timestamp();
 
 		enum { eTimeOut = 90 };
 		void arm_timer();
@@ -210,8 +210,8 @@ namespace intertalk
 
 		service *m_service;
 		parser *m_parser;
-		boost::uint32_t m_sid;
-		boost::uint32_t m_outgoing_sid;
+		std::uint32_t m_sid;
+		std::uint32_t m_outgoing_sid;
 		item m_peer_id;
 		boost::asio::ip::udp::endpoint m_endpoint;
 		boost::asio::deadline_timer m_timer;
@@ -222,16 +222,16 @@ namespace intertalk
 		chunk *m_ready_chunk;
 		bool m_did_receive_data;
 		bool m_has_data_ready;
-		boost::uint8_t m_data_packet_count;
+		std::uint8_t m_data_packet_count;
 		enum { ePeerIdSize = 0x20 };
 
 		enum { ePad0 = 0, ePadff = 0xff };
 
 		// rtt stuff
-		boost::uint16_t m_ts_rx;
-		boost::uint16_t m_ts_echo_tx;
-		boost::uint16_t m_ts_tx;
-		boost::uint16_t m_ts_echo_rx;
+		std::uint16_t m_ts_rx;
+		std::uint16_t m_ts_echo_tx;
+		std::uint16_t m_ts_tx;
+		std::uint16_t m_ts_echo_rx;
 		boost::posix_time::ptime m_ts_rx_time;
 		boost::posix_time::time_duration m_srtt;
 		boost::posix_time::time_duration m_rttvar;
@@ -239,8 +239,8 @@ namespace intertalk
 		boost::posix_time::time_duration m_erto;
 		bool m_should_include_ts_echo;
 
-		boost::uint32_t m_outstanding_bytes;
-		boost::uint32_t m_rx_data_packets;
+		std::uint32_t m_outstanding_bytes;
+		std::uint32_t m_rx_data_packets;
 		bool m_ack_now;
 		bool m_seen_data_chunk;
 
@@ -250,7 +250,7 @@ namespace intertalk
 		vlu_t m_next_tsn;
 		vlu_t m_max_tsn_ack;
 
-		boost::uint32_t m_next_flow_id;
+		std::uint32_t m_next_flow_id;
 		typedef std::map<vlu_t, flow_ptr> flow_map_t;
 		flow_map_t m_receiving_flows;
 		flow_map_t m_sending_flows;
@@ -260,10 +260,10 @@ namespace intertalk
 
 		boost::function<void ()> m_notifier;
 
-		typedef std::map<vlu_t, boost::uint32_t> flow_id_to_stream_id_map_t;
+		typedef std::map<vlu_t, std::uint32_t> flow_id_to_stream_id_map_t;
 		flow_id_to_stream_id_map_t m_flow_id_to_stream_id;
 
-		typedef std::map<boost::uint32_t, std::set<flow_ptr> > stream_id_to_flow_id_map_t;
+		typedef std::map<std::uint32_t, std::set<flow_ptr> > stream_id_to_flow_id_map_t;
 		stream_id_to_flow_id_map_t m_stream_id_to_flow_id;
 
 		address_list_t m_addresses;

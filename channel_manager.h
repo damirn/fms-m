@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/unordered_map.hpp>
@@ -12,7 +12,7 @@ namespace intertalk
 	class channel_manager : private boost::noncopyable
 	{
 	public:
-		rtmp_channel_ptr get_channel(boost::uint32_t id)
+		rtmp_channel_ptr get_channel(std::uint32_t id)
 		{
 			channel_map_t::iterator i = m_channels.find(id);
 			if (i == m_channels.end())
@@ -25,7 +25,7 @@ namespace intertalk
 		}
 
 	protected:
-		typedef boost::unordered_map<boost::uint32_t, rtmp_channel_ptr> channel_map_t;
+		typedef boost::unordered_map<std::uint32_t, rtmp_channel_ptr> channel_map_t;
 		channel_map_t m_channels;
 	};
 

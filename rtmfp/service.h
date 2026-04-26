@@ -5,7 +5,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
@@ -26,7 +26,7 @@ namespace intertalk
 	class service : private boost::noncopyable, public chunk_handler
 	{
 	public:
-		service(boost::asio::io_service &, boost::uint16_t, rtmp_app_manager *);
+		service(boost::asio::io_service &, std::uint16_t, rtmp_app_manager *);
 		~service();
 
 		void notify()
@@ -46,8 +46,8 @@ namespace intertalk
 			remove_session(s->id());
 		}
 
-		boost::uint32_t get_timestamp_ms();
-		boost::uint16_t get_timestamp();
+		std::uint32_t get_timestamp_ms();
+		std::uint16_t get_timestamp();
 
 	protected:
 		void create_certificate();
@@ -57,10 +57,10 @@ namespace intertalk
 		void handle_send_to(const boost::system::error_code &, size_t);
 		void send_from_queue();
 		void handle_startup_session();
-		boost::uint32_t get_sid();
+		std::uint32_t get_sid();
 
-		boost::optional<session_ptr> get_session(boost::uint32_t);
-		void remove_session(boost::uint32_t);
+		boost::optional<session_ptr> get_session(std::uint32_t);
+		void remove_session(std::uint32_t);
 		void handle_notify();
 
 		// chunk handler stuff
@@ -69,10 +69,10 @@ namespace intertalk
 
 		void handle_ihello(ihello_chunk *);
 		void handle_iikeying(iikeying_chunk *);
-		void redirect_ihello(ihello_chunk *, const boost::uint8_t *);
+		void redirect_ihello(ihello_chunk *, const std::uint8_t *);
 
-		void create_cookie(boost::uint8_t *);
-		bool echo_cookie_valid(const boost::uint8_t *, const vlu_t &);
+		void create_cookie(std::uint8_t *);
+		bool echo_cookie_valid(const std::uint8_t *, const vlu_t &);
 
 		rtmp_app_manager *m_app_manager;
 
@@ -94,7 +94,7 @@ namespace intertalk
 		typedef std::map<item, session_ptr, item::less> session_map_t;
 		session_map_t m_session_map;
 
-		typedef std::map<boost::uint32_t, session_ptr> sid_to_session_map_t;
+		typedef std::map<std::uint32_t, session_ptr> sid_to_session_map_t;
 		sid_to_session_map_t m_sessions;
 		sid_to_session_map_t::iterator m_sessions_iterator;
 
@@ -107,8 +107,8 @@ namespace intertalk
 		enum { ePacketMinLen = 13 };
 
 		enum { eCertRandomLen = 64, eCookieSize = 64, eCertLen = 77 };
-		boost::uint8_t m_cert[eCertLen];
-		static const boost::uint8_t m_c1[];
-		static const boost::uint8_t m_c2[];
+		std::uint8_t m_cert[eCertLen];
+		static const std::uint8_t m_c1[];
+		static const std::uint8_t m_c2[];
 	};
 }

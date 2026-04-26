@@ -1,7 +1,7 @@
 #pragma once
 
 #include <boost/asio.hpp>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
@@ -19,7 +19,7 @@ namespace intertalk
 	class http_connection : public boost::enable_shared_from_this<http_connection>, private boost::noncopyable
 	{
 	public:
-		http_connection(boost::uint32_t, boost::asio::io_service &, rtmp_app_manager *, rtmpt_manager *);
+		http_connection(std::uint32_t, boost::asio::io_service &, rtmp_app_manager *, rtmpt_manager *);
 
 		void start();
 
@@ -63,8 +63,8 @@ namespace intertalk
 		boost::tribool handle_send();
 
 		// HTTP header creation stuff
-		void prepare_http_header(boost::uint32_t);
-		void add_to_http_header(boost::uint8_t *, boost::uint32_t);
+		void prepare_http_header(std::uint32_t);
+		void add_to_http_header(std::uint8_t *, std::uint32_t);
 		void add_to_http_header(const char *data);
 		void add_to_http_header(char data);
 
@@ -78,7 +78,7 @@ namespace intertalk
 		boost::asio::io_service &m_io_service;
 
 		// Connection id
-		boost::uint32_t m_id;
+		std::uint32_t m_id;
 
 		rtmp_app_manager *m_app_manager;
 		rtmpt_manager *m_rtmpt_manager;
@@ -87,10 +87,10 @@ namespace intertalk
 		std::string m_cid;
 
 		// RTMPT sequence
-		boost::uint32_t m_sequence;
+		std::uint32_t m_sequence;
 
 		// HTTP content length
-		boost::uint32_t m_content_length;
+		std::uint32_t m_content_length;
 
 		// Current RTMPT command
 		commands m_command;

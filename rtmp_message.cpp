@@ -27,7 +27,7 @@ namespace intertalk
 
 	void rtmp_message_notify_amf3::deserialize(stream_array &buffer)
 	{
-		boost::uint8_t type = *(buffer.read_pos());
+		std::uint8_t type = *(buffer.read_pos());
 		if (type == 0x00)
 		{
 			buffer.skip(1);
@@ -37,25 +37,25 @@ namespace intertalk
 
 	void rtmp_message_notify_amf3::serialize(stream_array &buffer)
 	{
-		static boost::uint8_t type = 0x00;
+		static std::uint8_t type = 0x00;
 		buffer << type;
 		rtmp_message_notify::serialize(buffer);
 	}
 
 	void rtmp_message_invoke_amf3::deserialize(stream_array &buffer)
 	{
-		boost::uint8_t type = *(buffer.read_pos());
+		std::uint8_t type = *(buffer.read_pos());
 		if (type == 0x00)
 		{
 			buffer.skip(1);
 			rtmp_message_invoke::deserialize(buffer);
 		}
-//		std::cout << "Invoke_AMF3 |" << m_function->value() << "| id: " << static_cast<boost::uint32_t>(m_invoke_id->value()) << std::endl;
+//		std::cout << "Invoke_AMF3 |" << m_function->value() << "| id: " << static_cast<std::uint32_t>(m_invoke_id->value()) << std::endl;
 	}
 
 	void rtmp_message_invoke_amf3::serialize(stream_array &buffer)
 	{
-		static boost::uint8_t type = 0x00;
+		static std::uint8_t type = 0x00;
 		buffer << type;
 		rtmp_message_invoke::serialize(buffer);
 	}
@@ -68,7 +68,7 @@ namespace intertalk
 		while(buffer.available() > 0)
 			m_params.push_back(m_amf0.read(buffer));
 
-		std::cout << "Invoke |" << m_function->value() << "| id: " << static_cast<boost::uint32_t>(m_invoke_id->value()) << std::endl;
+		std::cout << "Invoke |" << m_function->value() << "| id: " << static_cast<std::uint32_t>(m_invoke_id->value()) << std::endl;
 		// debug
 		for (parameters_list_t::iterator i = m_params.begin(); i != m_params.end(); ++i)
 		{
@@ -117,26 +117,26 @@ namespace intertalk
 
 	void rtmp_message_chunk_size::serialize(stream_array &buffer)
 	{
-		boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_chunk_size);
+		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_chunk_size);
 		buffer << tmp;
 	}
 
 	void rtmp_message_chunk_size::deserialize(stream_array &buffer)
 	{
-		boost::uint32_t tmp;
+		std::uint32_t tmp;
 		buffer >> tmp;
 		m_chunk_size = boost::asio::detail::socket_ops::network_to_host_long(tmp);
 	}
 
 	void rtmp_message_bytes_read::serialize(stream_array &buffer)
 	{
-		boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_bytes_read);
+		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_bytes_read);
 		buffer << tmp;
 	}
 
 	void rtmp_message_bytes_read::deserialize(stream_array &buffer)
 	{
-		boost::uint32_t tmp;
+		std::uint32_t tmp;
 		buffer >> tmp;
 		m_bytes_read = boost::asio::detail::socket_ops::network_to_host_long(tmp);
 	}
@@ -160,8 +160,8 @@ namespace intertalk
 
 	void rtmp_message_ping::serialize(stream_array &buffer)
 	{
-		boost::uint16_t v1 = boost::asio::detail::socket_ops::host_to_network_short(m_value1);
-		boost::uint32_t v2 = boost::asio::detail::socket_ops::host_to_network_long(m_value2);
+		std::uint16_t v1 = boost::asio::detail::socket_ops::host_to_network_short(m_value1);
+		std::uint32_t v2 = boost::asio::detail::socket_ops::host_to_network_long(m_value2);
 		buffer << v1 << v2;
 		if (m_elements == 3)
 		{
@@ -178,7 +178,7 @@ namespace intertalk
 
 	void rtmp_message_window_acknowledgement_size::serialize(stream_array &buffer)
 	{
-		boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_size);
+		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_size);
 		buffer << tmp;
 	}
 
@@ -190,7 +190,7 @@ namespace intertalk
 
 	void rtmp_message_set_peer_bandwidth::serialize(stream_array &buffer)
 	{
-		boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_size);
+		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_size);
 		buffer << tmp << m_type;
 	}
 
@@ -220,19 +220,19 @@ namespace intertalk
 	void rtmp_message_aggregate::deserialize(stream_array &buffer)
 	{
 		bool first = true;
-		boost::uint32_t prev_ts = 0;
-		boost::uint32_t prev_calc_ts = m_ts;
+		std::uint32_t prev_ts = 0;
+		std::uint32_t prev_calc_ts = m_ts;
 
 		while(buffer.available() > 0)
 		{
 			rtmp_header h;
-			boost::uint8_t c;
-			boost::uint32_t t;
+			std::uint8_t c;
+			std::uint32_t t;
 			buffer >> c;
 
 			h.message_type() = c;
 			h.message_length() = buffer.read_uint32_3();
-			boost::uint32_t ts = buffer.read_uint32_3();
+			std::uint32_t ts = buffer.read_uint32_3();
 			if (first)
 			{
 				first = false;

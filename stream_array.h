@@ -2,7 +2,7 @@
 
 #include <deque>
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/asio/buffer.hpp>
 
 #include "dynamic_array.h"
@@ -126,12 +126,12 @@ namespace intertalk
 				}
 			}
 
-			boost::uint32_t read_uint32_3()
+			std::uint32_t read_uint32_3()
 			{
-				boost::uint32_t tmp = 0;
-				boost::uint8_t b;
+				std::uint32_t tmp = 0;
+				std::uint8_t b;
 
-				for (boost::uint8_t i = 0; i < 3; ++i)
+				for (std::uint8_t i = 0; i < 3; ++i)
 				{
 					*this >> b;
 					tmp <<= 8;
@@ -140,11 +140,11 @@ namespace intertalk
 				return tmp;
 			}
 
-			boost::uint64_t read_vlu()
+			std::uint64_t read_vlu()
 			{
-				boost::uint8_t a;
-				boost::uint8_t v;
-				boost::uint64_t ret = 0;
+				std::uint8_t a;
+				std::uint8_t v;
+				std::uint64_t ret = 0;
 				bool more = false;
 				do 
 				{
@@ -157,9 +157,9 @@ namespace intertalk
 				return ret;
 			}
 
-			void write_vlu(const boost::uint64_t &v)
+			void write_vlu(const std::uint64_t &v)
 			{
-				boost::uint8_t size = get_vlu_size(v);
+				std::uint8_t size = get_vlu_size(v);
 				check_size(size);
 				size = (get_vlu_size(v) - 1) * 7;
 
@@ -170,7 +170,7 @@ namespace intertalk
 					max = true;
 				}
 
-				boost::uint8_t b;
+				std::uint8_t b;
 				while(size >= 7)
 				{
 					b = 0x80 | ((v >> size) & 0x7F);
@@ -181,14 +181,14 @@ namespace intertalk
 				*this << b;
 			}
 
-			void write_uint32_3(boost::uint32_t v)
+			void write_uint32_3(std::uint32_t v)
 			{
 				check_size(3);
-				boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(v);
+				std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(v);
 
-				boost::uint8_t *b = reinterpret_cast<boost::uint8_t *> (&tmp);
+				std::uint8_t *b = reinterpret_cast<std::uint8_t *> (&tmp);
 
-				for (boost::uint8_t i = 1; i < 4; ++i)
+				for (std::uint8_t i = 1; i < 4; ++i)
 					*this << b[i];
 			}
 
@@ -275,7 +275,7 @@ namespace intertalk
 				m_mark = end();
 			}
 
-			boost::uint16_t rewind_write()
+			std::uint16_t rewind_write()
 			{
 				iterator here = m_write;
 				if (!m_write_dequeue.empty())
@@ -318,10 +318,10 @@ namespace intertalk
 				m_write = m_write_high_mark;
 			}
 
-			static boost::uint8_t get_vlu_size(const boost::uint64_t &v)
+			static std::uint8_t get_vlu_size(const std::uint64_t &v)
 			{
-				boost::uint64_t vlu_min = 0x80;
-				boost::uint8_t res = 1;
+				std::uint64_t vlu_min = 0x80;
+				std::uint8_t res = 1;
 				while (v >= vlu_min)
 				{
 					++res;
@@ -356,15 +356,15 @@ namespace intertalk
 
 	using detail::buffer_eof_exception;
 
-	class stream_array : public detail::stream_array<boost::uint8_t, detail::eMaxStreamSize>
+	class stream_array : public detail::stream_array<std::uint8_t, detail::eMaxStreamSize>
 	{
 	public:
 		stream_array()
-			: detail::stream_array<boost::uint8_t, detail::eMaxStreamSize>()
+			: detail::stream_array<std::uint8_t, detail::eMaxStreamSize>()
 		{}
 
-		stream_array(boost::uint8_t *e)
-			: detail::stream_array<boost::uint8_t, detail::eMaxStreamSize>(e)
+		stream_array(std::uint8_t *e)
+			: detail::stream_array<std::uint8_t, detail::eMaxStreamSize>(e)
 		{}
 	};
 }

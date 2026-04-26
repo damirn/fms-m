@@ -4,15 +4,15 @@
 
 #include <string>
 #include <boost/asio/detail/socket_ops.hpp>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 
 namespace intertalk
 {
-	static const boost::uint8_t end_of_object[] = { 0x00, 0x00, 0x09 };
+	static const std::uint8_t end_of_object[] = { 0x00, 0x00, 0x09 };
 
 	bool amf0::read_short_string(stream_array &buffer, amf0_string_ptr value, bool skip_type /* = false */)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		if (!skip_type)
 		{
 			buffer >> b;
@@ -20,7 +20,7 @@ namespace intertalk
 				return false;
 		}
 
-		boost::uint16_t len;
+		std::uint16_t len;
 		buffer >> len;
 		len = boost::asio::detail::socket_ops::network_to_host_short(len);
 		if (buffer.available() < len)         // wire length must not exceed the buffer
@@ -33,23 +33,23 @@ namespace intertalk
 
 	void amf0::write_short_string(stream_array &buffer, amf0_string_ptr value, bool skip_type /* = false */)
 	{
-		write_short_string(buffer, value->value().c_str(), static_cast<boost::uint16_t >(value->value().size()), skip_type);
+		write_short_string(buffer, value->value().c_str(), static_cast<std::uint16_t >(value->value().size()), skip_type);
 	}
 
-	void amf0::write_short_string(stream_array &buffer, const char *value, boost::uint16_t len, bool skip_type /* = false */)
+	void amf0::write_short_string(stream_array &buffer, const char *value, std::uint16_t len, bool skip_type /* = false */)
 	{
-		boost::uint8_t b = amf0_type::eAMF0String;
+		std::uint8_t b = amf0_type::eAMF0String;
 		if (!skip_type)
 			buffer << b;
 
-		boost::uint16_t nlen = boost::asio::detail::socket_ops::host_to_network_short(len);
+		std::uint16_t nlen = boost::asio::detail::socket_ops::host_to_network_short(len);
 		buffer << nlen;
 		buffer.write(value, len);
 	}
 
 	bool amf0::read_boolean(stream_array &buffer, amf0_boolean_ptr value)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		buffer >> b;
 		if (b != amf0_type::eAMF0Boolean)
 			return false;
@@ -62,7 +62,7 @@ namespace intertalk
 
 	void amf0::write_boolean(stream_array &buffer, amf0_boolean_ptr value)
 	{
-		boost::uint8_t b = amf0_type::eAMF0Boolean;
+		std::uint8_t b = amf0_type::eAMF0Boolean;
 		buffer << b;
 
 		b = value->value() == true ? 1 : 0;
@@ -71,13 +71,13 @@ namespace intertalk
 
 	bool amf0::read_number(stream_array &buffer, amf0_number_ptr value)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		buffer >> b;
 		if (b != amf0_type::eAMF0Number)
 			return false;
 
 		double d = 0;
-		boost::uint8_t tmp[8];
+		std::uint8_t tmp[8];
 
 		for (int i = 7; i >= 0; --i)
 			buffer >> tmp[i];
@@ -90,11 +90,11 @@ namespace intertalk
 
 	void amf0::write_number(stream_array &buffer, amf0_number_ptr value)
 	{
-		boost::uint8_t b = amf0_type::eAMF0Number;
+		std::uint8_t b = amf0_type::eAMF0Number;
 		buffer << b;
 
 		double d = value->value();
-		boost::uint8_t *tmp = reinterpret_cast<boost::uint8_t *> (&d);
+		std::uint8_t *tmp = reinterpret_cast<std::uint8_t *> (&d);
 
 		for (int i = 7; i >= 0; --i)
 			buffer << tmp[i];
@@ -102,7 +102,7 @@ namespace intertalk
 
 	bool amf0::read_object(stream_array &buffer, amf0_object_ptr value)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		buffer >> b;
 		if (b != amf0_type::eAMF0Object)
 			return false;
@@ -124,7 +124,7 @@ namespace intertalk
 
 	void amf0::write_object(stream_array &buffer, amf0_object_ptr value)
 	{
-		boost::uint8_t b = amf0_type::eAMF0Object;
+		std::uint8_t b = amf0_type::eAMF0Object;
 		buffer << b;
 
 		for (amf0_object::indexed_iterator i = value->begin_indexed(); i != value->end_indexed(); ++i)
@@ -138,33 +138,33 @@ namespace intertalk
 
 	bool amf0::read_null(stream_array &buffer)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		buffer >> b;
 		return b == amf0_type::eAMF0Null;
 	}
 
 	void amf0::write_null(stream_array &buffer)
 	{
-		boost::uint8_t b = amf0_type::eAMF0Null;
+		std::uint8_t b = amf0_type::eAMF0Null;
 		buffer << b;
 	}
 
 	bool amf0::read_undefined(stream_array &buffer)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		buffer >> b;
 		return b == amf0_type::eAMF0Undefined;
 	}
 
 	void amf0::write_undefined(stream_array &buffer)
 	{
-		boost::uint8_t b = amf0_type::eAMF0Undefined;
+		std::uint8_t b = amf0_type::eAMF0Undefined;
 		buffer << b;
 	}
 
 	bool amf0::read_mixed_array(stream_array &buffer, amf0_ecma_array_ptr value)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		buffer >> b;
 		if (b != amf0_type::eAMF0EcmaArray)
 			return false;
@@ -172,7 +172,7 @@ namespace intertalk
 		if (buffer.available() < 7)
 			return false;
 
-		buffer.skip(sizeof(boost::uint32_t));
+		buffer.skip(sizeof(std::uint32_t));
 
 		while (buffer.available() >= 3 && !(*(buffer.read_pos()) == 0 && *(buffer.read_pos() + 1) == 0 && *(buffer.read_pos() + 2) == 9))
 		{
@@ -188,17 +188,17 @@ namespace intertalk
 
 	void amf0::write_mixed_array(stream_array &buffer, amf0_ecma_array_ptr value)
 	{
-		boost::uint8_t b = amf0_type::eAMF0EcmaArray;
+		std::uint8_t b = amf0_type::eAMF0EcmaArray;
 		buffer << b;
 
-		boost::uint32_t size = static_cast<boost::uint32_t>(value->value().size());
+		std::uint32_t size = static_cast<std::uint32_t>(value->value().size());
 		size = boost::asio::detail::socket_ops::host_to_network_long(size);
 		buffer << size;
 
 		amf0_ecma_array::array_t &array = value->value();
 		for (amf0_ecma_array::array_t::iterator i = array.begin(); i != array.end(); ++i)
 		{
-			write_short_string(buffer, i->first.c_str(), static_cast<boost::uint16_t >(i->first.size()), true);
+			write_short_string(buffer, i->first.c_str(), static_cast<std::uint16_t >(i->first.size()), true);
 			write(buffer, i->second);
 		}
 
@@ -207,7 +207,7 @@ namespace intertalk
 
 	bool amf0::read_strict_array(stream_array &buffer, amf0_strict_array_ptr value)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		buffer >> b;
 		if (b != amf0_type::eAMF0StrictArray)
 			return false;
@@ -215,11 +215,11 @@ namespace intertalk
 		if (buffer.available() < 7)
 			return false;
 
-		boost::uint32_t cnt;
+		std::uint32_t cnt;
 		buffer >> cnt;
 		cnt = boost::asio::detail::socket_ops::network_to_host_long(cnt);
 
-		for (boost::uint32_t i = 0; i < cnt; ++i)
+		for (std::uint32_t i = 0; i < cnt; ++i)
 		{
 			amf0_type_ptr val(read(buffer));
 			value->add_entry(val);
@@ -230,10 +230,10 @@ namespace intertalk
 
 	void amf0::write_strict_array(stream_array &buffer, amf0_strict_array_ptr value)
 	{
-		boost::uint8_t b = amf0_type::eAMF0StrictArray;
+		std::uint8_t b = amf0_type::eAMF0StrictArray;
 		buffer << b;
 
-		boost::uint32_t size = static_cast<boost::uint32_t>(value->value().size());
+		std::uint32_t size = static_cast<std::uint32_t>(value->value().size());
 		size = boost::asio::detail::socket_ops::host_to_network_long(size);
 		buffer << size;
 
@@ -244,7 +244,7 @@ namespace intertalk
 
 	bool amf0::read_long_string(stream_array &buffer, amf0_long_string_ptr value)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		buffer >> b;
 		if (b != amf0_type::eAMF0LongString)
 			return false;
@@ -252,7 +252,7 @@ namespace intertalk
 		if (buffer.available() < 4)
 			return false;
 
-		boost::uint32_t cnt;
+		std::uint32_t cnt;
 		buffer >> cnt;
 		cnt = boost::asio::detail::socket_ops::network_to_host_long(cnt);
 		if (buffer.available() >= cnt)
@@ -266,10 +266,10 @@ namespace intertalk
 
 	void amf0::write_long_string(stream_array &buffer, amf0_long_string_ptr value)
 	{
-		boost::uint8_t b = amf0_type::eAMF0LongString;
+		std::uint8_t b = amf0_type::eAMF0LongString;
 		buffer << b;
 
-		boost::uint32_t size = static_cast<boost::uint32_t>(value->size());
+		std::uint32_t size = static_cast<std::uint32_t>(value->size());
 		size = boost::asio::detail::socket_ops::host_to_network_long(size);
 		buffer << size;
 
@@ -278,7 +278,7 @@ namespace intertalk
 
 	bool amf0::read_amf3_container(stream_array &buffer, amf0_amf3_container_ptr value)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		buffer >> b;
 		if (b != amf0_type::eAMF0AMF3Container)
 			return false;
@@ -292,7 +292,7 @@ namespace intertalk
 
 	void amf0::write_amf3_container(stream_array &buffer, amf0_amf3_container_ptr value)
 	{
-		boost::uint8_t b = amf0_type::eAMF0AMF3Container;
+		std::uint8_t b = amf0_type::eAMF0AMF3Container;
 		buffer << b;
 		amf3 m3;
 		m3.write(buffer, value->data());
@@ -302,7 +302,7 @@ namespace intertalk
 	{
 		if (buffer.available() < 1)
 			throw buffer_eof_exception();
-		boost::uint8_t type = *(buffer.read_pos()); // peek type
+		std::uint8_t type = *(buffer.read_pos()); // peek type
 		switch (type)
 		{
 		case amf0_type::eAMF0Number:

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/detail/atomic_count.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/noncopyable.hpp>
@@ -53,19 +53,19 @@ namespace intertalk
 			return m_app_name;
 		}
 
-		virtual boost::tribool handle_message(rtmp_message_ptr, boost::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		virtual boost::tribool handle_message(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
 
-		virtual void delete_connection_by_cid(boost::uint32_t, const std::string &) {}
-		virtual void delete_connection(boost::uint32_t, const std::string & = "");
+		virtual void delete_connection_by_cid(std::uint32_t, const std::string &) {}
+		virtual void delete_connection(std::uint32_t, const std::string & = "");
 
-		boost::uint32_t enqueue_async_message(boost::uint32_t, rtmp_message_ptr, bool = false);
+		std::uint32_t enqueue_async_message(std::uint32_t, rtmp_message_ptr, bool = false);
 
-		void notify(boost::uint32_t);
+		void notify(std::uint32_t);
 
-		boost::uint32_t get_timestamp(boost::uint32_t);
+		std::uint32_t get_timestamp(std::uint32_t);
 
-		bool has_async_messages(boost::uint32_t);
-		bool get_async_message(boost::uint32_t, rtmp_message_ptr &);
+		bool has_async_messages(std::uint32_t);
+		bool get_async_message(std::uint32_t, rtmp_message_ptr &);
 
 		app_stats get_stats() const
 		{
@@ -74,54 +74,54 @@ namespace intertalk
 
 		void get_queue_stats(queue_stats_list_t &);
 
-		void update_stats(bool, bool, boost::uint32_t);
+		void update_stats(bool, bool, std::uint32_t);
 
-		void gracefully_close_connection(boost::uint32_t, bool = true);
-		void gracefully_close_connection_with_reason(boost::uint32_t, boost::uint32_t);
+		void gracefully_close_connection(std::uint32_t, bool = true);
+		void gracefully_close_connection_with_reason(std::uint32_t, std::uint32_t);
 
 
 		typedef std::list<std::pair<std::string, amf0_type_ptr> > amf0_parameter_list_t;
 		typedef boost::optional<amf0_parameter_list_t> optional_param_list_t;
 
 	protected:
-		virtual boost::tribool handle_invoke(rtmp_message_ptr, boost::uint32_t, const rtmp_header &, rtmp_message_ptr &);
-		virtual bool handle_shared_object(rtmp_message_ptr, boost::uint32_t, const rtmp_header &, rtmp_message_ptr &);
-		virtual void handle_audio_data(rtmp_message_ptr, boost::uint32_t, const rtmp_header &) = 0;
-		virtual void handle_video_data(rtmp_message_ptr, boost::uint32_t, const rtmp_header &) = 0;
-		virtual boost::tribool handle_client_login(boost::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) = 0;
+		virtual boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		virtual bool handle_shared_object(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		virtual void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) = 0;
+		virtual void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) = 0;
+		virtual boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) = 0;
 
-		virtual void handle_win_ack_size(rtmp_message_ptr, boost::uint32_t);
+		virtual void handle_win_ack_size(rtmp_message_ptr, std::uint32_t);
 		virtual void handle_bytes_read(rtmp_message_ptr);
-		virtual void handle_ping(rtmp_message_ptr, boost::uint32_t, const rtmp_header &);
-		virtual void handle_notify(rtmp_message_ptr, boost::uint32_t){}
+		virtual void handle_ping(rtmp_message_ptr, std::uint32_t, const rtmp_header &);
+		virtual void handle_notify(rtmp_message_ptr, std::uint32_t){}
 
-		virtual bool check_connect_params(boost::uint32_t, const rtmp_message_invoke::parameters_list_t &);
+		virtual bool check_connect_params(std::uint32_t, const rtmp_message_invoke::parameters_list_t &);
 
 		void check_stream_name(rtmp_message_invoke::parameters_list_t &);
-		rtmp_message_ptr create_stream(rtmp_message_invoke_ptr, boost::uint32_t, boost::uint32_t);
-		void close_stream(rtmp_message_invoke_ptr, boost::uint32_t);
+		rtmp_message_ptr create_stream(rtmp_message_invoke_ptr, std::uint32_t, std::uint32_t);
+		void close_stream(rtmp_message_invoke_ptr, std::uint32_t);
 
-		boost::tribool handle_invoke_connect(rtmp_message_invoke_ptr, boost::uint32_t, rtmp_message_ptr &);
+		boost::tribool handle_invoke_connect(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 
-		void create_connect_messages(boost::uint32_t, optional_param_list_t = optional_param_list_t());
+		void create_connect_messages(std::uint32_t, optional_param_list_t = optional_param_list_t());
 		rtmp_message_invoke_ptr create_connect_failure_message(const std::string &);
-		void send_play_start_messages(boost::uint32_t, boost::uint32_t, boost::uint32_t, const std::string &);
-		void send_close(boost::uint32_t);
+		void send_play_start_messages(std::uint32_t, std::uint32_t, std::uint32_t, const std::string &);
+		void send_close(std::uint32_t);
 
-		client_session_ptr get_connection(boost::uint32_t connection_id)
+		client_session_ptr get_connection(std::uint32_t connection_id)
 		{
 			return m_app_manager->get_connection(connection_id);
 		}
 
-		const std::string &get_app_instance(boost::uint32_t connection_id) const
+		const std::string &get_app_instance(std::uint32_t connection_id) const
 		{
 			return m_app_manager->get_app_instance(connection_id);
 		}
 
-		boost::uint32_t get_delay(boost::uint32_t);
+		std::uint32_t get_delay(std::uint32_t);
 
 		enum data_type { eData, eVideo, eAudio, eControl = 4 };
-		boost::uint32_t stream_to_channel(boost::uint32_t stream_id, data_type type)
+		std::uint32_t stream_to_channel(std::uint32_t stream_id, data_type type)
 		{
 			if (stream_id == 0)
 			{
@@ -129,7 +129,7 @@ namespace intertalk
 					return 3;
 				return 2;
 			}
-			boost::uint32_t channel = 4 + ((stream_id - 1) * 5);
+			std::uint32_t channel = 4 + ((stream_id - 1) * 5);
 			if (type == eData)
 				return channel;
 			if (type == eVideo)
@@ -141,17 +141,17 @@ namespace intertalk
 			return channel; // never reached
 		}
 
-		rtmp_message_invoke_ptr create_error_status(boost::uint32_t, boost::uint32_t, const char *);
+		rtmp_message_invoke_ptr create_error_status(std::uint32_t, std::uint32_t, const char *);
 
 		rtmp_app_manager *m_app_manager;
 		std::string m_app_name;
 
-		typedef std::pair<boost::uint32_t, std::list<rtmp_message_ptr> > size_list_pair_t;
-		typedef boost::unordered_map<boost::uint32_t, size_list_pair_t> async_messages_map_t;
+		typedef std::pair<std::uint32_t, std::list<rtmp_message_ptr> > size_list_pair_t;
+		typedef boost::unordered_map<std::uint32_t, size_list_pair_t> async_messages_map_t;
 		async_messages_map_t m_async_messages;
 		boost::mutex m_async_messages_mutex;
 
-		typedef boost::unordered_map<boost::uint32_t, boost::uint32_t> delay_map_t;
+		typedef boost::unordered_map<std::uint32_t, std::uint32_t> delay_map_t;
 		delay_map_t m_delays;
 		boost::mutex m_delay_mutex;
 
@@ -171,25 +171,25 @@ namespace intertalk
 		{
 			virtual ~result_handler(){}
 			typedef boost::function<bool (rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &)> callback_t;
-			result_handler(boost::uint32_t id, callback_t f)
+			result_handler(std::uint32_t id, callback_t f)
 				: m_connection_id(id)
 				, m_call_back(f)
 			{}
-			boost::uint32_t m_connection_id;
+			std::uint32_t m_connection_id;
 			callback_t m_call_back;
 		};
 
-		typedef boost::unordered_map<boost::uint32_t, result_handler_ptr> result_handlers_t;
+		typedef boost::unordered_map<std::uint32_t, result_handler_ptr> result_handlers_t;
 
 		struct bwcheck_result_handler : public result_handler
 		{
-			bwcheck_result_handler(boost::uint32_t id, callback_t f)
+			bwcheck_result_handler(std::uint32_t id, callback_t f)
 				: result_handler(id, f)
 				, m_num_called(0)
 				, m_time(boost::posix_time::microsec_clock::local_time())
 			{}
-			boost::uint32_t m_bytes;
-			boost::uint8_t m_num_called;
+			std::uint32_t m_bytes;
+			std::uint8_t m_num_called;
 			boost::posix_time::ptime m_time;
 			boost::posix_time::time_duration m_latency;
 		};
@@ -198,14 +198,14 @@ namespace intertalk
 
 		result_handlers_t m_result_handlers;
 
-		boost::uint32_t enqueue_async_message(boost::uint32_t, rtmp_message_invoke_ptr, result_handler_ptr, bool = false);
-		void add_result_handler(boost::uint32_t, result_handler_ptr);
-		virtual bool handle_invoke_result(rtmp_message_invoke_ptr, boost::uint32_t, rtmp_message_ptr &);
-		virtual void handle_invoke_check_bandwidth(rtmp_message_invoke_ptr, boost::uint32_t, rtmp_message_ptr &result);
-		virtual void handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr, boost::uint32_t, rtmp_message_ptr &);
+		std::uint32_t enqueue_async_message(std::uint32_t, rtmp_message_invoke_ptr, result_handler_ptr, bool = false);
+		void add_result_handler(std::uint32_t, result_handler_ptr);
+		virtual bool handle_invoke_result(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
+		virtual void handle_invoke_check_bandwidth(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &result);
+		virtual void handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 		virtual bool handle_result_bw_check_upload(rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &);
 		virtual bool handle_result_bw_check_download(rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &);
-		virtual void handle_invoke_set_peer_info(rtmp_message_invoke_ptr, boost::uint32_t, rtmp_message_ptr &);
+		virtual void handle_invoke_set_peer_info(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 
 		enum { eBWCheckStringSize = 32768 };
 

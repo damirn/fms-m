@@ -22,7 +22,7 @@ namespace intertalk
 		h.serialize(m_raw_packet);
 	}
 
-	void serializer::finish_raw_packet(boost::uint32_t sid, aes *a)
+	void serializer::finish_raw_packet(std::uint32_t sid, aes *a)
 	{
 		m_raw_packet.rewind_write();
 		prepare_packet(sid, a);
@@ -30,26 +30,26 @@ namespace intertalk
 
 	void serializer::add_padding()
 	{
-		static boost::uint8_t pad = 0xff;
-		boost::uint16_t size = m_raw_packet.wrote_size();
+		static std::uint8_t pad = 0xff;
+		std::uint16_t size = m_raw_packet.wrote_size();
 		if ((size % 16) != 0)
 		{
-			boost::uint16_t pad_size = (size / 16 + 1) * 16;
+			std::uint16_t pad_size = (size / 16 + 1) * 16;
 			pad_size = pad_size - size;
 			size += pad_size;
 			m_raw_packet.append();
-			for (boost::uint16_t i = 0; i < pad_size; ++i)
+			for (std::uint16_t i = 0; i < pad_size; ++i)
 				m_raw_packet << pad;
 		}
 	}
 
-	void serializer::prepare_packet(boost::uint32_t sid, aes *a)
+	void serializer::prepare_packet(std::uint32_t sid, aes *a)
 	{
 		// padding + checksum
 		m_raw_packet.mark_write();
 		add_padding();
 		m_raw_packet.rewind_write();
-		boost::uint16_t ch = parser::calculate_checksum(m_raw_packet.read_pos() + 2, m_raw_packet.available() - 2);
+		std::uint16_t ch = parser::calculate_checksum(m_raw_packet.read_pos() + 2, m_raw_packet.available() - 2);
 		m_raw_packet << ch;
 
 //		hexdump(std::cout, (void *)m_raw_packet.read_pos(), m_raw_packet.available());
@@ -62,11 +62,11 @@ namespace intertalk
 		m_packet.rewind_write();
 
 		// ssid
-		boost::uint32_t x, y;
+		std::uint32_t x, y;
 		m_packet.mark();
 		m_packet.skip(4);
 		m_packet >> x >> y;
-		boost::uint32_t ssid = sid ^ x ^ y;
+		std::uint32_t ssid = sid ^ x ^ y;
 		m_packet << ssid;
 		m_packet.rewind();
 	}

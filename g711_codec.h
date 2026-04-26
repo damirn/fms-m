@@ -13,8 +13,8 @@ namespace intertalk
 			, m_type(t)
 		{}
 
-		virtual boost::uint8_t *encode(boost::uint8_t *, boost::uint32_t, boost::uint32_t &);
-		virtual boost::uint8_t *decode(char *, boost::uint8_t *, boost::uint8_t, boost::uint32_t &);
+		virtual std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &);
+		virtual std::uint8_t *decode(char *, std::uint8_t *, std::uint8_t, std::uint32_t &);
 
 	protected:
 		type m_type;

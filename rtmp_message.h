@@ -54,47 +54,47 @@ namespace intertalk
 
 		virtual void serialize (stream_array &) = 0;
 
-		boost::uint8_t type() const
+		std::uint8_t type() const
 		{
 			return m_type;
 		}
 
-		boost::uint32_t &stream_id()
+		std::uint32_t &stream_id()
 		{
 			return m_stream_id;
 		}
 
-		const boost::uint32_t &stream_id() const
+		const std::uint32_t &stream_id() const
 		{
 			return m_stream_id;
 		}
 
-		boost::uint32_t &channel_id()
+		std::uint32_t &channel_id()
 		{
 			return m_channel_id;
 		}
 
-		const boost::uint32_t &channel_id() const
+		const std::uint32_t &channel_id() const
 		{
 			return m_channel_id;
 		}
 
-		boost::uint32_t &timestamp()
+		std::uint32_t &timestamp()
 		{
 			return m_timestamp;
 		}
 
-		const boost::uint32_t &timestamp() const
+		const std::uint32_t &timestamp() const
 		{
 			return m_timestamp;
 		}
 
 	protected:
-		boost::uint8_t m_type;
+		std::uint8_t m_type;
 		amf0 m_amf0;
-		boost::uint32_t m_stream_id;
-		boost::uint32_t m_channel_id;
-		boost::uint32_t m_timestamp;
+		std::uint32_t m_stream_id;
+		std::uint32_t m_channel_id;
+		std::uint32_t m_timestamp;
 
 		enum { eInvokeChannel = 3 };
 	};
@@ -108,7 +108,7 @@ namespace intertalk
 			: rtmp_message(eMessageChunkSize)
 		{}
 
-		rtmp_message_chunk_size(boost::uint32_t chunk_size)
+		rtmp_message_chunk_size(std::uint32_t chunk_size)
 			: rtmp_message(eMessageChunkSize), m_chunk_size(chunk_size)
 		{
 			m_channel_id = 2;
@@ -120,13 +120,13 @@ namespace intertalk
 
 		virtual void serialize(stream_array &);
 
-		boost::uint32_t chunk_size()
+		std::uint32_t chunk_size()
 		{
 			return m_chunk_size;
 		}
 
 	protected:
-		boost::uint32_t m_chunk_size;
+		std::uint32_t m_chunk_size;
 	};
 
 	typedef boost::shared_ptr<rtmp_message_chunk_size> rtmp_message_chunk_size_ptr;
@@ -138,7 +138,7 @@ namespace intertalk
 			: rtmp_message(eMessageBytesRead)
 		{}
 
-		rtmp_message_bytes_read(boost::uint32_t bytes_read)
+		rtmp_message_bytes_read(std::uint32_t bytes_read)
 			: rtmp_message(eMessageBytesRead), m_bytes_read(bytes_read)
 		{
 			m_channel_id = 2;
@@ -150,13 +150,13 @@ namespace intertalk
 
 		virtual void serialize(stream_array &);
 
-		boost::uint32_t bytes_read()
+		std::uint32_t bytes_read()
 		{
 			return m_bytes_read;
 		}
 
 	protected:
-		boost::uint32_t m_bytes_read;
+		std::uint32_t m_bytes_read;
 	};
 
 	typedef boost::shared_ptr<rtmp_message_bytes_read> rtmp_message_bytes_read_ptr;
@@ -176,11 +176,11 @@ namespace intertalk
 			ePingResponse
 		};
 
-		explicit rtmp_message_ping(boost::uint8_t elements)
+		explicit rtmp_message_ping(std::uint8_t elements)
 			: rtmp_message(eMessagePing), m_elements(elements)
 		{}
 
-		rtmp_message_ping(ping_type type, boost::uint32_t value)
+		rtmp_message_ping(ping_type type, std::uint32_t value)
 			: rtmp_message(eMessagePing), m_elements(2), m_value1(type), m_value2(value)
 		{
 			m_channel_id = 2;
@@ -188,7 +188,7 @@ namespace intertalk
 			m_timestamp = 0;
 		}
 
-		rtmp_message_ping(ping_type type, boost::uint32_t v1, boost::uint32_t v2)
+		rtmp_message_ping(ping_type type, std::uint32_t v1, std::uint32_t v2)
 			: rtmp_message(eMessagePing), m_elements(3), m_value1(type), m_value2(v1), m_value3(v2)
 		{
 			m_channel_id = 2;
@@ -196,7 +196,7 @@ namespace intertalk
 			m_timestamp = 0;
 		}
 
-		rtmp_message_ping(boost::uint16_t type, boost::uint32_t v1, boost::uint32_t v2)
+		rtmp_message_ping(std::uint16_t type, std::uint32_t v1, std::uint32_t v2)
 			: rtmp_message(eMessagePing), m_elements(3), m_value1(type), m_value2(v1), m_value3(v2)
 		{
 			m_channel_id = 2;
@@ -208,22 +208,22 @@ namespace intertalk
 
 		virtual void serialize(stream_array &);
 
-		boost::uint16_t get_type() const
+		std::uint16_t get_type() const
 		{
 			return m_value1;
 		}
 
-		boost::uint32_t get_value() const
+		std::uint32_t get_value() const
 		{
 			return m_value2;
 		}
 
 	protected:
-		boost::uint8_t m_elements;
-		boost::uint16_t m_value1;
-		boost::uint32_t m_value2;
-		boost::uint32_t m_value3;
-		boost::uint32_t m_value4;
+		std::uint8_t m_elements;
+		std::uint16_t m_value1;
+		std::uint32_t m_value2;
+		std::uint32_t m_value3;
+		std::uint32_t m_value4;
 	};
 
 	typedef boost::shared_ptr<rtmp_message_ping> rtmp_message_ping_ptr;
@@ -235,7 +235,7 @@ namespace intertalk
 			: rtmp_message(eMessageWindowAcknowledgementSize)
 		{}
 
-		rtmp_message_window_acknowledgement_size(boost::uint32_t size)
+		rtmp_message_window_acknowledgement_size(std::uint32_t size)
 			: rtmp_message(eMessageWindowAcknowledgementSize), m_size(size)
 		{
 			m_channel_id = 2;
@@ -247,13 +247,13 @@ namespace intertalk
 
 		virtual void serialize(stream_array &);
 
-		const boost::uint32_t &size() const
+		const std::uint32_t &size() const
 		{
 			return m_size;
 		}
 
 	protected:
-		boost::uint32_t m_size;
+		std::uint32_t m_size;
 	};
 
 	typedef boost::shared_ptr<rtmp_message_window_acknowledgement_size> rtmp_message_window_acknowledgement_size_ptr;
@@ -265,7 +265,7 @@ namespace intertalk
 			: rtmp_message(eMessageSetPeerBandwidth)
 		{}
 
-		rtmp_message_set_peer_bandwidth(boost::uint32_t size, boost::uint8_t type)
+		rtmp_message_set_peer_bandwidth(std::uint32_t size, std::uint8_t type)
 			: rtmp_message(eMessageSetPeerBandwidth)
 			, m_size(size)
 			, m_type(type)
@@ -279,19 +279,19 @@ namespace intertalk
 
 		virtual void serialize(stream_array &);
 
-		const boost::uint32_t &size() const
+		const std::uint32_t &size() const
 		{
 			return m_size;
 		}
 
-		const boost::uint8_t &type() const
+		const std::uint8_t &type() const
 		{
 			return m_type;
 		}
 
 	protected:
-		boost::uint32_t m_size;
-		boost::uint8_t m_type;
+		std::uint32_t m_size;
+		std::uint8_t m_type;
 	};
 
 	typedef boost::shared_ptr<rtmp_message_set_peer_bandwidth> rtmp_message_set_peer_bandwidth_ptr;
@@ -303,15 +303,15 @@ namespace intertalk
 			: rtmp_message(eMessageAudioData), m_size(0)
 		{}
 
-		rtmp_message_audio_data(boost::uint16_t size)
-			: rtmp_message(eMessageAudioData), m_data(new boost::uint8_t[size]), m_size(size)
+		rtmp_message_audio_data(std::uint16_t size)
+			: rtmp_message(eMessageAudioData), m_data(new std::uint8_t[size]), m_size(size)
 		{}
 
-		rtmp_message_audio_data(boost::uint8_t *data, boost::uint16_t size)
+		rtmp_message_audio_data(std::uint8_t *data, std::uint16_t size)
 			: rtmp_message(eMessageAudioData), m_data(data), m_size(size)
 		{}
 
-		rtmp_message_audio_data(boost::shared_array<boost::uint8_t> &data, boost::uint16_t size)
+		rtmp_message_audio_data(boost::shared_array<std::uint8_t> &data, std::uint16_t size)
 			: rtmp_message(eMessageAudioData), m_data(data), m_size(size)
 		{}
 
@@ -326,12 +326,12 @@ namespace intertalk
 
 		virtual void serialize(stream_array &);
 
-		boost::uint8_t *data()
+		std::uint8_t *data()
 		{
 			return m_data.get();
 		}
 
-		boost::uint16_t size()
+		std::uint16_t size()
 		{
 			return m_size;
 		}
@@ -341,28 +341,28 @@ namespace intertalk
 		enum sample_size { e8Bit = 0, e16Bit };
 		enum type { eMono = 0, eStereo };
 
-		boost::uint8_t get_codec() const
+		std::uint8_t get_codec() const
 		{
 			if (m_size > 0)
 				return (m_data[0] >> 4) & 0x0f;
 			return 0;
 		}
 
-		boost::uint8_t get_rate() const
+		std::uint8_t get_rate() const
 		{
 			if (m_size > 0)
 				return (m_data[0] >> 2) & 0x03;
 			return 0;
 		}
 
-		boost::uint8_t get_sample_size() const
+		std::uint8_t get_sample_size() const
 		{
 			if (m_size > 0)
 				return (m_data[0] >> 1) & 0x01;
 			return 0;
 		}
 
-		boost::uint8_t get_type() const
+		std::uint8_t get_type() const
 		{
 			if (m_size > 0)
 				return m_data[0] & 0x01;
@@ -370,8 +370,8 @@ namespace intertalk
 		}
 
 	protected:
-		boost::shared_array<boost::uint8_t> m_data;
-		boost::uint16_t m_size;
+		boost::shared_array<std::uint8_t> m_data;
+		std::uint16_t m_size;
 	};
 
 	typedef boost::shared_ptr<rtmp_message_audio_data> rtmp_message_audio_data_ptr;
@@ -379,8 +379,8 @@ namespace intertalk
 	class rtmp_message_video_data : public rtmp_message
 	{
 	public:
-		rtmp_message_video_data(boost::uint32_t size)
-			: rtmp_message(eMessageVideoData), m_data(new boost::uint8_t[size]), m_size(size)
+		rtmp_message_video_data(std::uint32_t size)
+			: rtmp_message(eMessageVideoData), m_data(new std::uint8_t[size]), m_size(size)
 		{}
 
 		rtmp_message_video_data(const rtmp_message_video_data &video_data)
@@ -394,12 +394,12 @@ namespace intertalk
 
 		virtual void serialize(stream_array &);
 
-		boost::uint8_t *data()
+		std::uint8_t *data()
 		{
 			return m_data.get();
 		}
 
-		boost::uint32_t size()
+		std::uint32_t size()
 		{
 			return m_size;
 		}
@@ -407,14 +407,14 @@ namespace intertalk
 		enum codec { eJPEG = 1, eSorenson, eScreenVideo, eOn2VP6, eOn2VP6Alpha, eScreenVideoV2, eAVC };
 		enum frame_type { eKeyFrame = 1, eInterFrame, eDisposableInterframe, eGeneratedKeyFrame, eVideoInfo };
 
-		boost::uint8_t get_codec() const
+		std::uint8_t get_codec() const
 		{
 			if (m_size > 0)
 				return m_data[0] & 0x0f;
 			return 0;
 		}
 
-		boost::uint8_t get_frame_type() const
+		std::uint8_t get_frame_type() const
 		{
 			if (m_size > 0)
 				return (m_data[0] >> 4) & 0x0f;
@@ -422,8 +422,8 @@ namespace intertalk
 		}
 
 	protected:
-		boost::shared_array<boost::uint8_t> m_data;
-		boost::uint32_t m_size;
+		boost::shared_array<std::uint8_t> m_data;
+		std::uint32_t m_size;
 	};
 
 	typedef boost::shared_ptr<rtmp_message_video_data> rtmp_message_video_data_ptr;
@@ -592,7 +592,7 @@ namespace intertalk
 	class rtmp_message_aggregate : public rtmp_message
 	{
 	public:
-		rtmp_message_aggregate(boost::uint32_t ts)
+		rtmp_message_aggregate(std::uint32_t ts)
 			: rtmp_message(eMessageAggregate)
 			, m_ts(ts)
 		{}
@@ -609,7 +609,7 @@ namespace intertalk
 		}
 	protected:
 		message_list_t m_messages;
-		boost::uint32_t m_ts;
+		std::uint32_t m_ts;
 	};
 
 	typedef boost::shared_ptr<rtmp_message_aggregate> rtmp_message_aggregate_ptr;

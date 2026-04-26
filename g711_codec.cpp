@@ -27,11 +27,11 @@ namespace
 		return size;
 	}
 
-	boost::uint8_t linear2alaw(short pcm_val)
+	std::uint8_t linear2alaw(short pcm_val)
 	{
 		short mask;
 		short seg;
-		boost::uint8_t aval;
+		std::uint8_t aval;
 
 		pcm_val = pcm_val >> 3;
 		if (pcm_val >= 0)
@@ -44,17 +44,17 @@ namespace
 
 		seg = segment_search(pcm_val, kSegAEnd, 8);
 		if (seg >= 8)
-			return static_cast<boost::uint8_t>(0x7F ^ mask);
+			return static_cast<std::uint8_t>(0x7F ^ mask);
 
-		aval = static_cast<boost::uint8_t>(seg << kSegShift);
+		aval = static_cast<std::uint8_t>(seg << kSegShift);
 		if (seg < 2)
 			aval |= (pcm_val >> 1) & kQuantMask;
 		else
 			aval |= (pcm_val >> seg) & kQuantMask;
-		return static_cast<boost::uint8_t>(aval ^ mask);
+		return static_cast<std::uint8_t>(aval ^ mask);
 	}
 
-	short alaw2linear(boost::uint8_t a_val)
+	short alaw2linear(std::uint8_t a_val)
 	{
 		short t;
 		short seg;
@@ -80,11 +80,11 @@ namespace
 	const int kBias = 0x84;
 	const int kClip = 8159;
 
-	boost::uint8_t linear2ulaw(short pcm_val)
+	std::uint8_t linear2ulaw(short pcm_val)
 	{
 		short mask;
 		short seg;
-		boost::uint8_t uval;
+		std::uint8_t uval;
 
 		pcm_val = pcm_val >> 2;
 		if (pcm_val < 0)
@@ -101,13 +101,13 @@ namespace
 
 		seg = segment_search(pcm_val, kSegUEnd, 8);
 		if (seg >= 8)
-			return static_cast<boost::uint8_t>(0x7F ^ mask);
+			return static_cast<std::uint8_t>(0x7F ^ mask);
 
-		uval = static_cast<boost::uint8_t>((seg << 4) | ((pcm_val >> (seg + 1)) & 0x0F));
-		return static_cast<boost::uint8_t>(uval ^ mask);
+		uval = static_cast<std::uint8_t>((seg << 4) | ((pcm_val >> (seg + 1)) & 0x0F));
+		return static_cast<std::uint8_t>(uval ^ mask);
 	}
 
-	short ulaw2linear(boost::uint8_t u_val)
+	short ulaw2linear(std::uint8_t u_val)
 	{
 		short t;
 
@@ -120,15 +120,15 @@ namespace
 
 namespace intertalk
 {
-	boost::uint8_t *g711_codec::encode(boost::uint8_t *data, boost::uint32_t size, boost::uint32_t &enc_size)
+	std::uint8_t *g711_codec::encode(std::uint8_t *data, std::uint32_t size, std::uint32_t &enc_size)
 	{
 		enc_size = size >> 1;
 		enc_size += m_reserved_for_header;
-		boost::uint8_t *enc_buff = new boost::uint8_t[enc_size];
-		boost::uint8_t *dst = enc_buff + m_reserved_for_header;
+		std::uint8_t *enc_buff = new std::uint8_t[enc_size];
+		std::uint8_t *dst = enc_buff + m_reserved_for_header;
 
 		short *d = reinterpret_cast<short *>(data);
-		for (boost::uint32_t i = 0; i < enc_size - m_reserved_for_header; ++i)
+		for (std::uint32_t i = 0; i < enc_size - m_reserved_for_header; ++i)
 		{
 			if (m_type == eAlaw)
 				*dst++ = linear2alaw(d[i]);
@@ -138,17 +138,17 @@ namespace intertalk
 		return enc_buff;
 	}
 
-	boost::uint8_t *g711_codec::decode(char *to, boost::uint8_t *data, boost::uint8_t size, boost::uint32_t &dec_size)
+	std::uint8_t *g711_codec::decode(char *to, std::uint8_t *data, std::uint8_t size, std::uint32_t &dec_size)
 	{
 		short *d = reinterpret_cast<short *>(to);
-		for (boost::uint8_t i = 0; i < size; ++i)
+		for (std::uint8_t i = 0; i < size; ++i)
 		{
 			if (m_type == eAlaw)
 				*d++ = alaw2linear(data[i]);
 			else
 				*d++ = ulaw2linear(data[i]);
 		}
-		dec_size = static_cast<boost::uint32_t>(size) * sizeof(short);
-		return reinterpret_cast<boost::uint8_t *>(to);
+		dec_size = static_cast<std::uint32_t>(size) * sizeof(short);
+		return reinterpret_cast<std::uint8_t *>(to);
 	}
 }

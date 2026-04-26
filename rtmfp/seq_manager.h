@@ -2,7 +2,7 @@
 
 #include <list>
 #include <set>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 
 namespace intertalk
 {
@@ -152,9 +152,9 @@ namespace intertalk
 				m_csn = val;
 		}
 
-		boost::uint64_t sum_n_elements()
+		std::uint64_t sum_n_elements()
 		{
-			boost::uint64_t tmp = m_csn + m_sequences.size() + 1;
+			std::uint64_t tmp = m_csn + m_sequences.size() + 1;
 			return tmp * (tmp + 1) / 2;
 		}
 

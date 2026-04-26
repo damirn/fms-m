@@ -19,14 +19,14 @@ namespace intertalk
 	public:
 		so_manager(rtmp_application *);
 
-		bool handle_so(rtmp_message_shared_object_ptr, boost::uint32_t, rtmp_message_ptr &);
+		bool handle_so(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_ptr &);
 
 	protected:
-		void handle_use_event(rtmp_message_shared_object_ptr, boost::uint32_t, rtmp_message_shared_object_ptr &);
-		void handle_release_event(rtmp_message_shared_object_ptr, boost::uint32_t);
-		void handle_req_change_event(rtmp_message_shared_object_ptr, boost::uint32_t, rtmp_message_shared_object::event_ptr, rtmp_message_shared_object_ptr &);
-		void handle_send_message_event(rtmp_message_shared_object_ptr, boost::uint32_t, rtmp_message_shared_object_ptr &);
-		void handle_req_remove_event(rtmp_message_shared_object_ptr, boost::uint32_t, rtmp_message_shared_object::event_ptr, rtmp_message_shared_object_ptr &);
+		void handle_use_event(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_shared_object_ptr &);
+		void handle_release_event(rtmp_message_shared_object_ptr, std::uint32_t);
+		void handle_req_change_event(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_shared_object::event_ptr, rtmp_message_shared_object_ptr &);
+		void handle_send_message_event(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_shared_object_ptr &);
+		void handle_req_remove_event(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_shared_object::event_ptr, rtmp_message_shared_object_ptr &);
 
 		rtmp_application *m_app;
 
@@ -35,8 +35,8 @@ namespace intertalk
 			so_data()
 				: m_version(1)
 			{}
-			boost::uint32_t m_version;
-			std::set<boost::uint32_t> m_clients;
+			std::uint32_t m_version;
+			std::set<std::uint32_t> m_clients;
 			std::map<std::string, amf0_type_ptr> m_values;
 		};
 

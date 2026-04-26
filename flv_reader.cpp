@@ -25,24 +25,24 @@ namespace intertalk
 		if (m_f.eof())
 			return false;
 
-		boost::uint8_t c;
+		std::uint8_t c;
 		m_f.read((char *)&c, 1);
 		if (m_f.eof())
 			return false;
 
-		boost::uint32_t size = read_uint32_3();
-		boost::uint32_t ts = read_uint32_3();
+		std::uint32_t size = read_uint32_3();
+		std::uint32_t ts = read_uint32_3();
 		m_f.seekg(4, std::ios_base::cur);
 
 		if (c == 0x08)
 		{
-			intertalk::rtmp_message_audio_data_ptr audio(new intertalk::rtmp_message_audio_data(static_cast<boost::uint16_t>(size)));
+			intertalk::rtmp_message_audio_data_ptr audio(new intertalk::rtmp_message_audio_data(static_cast<std::uint16_t>(size)));
 			m_f.read((char *)audio->data(), size);
 			m_frame = audio;
 		}
 		else if (c == 0x09)
 		{
-			intertalk::rtmp_message_video_data_ptr video(new intertalk::rtmp_message_video_data(static_cast<boost::uint16_t>(size)));
+			intertalk::rtmp_message_video_data_ptr video(new intertalk::rtmp_message_video_data(static_cast<std::uint16_t>(size)));
 			m_f.read((char *)video->data(), size);
 			m_frame = video;
 		}
@@ -69,12 +69,12 @@ namespace intertalk
 		}
 	}
 
-	boost::uint32_t flv_reader::read_uint32_3()
+	std::uint32_t flv_reader::read_uint32_3()
 	{
-		boost::uint32_t tmp = 0;
-		boost::uint8_t b;
+		std::uint32_t tmp = 0;
+		std::uint8_t b;
 
-		for (boost::uint8_t i = 0; i < 3; ++i)
+		for (std::uint8_t i = 0; i < 3; ++i)
 		{
 			m_f.read((char *)&b, 1);
 			tmp <<= 8;
@@ -83,12 +83,12 @@ namespace intertalk
 		return tmp;
 	}
 
-	boost::uint32_t flv_reader::read_uint32()
+	std::uint32_t flv_reader::read_uint32()
 	{
-		boost::uint32_t tmp = 0;
-		boost::uint8_t b;
+		std::uint32_t tmp = 0;
+		std::uint8_t b;
 
-		for (boost::uint8_t i = 0; i < 4; ++i)
+		for (std::uint8_t i = 0; i < 4; ++i)
 		{
 			m_f.read((char *)&b, 1);
 			tmp <<= 8;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 
 namespace intertalk
 {
@@ -30,16 +30,16 @@ namespace intertalk
 			return m_aes;
 		}
 
-		static boost::uint16_t calculate_checksum(boost::uint8_t *, size_t);
+		static std::uint16_t calculate_checksum(std::uint8_t *, size_t);
 
 	protected:
 		bool parse_chunks(stream_array &);
 		bool check_checksum(stream_array &);
-		bool deserialize_chunk(boost::uint8_t, boost::uint16_t, stream_array &);
+		bool deserialize_chunk(std::uint8_t, std::uint16_t, stream_array &);
 
 		chunk_handler &m_chunk_handler;
 		aes *m_aes;
-		boost::uint32_t m_rx_data_packets;
+		std::uint32_t m_rx_data_packets;
 		bool m_ack_now;
 		bool m_seen_data_chunk;
 
