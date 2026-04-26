@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "config.h"
+#include "crypto.h"
 #include "logging.h"
 #include "server.h"
 
@@ -12,6 +13,9 @@ int main(int argc, char **argv)
 	bool cli_ok = intertalk::config::instance()->parse_cli(argc, argv);
 	if (!cli_ok)
 		return -1;
+
+	// RC4 (RTMPE) lives in OpenSSL 3's legacy provider; load it before any handshake.
+	intertalk::init_crypto_providers();
 
 	intertalk::logging *log = new intertalk::logging;
 	log->init_logging(intertalk::config::instance()->log_path());

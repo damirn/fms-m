@@ -82,7 +82,7 @@ namespace intertalk
 					if (m_buffer.available() > 0)
 					{
 						if (m_key_in != 0) // encrypted data
-							RC4(m_key_in, m_buffer.available(), m_buffer.read_pos(), m_buffer.read_pos());
+							rc4_crypt(m_key_in, m_buffer.available(), m_buffer.read_pos(), m_buffer.read_pos());
 						parse_data(m_buffer);
 					}
 					read_data();
@@ -101,7 +101,7 @@ namespace intertalk
 		if (!e)
 		{
 			if (m_key_in != 0)
-				RC4(m_key_in, bytes_transferred, m_buffer.write_pos(), m_buffer.write_pos());
+				rc4_crypt(m_key_in, bytes_transferred, m_buffer.write_pos(), m_buffer.write_pos());
 			m_buffer.update(bytes_transferred);
 			handle_bytes_read(bytes_transferred);
 			boost::tribool result = parse_data(m_buffer);
@@ -245,7 +245,7 @@ namespace intertalk
 
 		// encrypt outgoing data if needed
 		if (m_key_out != 0 && m_output_buffer.wrote_size() > 0)
-			RC4(m_key_out, m_output_buffer.wrote_size(), m_output_buffer.read_pos(), m_output_buffer.read_pos());
+			rc4_crypt(m_key_out, m_output_buffer.wrote_size(), m_output_buffer.read_pos(), m_output_buffer.read_pos());
 
 		boost::asio::async_write(m_socket, m_output_buffer.read_buffer(),
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write_packet(ec, bytes); });
