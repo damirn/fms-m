@@ -121,7 +121,7 @@ namespace intertalk
 		netstream_stats_map_t m_netstream_stats;
 
 		boost::asio::io_service &m_io_service;
-		boost::asio::deadline_timer m_timer;
+		boost::asio::steady_timer m_timer;
 		enum { _eTimeout = 5 };
 	};
 }

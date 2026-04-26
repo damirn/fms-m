@@ -29,7 +29,7 @@ namespace intertalk
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
 			boost::asio::transfer_at_least(1),
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_read(ec, bytes); });
-		m_timer.expires_from_now(boost::posix_time::seconds(7200));
+		m_timer.expires_after(std::chrono::seconds(7200));
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timeout(ec); });
 	}
 

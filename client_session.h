@@ -3,7 +3,7 @@
 #include <set>
 #include <string>
 #include <cstdint>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <chrono>
 #include <memory>
 
 namespace intertalk
@@ -100,7 +100,7 @@ namespace intertalk
 			return m_username;
 		}
 
-		const boost::posix_time::ptime &create_time() const
+		const std::chrono::system_clock::time_point &create_time() const
 		{
 			return m_time;
 		}
@@ -118,7 +118,7 @@ namespace intertalk
 		rtmp_application *m_app;
 
 		// start time
-		boost::posix_time::ptime m_time;
+		std::chrono::system_clock::time_point m_time;
 
 		// counters for read and written bytes
 		std::uint32_t m_bytes_read;

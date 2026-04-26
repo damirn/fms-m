@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <ostream>
 #include <string>
 
@@ -7,6 +8,10 @@ namespace intertalk
 {
 	void *memmem(char *, int, char *, int);
 	void hexdump(std::ostream &, void *, int);
+
+	/// Format a wall-clock time point as "YYYY-MM-DD HH:MM:SS" (replaces
+	/// boost::posix_time::to_simple_string after the chrono migration).
+	std::string to_simple_string(std::chrono::system_clock::time_point);
 
 	struct url
 	{

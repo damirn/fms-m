@@ -186,12 +186,12 @@ namespace intertalk
 			bwcheck_result_handler(std::uint32_t id, callback_t f)
 				: result_handler(id, f)
 				, m_num_called(0)
-				, m_time(boost::posix_time::microsec_clock::local_time())
+				, m_time(std::chrono::system_clock::now())
 			{}
 			std::uint32_t m_bytes;
 			std::uint8_t m_num_called;
-			boost::posix_time::ptime m_time;
-			boost::posix_time::time_duration m_latency;
+			std::chrono::system_clock::time_point m_time;
+			std::chrono::system_clock::duration m_latency;
 		};
 
 		using bwcheck_result_handler_ptr = std::shared_ptr<bwcheck_result_handler>;

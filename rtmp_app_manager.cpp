@@ -402,22 +402,22 @@ namespace intertalk
 		{
 			if (i->second->m_messages == 0)
 			{
-				i->second->m_start_streaming_time = boost::posix_time::microsec_clock::local_time();
+				i->second->m_start_streaming_time = std::chrono::system_clock::now();
 				i->second->m_ts = ts;
 			}
 			else
 			{
-				boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
-				boost::posix_time::time_duration td = boost::posix_time::millisec(ts) - boost::posix_time::millisec(i->second->m_ts);
-				boost::posix_time::ptime calculated_ts = i->second->m_start_streaming_time + td;
-				boost::posix_time::time_duration delta = now - calculated_ts + boost::posix_time::millisec(i->second->m_drift);
-				if (delta.is_negative())
+				std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
+				std::chrono::system_clock::duration td = std::chrono::milliseconds(ts) - std::chrono::milliseconds(i->second->m_ts);
+				std::chrono::system_clock::time_point calculated_ts = i->second->m_start_streaming_time + td;
+				std::chrono::system_clock::duration delta = now - calculated_ts + std::chrono::milliseconds(i->second->m_drift);
+				if (delta < std::chrono::system_clock::duration::zero())
 				{
-					delta = delta.invert_sign();
-					i->second->m_drift = static_cast<std::uint32_t>(delta.total_milliseconds());
+					delta = -delta;
+					i->second->m_drift = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 				}
 				else
-					i->second->m_delay = static_cast<std::uint32_t>(delta.total_milliseconds());
+					i->second->m_delay = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 			}
 			i->second->m_messages++;
 			i->second->m_bytes += bytes;
@@ -457,7 +457,7 @@ namespace intertalk
 
 	void rtmp_app_manager::start_timer()
 	{
-		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_eTimeout)));
+		m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eTimeout)));
 		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 	}
 
@@ -469,16 +469,16 @@ namespace intertalk
 			{
 				std::unique_lock<std::mutex> lock(m_mutex);
 				netstream_stats_map_t tmp;
-				boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
+				std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
 				for (netstream_stats_map_t::iterator i = m_netstream_stats.begin(); i != m_netstream_stats.end(); ++i)
 				{
 					if (i->second->m_name.find("QOS!") != 0)
 					{
 						netstream_stats_ptr stats(new netstream_stats(*(i->second)));
-						boost::posix_time::time_duration td = now - stats->m_start_streaming_time;
+						std::chrono::system_clock::duration td = now - stats->m_start_streaming_time;
 						std::uint32_t kbps = 0;
-						if (td.total_seconds() != 0)
-							kbps = stats->m_bytes / td.total_seconds();
+						if (std::chrono::duration_cast<std::chrono::seconds>(td).count() != 0)
+							kbps = stats->m_bytes / std::chrono::duration_cast<std::chrono::seconds>(td).count();
 						stats->m_kbps = kbps;
 						tmp[i->first] = stats;
 					}

@@ -145,7 +145,7 @@ namespace intertalk
 
 	void rtmp_connection::read_data()
 	{
-		m_rto_timer.expires_from_now(boost::posix_time::seconds(2 * ePingInterval));
+		m_rto_timer.expires_after(std::chrono::seconds(2 * ePingInterval));
 		m_rto_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_rto(ec); });
 
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
@@ -240,7 +240,7 @@ namespace intertalk
 	void rtmp_connection::perform_write()
 	{
 		m_write_in_progress = true;
-		m_wto_timer.expires_from_now(boost::posix_time::seconds(2 * ePingInterval));
+		m_wto_timer.expires_after(std::chrono::seconds(2 * ePingInterval));
 		m_wto_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_wto(ec); });
 
 		// encrypt outgoing data if needed

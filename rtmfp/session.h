@@ -10,7 +10,7 @@
 #include <set>
 #include <boost/asio.hpp>
 #include <cstdint>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <chrono>
 #include <memory>
 #include <functional>
 #include <boost/noncopyable.hpp>
@@ -214,8 +214,8 @@ namespace intertalk
 		std::uint32_t m_outgoing_sid;
 		item m_peer_id;
 		boost::asio::ip::udp::endpoint m_endpoint;
-		boost::asio::deadline_timer m_timer;
-		boost::asio::deadline_timer m_alarm;
+		boost::asio::steady_timer m_timer;
+		boost::asio::steady_timer m_alarm;
 		boost::asio::io_service::strand m_strand;
 		state_t m_state;
 
@@ -232,11 +232,11 @@ namespace intertalk
 		std::uint16_t m_ts_echo_tx;
 		std::uint16_t m_ts_tx;
 		std::uint16_t m_ts_echo_rx;
-		boost::posix_time::ptime m_ts_rx_time;
-		boost::posix_time::time_duration m_srtt;
-		boost::posix_time::time_duration m_rttvar;
-		boost::posix_time::time_duration m_mrto;
-		boost::posix_time::time_duration m_erto;
+		std::chrono::system_clock::time_point m_ts_rx_time;
+		std::chrono::system_clock::duration m_srtt;
+		std::chrono::system_clock::duration m_rttvar;
+		std::chrono::system_clock::duration m_mrto;
+		std::chrono::system_clock::duration m_erto;
 		bool m_should_include_ts_echo;
 
 		std::uint32_t m_outstanding_bytes;

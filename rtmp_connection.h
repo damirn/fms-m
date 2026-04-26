@@ -79,8 +79,8 @@ namespace intertalk
 		boost::asio::ip::tcp::socket m_socket;
 
 		// Timers for read/write timeouts
-		boost::asio::deadline_timer m_rto_timer;
-		boost::asio::deadline_timer m_wto_timer;
+		boost::asio::steady_timer m_rto_timer;
+		boost::asio::steady_timer m_wto_timer;
 
 	private:
 		std::shared_ptr<rtmp_connection> shared_from_this()

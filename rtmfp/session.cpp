@@ -316,22 +316,22 @@ namespace intertalk
 	void session::initialize_ts_flags()
 	{
 		// 3.5.2.2
-		m_mrto = boost::posix_time::milliseconds(250);
-		m_erto = boost::posix_time::seconds(3);
+		m_mrto = std::chrono::milliseconds(250);
+		m_erto = std::chrono::seconds(3);
 	}
 
 	void session::calculate_ts(const header &h)
 	{
 		// 3.5.2.2
-		static const boost::posix_time::time_duration ms200 = boost::posix_time::milliseconds(200);
-		static const boost::posix_time::time_duration ms250 = boost::posix_time::milliseconds(250);
+		static const std::chrono::system_clock::duration ms200 = std::chrono::milliseconds(200);
+		static const std::chrono::system_clock::duration ms250 = std::chrono::milliseconds(250);
 
 		if (m_state == eOpen)
 		{
 			if (h.timestamp_present() && m_ts_rx != h.timestamp())
 			{
 				m_ts_rx = h.timestamp();
-				m_ts_rx_time = boost::posix_time::microsec_clock::local_time();
+				m_ts_rx_time = std::chrono::system_clock::now();
 			}
 			if (h.timestamp_echo_present() && m_ts_echo_rx != h.timestamp_echo())
 			{
@@ -341,23 +341,23 @@ namespace intertalk
 				if (rtt_ticks <= 0x7fff)
 				{
 					std::uint32_t rtt = rtt_ticks * 4;
-					if (m_srtt.total_milliseconds() != 0)
+					if (std::chrono::duration_cast<std::chrono::milliseconds>(m_srtt).count() != 0)
 					{
-						std::uint32_t rtt_delta = std::abs(static_cast<std::int32_t>(m_srtt.total_milliseconds()) - static_cast<std::int32_t>(rtt));
-						m_rttvar = (m_rttvar * 3 + boost::posix_time::milliseconds(static_cast<long>(rtt_delta))) / 4;
-						m_srtt = (m_srtt * 7 + boost::posix_time::milliseconds(static_cast<long>(rtt))) / 8;
+						std::uint32_t rtt_delta = std::abs(static_cast<std::int32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(m_srtt).count()) - static_cast<std::int32_t>(rtt));
+						m_rttvar = (m_rttvar * 3 + std::chrono::milliseconds(static_cast<long>(rtt_delta))) / 4;
+						m_srtt = (m_srtt * 7 + std::chrono::milliseconds(static_cast<long>(rtt))) / 8;
 					}
 					else
 					{
-						m_srtt = boost::posix_time::milliseconds(static_cast<long>(rtt));
-						m_rttvar = boost::posix_time::milliseconds(rtt / 2);
+						m_srtt = std::chrono::milliseconds(static_cast<long>(rtt));
+						m_rttvar = std::chrono::milliseconds(rtt / 2);
 					}
 					m_mrto = m_srtt + m_rttvar * 4 + ms200;
 					if (m_mrto > ms250)
 						m_erto = m_mrto;
 					else
 						m_erto = ms250;
-					std::cout << "mrto: " << m_mrto.total_milliseconds() << " erto: " << m_erto.total_milliseconds() << std::endl;
+					std::cout << "mrto: " << std::chrono::duration_cast<std::chrono::milliseconds>(m_mrto).count() << " erto: " << std::chrono::duration_cast<std::chrono::milliseconds>(m_erto).count() << std::endl;
 				}
 			}
 		}
@@ -366,9 +366,9 @@ namespace intertalk
 	void session::calculate_echo_ts()
 	{
 		// 3.5.2.2.
-		boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
-		boost::posix_time::time_duration delta = now - m_ts_rx_time;
-		std::uint32_t rx_elapsed = static_cast<std::uint32_t>(delta.total_milliseconds());
+		std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
+		std::chrono::system_clock::duration delta = now - m_ts_rx_time;
+		std::uint32_t rx_elapsed = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 		if (rx_elapsed > 128000)
 		{
 			m_should_include_ts_echo = false;
@@ -705,7 +705,7 @@ namespace intertalk
 
 	void session::arm_timer()
 	{
-		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(eTimeOut)));
+		m_timer.expires_after(std::chrono::seconds(static_cast<long>(eTimeOut)));
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 	}
 
@@ -722,7 +722,7 @@ namespace intertalk
 			else
 			{
 				m_did_receive_data = false;
-				m_timer.expires_at(m_timer.expires_at() + boost::posix_time::seconds(static_cast<long>(eTimeOut)));
+				m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(eTimeOut)));
 				m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 			}
 		}
@@ -730,9 +730,9 @@ namespace intertalk
 
 	void session::arm_alarm()
 	{
-		if (m_erto.total_milliseconds() > 0)
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(m_erto).count() > 0)
 		{
-			m_alarm.expires_from_now(m_erto);
+			m_alarm.expires_after(m_erto);
 			m_alarm.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_alarm(ec); });
 		}
 	}
@@ -753,9 +753,9 @@ namespace intertalk
 			if (was_loss)
 			{
 				// 3.5.2.2
-				static const boost::posix_time::time_duration s10 = boost::posix_time::seconds(10);
-				boost::posix_time::time_duration erto_backoff = boost::posix_time::milliseconds(static_cast<std::uint32_t>(m_erto.total_milliseconds() * 1.4142));
-				boost::posix_time::time_duration erto_capped;
+				static const std::chrono::system_clock::duration s10 = std::chrono::seconds(10);
+				std::chrono::system_clock::duration erto_backoff = std::chrono::milliseconds(static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(m_erto).count() * 1.4142));
+				std::chrono::system_clock::duration erto_capped;
 				if (erto_backoff < s10)
 					erto_capped = erto_backoff;
 				else

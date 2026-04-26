@@ -72,7 +72,7 @@ namespace intertalk
 		boost::asio::ip::tcp::socket m_socket;
 
 		// Timer for read timeout
-		boost::asio::deadline_timer m_timer;
+		boost::asio::steady_timer m_timer;
 
 		// IO service
 		boost::asio::io_service &m_io_service;

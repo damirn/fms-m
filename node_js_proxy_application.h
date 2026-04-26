@@ -89,8 +89,8 @@ namespace intertalk
 		boost::asio::ip::tcp::socket m_socket;
 		boost::asio::io_service::strand m_strand;
 		boost::asio::ip::tcp::resolver *m_resolver;
-		boost::asio::deadline_timer m_timer;
-		boost::asio::deadline_timer m_connect_timer;
+		boost::asio::steady_timer m_timer;
+		boost::asio::steady_timer m_connect_timer;
 		bool m_stopped;
 		bool m_connected;
 		bool m_use_local_socket;
