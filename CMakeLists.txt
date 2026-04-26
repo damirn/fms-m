@@ -13,8 +13,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Boost 1.76 from Homebrew (keg-only)
 set(BOOST_ROOT /opt/homebrew/opt/boost@1.76)
 set(Boost_NO_SYSTEM_PATHS ON)
+# Code now uses std::chrono / std::filesystem; Boost.Log still needs date_time.
 find_package(Boost 1.76 EXACT COMPONENTS
-  chrono date_time filesystem log log_setup program_options regex system thread
+  date_time log log_setup program_options system thread
   REQUIRED)
 message(STATUS "Boost Include: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost Libraries: ${Boost_LIBRARIES}")

@@ -3,7 +3,7 @@
 
 #include <stdexcept>
 #include <boost/asio/detail/socket_ops.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 namespace intertalk
 {
@@ -83,26 +83,26 @@ namespace intertalk
 
 	void flv_writer::prepare_file(const std::string &file_name)
 	{
-		boost::system::error_code ec;
-		boost::filesystem::path p(file_name);
+		std::error_code ec;
+		std::filesystem::path p(file_name);
 
-		if (boost::filesystem::exists(p, ec))
+		if (std::filesystem::exists(p, ec))
 		{
 			if (!ec)
 			{
 				int i = 1;
 				while(true)
 				{
-					boost::filesystem::path tmp = p;
+					std::filesystem::path tmp = p;
 					tmp += std::string(".") + std::to_string(i);
-					if (boost::filesystem::exists(tmp, ec))
+					if (std::filesystem::exists(tmp, ec))
 					{
 						++i;
 						continue;
 					}
 					else
 					{
-						boost::filesystem::rename(p, tmp);
+						std::filesystem::rename(p, tmp);
 						break;
 					}
 				}
