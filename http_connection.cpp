@@ -4,7 +4,6 @@
 #include "rtmpt_manager.h"
 #include "util.h"
 
-#include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 
 namespace intertalk
@@ -30,12 +29,9 @@ namespace intertalk
 	{
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
 			boost::asio::transfer_at_least(1),
-			boost::bind(&http_connection::handle_read,
-			shared_from_this(),
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_read(ec, bytes); });
 		m_timer.expires_from_now(boost::posix_time::seconds(7200));
-		m_timer.async_wait(boost::bind(&http_connection::handle_timeout, shared_from_this(), boost::asio::placeholders::error));
+		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timeout(ec); });
 	}
 
 	void http_connection::perform_write()
@@ -44,19 +40,13 @@ namespace intertalk
 		{
 //			std::cout << "writing header, size: " << m_header.size() << std::endl;
 			boost::asio::async_write(m_socket, m_header,
-				boost::bind(&http_connection::handle_write,
-				shared_from_this(),
-				boost::asio::placeholders::error,
-				boost::asio::placeholders::bytes_transferred));
+				[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write(ec, bytes); });
 		}
 		else
 		{
 //			std::cout << "writing data, size: " << (m_output_buffer.write_pos() - m_output_buffer.read_pos()) << std::endl;
 			boost::asio::async_write(m_socket, m_output_buffer.read_buffer(),
-				boost::bind(&http_connection::handle_write,
-				shared_from_this(),
-				boost::asio::placeholders::error,
-				boost::asio::placeholders::bytes_transferred));
+				[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write(ec, bytes); });
 		}
 	}
 

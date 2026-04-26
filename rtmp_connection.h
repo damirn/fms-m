@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/bind.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/logic/tribool.hpp>
 
@@ -22,7 +21,7 @@ namespace intertalk
 
 		virtual void notify()
 		{
-			m_io_service.post(boost::bind(&rtmp_connection::handle_notify, shared_from_this()));
+			boost::asio::post(m_io_service, [self = shared_from_this()]() { self->handle_notify(); });
 		}
 
 		virtual void close();

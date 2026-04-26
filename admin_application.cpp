@@ -414,18 +414,18 @@ namespace intertalk
 
 	void admin_application::send_new_stream_notify(netstream_stats_ptr data)
 	{
-		notify_active_client(data, boost::bind(&admin_application::dispatch_new_stream_notify, this, _1, _2));
+		notify_active_client(data, [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_new_stream_notify(a, b); });
 	}
 
 	void admin_application::send_stream_deleted_notify(netstream_stats_ptr data)
 	{
-		notify_active_client(data, boost::bind(&admin_application::dispatch_delete_stream_notify, this, _1, _2));
+		notify_active_client(data, [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_delete_stream_notify(a, b); });
 	}
 
 	void admin_application::send_qos_data(netstream_stats_map_t &map)
 	{
 		for (netstream_stats_map_t::iterator i = map.begin(); i != map.end(); ++i)
-			notify_active_client(i->second, boost::bind(&admin_application::dispatch_qos_data_for_stream_notify, this, _1, _2));
+			notify_active_client(i->second, [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_qos_data_for_stream_notify(a, b); });
 	}
 
 	void admin_application::send_auth_status(auth_status_data_ptr data)

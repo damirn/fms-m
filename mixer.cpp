@@ -2,9 +2,9 @@
 #include "mixer.h"
 #include "audio_sink.h"
 
+#include <chrono>
+#include <thread>
 #include <vector>
-
-#include <boost/date_time/posix_time/posix_time_types.hpp>
 
 namespace intertalk
 {
@@ -120,7 +120,7 @@ namespace intertalk
 		std::memset((void *) m_rec_buffer, 0, eBufferSize);
 
 		m_running = true;
-		m_thread = boost::thread(&mixer::run_loop, this);
+		m_thread = std::thread(&mixer::run_loop, this);
 	}
 
 	void mixer::uninit()
@@ -146,7 +146,7 @@ namespace intertalk
 		{
 			if (m_active)
 				mix_tick();
-			boost::this_thread::sleep(boost::posix_time::milliseconds(static_cast<long>(eTimeInterval)));
+			std::this_thread::sleep_for(std::chrono::milliseconds(eTimeInterval));
 		}
 	}
 

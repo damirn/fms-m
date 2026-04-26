@@ -458,7 +458,7 @@ namespace intertalk
 	void rtmp_app_manager::start_timer()
 	{
 		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_eTimeout)));
-		m_timer.async_wait(boost::bind(&rtmp_app_manager::handle_timer, this, boost::asio::placeholders::error));
+		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 	}
 
 	void rtmp_app_manager::handle_timer(const boost::system::error_code &e)

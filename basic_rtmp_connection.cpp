@@ -8,7 +8,6 @@
 #include "rtmp_message.h"
 #include "rtmp_protocol.h"
 
-#include <boost/bind.hpp>
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
 
@@ -59,13 +58,13 @@ namespace intertalk
 	{
 		// arm timeout timer
 		m_hs_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(eHandShakeTimeout)));
-		m_hs_timer.async_wait(boost::bind(&basic_rtmp_connection::handle_hs_timer, shared_from_this(), boost::asio::placeholders::error));
+		m_hs_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_hs_timer(ec); });
 	}
 
 	void basic_rtmp_connection::arm_timer()
 	{
 		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(ePingInterval)));
-		m_timer.async_wait(boost::bind(&basic_rtmp_connection::handle_timer, shared_from_this(), boost::asio::placeholders::error));
+		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 	}
 
 	void basic_rtmp_connection::handle_timer(const boost::system::error_code &e)
@@ -78,7 +77,7 @@ namespace intertalk
 				return;
 			}
 			m_timer.expires_at(m_timer.expires_at() + boost::posix_time::seconds(static_cast<long>(ePingInterval)));
-			m_timer.async_wait(boost::bind(&basic_rtmp_connection::handle_timer, shared_from_this(), boost::asio::placeholders::error));
+			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 
 			rtmp_message_ping_ptr msg(new rtmp_message_ping(rtmp_message_ping::ePingRequest, get_timestamp()));
 			m_app->enqueue_async_message(m_id, msg);

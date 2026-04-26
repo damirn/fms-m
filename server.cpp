@@ -9,7 +9,6 @@
 #include "video_bcast_application.h"
 #include "video_call_application.h"
 
-#include <boost/bind.hpp>
 
 namespace intertalk
 {
@@ -61,8 +60,7 @@ namespace intertalk
 		}
 		m_acceptor.listen();
 		m_acceptor.async_accept(m_connection->socket(),
-			boost::bind(&server::handle_accept, this,
-			boost::asio::placeholders::error));
+			[this](const boost::system::error_code &ec) { handle_accept(ec); });
 
 		boost::asio::ip::tcp::resolver::query query2(address, config::instance()->rtmpt_port());
 		endpoint = *resolver.resolve(query2);
@@ -84,8 +82,7 @@ namespace intertalk
 		}
 		m_http_acceptor.listen();
 		m_http_acceptor.async_accept(m_http_connection->socket(),
-			boost::bind(&server::handle_http_accept, this,
-			boost::asio::placeholders::error));
+			[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
 	}
 
 	void server::handle_accept(const boost::system::error_code& e)
@@ -95,15 +92,13 @@ namespace intertalk
 			m_connection->start();
 			m_connection = m_app_manager->create_connection();
 			m_acceptor.async_accept(m_connection->socket(),
-				boost::bind(&server::handle_accept, this,
-				boost::asio::placeholders::error));
+				[this](const boost::system::error_code &ec) { handle_accept(ec); });
 		}
 #ifdef WIN32
 		else if (e.value() == ERROR_SEM_TIMEOUT)
 		{
 			m_acceptor.async_accept(m_connection->socket(),
-				boost::bind(&server::handle_accept, this,
-				boost::asio::placeholders::error));
+				[this](const boost::system::error_code &ec) { handle_accept(ec); });
 		}
 #endif
 	}
@@ -115,15 +110,13 @@ namespace intertalk
 			m_http_connection->start();
 			m_http_connection = m_app_manager->create_http_connection();
 			m_http_acceptor.async_accept(m_http_connection->socket(),
-				boost::bind(&server::handle_http_accept, this,
-				boost::asio::placeholders::error));
+				[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
 		}
 #ifdef WIN32
 		else if (e.value() == ERROR_SEM_TIMEOUT)
 		{
 			m_http_acceptor.async_accept(m_http_connection->socket(),
-				boost::bind(&server::handle_http_accept, this,
-				boost::asio::placeholders::error));
+				[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
 		}
 #endif
 	}
