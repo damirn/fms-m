@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <boost/asio/detail/socket_ops.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/lexical_cast.hpp>
 
 namespace intertalk
 {
@@ -95,7 +94,7 @@ namespace intertalk
 				while(true)
 				{
 					boost::filesystem::path tmp = p;
-					tmp += std::string(".") + boost::lexical_cast<std::string>(i);
+					tmp += std::string(".") + std::to_string(i);
 					if (boost::filesystem::exists(tmp, ec))
 					{
 						++i;

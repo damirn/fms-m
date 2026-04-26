@@ -32,7 +32,7 @@ namespace intertalk
 			if (config::instance()->js_server_address().length() == 0)
 				std::cout << "No address for node.js server given, will not try to connect" << std::endl;
 			else
-				connect_to_ip(config::instance()->js_server_address(), boost::lexical_cast<std::string>(config::instance()->js_server_port()));
+				connect_to_ip(config::instance()->js_server_address(), std::to_string(config::instance()->js_server_port()));
 		}
 	}
 
