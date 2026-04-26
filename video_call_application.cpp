@@ -15,7 +15,7 @@ namespace intertalk
 		static const char call_end[] = "call_end";
 	}
 
-	boost::tribool video_call_application::handle_invoke(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
+	boost::tribool video_call_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
 
@@ -37,7 +37,7 @@ namespace intertalk
 		return video_bcast_application::handle_invoke(msg, connection_id, header, result);
 	}
 
-	void video_call_application::handle_audio_data(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &h)
+	void video_call_application::handle_audio_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &h)
 	{
 		rtmp_message_audio_data_ptr audio = boost::dynamic_pointer_cast<rtmp_message_audio_data, rtmp_message>(msg);
 		client_session_ptr conn = get_connection(connection_id);
@@ -55,7 +55,7 @@ namespace intertalk
 		video_bcast_application::handle_audio_data(msg, connection_id, h);
 	}
 
-	void video_call_application::handle_call_invoke(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id)
+	void video_call_application::handle_call_invoke(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
 	{
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		if (!check_call_params(params))
@@ -98,7 +98,7 @@ namespace intertalk
 		return true;
 	}
 
-	void video_call_application::handle_record_invoke(rtmp_message_invoke_ptr invoke, boost::uint32_t connection_id)
+	void video_call_application::handle_record_invoke(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
 	{
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		if (params.size() != 2)
@@ -141,7 +141,7 @@ namespace intertalk
 		}
 	}
 
-	void video_call_application::add_publisher_to_app_instance(boost::uint32_t connection_id)
+	void video_call_application::add_publisher_to_app_instance(std::uint32_t connection_id)
 	{
 		client_session_ptr conn = get_connection(connection_id);
 		if (conn->app_instance().length() != 0)
@@ -164,7 +164,7 @@ namespace intertalk
 		}
 	}
 
-	void video_call_application::video_call_end_notify(boost::uint32_t connection_id)
+	void video_call_application::video_call_end_notify(std::uint32_t connection_id)
 	{
 		// no lock since the lock has already been aquired
 		client_instance_map_t::iterator i = m_client_to_instance.find(connection_id);
@@ -178,7 +178,7 @@ namespace intertalk
 			return;
 		}
 
-		std::set<boost::uint32_t> &set = j->second->m_clients;
+		std::set<std::uint32_t> &set = j->second->m_clients;
 		if (set.find(connection_id) == set.end())
 			return;
 		if (set.size() == 2)
@@ -186,7 +186,7 @@ namespace intertalk
 			// both clients are connected
 			if (j->second->m_mixer != 0)
 				j->second->m_mixer->remove_source_stream(connection_id);
-			std::set<boost::uint32_t>::iterator i = set.begin();
+			std::set<std::uint32_t>::iterator i = set.begin();
 			if (*i == connection_id)
 				++i;
 			send_call_end_notify(*i);
@@ -206,7 +206,7 @@ namespace intertalk
 			m_instance_to_client.erase(j);
 	}
 
-	void video_call_application::send_call_end_notify(boost::uint32_t connection_id)
+	void video_call_application::send_call_end_notify(std::uint32_t connection_id)
 	{
 		rtmp_message_invoke_ptr result(new rtmp_message_invoke(invoke_functions::call_end, 0.0f));
 

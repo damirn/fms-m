@@ -13,7 +13,7 @@ namespace intertalk
 	{
 	public:
 		// Construct a connection with the given io_service.
-		rtmp_connection(boost::uint32_t, boost::asio::io_service &, rtmp_app_manager *);
+		rtmp_connection(std::uint32_t, boost::asio::io_service &, rtmp_app_manager *);
 
 		~rtmp_connection();
 

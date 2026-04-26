@@ -37,7 +37,7 @@ namespace intertalk
 		session->m_session->close();
 	}
 
-	bool rtmpt_manager::validate(const boost::asio::ip::tcp::endpoint &remote, const std::string &id, boost::uint32_t sequence)
+	bool rtmpt_manager::validate(const boost::asio::ip::tcp::endpoint &remote, const std::string &id, std::uint32_t sequence)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		id_map_t::iterator i = m_ids.find(id);
@@ -51,7 +51,7 @@ namespace intertalk
 		return true;
 	}
 
-	boost::uint32_t rtmpt_manager::handle_data(const std::string &cid, boost::uint32_t seq, stream_array &input, stream_array &output)
+	std::uint32_t rtmpt_manager::handle_data(const std::string &cid, std::uint32_t seq, stream_array &input, stream_array &output)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		id_map_t::iterator i = m_ids.find(cid);
@@ -76,7 +76,7 @@ namespace intertalk
 		}
 		else
 		{
-			boost::uint8_t *data = new boost::uint8_t[input.available()];
+			std::uint8_t *data = new std::uint8_t[input.available()];
 			std::memcpy(data, input.read_pos(), input.available());
 			i->second->m_out_of_order_data[seq] = std::make_pair(data, input.available());
 			i->second->m_session->serialize_poll_time(output);
@@ -85,7 +85,7 @@ namespace intertalk
 		return output.wrote_size();
 	}
 
-	boost::uint32_t rtmpt_manager::serialize_result(const std::string &cid, boost::uint32_t seq, stream_array &buffer)
+	std::uint32_t rtmpt_manager::serialize_result(const std::string &cid, std::uint32_t seq, stream_array &buffer)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		id_map_t::iterator i = m_ids.find(cid);
@@ -98,7 +98,7 @@ namespace intertalk
 		return buffer.wrote_size();
 	}
 
-	void rtmpt_manager::update_stats(const std::string &id, boost::uint32_t bytes_transferred, bool is_inbound)
+	void rtmpt_manager::update_stats(const std::string &id, std::uint32_t bytes_transferred, bool is_inbound)
 	{
 		boost::mutex::scoped_lock lock(m_mutex);
 		id_map_t::iterator i = m_ids.find(id);

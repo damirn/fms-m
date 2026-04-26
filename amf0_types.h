@@ -4,7 +4,7 @@
 #include <list>
 #include <map>
 #include <string>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/shared_ptr.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/indexed_by.hpp>
@@ -70,13 +70,13 @@ namespace intertalk
 			throw amf0_illegal_cast();
 		}
 
-		boost::uint32_t type() const
+		std::uint32_t type() const
 		{
 			return m_type;
 		}
 
 	protected:
-		boost::uint32_t m_type;
+		std::uint32_t m_type;
 	};
 
 	typedef boost::shared_ptr<amf0_type> amf0_type_ptr;
@@ -185,11 +185,11 @@ namespace intertalk
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline boost::uint32_t &get_ref<boost::uint32_t>(amf0_type_ptr v)
+		template<> inline std::uint32_t &get_ref<std::uint32_t>(amf0_type_ptr v)
 		{
 			amf0_number_ptr num = boost::dynamic_pointer_cast<amf0_number, amf0_type>(v);
 			if (num.get() != 0)
-				return reinterpret_cast<boost::uint32_t &>(num->value());
+				return reinterpret_cast<std::uint32_t &>(num->value());
 			throw amf0_illegal_cast();
 		}
 
@@ -214,19 +214,19 @@ namespace intertalk
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline boost::uint32_t get<boost::uint32_t>(amf0_type_ptr v)
+		template<> inline std::uint32_t get<std::uint32_t>(amf0_type_ptr v)
 		{
 			amf0_number_ptr num = boost::dynamic_pointer_cast<amf0_number, amf0_type>(v);
 			if (num.get() != 0)
-				return static_cast<boost::uint32_t>(num->value());
+				return static_cast<std::uint32_t>(num->value());
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline boost::int32_t get<boost::int32_t>(amf0_type_ptr v)
+		template<> inline std::int32_t get<std::int32_t>(amf0_type_ptr v)
 		{
 			amf0_number_ptr num = boost::dynamic_pointer_cast<amf0_number, amf0_type>(v);
 			if (num.get() != 0)
-				return static_cast<boost::int32_t>(num->value());
+				return static_cast<std::int32_t>(num->value());
 			throw amf0_illegal_cast();
 		}
 	}
@@ -471,33 +471,33 @@ namespace intertalk
 			: amf0_type(eAMF0LongString)
 		{}
 
-		amf0_long_string(const boost::uint8_t *data, boost::uint32_t size)
+		amf0_long_string(const std::uint8_t *data, std::uint32_t size)
 			: amf0_type(eAMF0LongString)
 			, m_data(data, data + size)
 		{}
 
-		void initialize(const boost::uint8_t *data, boost::uint32_t size)
+		void initialize(const std::uint8_t *data, std::uint32_t size)
 		{
 			m_data.assign(data, data + size);
 		}
 
-		const boost::uint8_t *data() const
+		const std::uint8_t *data() const
 		{
 			return m_data.data();
 		}
 
-		boost::uint8_t *data()
+		std::uint8_t *data()
 		{
 			return m_data.data();
 		}
 
-		boost::uint32_t size() const
+		std::uint32_t size() const
 		{
-			return static_cast<boost::uint32_t>(m_data.size());
+			return static_cast<std::uint32_t>(m_data.size());
 		}
 
 	protected:
-		std::vector<boost::uint8_t> m_data;
+		std::vector<std::uint8_t> m_data;
 	};
 
 	typedef boost::shared_ptr<amf0_long_string> amf0_long_string_ptr;

@@ -2,7 +2,7 @@
 
 #include <fstream>
 #include <string>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/noncopyable.hpp>
 
 #include "rtmp_message.h"
@@ -32,8 +32,8 @@ namespace intertalk
 		void rewind();
 
 	protected:
-		boost::uint32_t read_uint32_3();
-		boost::uint32_t read_uint32();
+		std::uint32_t read_uint32_3();
+		std::uint32_t read_uint32();
 
 		std::string m_name;
 		std::ifstream m_f;

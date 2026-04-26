@@ -18,7 +18,7 @@ namespace intertalk
 	{
 	public:
 		// Construct a connection with the given io_service.
-		rtmpt_session(boost::uint32_t, boost::asio::io_service &, rtmp_app_manager *);
+		rtmpt_session(std::uint32_t, boost::asio::io_service &, rtmp_app_manager *);
 
 		// Start the first asynchronous operation for the connection.
 		virtual void start();
@@ -65,7 +65,7 @@ namespace intertalk
 		void handle_results(stream_array &);
 		void serialize_message(rtmp_message_ptr, stream_array &);
 
-		boost::uint8_t get_poll_time(bool);
+		std::uint8_t get_poll_time(bool);
 
 		rtmpt_manager *m_rtmpt_manager;
 
@@ -73,19 +73,19 @@ namespace intertalk
 		bool m_write_http_header;
 		bool m_http_header_is_complete;
 
-		boost::uint8_t m_state;
+		std::uint8_t m_state;
 		session_state m_sstate;
 		boost::asio::streambuf m_header;
 
 		enum { eMaxIdleTimes = 6};
-		boost::uint8_t m_poll_cnt;
-		boost::uint8_t m_poll_index;
+		std::uint8_t m_poll_cnt;
+		std::uint8_t m_poll_index;
 
 		std::string m_cid;
 		boost::asio::ip::address m_address;
 
 		std::list<rtmp_message_ptr> m_results;
-		static boost::uint8_t m_poll_time[];
+		static std::uint8_t m_poll_time[];
 
 	private:
 		boost::shared_ptr<rtmpt_session> shared_from_this()

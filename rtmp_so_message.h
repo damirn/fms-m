@@ -14,7 +14,7 @@ namespace intertalk
 			, m_flags(0)
 		{}
 
-		rtmp_message_shared_object(amf0_string_ptr name, boost::uint32_t version, boost::uint32_t flags)
+		rtmp_message_shared_object(amf0_string_ptr name, std::uint32_t version, std::uint32_t flags)
 			: rtmp_message(eMessageSharedObject)
 			, m_name(name)
 			, m_version(version)
@@ -44,22 +44,22 @@ namespace intertalk
 			return m_name;
 		}
 
-		const boost::uint32_t &version() const
+		const std::uint32_t &version() const
 		{
 			return m_version;
 		}
 
-		boost::uint32_t &version()
+		std::uint32_t &version()
 		{
 			return m_version;
 		}
 
-		const boost::uint32_t &flags() const
+		const std::uint32_t &flags() const
 		{
 			return m_flags;
 		}
 
-		boost::uint32_t &flags()
+		std::uint32_t &flags()
 		{
 			return m_flags;
 		}
@@ -71,7 +71,7 @@ namespace intertalk
 				, m_data(0)
 			{}
 
-			event(boost::uint8_t event_type)
+			event(std::uint8_t event_type)
 				: m_type(event_type)
 				, m_data(0)
 			{}
@@ -81,11 +81,11 @@ namespace intertalk
 				delete[] m_data;
 			}
 
-			boost::uint8_t m_type;
+			std::uint8_t m_type;
 			amf0_string_ptr m_name;
 			amf0_type_ptr m_value;
-			boost::uint8_t *m_data;
-			boost::uint32_t m_size;
+			std::uint8_t *m_data;
+			std::uint32_t m_size;
 		};
 
 		typedef boost::shared_ptr<event> event_ptr;
@@ -105,12 +105,12 @@ namespace intertalk
 		event_ptr deserialize_event(stream_array &);
 		void deserialize_request_change_event(stream_array &, event_ptr &);
 		void deserialize_request_remove_event(stream_array &, event_ptr &);
-		void deserialize_send_message_event(boost::uint32_t, stream_array &, event_ptr &);
+		void deserialize_send_message_event(std::uint32_t, stream_array &, event_ptr &);
 		void serialize_event(stream_array &, event_ptr &);
 
 		amf0_string_ptr m_name;
-		boost::uint32_t m_version;
-		boost::uint32_t m_flags;
+		std::uint32_t m_version;
+		std::uint32_t m_flags;
 		event_list_t m_events;
 	};
 

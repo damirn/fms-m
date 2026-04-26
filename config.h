@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <boost/program_options.hpp>
 
@@ -19,12 +19,12 @@ namespace intertalk
 
 		bool parse_cli(int, char **);
 
-		const boost::uint32_t &speex_quality() const
+		const std::uint32_t &speex_quality() const
 		{
 			return m_speex_quality;
 		}
 
-		const boost::uint32_t &threads() const
+		const std::uint32_t &threads() const
 		{
 			return m_threads;
 		}
@@ -49,12 +49,12 @@ namespace intertalk
 			return m_rtmpt_port;
 		}
 
-		const boost::uint16_t &rtmpf_port() const
+		const std::uint16_t &rtmpf_port() const
 		{
 			return m_rtmpf_port;
 		}
 
-		const boost::uint16_t &ws_port() const
+		const std::uint16_t &ws_port() const
 		{
 			return m_ws_port;
 		}
@@ -69,37 +69,37 @@ namespace intertalk
 			return m_sip_domain;
 		}
 
-		const boost::uint16_t &sip_port() const
+		const std::uint16_t &sip_port() const
 		{
 			return m_sip_port;
 		}
 
-		const boost::uint32_t &log_level() const
+		const std::uint32_t &log_level() const
 		{
 			return m_log_level;
 		}
 
-		const boost::uint32_t &max_elements_in_audio_queue() const
+		const std::uint32_t &max_elements_in_audio_queue() const
 		{
 			return m_max_elements_in_audio_queue;
 		}
 
-		const boost::uint32_t &max_elements_in_audio_queue_high() const
+		const std::uint32_t &max_elements_in_audio_queue_high() const
 		{
 			return m_max_elements_in_audio_queue_high;
 		}
 
-		const boost::uint32_t &notify_threshold() const
+		const std::uint32_t &notify_threshold() const
 		{
 			return m_notify_delay_threshold;
 		}
 
-		const boost::uint32_t &terminate_threshold() const
+		const std::uint32_t &terminate_threshold() const
 		{
 			return m_terminate_delay_threshold;
 		}
 
-		const boost::uint32_t &admin_data_keep_time() const
+		const std::uint32_t &admin_data_keep_time() const
 		{
 			return m_admin_data_keep_time;
 		}
@@ -144,7 +144,7 @@ namespace intertalk
 			return m_js_server_address;
 		}
 
-		const boost::uint16_t &js_server_port() const
+		const std::uint16_t &js_server_port() const
 		{
 			return m_js_server_port;
 		}
@@ -179,22 +179,22 @@ namespace intertalk
 		boost::program_options::variables_map m_vm;
 		boost::program_options::options_description m_description;
 
-		boost::uint32_t m_speex_quality;
-		boost::uint32_t m_threads;
-		boost::uint16_t m_sip_port;
-		boost::uint32_t m_log_level;
-		boost::uint32_t m_notify_delay_threshold;
-		boost::uint32_t m_terminate_delay_threshold;
-		boost::uint32_t m_max_elements_in_audio_queue;
-		boost::uint32_t m_max_elements_in_audio_queue_high;
-		boost::uint32_t m_admin_data_keep_time;
+		std::uint32_t m_speex_quality;
+		std::uint32_t m_threads;
+		std::uint16_t m_sip_port;
+		std::uint32_t m_log_level;
+		std::uint32_t m_notify_delay_threshold;
+		std::uint32_t m_terminate_delay_threshold;
+		std::uint32_t m_max_elements_in_audio_queue;
+		std::uint32_t m_max_elements_in_audio_queue_high;
+		std::uint32_t m_admin_data_keep_time;
 
 		std::string m_bind_address;
 		std::string m_sip_bind_address;
 		std::string m_rtmp_port;
 		std::string m_rtmpt_port;
-		boost::uint16_t m_rtmpf_port;
-		boost::uint16_t m_ws_port;
+		std::uint16_t m_rtmpf_port;
+		std::uint16_t m_ws_port;
 		std::string m_sip_address;
 		std::string m_sip_domain;
 		std::string m_log_file;
@@ -207,7 +207,7 @@ namespace intertalk
 		std::string m_helper_app;
 		std::string m_js_server_socket;
 		std::string m_js_server_address;
-		boost::uint16_t m_js_server_port;
+		std::uint16_t m_js_server_port;
 		std::string m_password_file;
 		std::string m_external_address;
 

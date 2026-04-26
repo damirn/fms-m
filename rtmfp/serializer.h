@@ -2,7 +2,7 @@
 
 #include "stream_array.h"
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/noncopyable.hpp>
 
 namespace intertalk
@@ -15,7 +15,7 @@ namespace intertalk
 	public:
 		void prepare_raw_packet();
 		void prepare_raw_packet(header &);
-		void finish_raw_packet(boost::uint32_t, aes *);
+		void finish_raw_packet(std::uint32_t, aes *);
 
 		stream_array &raw_packet()
 		{
@@ -29,7 +29,7 @@ namespace intertalk
 
 	protected:
 		void add_padding();
-		void prepare_packet(boost::uint32_t, aes *);
+		void prepare_packet(std::uint32_t, aes *);
 
 		stream_array m_raw_packet;
 		stream_array m_packet;

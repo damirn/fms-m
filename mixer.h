@@ -3,7 +3,7 @@
 #include <atomic>
 #include <map>
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
@@ -34,11 +34,11 @@ namespace intertalk
 		virtual void init() = 0;
 		virtual void uninit() = 0;
 
-		virtual void add_source_stream(boost::uint32_t);
-		virtual void remove_source_stream(boost::uint32_t);
+		virtual void add_source_stream(std::uint32_t);
+		virtual void remove_source_stream(std::uint32_t);
 
-		void add_audio(boost::uint32_t, rtmp_message_audio_data_ptr);
-		void add_audio(boost::uint32_t, const char *, boost::uint16_t);
+		void add_audio(std::uint32_t, rtmp_message_audio_data_ptr);
+		void add_audio(std::uint32_t, const char *, std::uint16_t);
 
 	protected:
 		struct stream_data
@@ -67,7 +67,7 @@ namespace intertalk
 			audio_queue_t m_queue;
 		};
 
-		typedef std::map<boost::uint32_t, stream_data *> stream_map_t;
+		typedef std::map<std::uint32_t, stream_data *> stream_map_t;
 
 		stream_map_t m_streams;
 		boost::mutex m_streams_mutex;
@@ -101,7 +101,7 @@ namespace intertalk
 		std::atomic<bool> m_running;   // toggled by mixer thread + owner thread
 		boost::thread m_thread;
 
-		boost::uint32_t m_timestamp;
+		std::uint32_t m_timestamp;
 
 		audio_sink *m_sink;
 		speex_codec_ptr m_speex_codec;

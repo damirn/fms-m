@@ -9,7 +9,7 @@
 
 namespace intertalk
 {
-	http_connection::http_connection(boost::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager, rtmpt_manager *rtmpt_manager)
+	http_connection::http_connection(std::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager, rtmpt_manager *rtmpt_manager)
 		: m_socket(io_service)
 		, m_timer(io_service)
 		, m_io_service(io_service)
@@ -156,7 +156,7 @@ namespace intertalk
 				if (!handle_http_fields())
 					return false;
 				m_buffer.rewind();
-				m_buffer.skip((boost::uint8_t *)pos - m_buffer.read_pos() + 4);
+				m_buffer.skip((std::uint8_t *)pos - m_buffer.read_pos() + 4);
 				return handle_command();
 			}
 			catch (buffer_eof_exception &)
@@ -283,7 +283,7 @@ namespace intertalk
 					break;
 				seq.push_back(c);
 			}
-			m_sequence = boost::lexical_cast<boost::uint32_t>(seq);
+			m_sequence = boost::lexical_cast<std::uint32_t>(seq);
 			return true;
 		}
 		catch (buffer_eof_exception &)
@@ -335,7 +335,7 @@ namespace intertalk
 
 	bool http_connection::get_content_lenght()
 	{
-		boost::uint8_t *pos = reinterpret_cast<boost::uint8_t *>(memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\nContent-Length: ", 18));
+		std::uint8_t *pos = reinterpret_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\nContent-Length: ", 18));
 		if (pos != 0)
 		{
 			m_buffer.skip(pos - m_buffer.read_pos() + 18);
@@ -350,7 +350,7 @@ namespace intertalk
 				{
 					try
 					{
-						m_content_length = boost::lexical_cast<boost::uint32_t>(cl);
+						m_content_length = boost::lexical_cast<std::uint32_t>(cl);
 						return true;
 					}
 					catch (boost::bad_lexical_cast &)
@@ -365,7 +365,7 @@ namespace intertalk
 		return false;
 	}
 
-	void http_connection::prepare_http_header(boost::uint32_t content_len)
+	void http_connection::prepare_http_header(std::uint32_t content_len)
 	{
 		std::ostream header(&m_header);
 
@@ -382,7 +382,7 @@ namespace intertalk
 		m_write_http_header = true;
 	}
 
-	void http_connection::add_to_http_header(boost::uint8_t *data, boost::uint32_t size)
+	void http_connection::add_to_http_header(std::uint8_t *data, std::uint32_t size)
 	{
 		std::ostream header(&m_header);
 		header.write(reinterpret_cast<char *>(data), size);
@@ -447,7 +447,7 @@ namespace intertalk
 
 		m_buffer.clear();
 		m_output_buffer.clear();
-		boost::uint32_t size = m_rtmpt_manager->serialize_result(m_cid, m_sequence, m_output_buffer);
+		std::uint32_t size = m_rtmpt_manager->serialize_result(m_cid, m_sequence, m_output_buffer);
 		prepare_http_header(size);
 
 		if (size < 32)
@@ -483,7 +483,7 @@ namespace intertalk
 //		std::cout << "content length OK: " << m_content_length << std::endl;
 
 		m_output_buffer.clear();
-		boost::uint32_t size = m_rtmpt_manager->handle_data(m_cid, m_sequence, m_buffer, m_output_buffer);
+		std::uint32_t size = m_rtmpt_manager->handle_data(m_cid, m_sequence, m_buffer, m_output_buffer);
 
 		m_buffer.clear();
 		prepare_http_header(size);

@@ -49,7 +49,7 @@ namespace intertalk
 				const rtmp_header &h = channel->received_header();
 
 				//				std::cout<< "msg type: " << (int) h.message_type() << " ts: " << h.timestamp() << " header type: " << (int) h.header_type() << std::endl;
-				boost::uint32_t size = h.message_length() - static_cast<boost::uint32_t>(channel->data_size());
+				std::uint32_t size = h.message_length() - static_cast<std::uint32_t>(channel->data_size());
 				size = size > m_chunk_size ? m_chunk_size : size;
 				if (size <= buffer.available())
 				{
@@ -120,27 +120,27 @@ namespace intertalk
 	* @returns RTMP channel
 	* @note might throw an exception if there's no enough data in the buffer
 	*/
-	boost::uint32_t rtmp_raw_data::peek_channel_id(stream_array &buffer)
+	std::uint32_t rtmp_raw_data::peek_channel_id(stream_array &buffer)
 	{
 		buffer.mark();
 
-		boost::uint32_t channel = 0;
-		boost::uint8_t c;
+		std::uint32_t channel = 0;
+		std::uint8_t c;
 
 		buffer >> c;
 		switch (c & 0x3f)
 		{
 		case 0:
 			{
-				boost::uint8_t a;
+				std::uint8_t a;
 				buffer >> a;
 				channel = 64 + a;
 				break;
 			}
 		case 1:
 			{
-				boost::uint8_t a;
-				boost::uint8_t b;
+				std::uint8_t a;
+				std::uint8_t b;
 				buffer >> a >> b;
 				channel = 64 + a + b * 256;
 				break;

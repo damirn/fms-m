@@ -20,8 +20,8 @@ namespace intertalk
 
 	void rtmp_header::deserialize(stream_array &buffer)
 	{
-		boost::uint32_t channel_bytes_count = 0;
-		boost::uint8_t c;
+		std::uint32_t channel_bytes_count = 0;
+		std::uint8_t c;
 
 		buffer >> c;
 		m_header_type = c >> 6;
@@ -30,7 +30,7 @@ namespace intertalk
 		{
 		case 0:
 			{
-				boost::uint8_t b;
+				std::uint8_t b;
 				buffer >> b;
 				m_channel_id = 64 + b;
 				channel_bytes_count = 2;
@@ -38,8 +38,8 @@ namespace intertalk
 			}
 		case 1:
 			{
-				boost::uint8_t a;
-				boost::uint8_t b;
+				std::uint8_t a;
+				std::uint8_t b;
 				buffer >> a >> b;
 				m_channel_id = 64 + a + b * 256;
 				channel_bytes_count = 3;
@@ -80,8 +80,8 @@ namespace intertalk
 
 	void rtmp_header::serialize(stream_array &buffer, rtmp_header &previous_header)
 	{
-		boost::uint32_t size = eHeaderNewSize;
-		boost::uint32_t prev_delta = previous_header.m_ts_delta_write;
+		std::uint32_t size = eHeaderNewSize;
+		std::uint32_t prev_delta = previous_header.m_ts_delta_write;
 
 		if (previous_header.m_timestamp > m_timestamp)
 		{
@@ -155,7 +155,7 @@ namespace intertalk
 		}
 	}
 
-	void rtmp_header::serialize(stream_array &buffer, boost::uint32_t size)
+	void rtmp_header::serialize(stream_array &buffer, std::uint32_t size)
 	{
 		switch (size)
 		{
@@ -180,17 +180,17 @@ namespace intertalk
 
 	void rtmp_header::serialize_header_new(stream_array &buffer)
 	{
-		boost::uint8_t a;
+		std::uint8_t a;
 		if (m_channel_id < 64)
 		{
-			a = static_cast<boost::uint8_t>(m_channel_id);
+			a = static_cast<std::uint8_t>(m_channel_id);
 			buffer << a;
 		}
 		else if (m_channel_id <= 320)
 		{
 			a = 0;
 			buffer << a;
-			a = static_cast<boost::uint8_t>(m_channel_id);
+			a = static_cast<std::uint8_t>(m_channel_id);
 			a -= 64;
 			buffer << a;
 		}
@@ -198,7 +198,7 @@ namespace intertalk
 		{
 			a = 1;
 			buffer << a;
-			boost::uint16_t *b = reinterpret_cast<boost::uint16_t *>(&m_channel_id);
+			std::uint16_t *b = reinterpret_cast<std::uint16_t *>(&m_channel_id);
 			++b;
 			buffer << *b;
 		}
@@ -213,17 +213,17 @@ namespace intertalk
 
 		if (m_timestamp >= 0x00ffffff)
 		{
-			boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_timestamp);
+			std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_timestamp);
 			buffer << tmp;
 		}
 	}
 
 	void rtmp_header::serialize_header_same_source(stream_array &buffer)
 	{
-		boost::uint8_t a;
+		std::uint8_t a;
 		if (m_channel_id < 64)
 		{
-			a = static_cast<boost::uint8_t>(m_channel_id);
+			a = static_cast<std::uint8_t>(m_channel_id);
 			a |= 0x40;
 			buffer << a;
 		}
@@ -231,7 +231,7 @@ namespace intertalk
 		{
 			a = 0x40;
 			buffer << a;
-			a = static_cast<boost::uint8_t>(m_channel_id);
+			a = static_cast<std::uint8_t>(m_channel_id);
 			a -= 64;
 			buffer << a;
 		}
@@ -239,7 +239,7 @@ namespace intertalk
 		{
 			a = 0x41;
 			buffer << a;
-			boost::uint16_t *b = reinterpret_cast<boost::uint16_t *>(&m_channel_id);
+			std::uint16_t *b = reinterpret_cast<std::uint16_t *>(&m_channel_id);
 			++b;
 			buffer << *b;
 		}
@@ -254,17 +254,17 @@ namespace intertalk
 
 		if (m_ts_delta_write >= 0x00ffffff)
 		{
-			boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_ts_delta_write);
+			std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_ts_delta_write);
 			buffer << tmp;
 		}
 	}
 
 	void rtmp_header::serialize_header_timer_change(stream_array &buffer)
 	{
-		boost::uint8_t a;
+		std::uint8_t a;
 		if (m_channel_id < 64)
 		{
-			a = static_cast<boost::uint8_t>(m_channel_id);
+			a = static_cast<std::uint8_t>(m_channel_id);
 			a |= 0x80;
 			buffer << a;
 		}
@@ -272,7 +272,7 @@ namespace intertalk
 		{
 			a = 0x80;
 			buffer << a;
-			a = static_cast<boost::uint8_t>(m_channel_id);
+			a = static_cast<std::uint8_t>(m_channel_id);
 			a -= 64;
 			buffer << a;
 		}
@@ -280,7 +280,7 @@ namespace intertalk
 		{
 			a = 0x81;
 			buffer << a;
-			boost::uint16_t *b = reinterpret_cast<boost::uint16_t *>(&m_channel_id);
+			std::uint16_t *b = reinterpret_cast<std::uint16_t *>(&m_channel_id);
 			++b;
 			buffer << *b;
 		}
@@ -289,17 +289,17 @@ namespace intertalk
 		else
 		{
 			buffer.write_uint32_3(0x00ffffff);
-			boost::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_ts_delta_write);
+			std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_ts_delta_write);
 			buffer << tmp;
 		}
 	}
 
 	void rtmp_header::serialize_header_continue_size(stream_array &buffer)
 	{
-		boost::uint8_t a;
+		std::uint8_t a;
 		if (m_channel_id < 64)
 		{
-			a = static_cast<boost::uint8_t>(m_channel_id);
+			a = static_cast<std::uint8_t>(m_channel_id);
 			a |= 0xc0;
 			buffer << a;
 		}
@@ -307,7 +307,7 @@ namespace intertalk
 		{
 			a = 0xc0;
 			buffer << a;
-			a = static_cast<boost::uint8_t>(m_channel_id);
+			a = static_cast<std::uint8_t>(m_channel_id);
 			a -= 64;
 			buffer << a;
 		}
@@ -315,7 +315,7 @@ namespace intertalk
 		{
 			a = 0xc1;
 			buffer << a;
-			boost::uint16_t *b = reinterpret_cast<boost::uint16_t *>(&m_channel_id);
+			std::uint16_t *b = reinterpret_cast<std::uint16_t *>(&m_channel_id);
 			++b;
 			buffer << *b;
 		}

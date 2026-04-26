@@ -16,7 +16,7 @@
 
 namespace intertalk
 {
-	rtmp_connection::rtmp_connection(boost::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager)
+	rtmp_connection::rtmp_connection(std::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager)
 		: basic_rtmp_connection(id, io_service, app_manager)
 		, m_socket(io_service)
 		, m_rto_timer(io_service)
@@ -275,8 +275,8 @@ namespace intertalk
 		m_buffer.update(bytes_transferred);
 		m_state = eStateWriteHSBlock1;
 
-		boost::uint8_t *client_sig = m_buffer.data() + 1;
-		boost::uint8_t magic;
+		std::uint8_t *client_sig = m_buffer.data() + 1;
+		std::uint8_t magic;
 		m_buffer >> magic;
 		if (magic == ePlainMagic) // not encrypted
 		{

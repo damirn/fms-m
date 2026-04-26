@@ -9,7 +9,7 @@ namespace intertalk
 {
 	std::string random_string::m_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
-	void random_string::generate(boost::uint16_t size, std::string &str)
+	void random_string::generate(std::uint16_t size, std::string &str)
 	{
 		// Session IDs and handshake tokens must be unpredictable, so draw from
 		// OpenSSL's CSPRNG rather than a time-seeded Mersenne Twister.
@@ -18,7 +18,7 @@ namespace intertalk
 			throw std::runtime_error("RAND_bytes failed");
 
 		str.reserve(size);
-		for (boost::uint16_t i = 0; i < size; ++i)
+		for (std::uint16_t i = 0; i < size; ++i)
 			str.push_back(m_chars[bytes[i] % m_chars.length()]);
 	}
 }

@@ -8,7 +8,7 @@ namespace intertalk
 		: m_app(app)
 	{}
 
-	bool so_manager::handle_so(rtmp_message_shared_object_ptr so, boost::uint32_t connection_id, rtmp_message_ptr &result)
+	bool so_manager::handle_so(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		m_new_message = true;
 		rtmp_message_shared_object::event_list_t &list = so->events();
@@ -46,7 +46,7 @@ namespace intertalk
 		return true;
 	}
 
-	void so_manager::handle_use_event(rtmp_message_shared_object_ptr so, boost::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_use_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
 	{
 		const std::string &so_name = so->name()->value();
 		so_map_t::iterator i = m_so_map.find(so_name);
@@ -78,7 +78,7 @@ namespace intertalk
 		}
 	}
 
-	void so_manager::handle_release_event(rtmp_message_shared_object_ptr so, boost::uint32_t connection_id)
+	void so_manager::handle_release_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id)
 	{
 		const std::string &so_name = so->name()->value();
 		so_map_t::iterator i = m_so_map.find(so_name);
@@ -93,7 +93,7 @@ namespace intertalk
 		}
 	}
 
-	void so_manager::handle_req_change_event(rtmp_message_shared_object_ptr so, boost::uint32_t connection_id, rtmp_message_shared_object::event_ptr e, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_req_change_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object::event_ptr e, rtmp_message_shared_object_ptr &result)
 	{
 		boost::optional<so_manager::so_data_ptr> so_d = find_so(so);
 		if (so_d)
@@ -107,8 +107,8 @@ namespace intertalk
 			ev->m_name = e->m_name;
 			result->add_event(ev);
 
-			const std::set<boost::uint32_t> &clients = s->m_clients;
-			for (std::set<boost::uint32_t>::const_iterator j = clients.begin(); j != clients.end(); ++j)
+			const std::set<std::uint32_t> &clients = s->m_clients;
+			for (std::set<std::uint32_t>::const_iterator j = clients.begin(); j != clients.end(); ++j)
 			{
 				if (*j == connection_id)
 					continue;
@@ -123,15 +123,15 @@ namespace intertalk
 		}
 	}
 
-	void so_manager::handle_send_message_event(rtmp_message_shared_object_ptr so, boost::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_send_message_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
 	{
 		boost::optional<so_manager::so_data_ptr> so_d = find_so(so);
 		if (so_d)
 		{
 			so_manager::so_data_ptr s = *so_d;
 			result = so;
-			const std::set<boost::uint32_t> &clients = s->m_clients;
-			for (std::set<boost::uint32_t>::const_iterator j = clients.begin(); j != clients.end(); ++j)
+			const std::set<std::uint32_t> &clients = s->m_clients;
+			for (std::set<std::uint32_t>::const_iterator j = clients.begin(); j != clients.end(); ++j)
 			{
 				if (*j == connection_id)
 					continue;
@@ -141,7 +141,7 @@ namespace intertalk
 		}
 	}
 
-	void so_manager::handle_req_remove_event(rtmp_message_shared_object_ptr so, boost::uint32_t connection_id, rtmp_message_shared_object::event_ptr e, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_req_remove_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object::event_ptr e, rtmp_message_shared_object_ptr &result)
 	{
 		boost::optional<so_manager::so_data_ptr> so_d = find_so(so);
 		if (so_d)
@@ -153,14 +153,14 @@ namespace intertalk
 				s->m_values.erase(j);
 				increase_version(s);
 
-				const std::set<boost::uint32_t> &clients = s->m_clients;
+				const std::set<std::uint32_t> &clients = s->m_clients;
 				rtmp_message_shared_object_ptr notify(new rtmp_message_shared_object(so->name(), s->m_version, 0));
 				rtmp_message_shared_object::event_ptr evc(new rtmp_message_shared_object::event(rtmp_message_shared_object::eRemove));
 				evc->m_name = e->m_name;
 				notify->add_event(evc);
 
 				result = notify;
-				for (std::set<boost::uint32_t>::const_iterator k = clients.begin(); k != clients.end(); ++k)
+				for (std::set<std::uint32_t>::const_iterator k = clients.begin(); k != clients.end(); ++k)
 				{
 					if (*k == connection_id)
 						continue;

@@ -14,7 +14,7 @@
 
 namespace intertalk
 {
-	basic_rtmp_connection::basic_rtmp_connection(boost::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager)
+	basic_rtmp_connection::basic_rtmp_connection(std::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager)
 		: client_session(id, app_manager)
 		, m_io_service(io_service)
 		, m_hs_timer(io_service)
@@ -138,10 +138,10 @@ namespace intertalk
 		}
 		else
 		{
-			boost::uint8_t sig[SHA256_DIGEST_LENGTH];
-			boost::uint8_t dig[SHA256_DIGEST_LENGTH];
-			boost::uint8_t *srv_dig = m_tmp_buff.data() + 1;
-			boost::uint32_t digest = get_digest_offest(srv_dig, m_validation_scheme);
+			std::uint8_t sig[SHA256_DIGEST_LENGTH];
+			std::uint8_t dig[SHA256_DIGEST_LENGTH];
+			std::uint8_t *srv_dig = m_tmp_buff.data() + 1;
+			std::uint32_t digest = get_digest_offest(srv_dig, m_validation_scheme);
 			HMAC_SHA256(srv_dig + digest, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, dig);
 			HMAC_SHA256(buffer.read_pos(), eHandShakeSize - SHA256_DIGEST_LENGTH, dig, SHA256_DIGEST_LENGTH, sig);
 			if (std::memcmp(sig, buffer.read_pos() + eHandShakeSize - SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH) == 0)
@@ -159,7 +159,7 @@ namespace intertalk
 		return false;
 	}
 
-	bool basic_rtmp_connection::prepare_hand_shake_response(boost::uint8_t magic /* = ePlainMagic */, boost::uint8_t *client_sig /* = 0 */)
+	bool basic_rtmp_connection::prepare_hand_shake_response(std::uint8_t magic /* = ePlainMagic */, std::uint8_t *client_sig /* = 0 */)
 	{
 		if (!m_is_fp9)
 		{
@@ -172,44 +172,44 @@ namespace intertalk
 			if (!validate_client(client_sig))
 				return false;
 
-			boost::uint8_t *server_sig = m_tmp_buff.data() + 1;
+			std::uint8_t *server_sig = m_tmp_buff.data() + 1;
 
 			server_sig[-1] = magic;
-			*(boost::uint32_t *)(server_sig) = 0x00; // timestamp
+			*(std::uint32_t *)(server_sig) = 0x00; // timestamp
 
 			server_sig[4] = 0x03; // server version
 			server_sig[5] = 0x05;
 			server_sig[6] = 0x02;
 			server_sig[7] = 0x01;
 
-			boost::uint32_t *p = (boost::uint32_t *)(server_sig + 8);
+			std::uint32_t *p = (std::uint32_t *)(server_sig + 8);
 			for (int i = 2; i < eHandShakeSize / 4; ++i)
 				*p++ = rand();
 
 			create_keys(client_sig, server_sig);
 
-			boost::uint32_t server_digest_offset = get_digest_offest(server_sig, m_validation_scheme);
+			std::uint32_t server_digest_offset = get_digest_offest(server_sig, m_validation_scheme);
 			std::cout << "server digest offest: " << server_digest_offset << std::endl;
-			boost::uint8_t *tmp = new boost::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
+			std::uint8_t *tmp = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
 			std::memcpy(tmp, server_sig, server_digest_offset);
 			std::memcpy(tmp + server_digest_offset, server_sig + server_digest_offset + SHA256_DIGEST_LENGTH, eHandShakeSize - server_digest_offset - SHA256_DIGEST_LENGTH);
 
-			boost::uint8_t tmp_hash[SHA256_DIGEST_LENGTH];
+			std::uint8_t tmp_hash[SHA256_DIGEST_LENGTH];
 			HMAC_SHA256(tmp, eHandShakeSize - SHA256_DIGEST_LENGTH, genuine_keys::FMS_key, 36, tmp_hash);
 			delete[] tmp;
 
 			std::memcpy(server_sig + server_digest_offset, tmp_hash, SHA256_DIGEST_LENGTH);
 
-			boost::uint32_t key_challenge_offset = get_digest_offest(client_sig, m_validation_scheme);
+			std::uint32_t key_challenge_offset = get_digest_offest(client_sig, m_validation_scheme);
 			HMAC_SHA256(client_sig + key_challenge_offset, SHA256_DIGEST_LENGTH, genuine_keys::FMS_key, genuine_keys::FMS_key_len, tmp_hash);
 			HMAC_SHA256(client_sig, eHandShakeSize - SHA256_DIGEST_LENGTH, tmp_hash, SHA256_DIGEST_LENGTH, client_sig + eHandShakeSize - SHA256_DIGEST_LENGTH);
 		}
 		return true;
 	}
 
-	boost::uint32_t basic_rtmp_connection::get_digest_offest(boost::uint8_t *buffer, boost::uint8_t scheme)
+	std::uint32_t basic_rtmp_connection::get_digest_offest(std::uint8_t *buffer, std::uint8_t scheme)
 	{
-		boost::uint32_t offset = 0;
+		std::uint32_t offset = 0;
 
 		if (scheme == 0)
 		{
@@ -226,9 +226,9 @@ namespace intertalk
 		return offset;
 	}
 
-	boost::uint32_t basic_rtmp_connection::get_dh_offest(boost::uint8_t *buffer, boost::uint8_t scheme)
+	std::uint32_t basic_rtmp_connection::get_dh_offest(std::uint8_t *buffer, std::uint8_t scheme)
 	{
-		boost::uint32_t offset = 0;
+		std::uint32_t offset = 0;
 
 		if (scheme == 0)
 		{
@@ -245,7 +245,7 @@ namespace intertalk
 		return offset;
 	}
 
-	bool basic_rtmp_connection::validate_client(boost::uint8_t *data)
+	bool basic_rtmp_connection::validate_client(std::uint8_t *data)
 	{
 		if (validate_client_scheme(data, 1))
 		{
@@ -263,15 +263,15 @@ namespace intertalk
 		return false;
 	}
 
-	bool basic_rtmp_connection::validate_client_scheme(boost::uint8_t *client_sig, boost::uint8_t scheme)
+	bool basic_rtmp_connection::validate_client_scheme(std::uint8_t *client_sig, std::uint8_t scheme)
 	{
-		boost::uint32_t offset = get_digest_offest(client_sig, scheme);
+		std::uint32_t offset = get_digest_offest(client_sig, scheme);
 
-		boost::uint8_t *buff = new boost::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
+		std::uint8_t *buff = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
 		std::memcpy(buff, client_sig, offset);
 		std::memcpy(buff + offset, client_sig + offset + SHA256_DIGEST_LENGTH, eHandShakeSize - offset - SHA256_DIGEST_LENGTH);
 
-		boost::uint8_t hash[SHA256_DIGEST_LENGTH];
+		std::uint8_t hash[SHA256_DIGEST_LENGTH];
 		HMAC_SHA256(buff, eHandShakeSize - SHA256_DIGEST_LENGTH, genuine_keys::FP_key, 30, hash);
 		bool ret = false;
 		if (std::memcmp(hash, client_sig + offset, SHA256_DIGEST_LENGTH) == 0)
@@ -282,17 +282,17 @@ namespace intertalk
 		return ret;
 	}
 
-	void basic_rtmp_connection::create_keys(boost::uint8_t *client_sig, boost::uint8_t *server_sig)
+	void basic_rtmp_connection::create_keys(std::uint8_t *client_sig, std::uint8_t *server_sig)
 	{
 		dh mydh;
-		boost::uint32_t client_dh_offset = get_dh_offest(client_sig, m_validation_scheme);
-		boost::uint32_t server_dh_offset = get_dh_offest(server_sig, m_validation_scheme);
+		std::uint32_t client_dh_offset = get_dh_offest(client_sig, m_validation_scheme);
+		std::uint32_t server_dh_offset = get_dh_offest(server_sig, m_validation_scheme);
 
 		std::cout << "client dh offset: " << client_dh_offset << " server dh offest: " << server_dh_offset << std::endl;
 		mydh.create_shared_key(client_sig + client_dh_offset, 128);
 		mydh.copy_public_key(server_sig + server_dh_offset, 128);
 
-		boost::uint8_t hash[SHA256_DIGEST_LENGTH];
+		std::uint8_t hash[SHA256_DIGEST_LENGTH];
 		HMAC_SHA256(server_sig + server_dh_offset, 128, genuine_keys::FP_key, 30, hash);
 
 		std::ostringstream tmp;
@@ -306,7 +306,7 @@ namespace intertalk
 		if (m_uses_crypto)
 		{
 			// create RC4 keys
-			boost::uint8_t shared_key[128];
+			std::uint8_t shared_key[128];
 			mydh.copy_shared_key(shared_key, 128);
 			std::cout << "secret key: " << std::hex;
 			for (int i = 0; i < 128; ++i)
@@ -317,7 +317,7 @@ namespace intertalk
 			init_RC4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out);
 
 			// update keys
-			boost::uint8_t d[eHandShakeSize];
+			std::uint8_t d[eHandShakeSize];
 			RC4(m_key_in, eHandShakeSize, d, d);
 			RC4(m_key_out, eHandShakeSize, d, d);
 		}

@@ -7,8 +7,8 @@
 
 namespace intertalk
 {
-	const boost::uint8_t flow::TC[] = "TC";
-	const boost::uint8_t flow::GC[] = "GC";
+	const std::uint8_t flow::TC[] = "TC";
+	const std::uint8_t flow::GC[] = "GC";
 
 	flow::~flow()
 	{
@@ -48,7 +48,7 @@ namespace intertalk
 		m_curr_seq = seq;
 	}
 
-	const boost::uint8_t *flow::message_data(boost::uint32_t &len)
+	const std::uint8_t *flow::message_data(std::uint32_t &len)
 	{
 		vlu_t csn = m_seq_manager.csn();
 		fragment_map_t::iterator i = m_fragments.begin();
@@ -151,10 +151,10 @@ namespace intertalk
 		return stream_id;
 	}
 
-	const boost::uint8_t *flow::create_message(const fragment_map_t::iterator &from, const fragment_map_t::iterator &to)
+	const std::uint8_t *flow::create_message(const fragment_map_t::iterator &from, const fragment_map_t::iterator &to)
 	{
-		m_data = new boost::uint8_t[m_msg_len];
-		boost::uint32_t prev_len = 0;
+		m_data = new std::uint8_t[m_msg_len];
+		std::uint32_t prev_len = 0;
 		fragment_map_t::iterator i = from;
 		while (true)
 		{
@@ -172,21 +172,21 @@ namespace intertalk
 		return 0; // never reached
 	}
 
-	boost::uint16_t flow::add_and_fragment_data(const boost::uint8_t *data, const boost::uint32_t &len)
+	std::uint16_t flow::add_and_fragment_data(const std::uint8_t *data, const std::uint32_t &len)
 	{
-		boost::uint16_t frags = 1;
+		std::uint16_t frags = 1;
 		if (len <= _eFragmentMaxSize)
 		{
-			fragment_ptr frag = boost::make_shared<fragment>(next_sn(), data, len, static_cast<boost::uint8_t>(fragment::eWhole), true);
+			fragment_ptr frag = boost::make_shared<fragment>(next_sn(), data, len, static_cast<std::uint8_t>(fragment::eWhole), true);
 			frag->set_send_flags();
 			add_fragment(frag);
 		}
 		else
 		{
-			boost::uint16_t cnt = static_cast<boost::uint16_t>(std::ceil(static_cast<float>(len) / _eFragmentMaxSize));
-			boost::uint8_t ftype = fragment::eBegin;
-			boost::uint32_t clen = _eFragmentMaxSize;
-			for (boost::uint16_t i = 0; i < cnt; ++i)
+			std::uint16_t cnt = static_cast<std::uint16_t>(std::ceil(static_cast<float>(len) / _eFragmentMaxSize));
+			std::uint8_t ftype = fragment::eBegin;
+			std::uint32_t clen = _eFragmentMaxSize;
+			for (std::uint16_t i = 0; i < cnt; ++i)
 			{
 				fragment_ptr frag = boost::make_shared<fragment>(next_sn(), data + i * _eFragmentMaxSize, clen, ftype, true);
 				frag->set_send_flags();

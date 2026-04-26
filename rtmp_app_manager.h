@@ -5,7 +5,7 @@
 #include <string>
 
 #include <boost/asio.hpp>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
 #include <boost/logic/tribool.hpp>
@@ -47,21 +47,21 @@ namespace intertalk
 		rtmpt_session_ptr create_rtmpt_session();
 		void register_session(client_session_ptr);
 
-		boost::uint32_t reserve_connection_id();
+		std::uint32_t reserve_connection_id();
 
 		http_connection_ptr create_http_connection();
-		void delete_http_connection(boost::uint32_t);
+		void delete_http_connection(std::uint32_t);
 
-		client_session_ptr get_connection(boost::uint32_t);
-		const std::string &get_app_instance(boost::uint32_t);
-		bool has_connection(boost::uint32_t);
-		void delete_connection(boost::uint32_t);
-		void destroy_connection(boost::uint32_t);
+		client_session_ptr get_connection(std::uint32_t);
+		const std::string &get_app_instance(std::uint32_t);
+		bool has_connection(std::uint32_t);
+		void delete_connection(std::uint32_t);
+		void destroy_connection(std::uint32_t);
 
-		void set_encoding_for_connection(boost::uint32_t, bool);
-		bool is_amf3_encoding(boost::uint32_t);
+		void set_encoding_for_connection(std::uint32_t, bool);
+		bool is_amf3_encoding(std::uint32_t);
 
-		boost::tribool handle_message(rtmp_message_ptr, boost::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		boost::tribool handle_message(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
 
 		io_service_pool &get_io_service_pool()
 		{
@@ -75,18 +75,18 @@ namespace intertalk
 
 		void list_applications(string_list_t &);
 		void list_clients(client_list_t &);
-		client_data_ptr get_client_data(boost::uint32_t);
-		client_data_ptr get_client_data_impl(boost::uint32_t);
-		bool get_client_stats(boost::uint32_t, client_stats &);
+		client_data_ptr get_client_data(std::uint32_t);
+		client_data_ptr get_client_data_impl(std::uint32_t);
+		bool get_client_stats(std::uint32_t, client_stats &);
 		boost::optional<app_stats> get_app_stats(const std::string &);
 		void list_streams(netstream_list_t &);
 		void get_queue_stats(queue_stats_list_t &);
 
 		void create_netstream(const stream_client_id_t &);
 		void delete_netstream(const stream_client_id_t &);
-		void delete_netstreams(boost::uint32_t);
+		void delete_netstreams(std::uint32_t);
 		void update_netstream(const stream_client_id_t &, const std::string &, bool);
-		void update_netstream_stats(const stream_client_id_t &, boost::uint32_t, boost::uint32_t);
+		void update_netstream_stats(const stream_client_id_t &, std::uint32_t, std::uint32_t);
 		void add_dropped_messages_for_netstream(const stream_client_id_t &, std::size_t);
 		boost::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &);
 
@@ -101,7 +101,7 @@ namespace intertalk
 		void handle_timer(const boost::system::error_code &);
 
 		io_service_pool &m_io_service_pool;
-		boost::uint32_t m_connection_counter;
+		std::uint32_t m_connection_counter;
 
 		typedef std::map<std::string, rtmp_application *> app_map_t;
 		app_map_t m_apps;
@@ -109,10 +109,10 @@ namespace intertalk
 		admin_application *m_admin_app;
 		fake_application *m_fake_app;
 
-		typedef boost::unordered_map<boost::uint32_t, client_session_ptr> connection_map_t;
+		typedef boost::unordered_map<std::uint32_t, client_session_ptr> connection_map_t;
 		connection_map_t m_connections;
 
-		typedef boost::unordered_map<boost::uint32_t, http_connection_ptr> http_connection_map_t;
+		typedef boost::unordered_map<std::uint32_t, http_connection_ptr> http_connection_map_t;
 		http_connection_map_t m_http_conns;
 
 		rtmpt_manager *m_rtmpt_manager;

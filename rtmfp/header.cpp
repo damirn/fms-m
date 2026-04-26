@@ -7,7 +7,7 @@ namespace intertalk
 {
 	void header::deserialize(stream_array &data)
 	{
-		boost::uint8_t d;
+		std::uint8_t d;
 		data >> d;
 		if (d & 0x80)
 			m_time_critical = true;
@@ -32,7 +32,7 @@ namespace intertalk
 
 	void header::serialize(stream_array &to)
 	{
-		boost::uint8_t d = 0;
+		std::uint8_t d = 0;
 		if (m_time_critical)
 			d = 0x80;
 		if (m_time_critical_reverse)
@@ -45,7 +45,7 @@ namespace intertalk
 
 		to << d;
 
-		boost::uint16_t ts = 0;
+		std::uint16_t ts = 0;
 		if (m_timestamp_present)
 		{
 			ts = boost::asio::detail::socket_ops::host_to_network_short(m_timestamp);

@@ -69,7 +69,7 @@ namespace intertalk
 		}
 	}
 
-	boost::tribool admin_application::handle_invoke(rtmp_message_ptr msg, boost::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
+	boost::tribool admin_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr invoke = boost::dynamic_pointer_cast<rtmp_message_invoke, rtmp_message>(msg);
 
@@ -130,7 +130,7 @@ namespace intertalk
 		return rtmp_application::handle_invoke(msg, connection_id, header, result);
 	}
 
-	boost::tribool admin_application::handle_client_login(boost::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &params, rtmp_message_ptr &)
+	boost::tribool admin_application::handle_client_login(std::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &params, rtmp_message_ptr &)
 	{
 		bool active_client = false;
 		if (params.size() == 4)
@@ -153,7 +153,7 @@ namespace intertalk
 		return false;
 	}
 
-	bool admin_application::check_connect_params(boost::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &params)
+	bool admin_application::check_connect_params(std::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &params)
 	{
 		if (!rtmp_application::check_connect_params(connection_id, params) || params.size() < 3)
 			return false;
@@ -186,14 +186,14 @@ namespace intertalk
 		return false;
 	}
 
-	void admin_application::delete_connection(boost::uint32_t connection_id, const std::string &app_instance /* = "" */)
+	void admin_application::delete_connection(std::uint32_t connection_id, const std::string &app_instance /* = "" */)
 	{
 		rtmp_application::delete_connection(connection_id, app_instance);
 		boost::mutex::scoped_lock lock(m_admin_mutex);
 		m_clients.erase(connection_id);
 	}
 
-	void admin_application::handle_win_ack_size(rtmp_message_ptr, boost::uint32_t connection_id)
+	void admin_application::handle_win_ack_size(rtmp_message_ptr, std::uint32_t connection_id)
 	{
 		boost::mutex::scoped_lock lock(m_admin_mutex);
 		if (m_clients.find(connection_id) != m_clients.end())
@@ -203,7 +203,7 @@ namespace intertalk
 		}
 	}
 
-	void admin_application::handle_invoke_get_apps(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	void admin_application::handle_invoke_get_apps(rtmp_message_invoke_ptr invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
@@ -222,7 +222,7 @@ namespace intertalk
 		result = res;
 	}
 
-	void admin_application::handle_invoke_get_clients(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	void admin_application::handle_invoke_get_clients(rtmp_message_invoke_ptr invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
@@ -250,7 +250,7 @@ namespace intertalk
 		result = res;
 	}
 
-	void admin_application::handle_invoke_get_client_stats(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	void admin_application::handle_invoke_get_client_stats(rtmp_message_invoke_ptr invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		if (invoke->parameters().size() != 2)
 			return;
@@ -267,7 +267,7 @@ namespace intertalk
 		res->stream_id() = invoke->stream_id();
 
 		client_stats stats;
-		if (m_app_manager->get_client_stats(static_cast<boost::uint32_t>(id->value()), stats))
+		if (m_app_manager->get_client_stats(static_cast<std::uint32_t>(id->value()), stats))
 		{
 			amf0_object_ptr obj(new amf0_object);
 			obj->add_entry("time", stats.m_online_time);
@@ -285,7 +285,7 @@ namespace intertalk
 		result = res;
 	}
 
-	void admin_application::handle_invoke_get_app_stats(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	void admin_application::handle_invoke_get_app_stats(rtmp_message_invoke_ptr invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		if (invoke->parameters().size() != 2)
 			return;
@@ -319,7 +319,7 @@ namespace intertalk
 		result = res;
 	}
 
-	void admin_application::handle_invoke_get_streams(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	void admin_application::handle_invoke_get_streams(rtmp_message_invoke_ptr invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
@@ -357,7 +357,7 @@ namespace intertalk
 		return obj;
 	}
 
-	void admin_application::handle_invoke_get_queue_stats(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &result)
+	void admin_application::handle_invoke_get_queue_stats(rtmp_message_invoke_ptr invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
@@ -378,7 +378,7 @@ namespace intertalk
 		result = res;
 	}
 
-	void admin_application::handle_invoke_kill_client(rtmp_message_invoke_ptr invoke, boost::uint32_t, rtmp_message_ptr &)
+	void admin_application::handle_invoke_kill_client(rtmp_message_invoke_ptr invoke, std::uint32_t, rtmp_message_ptr &)
 	{
 		if (invoke->parameters().size() != 2)
 			return;
@@ -390,10 +390,10 @@ namespace intertalk
 
 		amf0_number_ptr id = boost::dynamic_pointer_cast<amf0_number, amf0_type>(*i);
 
-		m_app_manager->destroy_connection(static_cast<boost::uint32_t>(id->value()));
+		m_app_manager->destroy_connection(static_cast<std::uint32_t>(id->value()));
 	}
 
-	bool admin_application::check_client(boost::uint32_t connection_id)
+	bool admin_application::check_client(std::uint32_t connection_id)
 	{
 		boost::mutex::scoped_lock lock(m_admin_mutex);
 		if (m_clients.find(connection_id) == m_clients.end())
@@ -406,7 +406,7 @@ namespace intertalk
 		boost::mutex::scoped_lock lock(m_admin_mutex);
 		if (m_clients.empty())
 			return false;
-		for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+		for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
 			if (i->second)
 				return true;
 		return false;
@@ -435,7 +435,7 @@ namespace intertalk
 			dispatch_auth_result(0, data, true);
 		else
 		{
-			for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+			for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
 				if (i->second)
 					dispatch_auth_result(i->first, data);
 		}
@@ -448,34 +448,34 @@ namespace intertalk
 			dispatch_disconnect(0, data, true);
 		else
 		{
-			for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+			for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
 				if (i->second)
 					dispatch_disconnect(i->first, data);
 		}
 	}
 
-	void admin_application::send_call_status_notify(boost::uint32_t connection_id, amf0_object_ptr obj)
+	void admin_application::send_call_status_notify(std::uint32_t connection_id, amf0_object_ptr obj)
 	{
 		boost::mutex::scoped_lock lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_call_status(0, connection_id, obj, true);
 		else
 		{
-			for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+			for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
 				if (i->second)
 					dispatch_call_status(i->first, connection_id, obj);
 		}
 	}
 
-	void admin_application::notify_active_client(netstream_stats_ptr data, boost::function<void (boost::uint32_t, netstream_stats_ptr)> func)
+	void admin_application::notify_active_client(netstream_stats_ptr data, boost::function<void (std::uint32_t, netstream_stats_ptr)> func)
 	{
 		boost::mutex::scoped_lock lock(m_admin_mutex);
-		for (std::map<boost::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
+		for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
 			if (i->second)
 				func(i->first, data);
 	}
 
-	void admin_application::dispatch_new_stream_notify(boost::uint32_t connection_id, netstream_stats_ptr data)
+	void admin_application::dispatch_new_stream_notify(std::uint32_t connection_id, netstream_stats_ptr data)
 	{
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_new_stream);
 
@@ -485,7 +485,7 @@ namespace intertalk
 		notify(connection_id);
 	}
 
-	void admin_application::dispatch_delete_stream_notify(boost::uint32_t connection_id, netstream_stats_ptr data)
+	void admin_application::dispatch_delete_stream_notify(std::uint32_t connection_id, netstream_stats_ptr data)
 	{
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_delete_stream);
 
@@ -499,7 +499,7 @@ namespace intertalk
 		notify(connection_id);
 	}
 
-	void admin_application::dispatch_qos_data_for_stream_notify(boost::uint32_t connection_id, netstream_stats_ptr data)
+	void admin_application::dispatch_qos_data_for_stream_notify(std::uint32_t connection_id, netstream_stats_ptr data)
 	{
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_qos);
 
@@ -511,7 +511,7 @@ namespace intertalk
 		notify(connection_id);
 	}
 
-	void admin_application::dispatch_auth_result(boost::uint32_t connection_id, auth_status_data_ptr data, bool to_enqueue /* = false */)
+	void admin_application::dispatch_auth_result(std::uint32_t connection_id, auth_status_data_ptr data, bool to_enqueue /* = false */)
 	{
 		client_data_ptr cd = m_app_manager->get_client_data(data->m_id);
 		if (cd.get() != 0)
@@ -523,7 +523,7 @@ namespace intertalk
 			obj->add_entry("cid", data->m_id);
 			obj->add_entry("ip", cd->m_ip);
 			obj->add_entry("port", cd->m_port);
-			obj->add_entry("status", (boost::uint32_t)data->m_status);
+			obj->add_entry("status", (std::uint32_t)data->m_status);
 			obj->add_entry("reason", data->m_reason);
 			obj->add_entry("user", data->m_username);
 			obj->add_entry("time", boost::posix_time::to_simple_string(data->m_time));
@@ -540,7 +540,7 @@ namespace intertalk
 		}
 	}
 
-	void admin_application::dispatch_disconnect(boost::uint32_t connection_id, auth_status_data_ptr data, bool to_enqueue /* = false */)
+	void admin_application::dispatch_disconnect(std::uint32_t connection_id, auth_status_data_ptr data, bool to_enqueue /* = false */)
 	{
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_disconnect);
 
@@ -548,7 +548,7 @@ namespace intertalk
 		obj->add_entry("sid", data->m_sid);
 		obj->add_entry("cid", data->m_id);
 		obj->add_entry("time", boost::posix_time::to_simple_string(data->m_time));
-		obj->add_entry("status", (boost::uint32_t)data->m_status);
+		obj->add_entry("status", (std::uint32_t)data->m_status);
 
 		res->add_parameter(obj);
 
@@ -561,7 +561,7 @@ namespace intertalk
 			enqueue_message(res);
 	}
 
-	void admin_application::dispatch_call_status(boost::uint32_t connection_id, boost::uint32_t cid, amf0_object_ptr o, bool to_enqueue /* = false */)
+	void admin_application::dispatch_call_status(std::uint32_t connection_id, std::uint32_t cid, amf0_object_ptr o, bool to_enqueue /* = false */)
 	{
 		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_call_status);
 
@@ -589,14 +589,14 @@ namespace intertalk
 		{
 			msg_with_ts_t &m = m_queue.front();
 			boost::posix_time::time_duration ts = now - m.second;
-			if (static_cast<boost::uint32_t>(ts.total_seconds()) > m_keep_time)
+			if (static_cast<std::uint32_t>(ts.total_seconds()) > m_keep_time)
 				m_queue.pop_front();
 			else
 				break;
 		} while (true);
 	}
 
-	void admin_application::send_enqueued_messages(boost::uint32_t connection_id)
+	void admin_application::send_enqueued_messages(std::uint32_t connection_id)
 	{
 		while (!m_queue.empty())
 		{

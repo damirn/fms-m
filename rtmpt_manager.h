@@ -1,7 +1,7 @@
 #pragma once
 
 #include <boost/asio.hpp>
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
@@ -26,22 +26,22 @@ namespace intertalk
 		void create_session(const boost::asio::ip::tcp::endpoint &, std::string &);
 		void remove_session(const std::string &);
 
-		bool validate(const boost::asio::ip::tcp::endpoint &, const std::string &, boost::uint32_t);
+		bool validate(const boost::asio::ip::tcp::endpoint &, const std::string &, std::uint32_t);
 
-		boost::uint32_t handle_data(const std::string &, boost::uint32_t, stream_array &, stream_array &);
-		boost::uint32_t serialize_result(const std::string &, boost::uint32_t, stream_array &);
+		std::uint32_t handle_data(const std::string &, std::uint32_t, stream_array &, stream_array &);
+		std::uint32_t serialize_result(const std::string &, std::uint32_t, stream_array &);
 
 		void create_new_connection(const std::string &);
 
-		void update_bytes_read(const std::string &cid, boost::uint32_t bytes_transferred)
+		void update_bytes_read(const std::string &cid, std::uint32_t bytes_transferred)
 		{
 			update_stats(cid, bytes_transferred, true);
 		}
-		void update_bytes_written(const std::string &cid, boost::uint32_t bytes_transferred)
+		void update_bytes_written(const std::string &cid, std::uint32_t bytes_transferred)
 		{
 			update_stats(cid, bytes_transferred, false);
 		}
-		void update_stats(const std::string &, boost::uint32_t, bool);
+		void update_stats(const std::string &, std::uint32_t, bool);
 
 		const std::string &version() const
 		{
@@ -70,12 +70,12 @@ namespace intertalk
 				, m_not_alive(0)
 				, m_address(address)
 			{}
-			boost::uint32_t m_sequence;
-			boost::uint32_t m_connection_id;
-			boost::uint8_t m_not_alive;
+			std::uint32_t m_sequence;
+			std::uint32_t m_connection_id;
+			std::uint8_t m_not_alive;
 			boost::asio::ip::address m_address;
 			rtmpt_session_ptr m_session;
-			typedef std::map<boost::uint32_t, std::pair<boost::uint8_t *, boost::uint16_t> > unoreder_data_t;
+			typedef std::map<std::uint32_t, std::pair<std::uint8_t *, std::uint16_t> > unoreder_data_t;
 			unoreder_data_t m_out_of_order_data;
 		};
 

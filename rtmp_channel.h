@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 #include <boost/shared_ptr.hpp>
 
 #include "rtmp_header.h"
@@ -11,24 +11,24 @@ namespace intertalk
 	class rtmp_channel
 	{
 	public:
-		rtmp_channel(boost::uint32_t id)
+		rtmp_channel(std::uint32_t id)
 			: m_id(id)
 			, m_message_len(0)
 			, m_prev_message_complete(false)
 			, m_uses_continuation(false)
 		{}
 
-		const boost::uint32_t &id() const
+		const std::uint32_t &id() const
 		{
 			return m_id;
 		}
 
-		boost::uint32_t &message_len()
+		std::uint32_t &message_len()
 		{
 			return m_message_len;
 		}
 
-		const boost::uint32_t &message_len() const
+		const std::uint32_t &message_len() const
 		{
 			return m_message_len;
 		}
@@ -109,7 +109,7 @@ namespace intertalk
 		void add_data(stream_array &source, std::size_t size)
 		{
 			m_buffer.write(source.read_pos(), size);
-			m_message_len += static_cast<boost::uint32_t>(size);
+			m_message_len += static_cast<std::uint32_t>(size);
 			source.skip(size);
 		}
 
@@ -130,16 +130,16 @@ namespace intertalk
 		}
 
 	protected:
-		boost::uint32_t m_id;
-		boost::uint32_t m_message_len;
+		std::uint32_t m_id;
+		std::uint32_t m_message_len;
 		bool m_prev_message_complete;
 		bool m_uses_continuation;
 		rtmp_header m_received_header;
 		rtmp_header m_sent_header;
 		stream_array m_buffer;
-		boost::uint8_t m_prev_header_type;
-		boost::uint32_t m_prev_time_delta;
-		boost::uint32_t m_prev_timestamp;
+		std::uint8_t m_prev_header_type;
+		std::uint32_t m_prev_time_delta;
+		std::uint32_t m_prev_timestamp;
 	};
 
 	typedef boost::shared_ptr<rtmp_channel> rtmp_channel_ptr;

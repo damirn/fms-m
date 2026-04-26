@@ -13,10 +13,10 @@ namespace intertalk
 			m_len = buff.read_vlu();
 			if (m_len != 0)
 			{
-				boost::uint8_t *here = buff.read_pos();
+				std::uint8_t *here = buff.read_pos();
 				m_type = buff.read_vlu();
-				m_value_len = static_cast<boost::uint16_t>(m_len - (buff.read_pos() - here));
-				m_value = new boost::uint8_t[m_value_len];
+				m_value_len = static_cast<std::uint16_t>(m_len - (buff.read_pos() - here));
+				m_value = new std::uint8_t[m_value_len];
 				std::memcpy(m_value, buff.read_pos(), m_value_len);
 				buff.skip(m_value_len);
 			}
@@ -28,14 +28,14 @@ namespace intertalk
 		}
 	}
 
-	boost::uint16_t option::serialize(stream_array &to)
+	std::uint16_t option::serialize(stream_array &to)
 	{
 		if (m_len == 0)
 		{
 			to.write_vlu(m_len);
 			return 1;
 		}
-		boost::uint8_t *here = to.write_pos();
+		std::uint8_t *here = to.write_pos();
 		vlu_t size = stream_array::get_vlu_size(m_type) + m_value_len;
 		to.mark_write();
 		to.skip_write(stream_array::get_vlu_size(size));
@@ -67,31 +67,31 @@ namespace intertalk
 		return ret;
 	}
 
-	boost::uint16_t option_list::serialize(stream_array &to)
+	std::uint16_t option_list::serialize(stream_array &to)
 	{
 		static vlu_t const end_marker = 0;
-		boost::uint16_t size = 0;
+		std::uint16_t size = 0;
 		for (std::list<option_ptr>::iterator i = m_options.begin(); i != m_options.end(); ++i)
 			size += (*i)->serialize(to);
 		to.write_vlu(end_marker);
 		return size + 1;
 	}
 
-	option_ptr option_list::create_option(boost::uint8_t type, const boost::uint8_t *value, const boost::uint16_t &value_len)
+	option_ptr option_list::create_option(std::uint8_t type, const std::uint8_t *value, const std::uint16_t &value_len)
 	{
 		option_ptr opt = boost::make_shared<option>(type, value, value_len);
 		m_options.push_back(opt);
 		return opt;
 	}
 
-	option_ptr option_list::create_option(boost::uint8_t type, const vlu_t &value)
+	option_ptr option_list::create_option(std::uint8_t type, const vlu_t &value)
 	{
 		option_ptr opt = boost::make_shared<option>(type, value);
 		m_options.push_back(opt);
 		return opt;
 	}
 
-	boost::optional<option_ptr> option_list::get_option(boost::uint8_t type)
+	boost::optional<option_ptr> option_list::get_option(std::uint8_t type)
 	{
 		for (std::list<option_ptr>::iterator i = m_options.begin(); i != m_options.end(); ++i)
 			if ((*i)->m_type == type)

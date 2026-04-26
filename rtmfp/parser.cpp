@@ -40,8 +40,8 @@ namespace intertalk
 
 	bool parser::parse_chunks(stream_array &raw)
 	{
-		boost::uint16_t len = 0;
-		boost::uint8_t type;
+		std::uint16_t len = 0;
+		std::uint8_t type;
 
 		m_seen_data_chunk = false;
 		while (raw.available() > 2 && raw.available() >= len)
@@ -69,7 +69,7 @@ namespace intertalk
 		return true;
 	}
 
-	bool parser::deserialize_chunk(boost::uint8_t type, boost::uint16_t len, stream_array &raw)
+	bool parser::deserialize_chunk(std::uint8_t type, std::uint16_t len, stream_array &raw)
 	{
 		chunk *c = 0;
 
@@ -119,22 +119,22 @@ namespace intertalk
 
 	bool parser::check_checksum(stream_array &raw)
 	{
-		boost::uint16_t c;
+		std::uint16_t c;
 		raw >> c;
 		return c == calculate_checksum(raw.read_pos(), raw.available());
 	}
 
-	boost::uint16_t parser::calculate_checksum(boost::uint8_t *data, size_t size)
+	std::uint16_t parser::calculate_checksum(std::uint8_t *data, size_t size)
 	{
 		int sum = 0;
-		boost::uint8_t *end = data + size;
+		std::uint8_t *end = data + size;
 		while (data < end)
 		{
-			boost::uint16_t x;
-			boost::uint8_t y;
+			std::uint16_t x;
+			std::uint8_t y;
 			if (end - data != 1)
 			{
-				x = *(boost::uint16_t *)data;
+				x = *(std::uint16_t *)data;
 				sum += x;
 				data += 2;
 			}

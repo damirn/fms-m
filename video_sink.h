@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/cstdint.hpp>
+#include <cstdint>
 
 namespace intertalk
 {
@@ -8,6 +8,6 @@ namespace intertalk
 	{
 	public:
 		virtual ~video_sink(){}
-		virtual void write_video(const char *, boost::uint32_t, boost::uint32_t) = 0;
+		virtual void write_video(const char *, std::uint32_t, std::uint32_t) = 0;
 	};
 }

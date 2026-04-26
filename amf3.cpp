@@ -5,7 +5,7 @@ namespace intertalk
 {
 	amf3_type_ptr amf3::read(stream_array &buffer)
 	{
-		boost::uint8_t type;
+		std::uint8_t type;
 		buffer >> type;
 		switch (type)
 		{
@@ -30,7 +30,7 @@ namespace intertalk
 
 	void amf3::write(stream_array &buffer, amf3_type_ptr type)
 	{
-		boost::uint8_t marker = type->type();
+		std::uint8_t marker = type->type();
 		buffer << marker;
 		switch (marker)
 		{
@@ -67,7 +67,7 @@ namespace intertalk
 		}
 	}
 
-	amf3_empty_type_ptr amf3::read_empty_type(stream_array &buffer, boost::uint8_t type)
+	amf3_empty_type_ptr amf3::read_empty_type(stream_array &buffer, std::uint8_t type)
 	{
 		amf3_type::etype t = amf3_type::eAMF3Undefined;
 
@@ -95,13 +95,13 @@ namespace intertalk
 
 	void amf3::write_empty_type(stream_array &buffer, amf3_empty_type_ptr empty_type)
 	{
-		boost::uint8_t type = empty_type->type();
+		std::uint8_t type = empty_type->type();
 		buffer << type;
 	}
 
 	amf3_integer_type_ptr amf3::read_integer(stream_array &buffer)
 	{
-		boost::uint32_t tmp = read_u29(buffer);
+		std::uint32_t tmp = read_u29(buffer);
 		if ((tmp & 0x18000000) != 0)
 		{
 			tmp ^= 0x1fffffff;
@@ -114,13 +114,13 @@ namespace intertalk
 
 	void amf3::write_integer(stream_array &buffer, amf3_integer_type_ptr value)
 	{
-		boost::uint32_t tmp = value->value();
+		std::uint32_t tmp = value->value();
 		write_integer(buffer, tmp);
 	}
 
-	void amf3::write_integer(stream_array &buffer, boost::uint32_t value)
+	void amf3::write_integer(stream_array &buffer, std::uint32_t value)
 	{
-		boost::uint8_t b;
+		std::uint8_t b;
 		if ((value & 0xffffff80) == 0)
 		{
 			b = value & 0x7f;
@@ -161,7 +161,7 @@ namespace intertalk
 	amf3_string_type_ptr amf3::read_string(stream_array &buffer)
 	{
 		amf3_string_type_ptr str(new amf3_string_type);
-		boost::uint32_t reff = read_u29(buffer);
+		std::uint32_t reff = read_u29(buffer);
 		if ((reff & 0x01) == 0)
 		{
 			reff >>= 1;
@@ -180,7 +180,7 @@ namespace intertalk
 
 	void amf3::write_string(stream_array &buffer, amf3_string_type_ptr value)
 	{
-		boost::uint32_t len = value->value().length();
+		std::uint32_t len = value->value().length();
 		len = (len << 1) | 0x01;
 		write_integer(buffer, len);
 		buffer.write(value->value().c_str(), value->value().length());
@@ -189,8 +189,8 @@ namespace intertalk
 	amf3_object_type_ptr amf3::read_object(stream_array &buffer)
 	{
 		amf3_object_type_ptr obj(new amf3_object_type);
-		boost::uint32_t obj_info = read_u29(buffer);
-		boost::uint32_t encoding_type = 0;
+		std::uint32_t obj_info = read_u29(buffer);
+		std::uint32_t encoding_type = 0;
 		bool is_stored = (obj_info & 0x01) == 0;
 		obj_info >>= 1;
 
@@ -207,7 +207,7 @@ namespace intertalk
 
 			if (is_class)
 			{
-				std::map<boost::uint32_t, class_data_ptr>::iterator i = m_stored_classes.find(obj_info);
+				std::map<std::uint32_t, class_data_ptr>::iterator i = m_stored_classes.find(obj_info);
 				if (i != m_stored_classes.end())
 				{
 					encoding_type = i->second->m_encoding_type;
@@ -257,7 +257,7 @@ namespace intertalk
 			{
 				if (!is_class)
 				{
-					for (boost::uint32_t i = 0; i < obj_info; ++i)
+					for (std::uint32_t i = 0; i < obj_info; ++i)
 						names.push_back((std::string)*read_string(buffer));
 					class_data_ptr cdata(new class_data);
 					cdata->m_class_name = class_name;
@@ -277,17 +277,17 @@ namespace intertalk
 
 	void amf3::write_object(stream_array &buffer, amf3_object_type_ptr obj)
 	{
-		boost::uint8_t enc_type = 0;
+		std::uint8_t enc_type = 0;
 		amf3_string_type_ptr class_name(new amf3_string_type(""));
 
 		// todo: check other encodings
 
-		boost::uint32_t obj_info = 0x03;
+		std::uint32_t obj_info = 0x03;
 		obj_info |= enc_type << 2;
 		if (enc_type == 0)
 		{
 			amf3_object_type::value_map_t &val_map = obj->value();
-			boost::uint32_t cnt = val_map.size();
+			std::uint32_t cnt = val_map.size();
 			obj_info |= cnt << 4;
 			write_integer(buffer, obj_info);
 			write_string(buffer, class_name);
@@ -301,11 +301,11 @@ namespace intertalk
 		}
 	}
 
-	boost::uint32_t amf3::read_u29(stream_array &buffer)
+	std::uint32_t amf3::read_u29(stream_array &buffer)
 	{
-		boost::uint32_t ret = 0;
-		boost::uint8_t byte;
-		boost::uint8_t cnt = 1;
+		std::uint32_t ret = 0;
+		std::uint8_t byte;
+		std::uint8_t cnt = 1;
 
 		buffer >> byte;
 		while ((byte & 0x80) != 0 && cnt < 4)
