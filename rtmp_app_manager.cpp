@@ -50,7 +50,7 @@ namespace intertalk
 
 	rtmp_connection_ptr rtmp_app_manager::create_connection()
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		rtmp_connection_ptr tmp(new rtmp_connection(m_connection_counter, m_io_service_pool.get_io_service(), this));
 		m_connections[m_connection_counter++] = tmp;
 		return tmp;
@@ -58,7 +58,7 @@ namespace intertalk
 
 	rtmpt_session_ptr rtmp_app_manager::create_rtmpt_session()
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		rtmpt_session_ptr tmp(new rtmpt_session(m_connection_counter, m_io_service_pool.get_io_service(), this));
 		m_connections[m_connection_counter++] = tmp;
 		return tmp;
@@ -66,19 +66,19 @@ namespace intertalk
 
 	void rtmp_app_manager::register_session(client_session_ptr s)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		m_connections[s->id()] = s;
 	}
 
 	std::uint32_t rtmp_app_manager::reserve_connection_id()
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		return m_connection_counter++;
 	}
 
 	http_connection_ptr rtmp_app_manager::create_http_connection()
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		http_connection_ptr tmp(new http_connection(m_connection_counter, m_io_service_pool.get_io_service(), this, m_rtmpt_manager));
 		m_http_conns[m_connection_counter++] = tmp;
 		return tmp;
@@ -86,7 +86,7 @@ namespace intertalk
 
 	void rtmp_app_manager::delete_http_connection(std::uint32_t id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		http_connection_map_t::iterator i = m_http_conns.find(id);
 		if (i != m_http_conns.end())
 			m_http_conns.erase(i);
@@ -94,7 +94,7 @@ namespace intertalk
 
 	client_session_ptr rtmp_app_manager::get_connection(std::uint32_t conn_id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return i->second;
@@ -103,7 +103,7 @@ namespace intertalk
 
 	const std::string &rtmp_app_manager::get_app_instance(std::uint32_t conn_id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return i->second->app_instance();
@@ -112,7 +112,7 @@ namespace intertalk
 
 	bool rtmp_app_manager::has_connection(std::uint32_t conn_id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return true;
@@ -121,7 +121,7 @@ namespace intertalk
 
 	void rtmp_app_manager::delete_connection(std::uint32_t conn_id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 		{
@@ -138,7 +138,7 @@ namespace intertalk
 
 	void rtmp_app_manager::destroy_connection(std::uint32_t conn_id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 		{
@@ -150,7 +150,7 @@ namespace intertalk
 
 	void rtmp_app_manager::set_encoding_for_connection(std::uint32_t conn_id, bool is_amf3)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			i->second->uses_amf3_encoding() = is_amf3;
@@ -158,7 +158,7 @@ namespace intertalk
 
 	bool rtmp_app_manager::is_amf3_encoding(std::uint32_t conn_id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return i->second->uses_amf3_encoding();
@@ -237,7 +237,7 @@ namespace intertalk
 
 	void rtmp_app_manager::list_clients(client_list_t &list)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		for (connection_map_t::iterator i = m_connections.begin(); i != m_connections.end(); ++i)
 		{
 			client_data_ptr data = get_client_data_impl(i->first);
@@ -248,7 +248,7 @@ namespace intertalk
 
 	client_data_ptr rtmp_app_manager::get_client_data(std::uint32_t connection_id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		return get_client_data_impl(connection_id);
 	}
 
@@ -306,7 +306,7 @@ namespace intertalk
 
 	bool rtmp_app_manager::get_client_stats(std::uint32_t cid, client_stats &stats)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		connection_map_t::iterator i = m_connections.find(cid);
 		if (i != m_connections.end())
 		{
@@ -320,17 +320,17 @@ namespace intertalk
 		return false;
 	}
 
-	boost::optional<app_stats> rtmp_app_manager::get_app_stats(const std::string &app)
+	std::optional<app_stats> rtmp_app_manager::get_app_stats(const std::string &app)
 	{
 		app_map_t::iterator i = m_apps.find(app);
 		if (i != m_apps.end())
-			return boost::optional<app_stats>(i->second->get_stats());
-		return boost::optional<app_stats>();
+			return std::optional<app_stats>(i->second->get_stats());
+		return std::optional<app_stats>();
 	}
 
 	void rtmp_app_manager::list_streams(netstream_list_t &streams)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		for (netstream_stats_map_t::iterator i = m_netstream_stats.begin(); i != m_netstream_stats.end(); ++i)
 			streams.push_back(i->second);
 	}
@@ -343,14 +343,14 @@ namespace intertalk
 
 	void rtmp_app_manager::create_netstream(const stream_client_id_t &id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		netstream_stats_ptr stats(new netstream_stats(id.first));
 		m_netstream_stats[id] = stats;
 	}
 
 	void rtmp_app_manager::delete_netstream(const stream_client_id_t &id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		netstream_stats_map_t::iterator i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 		{
@@ -363,7 +363,7 @@ namespace intertalk
 
 	void rtmp_app_manager::delete_netstreams(std::uint32_t connection_id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		netstream_list_t list;
 		for (netstream_stats_map_t::iterator i = m_netstream_stats.begin(); i != m_netstream_stats.end(); )
 		{
@@ -382,7 +382,7 @@ namespace intertalk
 
 	void rtmp_app_manager::update_netstream(const stream_client_id_t &id, const std::string &name, bool is_publish)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		netstream_stats_map_t::iterator i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 		{
@@ -396,7 +396,7 @@ namespace intertalk
 
 	void rtmp_app_manager::update_netstream_stats(const stream_client_id_t &id, std::uint32_t bytes, std::uint32_t ts)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		netstream_stats_map_t::iterator i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 		{
@@ -426,19 +426,19 @@ namespace intertalk
 
 	void rtmp_app_manager::add_dropped_messages_for_netstream(const stream_client_id_t &id, std::size_t size)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		netstream_stats_map_t::iterator i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 			i->second->m_messages_dropped += size;
 	}
 
-	boost::optional<netstream_stats_ptr> rtmp_app_manager::get_stream_stats(const stream_client_id_t &id)
+	std::optional<netstream_stats_ptr> rtmp_app_manager::get_stream_stats(const stream_client_id_t &id)
 	{
-		boost::mutex::scoped_lock lock(m_mutex);
+		std::unique_lock<std::mutex> lock(m_mutex);
 		netstream_stats_map_t::iterator i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
-			return boost::optional<netstream_stats_ptr>(i->second);
-		return boost::optional<netstream_stats_ptr>();
+			return std::optional<netstream_stats_ptr>(i->second);
+		return std::optional<netstream_stats_ptr>();
 	}
 
 	bool rtmp_app_manager::check_application_name(const std::string &app_name, const std::string &app, std::string &instance)
@@ -467,7 +467,7 @@ namespace intertalk
 		{
 			if (m_admin_app->has_active_clients())
 			{
-				boost::mutex::scoped_lock lock(m_mutex);
+				std::unique_lock<std::mutex> lock(m_mutex);
 				netstream_stats_map_t tmp;
 				boost::posix_time::ptime now(boost::posix_time::microsec_clock::local_time());
 				for (netstream_stats_map_t::iterator i = m_netstream_stats.begin(); i != m_netstream_stats.end(); ++i)

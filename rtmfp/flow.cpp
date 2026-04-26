@@ -114,7 +114,7 @@ namespace intertalk
 	void flow::parse_option_list()
 	{
 		// sanity check (3.6.3.1)
-		boost::optional<option_ptr> opt = options().get_option(option::eMetadata);
+		std::optional<option_ptr> opt = options().get_option(option::eMetadata);
 		if (opt)
 		{
 			std::cout << "has options" << std::endl;
@@ -204,7 +204,7 @@ namespace intertalk
 		return frags;
 	}
 
-	boost::optional<fragment_ptr> flow::get_fragment_for_sending(vlu_t &fsn)
+	std::optional<fragment_ptr> flow::get_fragment_for_sending(vlu_t &fsn)
 	{
 		// 3.6.2.3
 		fragment_map_t::iterator i = m_fragments.begin();
@@ -229,11 +229,11 @@ namespace intertalk
 			while (i != m_fragments.end())
 			{
 				if (!i->second->m_in_flight && (!i->second->m_abandoned || i == m_fragments.begin()))
-					return boost::optional<fragment_ptr>(i->second);
+					return std::optional<fragment_ptr>(i->second);
 				++i;
 			}
 		}
-		return boost::optional<fragment_ptr>();
+		return std::optional<fragment_ptr>();
 	}
 
 	bool flow::has_seq_gaps() const
@@ -291,12 +291,12 @@ namespace intertalk
 		}
 	}
 
-	boost::optional<option_ptr> flow::metadata()
+	std::optional<option_ptr> flow::metadata()
 	{
 		for (std::list<option_ptr>::iterator i = m_options.m_options.begin(); i != m_options.m_options.end(); ++i)
 			if ((*i)->m_type == option::eMetadata)
-				return boost::optional<option_ptr>(*i);
-		return boost::optional<option_ptr>();
+				return std::optional<option_ptr>(*i);
+		return std::optional<option_ptr>();
 	}
 
 	bool flow::on_timeout_alarm()

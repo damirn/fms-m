@@ -17,7 +17,7 @@ namespace intertalk
 
 	void simple_mixer::add_source_stream(std::uint32_t id)
 	{
-		boost::mutex::scoped_lock lock(m_streams_mutex);
+		std::unique_lock<std::mutex> lock(m_streams_mutex);
 		if (m_streams.find(id) != m_streams.end())
 			return;
 
@@ -26,7 +26,7 @@ namespace intertalk
 
 	void simple_mixer::remove_source_stream(std::uint32_t id)
 	{
-		boost::mutex::scoped_lock lock(m_streams_mutex);
+		std::unique_lock<std::mutex> lock(m_streams_mutex);
 		stream_map_t::iterator i = m_streams.find(id);
 		if (i != m_streams.end())
 		{
@@ -61,7 +61,7 @@ namespace intertalk
 	{
 		if (m_active)
 		{
-			boost::mutex::scoped_lock lock(m_streams_mutex);
+			std::unique_lock<std::mutex> lock(m_streams_mutex);
 			stream_map_t::iterator i = m_streams.find(id);
 			if (i != m_streams.end())
 				i->second->m_queue.push(msg);
@@ -72,7 +72,7 @@ namespace intertalk
 	{
 		if (m_active && size > 0)
 		{
-			boost::mutex::scoped_lock lock(m_streams_mutex);
+			std::unique_lock<std::mutex> lock(m_streams_mutex);
 			stream_map_t::iterator i = m_streams.find(id);
 			if (i != m_streams.end())
 			{
@@ -156,7 +156,7 @@ namespace intertalk
 		std::vector<std::int32_t> acc(samples, 0);
 
 		{
-			boost::mutex::scoped_lock lock(m_streams_mutex);
+			std::unique_lock<std::mutex> lock(m_streams_mutex);
 			for (stream_map_t::iterator i = m_streams.begin(); i != m_streams.end(); ++i)
 			{
 				i->second->fill_frame();

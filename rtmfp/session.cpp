@@ -626,7 +626,7 @@ namespace intertalk
 		{
 			flow_ptr f = i->second;
 			vlu_t fsn;
-			boost::optional<fragment_ptr> frag = f->get_fragment_for_sending(fsn);
+			std::optional<fragment_ptr> frag = f->get_fragment_for_sending(fsn);
 			if (frag)
 			{
 				fragment_ptr fr = *frag;

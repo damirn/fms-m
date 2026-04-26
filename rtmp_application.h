@@ -7,8 +7,8 @@
 #include <boost/noncopyable.hpp>
 #include <memory>
 #include <boost/logic/tribool.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/thread/mutex.hpp>
+#include <unordered_map>
+#include <mutex>
 
 #include "io_service_pool.h"
 #include "random_string.h"
@@ -81,7 +81,7 @@ namespace intertalk
 
 
 		typedef std::list<std::pair<std::string, amf0_type_ptr> > amf0_parameter_list_t;
-		typedef boost::optional<amf0_parameter_list_t> optional_param_list_t;
+		typedef std::optional<amf0_parameter_list_t> optional_param_list_t;
 
 	protected:
 		virtual boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
@@ -147,16 +147,16 @@ namespace intertalk
 		std::string m_app_name;
 
 		typedef std::pair<std::uint32_t, std::list<rtmp_message_ptr> > size_list_pair_t;
-		typedef boost::unordered_map<std::uint32_t, size_list_pair_t> async_messages_map_t;
+		typedef std::unordered_map<std::uint32_t, size_list_pair_t> async_messages_map_t;
 		async_messages_map_t m_async_messages;
-		boost::mutex m_async_messages_mutex;
+		std::mutex m_async_messages_mutex;
 
-		typedef boost::unordered_map<std::uint32_t, std::uint32_t> delay_map_t;
+		typedef std::unordered_map<std::uint32_t, std::uint32_t> delay_map_t;
 		delay_map_t m_delays;
-		boost::mutex m_delay_mutex;
+		std::mutex m_delay_mutex;
 
 		app_stats m_stats;
-		boost::mutex m_stats_mutex;
+		std::mutex m_stats_mutex;
 
 		boost::detail::atomic_count m_invoke_id;
 
@@ -170,7 +170,7 @@ namespace intertalk
 		struct result_handler
 		{
 			virtual ~result_handler(){}
-			typedef boost::function<bool (rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &)> callback_t;
+			typedef std::function<bool (rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &)> callback_t;
 			result_handler(std::uint32_t id, callback_t f)
 				: m_connection_id(id)
 				, m_call_back(f)
@@ -179,7 +179,7 @@ namespace intertalk
 			callback_t m_call_back;
 		};
 
-		typedef boost::unordered_map<std::uint32_t, result_handler_ptr> result_handlers_t;
+		typedef std::unordered_map<std::uint32_t, result_handler_ptr> result_handlers_t;
 
 		struct bwcheck_result_handler : public result_handler
 		{
@@ -216,14 +216,6 @@ namespace intertalk
 				: std::runtime_error(err)
 			{}
 		};
-
-		std::size_t hash_value(const stream_client_id_t &c)
-		{
-			std::size_t seed = 0;
-			boost::hash_combine(seed, c.first);
-			boost::hash_combine(seed, c.second);
-			return seed;
-		}
 
 	private:
 		static amf0_string_ptr m_rnd_str;

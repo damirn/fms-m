@@ -5,7 +5,7 @@
 #include "video_bcast_application.h"
 
 #include <memory>
-#include <boost/unordered_map.hpp>
+#include <unordered_map>
 #include <set>
 #include <string>
 
@@ -60,7 +60,7 @@ namespace intertalk
 		enum { _eReconnectInterval = 5, _ePingInterval = 30 };
 
 		std::uint32_t m_seq_number;
-		boost::mutex m_mutex;
+		std::mutex m_mutex;
 
 		struct request_data
 		{
@@ -80,7 +80,7 @@ namespace intertalk
 		};
 
 		// sequence to connection_id
-		typedef boost::unordered_map<std::uint32_t, request_data> seq_to_cid_map_t;
+		typedef std::unordered_map<std::uint32_t, request_data> seq_to_cid_map_t;
 		seq_to_cid_map_t m_seq_to_cid;
 
 		std::set<std::uint32_t> m_clients;

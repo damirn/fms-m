@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <memory>
 
 #include "group.h"
@@ -59,7 +59,7 @@ namespace intertalk
 		void handle_startup_session();
 		std::uint32_t get_sid();
 
-		boost::optional<session_ptr> get_session(std::uint32_t);
+		std::optional<session_ptr> get_session(std::uint32_t);
 		void remove_session(std::uint32_t);
 		void handle_notify();
 

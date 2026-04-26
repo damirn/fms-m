@@ -91,11 +91,11 @@ namespace intertalk
 		return opt;
 	}
 
-	boost::optional<option_ptr> option_list::get_option(std::uint8_t type)
+	std::optional<option_ptr> option_list::get_option(std::uint8_t type)
 	{
 		for (std::list<option_ptr>::iterator i = m_options.begin(); i != m_options.end(); ++i)
 			if ((*i)->m_type == type)
-				return boost::optional<option_ptr>(*i);
-		return boost::optional<option_ptr>();
+				return std::optional<option_ptr>(*i);
+		return std::optional<option_ptr>();
 	}
 }

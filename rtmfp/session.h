@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <memory>
-#include <boost/function.hpp>
+#include <functional>
 #include <boost/noncopyable.hpp>
 #include <memory>
 #include <memory>
@@ -122,7 +122,7 @@ namespace intertalk
 
 		bool has_data_to_send(serializer *);
 
-		boost::function<void ()> &notifier()
+		std::function<void ()> &notifier()
 		{
 			return m_notifier;
 		}
@@ -258,7 +258,7 @@ namespace intertalk
 		typedef std::map<vlu_t, vlu_t> flow_assoc_map_t;
 		flow_assoc_map_t m_receiving_to_sending_flow;
 
-		boost::function<void ()> m_notifier;
+		std::function<void ()> m_notifier;
 
 		typedef std::map<vlu_t, std::uint32_t> flow_id_to_stream_id_map_t;
 		flow_id_to_stream_id_map_t m_flow_id_to_stream_id;

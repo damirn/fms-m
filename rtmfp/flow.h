@@ -5,9 +5,9 @@
 #include "types.h"
 
 #include <map>
-#include <boost/optional.hpp>
+#include <optional>
 #include <memory>
-#include <boost/unordered_set.hpp>
+#include <unordered_set>
 
 namespace intertalk
 {
@@ -179,7 +179,7 @@ namespace intertalk
 
 		std::uint16_t add_and_fragment_data(const std::uint8_t *, const std::uint32_t &);
 
-		boost::optional<fragment_ptr> get_fragment_for_sending(vlu_t &);
+		std::optional<fragment_ptr> get_fragment_for_sending(vlu_t &);
 
 		bool has_seq_gaps() const;
 		void add_sequences_until(const vlu_t &);
@@ -187,7 +187,7 @@ namespace intertalk
 		vlu_t ack_fragments_for_range(const vlu_t &, const vlu_t &);
 		void update_nak_count(const vlu_t &);
 
-		boost::optional<option_ptr> metadata();
+		std::optional<option_ptr> metadata();
 
 		const option_list &options() const
 		{

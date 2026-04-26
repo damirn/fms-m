@@ -5,7 +5,7 @@
 #include <cstring>
 #include <list>
 #include <cstdint>
-#include <boost/optional.hpp>
+#include <optional>
 #include <memory>
 
 namespace intertalk
@@ -95,7 +95,7 @@ namespace intertalk
 		option_ptr create_option(std::uint8_t type, const std::uint8_t *value, const std::uint16_t &value_len);
 		option_ptr create_option(std::uint8_t type, const vlu_t &value);
 
-		boost::optional<option_ptr> get_option(std::uint8_t type);
+		std::optional<option_ptr> get_option(std::uint8_t type);
 
 		std::list<option_ptr> m_options;
 	};

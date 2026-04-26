@@ -96,13 +96,13 @@ namespace intertalk
 
 	void rtmp_application::delete_connection(std::uint32_t conn_id, const std::string &)
 	{
-		boost::mutex::scoped_lock lock(m_async_messages_mutex);
+		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
 		async_messages_map_t::iterator i = m_async_messages.find(conn_id);
 		if (i != m_async_messages.end())
 			m_async_messages.erase(i);
 		lock.unlock();
 	
-		boost::mutex::scoped_lock lock2(m_delay_mutex);
+		std::unique_lock<std::mutex> lock2(m_delay_mutex);
 		delay_map_t::iterator j = m_delays.find(conn_id);
 		if (j != m_delays.end())
 			m_delays.erase(j);
@@ -112,7 +112,7 @@ namespace intertalk
 	{
 		if (m_app_manager->has_connection(connection_id))
 		{
-			boost::mutex::scoped_lock lock(m_async_messages_mutex);
+			std::unique_lock<std::mutex> lock(m_async_messages_mutex);
 			if (urgent)
 				m_async_messages[connection_id].second.push_front(msg);
 			else
@@ -126,20 +126,20 @@ namespace intertalk
 	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, bool urgent /* = false */)
 	{
 		std::uint32_t size = enqueue_async_message(connection_id, msg, urgent);
-		boost::mutex::scoped_lock lock(m_async_messages_mutex);
+		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
 		m_result_handlers[static_cast<std::uint32_t>(msg->invoke_id()->value())] = res_handler;
 		return size;
 	}
 
 	void rtmp_application::add_result_handler(std::uint32_t invoke_id, result_handler_ptr res_handler)
 	{
-		boost::mutex::scoped_lock lock(m_async_messages_mutex);
+		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
 		m_result_handlers[invoke_id] = res_handler;
 	}
 
 	bool rtmp_application::has_async_messages(std::uint32_t connection_id)
 	{
-		boost::mutex::scoped_lock lock(m_async_messages_mutex);
+		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
 		async_messages_map_t::iterator i = m_async_messages.find(connection_id);
 		if (i == m_async_messages.end() || i->second.second.empty())
 			return false;
@@ -148,7 +148,7 @@ namespace intertalk
 
 	bool rtmp_application::get_async_message(std::uint32_t connection_id, rtmp_message_ptr &msg)
 	{
-		boost::mutex::scoped_lock lock(m_async_messages_mutex);
+		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
 		async_messages_map_t::iterator i = m_async_messages.find(connection_id);
 		if (i == m_async_messages.end() || i->second.second.empty())
 			return false;
@@ -160,14 +160,14 @@ namespace intertalk
 
 	void rtmp_application::get_queue_stats(queue_stats_list_t &list)
 	{
-		boost::mutex::scoped_lock lock(m_async_messages_mutex);
+		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
 		for (async_messages_map_t::iterator i = m_async_messages.begin(); i != m_async_messages.end(); ++i)
 			list.push_back(queue_stats(i->first, i->second.first));
 	}
 
 	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, std::uint32_t value)
 	{
-		boost::mutex::scoped_lock lock(m_stats_mutex);
+		std::unique_lock<std::mutex> lock(m_stats_mutex);
 		if (is_inbound)
 		{
 			if (is_bytes)
@@ -230,7 +230,7 @@ namespace intertalk
 
 	bool rtmp_application::handle_invoke_result(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		boost::mutex::scoped_lock lock(m_async_messages_mutex);
+		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
 		result_handlers_t::iterator i = m_result_handlers.find(static_cast<std::uint32_t>(msg->invoke_id()->value()));
 		if (i != m_result_handlers.end())
 		{
@@ -418,7 +418,7 @@ namespace intertalk
 //			std::cout << " timestamp: " << ping->get_value();
 			std::uint32_t delay = get_timestamp(connection_id) - ping->get_value();
 //			std::cout << " delta: " << delay;
-			boost::mutex::scoped_lock lock(m_delay_mutex);
+			std::unique_lock<std::mutex> lock(m_delay_mutex);
 			m_delays[connection_id] = delay;
 		}
 
@@ -663,7 +663,7 @@ namespace intertalk
 
 	std::uint32_t rtmp_application::get_delay(std::uint32_t connetion_id)
 	{
-		boost::mutex::scoped_lock lock(m_delay_mutex);
+		std::unique_lock<std::mutex> lock(m_delay_mutex);
 		if (m_delays.find(connetion_id) != m_delays.end())
 			return m_delays[connetion_id];
 		return 0;

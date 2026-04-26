@@ -90,7 +90,24 @@ namespace intertalk
 	typedef std::list<netstream_stats_ptr> netstream_list_t;
 	// connection_id + stream_id
 	typedef std::pair<std::uint32_t, std::uint32_t> stream_client_id_t;
-	typedef boost::unordered_map<stream_client_id_t, netstream_stats_ptr> netstream_stats_map_t;
+
+	// std::unordered_map has no std::hash for std::pair (unlike boost::hash),
+	// and specializing std::hash for a non-program-defined type is UB, so we
+	// supply an explicit hasher and an alias template for the keyed maps.
+	struct stream_client_id_hash
+	{
+		std::size_t operator()(const stream_client_id_t &c) const noexcept
+		{
+			std::size_t h1 = std::hash<std::uint32_t>{}(c.first);
+			std::size_t h2 = std::hash<std::uint32_t>{}(c.second);
+			return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+		}
+	};
+
+	template<typename V>
+	using stream_client_id_map = std::unordered_map<stream_client_id_t, V, stream_client_id_hash>;
+
+	typedef stream_client_id_map<netstream_stats_ptr> netstream_stats_map_t;
 
 	struct livestream_stats
 	{

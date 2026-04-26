@@ -84,7 +84,7 @@ namespace intertalk
 				handle_startup_session();
 				return;
 			}
-			boost::optional<session_ptr> ss = get_session(sid);
+			std::optional<session_ptr> ss = get_session(sid);
 			if (ss)
 			{
 				session_ptr s = *ss;
@@ -153,13 +153,13 @@ namespace intertalk
 		return sid;
 	}
 
-	boost::optional<session_ptr> service::get_session(std::uint32_t sid)
+	std::optional<session_ptr> service::get_session(std::uint32_t sid)
 	{
 		std::cout << "sid: " << sid << std::endl;
 		
 		sid_to_session_map_t::iterator i = m_sessions.find(sid);
 		if (i != m_sessions.end())
-			return boost::optional<session_ptr>(i->second);
+			return std::optional<session_ptr>(i->second);
 
 		// search through initial sessions
 		endpoint_to_session_map_t::iterator j = m_initial_sessions.find(m_sender_endpoint);
@@ -170,9 +170,9 @@ namespace intertalk
 			m_sessions[sid] = s;
 			m_session_map[s->peer_id()] = s;
 			m_sessions_iterator = m_sessions.begin();
-			return boost::optional<session_ptr>(s);
+			return std::optional<session_ptr>(s);
 		}
-		return boost::optional<session_ptr>();
+		return std::optional<session_ptr>();
 	}
 
 	void service::remove_session(std::uint32_t sid)

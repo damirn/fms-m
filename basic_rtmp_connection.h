@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include <boost/array.hpp>
+#include <array>
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <memory>
@@ -103,7 +103,7 @@ namespace intertalk
 		std::int32_t m_current_channel;
 		std::uint16_t m_outgoing_chunk_size;
 
-		boost::array<std::uint8_t, eHandShakeSize + 1> m_tmp_buff;
+		std::array<std::uint8_t, eHandShakeSize + 1> m_tmp_buff;
 
 		bool m_is_fp9;
 		bool m_uses_crypto;
