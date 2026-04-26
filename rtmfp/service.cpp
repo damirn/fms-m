@@ -8,7 +8,6 @@
 #include "serializer.h"
 #include "util.h"
 
-#include <boost/bind.hpp>
 #include <memory>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
@@ -55,9 +54,7 @@ namespace intertalk
 		m_buffer.clear();
 		m_socket.async_receive_from(
 			boost::asio::buffer(m_buffer.write_buffer()), m_sender_endpoint,
-			boost::bind(&service::handle_receive_from, this,
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+			[this](const boost::system::error_code &ec, std::size_t bytes) { handle_receive_from(ec, bytes); });
 	}
 
 	void service::write(stream_array &buffer, boost::asio::ip::udp::endpoint &ep)
@@ -65,9 +62,7 @@ namespace intertalk
 		m_write_in_progress = true;
 		std::cout << std::dec << "to: " << ep.address().to_string() << ":" << ep.port() << std::endl;
 		m_socket.async_send_to(boost::asio::buffer(buffer.c_array(), buffer.wrote_size()), ep,
-			boost::bind(&service::handle_send_to, this,
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+			[this](const boost::system::error_code &ec, std::size_t bytes) { handle_send_to(ec, bytes); });
 	}
 
 	void service::handle_receive_from(const boost::system::error_code &e, size_t bytes_received)
@@ -278,7 +273,7 @@ namespace intertalk
 
 		session_ptr s = std::make_shared<session>(this, m_sender_endpoint, m_app_manager->reserve_connection_id(), m_app_manager);
 		s->init();
-		s->notifier() = boost::bind(&service::notify, this);
+		s->notifier() = [this]() { notify(); };
 		m_initial_sessions[m_sender_endpoint] = s;
 		std::cout << "created new session" << std::endl;
 

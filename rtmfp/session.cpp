@@ -665,7 +665,7 @@ namespace intertalk
 
 	void session::notify()
 	{
-		m_strand.post(boost::bind(&session::notify_impl, shared_from_this()));
+		boost::asio::post(m_strand, [self = shared_from_this()]() { self->notify_impl(); });
 	}
 
 	void session::notify_impl()
@@ -707,7 +707,7 @@ namespace intertalk
 	void session::arm_timer()
 	{
 		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(eTimeOut)));
-		m_timer.async_wait(boost::bind(&session::handle_timer, shared_from_this(), boost::asio::placeholders::error));
+		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 	}
 
 	void session::handle_timer(const boost::system::error_code &e)
@@ -724,7 +724,7 @@ namespace intertalk
 			{
 				m_did_receive_data = false;
 				m_timer.expires_at(m_timer.expires_at() + boost::posix_time::seconds(static_cast<long>(eTimeOut)));
-				m_timer.async_wait(boost::bind(&session::handle_timer, shared_from_this(), boost::asio::placeholders::error));
+				m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 			}
 		}
 	}
@@ -734,7 +734,7 @@ namespace intertalk
 		if (m_erto.total_milliseconds() > 0)
 		{
 			m_alarm.expires_from_now(m_erto);
-			m_alarm.async_wait(boost::bind(&session::handle_alarm, shared_from_this(), boost::asio::placeholders::error));
+			m_alarm.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_alarm(ec); });
 		}
 	}
 

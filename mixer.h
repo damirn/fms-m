@@ -7,7 +7,7 @@
 #include <boost/noncopyable.hpp>
 #include <memory>
 #include <mutex>
-#include <boost/thread/thread.hpp>
+#include <thread>
 
 #include "queue.h"
 #include "rtmp_message.h"
@@ -99,7 +99,7 @@ namespace intertalk
 
 		bool m_init;
 		std::atomic<bool> m_running;   // toggled by mixer thread + owner thread
-		boost::thread m_thread;
+		std::thread m_thread;
 
 		std::uint32_t m_timestamp;
 

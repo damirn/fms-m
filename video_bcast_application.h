@@ -37,7 +37,7 @@ namespace intertalk
 		void start_timer()
 		{
 			m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_eTimeout)));
-			m_timer.async_wait(boost::bind(&video_bcast_application::handle_timer, this, boost::asio::placeholders::error));
+			m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 		}
 
 		void handle_timer(const boost::system::error_code &);

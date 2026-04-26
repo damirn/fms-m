@@ -21,7 +21,6 @@
 // boost includes
 #include <boost/asio.hpp>
 #include <boost/bimap.hpp>
-#include <boost/bind.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/thread.hpp>
 #include <boost/logic/tribool.hpp>

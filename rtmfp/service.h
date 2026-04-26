@@ -4,7 +4,6 @@
 #include <set>
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
 #include <cstdint>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/noncopyable.hpp>
@@ -31,7 +30,7 @@ namespace intertalk
 
 		void notify()
 		{
-			m_io_service.post(boost::bind(&service::handle_notify, this));
+			boost::asio::post(m_io_service, [this]() { handle_notify(); });
 		}
 
 		void handle_net_group(group_ptr &, session_ptr);

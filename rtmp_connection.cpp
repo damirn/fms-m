@@ -11,7 +11,6 @@
 
 #include <openssl/hmac.h>
 
-#include <boost/bind.hpp>
 #include <iostream>
 
 namespace intertalk
@@ -49,10 +48,7 @@ namespace intertalk
 	{
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
 			boost::asio::transfer_at_least(eHandShakeSize + 1), // magic byte + handshake block
-			boost::bind(&rtmp_connection::handle_hand_shake,
-			shared_from_this(),
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 
 		arm_hs_timer();
 	}
@@ -150,13 +146,11 @@ namespace intertalk
 	void rtmp_connection::read_data()
 	{
 		m_rto_timer.expires_from_now(boost::posix_time::seconds(2 * ePingInterval));
-		m_rto_timer.async_wait(boost::bind(&rtmp_connection::handle_rto, shared_from_this(), boost::asio::placeholders::error));
+		m_rto_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_rto(ec); });
 
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
 			boost::asio::transfer_at_least(1),
-			boost::bind(&rtmp_connection::handle_read_packet,
-			shared_from_this(),
-			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_read_packet(ec, bytes); });
 	}
 
 	void rtmp_connection::handle_app_result(rtmp_channel_ptr channel, rtmp_message_ptr result)
@@ -210,19 +204,13 @@ namespace intertalk
 	{
 		boost::asio::async_write(m_socket,
 			boost::asio::buffer(m_tmp_buff, eHandShakeSize + 1),
-			boost::bind(&rtmp_connection::handle_hand_shake,
-			shared_from_this(),
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
 	void rtmp_connection::write_hand_shake_block2()
 	{
 		boost::asio::async_write(m_socket, m_buffer.read_buffer(),
-			boost::bind(&rtmp_connection::handle_hand_shake,
-			shared_from_this(),
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 		m_buffer.skip(eHandShakeSize);
 	}
 
@@ -230,10 +218,7 @@ namespace intertalk
 	{
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
 			boost::asio::transfer_at_least(eHandShakeSize),
-			boost::bind(&rtmp_connection::handle_hand_shake,
-			shared_from_this(),
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
 	void rtmp_connection::serialize_message(rtmp_message_ptr result, rtmp_channel_ptr channel)
@@ -256,17 +241,14 @@ namespace intertalk
 	{
 		m_write_in_progress = true;
 		m_wto_timer.expires_from_now(boost::posix_time::seconds(2 * ePingInterval));
-		m_wto_timer.async_wait(boost::bind(&rtmp_connection::handle_wto, shared_from_this(), boost::asio::placeholders::error));
+		m_wto_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_wto(ec); });
 
 		// encrypt outgoing data if needed
 		if (m_key_out != 0 && m_output_buffer.wrote_size() > 0)
 			RC4(m_key_out, m_output_buffer.wrote_size(), m_output_buffer.read_pos(), m_output_buffer.read_pos());
 
 		boost::asio::async_write(m_socket, m_output_buffer.read_buffer(),
-			boost::bind(&rtmp_connection::handle_write_packet,
-			shared_from_this(),
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write_packet(ec, bytes); });
 	}
 
 	void rtmp_connection::perform_hand_shake(std::size_t bytes_transferred)

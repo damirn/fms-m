@@ -2,9 +2,7 @@
 #include "io_service_pool.h"
 
 #include <stdexcept>
-#include <boost/thread.hpp>
-#include <boost/bind.hpp>
-#include <memory>
+#include <thread>
 
 namespace intertalk
 {
@@ -14,48 +12,41 @@ namespace intertalk
 		if (pool_size == 0)
 			throw std::runtime_error("io_service_pool size is 0");
 
-		// Give all the io_services work to do so that their run() functions will not
-		// exit until they are explicitly stopped.
+		// Give all the io_contexts work to do so that their run() functions will
+		// not exit until they are explicitly stopped.
 		for (std::size_t i = 0; i < pool_size; ++i)
 		{
-			io_service_ptr io_service(new boost::asio::io_service);
-			work_ptr work(new boost::asio::io_service::work(*io_service));
-			m_io_services.push_back(io_service);
-			m_work.push_back(work);
+			auto ctx = std::make_unique<boost::asio::io_context>();
+			m_work.push_back(boost::asio::make_work_guard(*ctx));
+			m_io_services.push_back(std::move(ctx));
 		}
 	}
 
 	void io_service_pool::run()
 	{
-		std::size_t i;
-		// Create a pool of threads to run all of the io_services.
-		std::vector<std::shared_ptr<boost::thread> > threads;
-		for (i = 0; i < m_io_services.size(); ++i)
-		{
-			std::shared_ptr<boost::thread> thread(new boost::thread(
-				boost::bind(&boost::asio::io_service::run, m_io_services[i])));
-			threads.push_back(thread);
-		}
+		// Create a pool of threads to run all of the io_contexts.
+		std::vector<std::thread> threads;
+		for (auto &ctx : m_io_services)
+			threads.emplace_back([c = ctx.get()] { c->run(); });
 
 		// Wait for all threads in the pool to exit.
-		for (i = 0; i < threads.size(); ++i)
-			threads[i]->join();
+		for (auto &t : threads)
+			t.join();
 	}
 
 	void io_service_pool::stop()
 	{
-		// Explicitly stop all io_services.
-		for (std::size_t i = 0; i < m_io_services.size(); ++i)
-			m_io_services[i]->stop();
+		// Explicitly stop all io_contexts.
+		for (auto &ctx : m_io_services)
+			ctx->stop();
 	}
 
-	boost::asio::io_service& io_service_pool::get_io_service()
+	boost::asio::io_context &io_service_pool::get_io_service()
 	{
-		// Use a round-robin scheme to choose the next io_service to use.
-		boost::asio::io_service& io_service = *m_io_services[m_next_io_service];
-		++m_next_io_service;
-		if (m_next_io_service == m_io_services.size())
+		// Use a round-robin scheme to choose the next io_context to use.
+		boost::asio::io_context &ctx = *m_io_services[m_next_io_service];
+		if (++m_next_io_service == m_io_services.size())
 			m_next_io_service = 0;
-		return io_service;
+		return ctx;
 	}
 }

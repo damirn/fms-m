@@ -7,33 +7,32 @@
 
 namespace intertalk
 {
-	/// A pool of io_service objects.
+	/// A pool of io_context objects.
 	class io_service_pool : private boost::noncopyable
 	{
 	public:
-		/// Construct the io_service pool.
+		/// Construct the io_context pool.
 		explicit io_service_pool(std::size_t pool_size);
 
-		/// Run all io_service objects in the pool.
+		/// Run all io_context objects in the pool.
 		void run();
 
-		/// Stop all io_service objects in the pool.
+		/// Stop all io_context objects in the pool.
 		void stop();
 
-		/// Get an io_service to use.
-		boost::asio::io_service &get_io_service();
+		/// Get an io_context to use.
+		boost::asio::io_context &get_io_service();
 
 	private:
-		using io_service_ptr = std::shared_ptr<boost::asio::io_service>;
-		using work_ptr = std::shared_ptr<boost::asio::io_service::work>;
+		using work_guard = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
-		/// The pool of io_services.
-		std::vector<io_service_ptr> m_io_services;
+		/// The pool of io_contexts.
+		std::vector<std::unique_ptr<boost::asio::io_context>> m_io_services;
 
-		/// The work that keeps the io_services running.
-		std::vector<work_ptr> m_work;
+		/// The work guards that keep the io_contexts running.
+		std::vector<work_guard> m_work;
 
-		/// The next io_service to use for a connection.
+		/// The next io_context to use for a connection.
 		std::size_t m_next_io_service;
 	};
 }

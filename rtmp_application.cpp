@@ -244,7 +244,7 @@ namespace intertalk
 
 	void rtmp_application::handle_invoke_check_bandwidth(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, boost::bind(&rtmp_application::handle_result_bw_check_download, this, _1, _2, _3)));
+		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_download(a, b, c); }));
 		std::uint32_t id = ++m_invoke_id;
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheck", id));
 
@@ -262,7 +262,7 @@ namespace intertalk
 
 	void rtmp_application::handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, boost::bind(&rtmp_application::handle_result_bw_check_upload, this, _1, _2, _3)));
+		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_upload(a, b, c); }));
 		std::uint32_t id = ++m_invoke_id;
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheckU", id));
 

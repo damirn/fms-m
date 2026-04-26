@@ -39,7 +39,7 @@ namespace intertalk
 	void node_js_proxy_application::connect_to_socket(const std::string &path)
 	{
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-		m_local_socket.async_connect(boost::asio::local::stream_protocol::endpoint(path), boost::bind(&node_js_proxy_application::handle_connect, this, boost::asio::placeholders::error));
+		m_local_socket.async_connect(boost::asio::local::stream_protocol::endpoint(path), [this](const boost::system::error_code &ec) { handle_connect(ec); });
 #endif
 	}
 
@@ -49,13 +49,13 @@ namespace intertalk
 		m_stopped = false;
 		m_resolver = new boost::asio::ip::tcp::resolver(m_io_service);
 		boost::asio::ip::tcp::resolver::query query(addr, port);
-		m_resolver->async_resolve(query, boost::bind(&node_js_proxy_application::handle_resolve, this, boost::asio::placeholders::error, boost::asio::placeholders::iterator));
+		m_resolver->async_resolve(query, [this](const boost::system::error_code &ec, boost::asio::ip::tcp::resolver::iterator it) { handle_resolve(ec, it); });
 	}
 
 	void node_js_proxy_application::start(boost::asio::ip::tcp::resolver::iterator endpoint_iterator)
 	{
 		start_connect(endpoint_iterator);
-		m_connect_timer.async_wait(boost::bind(&node_js_proxy_application::check_deadline, this));
+		m_connect_timer.async_wait([this](const boost::system::error_code &) { check_deadline(); });
 	}
 
 	void node_js_proxy_application::stop()
@@ -72,7 +72,7 @@ namespace intertalk
 		if (endpoint_iter != boost::asio::ip::tcp::resolver::iterator())
 		{
 			m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_eReconnectInterval)));
-			m_socket.async_connect(endpoint_iter->endpoint(), boost::bind(&node_js_proxy_application::handle_connect, this, boost::asio::placeholders::error, endpoint_iter));
+			m_socket.async_connect(endpoint_iter->endpoint(), [this, endpoint_iter](const boost::system::error_code &ec) { handle_connect(ec, endpoint_iter); });
 		}
 		else
 			stop();
@@ -87,7 +87,7 @@ namespace intertalk
 			m_socket.close();
 			m_timer.expires_at(boost::posix_time::pos_infin);
 		}
-		m_connect_timer.async_wait(boost::bind(&node_js_proxy_application::check_deadline, this));
+		m_connect_timer.async_wait([this](const boost::system::error_code &) { check_deadline(); });
 	}
 
 	void node_js_proxy_application::handle_resolve(const boost::system::error_code &err, boost::asio::ip::tcp::resolver::iterator endpoint_iterator)
@@ -145,16 +145,12 @@ namespace intertalk
 		if (m_use_local_socket)
 			boost::asio::async_read(m_local_socket, m_input_buffer.write_buffer(),
 			boost::asio::transfer_at_least(2), // empty object {}
-			boost::bind(&node_js_proxy_application::read_complete,
-			this,
-			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+			[this](const boost::system::error_code &ec, std::size_t bytes) { read_complete(ec, bytes); });
 		else
 #endif
 		boost::asio::async_read(m_socket, m_input_buffer.write_buffer(),
 			boost::asio::transfer_at_least(2), // empty object {}
-			boost::bind(&node_js_proxy_application::read_complete,
-			this,
-			boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+			[this](const boost::system::error_code &ec, std::size_t bytes) { read_complete(ec, bytes); });
 	}
 
 	void node_js_proxy_application::read_complete(const boost::system::error_code &e, std::size_t bytes_transferred)
@@ -246,7 +242,7 @@ namespace intertalk
 
 	void node_js_proxy_application::send_json(const json &val)
 	{
-		m_strand.post(boost::bind(&node_js_proxy_application::send_json_impl, this, val));
+		boost::asio::post(m_strand, [this, val]() { send_json_impl(val); });
 	}
 
 	void node_js_proxy_application::send_json_impl(const json &val)
@@ -266,10 +262,10 @@ namespace intertalk
 		std::string buf = val.dump();
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 		if (m_use_local_socket)
-			boost::asio::async_write(m_local_socket, boost::asio::buffer(buf.c_str(), buf.size()), m_strand.wrap(boost::bind(&node_js_proxy_application::write_complete, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
+			boost::asio::async_write(m_local_socket, boost::asio::buffer(buf.c_str(), buf.size()), m_strand.wrap([this](const boost::system::error_code &ec, std::size_t bytes) { write_complete(ec, bytes); }));
 		else
 #endif
-		boost::asio::async_write(m_socket, boost::asio::buffer(buf.c_str(), buf.size()), m_strand.wrap(boost::bind(&node_js_proxy_application::write_complete, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred)));
+		boost::asio::async_write(m_socket, boost::asio::buffer(buf.c_str(), buf.size()), m_strand.wrap([this](const boost::system::error_code &ec, std::size_t bytes) { write_complete(ec, bytes); }));
 	}
 
 	void node_js_proxy_application::write_complete(const boost::system::error_code &e, std::size_t)
@@ -291,13 +287,13 @@ namespace intertalk
 	void node_js_proxy_application::arm_timer()
 	{
 		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_ePingInterval)));
-		m_timer.async_wait(boost::bind(&node_js_proxy_application::handle_ping_timer, this, boost::asio::placeholders::error));
+		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_ping_timer(ec); });
 	}
 
 	void node_js_proxy_application::arm_timer_for_reconnect()
 	{
 		m_timer.expires_from_now(boost::posix_time::seconds(static_cast<long>(_eReconnectInterval)));
-		m_timer.async_wait(boost::bind(&node_js_proxy_application::handle_timer_for_reconnect, this, boost::asio::placeholders::error));
+		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer_for_reconnect(ec); });
 	}
 
 	void node_js_proxy_application::handle_ping_timer(const boost::system::error_code &e)
@@ -306,7 +302,7 @@ namespace intertalk
 		{
 			send_ping_request();
 			m_timer.expires_at(m_timer.expires_at() + boost::posix_time::seconds(static_cast<long>(_ePingInterval)));
-			m_timer.async_wait(boost::bind(&node_js_proxy_application::handle_ping_timer, this, boost::asio::placeholders::error));
+			m_timer.async_wait([this](const boost::system::error_code &ec) { handle_ping_timer(ec); });
 		}
 	}
 
