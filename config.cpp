@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <fstream>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 namespace intertalk
 {
@@ -117,10 +117,10 @@ namespace intertalk
 		{
 			try
 			{
-				if (!boost::filesystem::exists(m_flv_folder))
-					boost::filesystem::create_directory(m_flv_folder);
+				if (!std::filesystem::exists(m_flv_folder))
+					std::filesystem::create_directory(m_flv_folder);
 			}
-			catch (boost::filesystem::filesystem_error &e)
+			catch (std::filesystem::filesystem_error &e)
 			{
 				std::cout << "Cannot create folder '" << m_flv_folder << "': " << e.what() << std::endl;
 				return false;

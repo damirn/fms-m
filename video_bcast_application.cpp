@@ -4,7 +4,7 @@
 #include "flv_writer.h"
 #include "logging.h"
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <memory>
 #include <boost/process.hpp>
 
@@ -657,8 +657,8 @@ namespace intertalk
 		stream_client_id_t id = std::make_pair(connection_id, stream_id);
 		try
 		{
-			boost::filesystem::path flv_name(stream + ".flv");
-			boost::filesystem::path flv_full_name = config::instance()->flv_folder() / flv_name;
+			std::filesystem::path flv_name(stream + ".flv");
+			std::filesystem::path flv_full_name = config::instance()->flv_folder() / flv_name;
 			flv_writer *fw = new flv_writer(flv_full_name.string());
 			m_flv_writers[id] = fw;
 		}

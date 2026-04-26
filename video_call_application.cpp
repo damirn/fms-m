@@ -4,7 +4,7 @@
 #include "mixer.h"
 #include "config.h"
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 namespace intertalk
 {
@@ -125,8 +125,8 @@ namespace intertalk
 			{
 				try
 				{
-					boost::filesystem::path flv_name(str->value() + ".flv");
-					boost::filesystem::path flv_full_name = config::instance()->flv_folder() / flv_name;
+					std::filesystem::path flv_name(str->value() + ".flv");
+					std::filesystem::path flv_full_name = config::instance()->flv_folder() / flv_name;
 
 					data->m_sink = new flv_writer(flv_full_name.string());
 					data->m_mixer = new mixer(data->m_sink);
