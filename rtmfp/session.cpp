@@ -19,7 +19,6 @@
 #include <iostream>
 
 #include <boost/asio.hpp>
-#include <boost/lexical_cast.hpp>
 #include <memory>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
@@ -699,7 +698,7 @@ namespace intertalk
 			boost::asio::ip::address_v4 ad = boost::asio::ip::address_v4::from_string(ip);
 			a.m_type = 0x01; // fixme: replace with enum
 			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(ad.to_ulong());
-			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(boost::lexical_cast<std::uint16_t>(port));
+			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(static_cast<std::uint16_t>(std::stoul(port)));
 			m_addresses.push_back(a);
 		}
 	}

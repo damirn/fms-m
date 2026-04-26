@@ -4,7 +4,6 @@
 #include "rtmpt_manager.h"
 #include "util.h"
 
-#include <boost/lexical_cast.hpp>
 
 namespace intertalk
 {
@@ -273,14 +272,14 @@ namespace intertalk
 					break;
 				seq.push_back(c);
 			}
-			m_sequence = boost::lexical_cast<std::uint32_t>(seq);
+			m_sequence = static_cast<std::uint32_t>(std::stoul(seq));
 			return true;
 		}
 		catch (buffer_eof_exception &)
 		{
 			return false;
 		}
-		catch (boost::bad_lexical_cast &)
+		catch (std::exception &)
 		{
 			return false;
 		}
@@ -340,10 +339,10 @@ namespace intertalk
 				{
 					try
 					{
-						m_content_length = boost::lexical_cast<std::uint32_t>(cl);
+						m_content_length = static_cast<std::uint32_t>(std::stoul(cl));
 						return true;
 					}
-					catch (boost::bad_lexical_cast &)
+					catch (std::exception &)
 					{
 						return false;
 					}
