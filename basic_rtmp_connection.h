@@ -31,6 +31,7 @@ namespace fms
 
 		// Close connection
 		virtual void close();
+		virtual void post_close();
 
 		boost::asio::io_service &io_service()
 		{

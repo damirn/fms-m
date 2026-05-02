@@ -145,7 +145,7 @@ namespace fms
 		{
 			client_session_ptr conn = i->second;
 			lock.unlock();
-			conn->close();
+			conn->post_close();   // close on the connection's own io_context, not ours
 		}
 	}
 
@@ -270,14 +270,12 @@ namespace fms
 				return client_data_ptr();
 
 			rtmp_connection_ptr conn = std::dynamic_pointer_cast<rtmp_connection>(i->second);
-			if (conn.get() != 0 && conn->socket().is_open())
+			if (conn.get() != 0)
 			{
-				boost::system::error_code ec;
-				boost::asio::ip::tcp::endpoint ep = conn->socket().remote_endpoint(ec);
-				if (ec)
-					return client_data_ptr();
-				client->m_ip = ep.address().to_string();
-				client->m_port = ep.port();
+				// use the endpoint cached on the connection's thread instead of
+				// calling remote_endpoint() on its socket from the admin thread
+				client->m_ip = conn->remote_endpoint_string();
+				client->m_port = 0;
 				client->m_protocol = "rtmp";
 			}
 			else

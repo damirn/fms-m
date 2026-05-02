@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <set>
 #include <string>
 #include <cstdint>
@@ -19,6 +20,11 @@ namespace fms
 
 		virtual void start() = 0;
 		virtual void close();
+
+		// Close from a foreign thread (e.g. admin destroyConnection): posts the
+		// close onto the connection's own io_context. Default is synchronous for
+		// sessions that don't own one.
+		virtual void post_close() { close(); }
 
 		virtual void notify() = 0;
 
@@ -105,6 +111,13 @@ namespace fms
 			return m_time;
 		}
 
+		// Captured once on the connection's own thread; read by the admin thread
+		// instead of calling remote_endpoint() on another thread's socket.
+		const std::string &remote_endpoint_string() const
+		{
+			return m_remote_endpoint;
+		}
+
 	protected:
 		// session id
 		std::uint32_t m_id;
@@ -120,16 +133,20 @@ namespace fms
 		// start time
 		std::chrono::system_clock::time_point m_time;
 
-		// counters for read and written bytes
-		std::uint32_t m_bytes_read;
-		std::uint32_t m_bytes_written;
+		// counters for read and written bytes (updated on the connection thread,
+		// read by the admin thread -> atomic to avoid torn reads)
+		std::atomic<std::uint32_t> m_bytes_read;
+		std::atomic<std::uint32_t> m_bytes_written;
 
 		// counters for in/out messages
-		std::uint32_t m_messages_read;
-		std::uint32_t m_messages_written;
+		std::atomic<std::uint32_t> m_messages_read;
+		std::atomic<std::uint32_t> m_messages_written;
 
 		// app instance to which this session is connected to
 		std::string m_app_instance;
+
+		// cached peer address:port (see remote_endpoint_string())
+		std::string m_remote_endpoint;
 
 		// stream ids in use
 		std::set<std::uint32_t> m_stream_ids;
