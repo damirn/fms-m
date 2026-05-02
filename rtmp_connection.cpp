@@ -13,7 +13,7 @@
 
 #include <iostream>
 
-namespace intertalk
+namespace fms
 {
 	rtmp_connection::rtmp_connection(std::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager)
 		: basic_rtmp_connection(id, io_service, app_manager)

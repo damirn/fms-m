@@ -11,7 +11,7 @@
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
 
-namespace intertalk
+namespace fms
 {
 	basic_rtmp_connection::basic_rtmp_connection(std::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager)
 		: client_session(id, app_manager)

@@ -13,7 +13,7 @@
 #include "rtmp_message.h"
 #include "speex_codec.h"
 
-namespace intertalk
+namespace fms
 {
 	class simple_mixer : private boost::noncopyable
 	{

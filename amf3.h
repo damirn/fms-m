@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <cstdint>
 
-namespace intertalk
+namespace fms
 {
 	class amf3_read_exception : public std::runtime_error
 	{

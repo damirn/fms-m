@@ -11,7 +11,7 @@
 #include <memory>
 #include <openssl/rand.h>
 
-namespace intertalk
+namespace fms
 {
 	const std::uint8_t service::m_c1[] = {0x01, 0x0a, 0x41, 0x0e};
 	const std::uint8_t service::m_c2[] = {0x02, 0x15, 0x02, 0x02, 0x15, 0x05, 0x02, 0x15, 0x0e};

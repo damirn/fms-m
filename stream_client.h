@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	struct stream_client
 	{

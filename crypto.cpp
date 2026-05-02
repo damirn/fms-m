@@ -7,7 +7,7 @@
 #include <openssl/provider.h>
 #include <openssl/sha.h>
 
-namespace intertalk
+namespace fms
 {
 	std::uint8_t genuine_keys::FMS_key[] = {
 		0x47, 0x65, 0x6e, 0x75, 0x69, 0x6e, 0x65, 0x20,

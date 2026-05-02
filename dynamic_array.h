@@ -12,7 +12,7 @@
 // FIXES for broken compilers
 #include <boost/config.hpp>
 
-namespace intertalk
+namespace fms
 {
 	template<typename T>
 	class dynamic_array

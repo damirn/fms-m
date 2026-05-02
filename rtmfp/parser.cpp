@@ -8,7 +8,7 @@
 
 #include <iostream>
 
-namespace intertalk
+namespace fms
 {
 	parser::parser(chunk_handler &h)
 		: m_chunk_handler(h)

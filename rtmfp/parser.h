@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace intertalk
+namespace fms
 {
 	class aes;
 	class chunk;

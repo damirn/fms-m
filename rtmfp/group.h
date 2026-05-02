@@ -10,7 +10,7 @@
 #include <memory>
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	class group;
 	using group_ptr = std::shared_ptr<group>;

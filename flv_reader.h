@@ -7,7 +7,7 @@
 
 #include "rtmp_message.h"
 
-namespace intertalk
+namespace fms
 {
 	class flv_reader : private boost::noncopyable
 	{

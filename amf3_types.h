@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	class amf3_illegal_cast : public std::exception
 	{

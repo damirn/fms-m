@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	class chunk
 	{

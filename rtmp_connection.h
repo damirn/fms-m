@@ -5,7 +5,7 @@
 
 #include "basic_rtmp_connection.h"
 
-namespace intertalk
+namespace fms
 {
 	// Represents a single connection from a client.
 	class rtmp_connection : public basic_rtmp_connection, private boost::noncopyable

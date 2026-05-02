@@ -2,7 +2,7 @@
 #include "so_manager.h"
 #include "rtmp_application.h"
 
-namespace intertalk
+namespace fms
 {
 	so_manager::so_manager(rtmp_application *app)
 		: m_app(app)

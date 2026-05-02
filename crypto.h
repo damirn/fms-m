@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <openssl/evp.h>
 
-namespace intertalk
+namespace fms
 {
 	// genuine keys
 	struct genuine_keys

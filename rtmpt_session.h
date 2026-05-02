@@ -9,7 +9,7 @@
 #include "basic_rtmp_connection.h"
 #include "stream_array.h"
 
-namespace intertalk
+namespace fms
 {
 	class rtmpt_manager;
 

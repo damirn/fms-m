@@ -4,7 +4,7 @@
 #include "rtmp_so_message.h"
 #include "stream_array.h"
 
-namespace intertalk
+namespace fms
 {
 	bool rtmp_protocol::deserialize(stream_array &buffer, rtmp_header &h)
 	{

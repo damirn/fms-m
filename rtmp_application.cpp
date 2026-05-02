@@ -7,7 +7,7 @@
 
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	namespace invoke_functions
 	{

@@ -6,7 +6,7 @@
 #include <thread>
 #include <vector>
 
-namespace intertalk
+namespace fms
 {
 	simple_mixer::simple_mixer()
 		: m_active(true)

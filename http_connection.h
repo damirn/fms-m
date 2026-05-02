@@ -11,7 +11,7 @@
 
 #include "stream_array.h"
 
-namespace intertalk
+namespace fms
 {
 	class rtmp_app_manager;
 	class rtmpt_manager;

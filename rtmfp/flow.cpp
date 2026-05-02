@@ -5,7 +5,7 @@
 #include <iterator>
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	const std::uint8_t flow::TC[] = "TC";
 	const std::uint8_t flow::GC[] = "GC";

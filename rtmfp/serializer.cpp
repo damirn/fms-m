@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-namespace intertalk
+namespace fms
 {
 	void serializer::prepare_raw_packet()
 	{

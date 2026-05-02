@@ -14,7 +14,7 @@
 #include "rtmp_application.h"
 #include "stream_client.h"
 
-namespace intertalk
+namespace fms
 {
 	class mixer;
 	class flv_writer;

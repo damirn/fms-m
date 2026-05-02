@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace intertalk
+namespace fms
 {
 	class video_sink
 	{

@@ -3,7 +3,7 @@
 
 #include <boost/asio.hpp>
 
-namespace intertalk
+namespace fms
 {
 	void header::deserialize(stream_array &data)
 	{

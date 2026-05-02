@@ -10,7 +10,7 @@
 
 #include "rtmp_so_message.h"
 
-namespace intertalk
+namespace fms
 {
 	class rtmp_application;
 

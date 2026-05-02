@@ -6,7 +6,7 @@
 #include <ctime>
 #include <cstring>
 
-namespace intertalk
+namespace fms
 {
 	rtmpt_manager::rtmpt_manager(rtmp_app_manager *app_manager)
 		: m_app_manager(app_manager)

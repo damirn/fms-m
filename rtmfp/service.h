@@ -15,7 +15,7 @@
 #include "session.h"
 #include "stream_array.h"
 
-namespace intertalk
+namespace fms
 {
 	class ihello_chunk;
 	class iikeying_chunk;

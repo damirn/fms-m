@@ -4,7 +4,7 @@
 
 #include <openssl/evp.h>
 
-namespace intertalk
+namespace fms
 {
 	class dh2
 	{

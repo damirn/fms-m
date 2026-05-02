@@ -9,7 +9,7 @@
 #include <iomanip>
 #include <sstream>
 
-namespace intertalk
+namespace fms
 {
 	std::string to_simple_string(std::chrono::system_clock::time_point tp)
 	{

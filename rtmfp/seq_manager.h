@@ -4,7 +4,7 @@
 #include <set>
 #include <cstdint>
 
-namespace intertalk
+namespace fms
 {
 	template <typename T>
 	class seq_manager

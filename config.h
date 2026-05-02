@@ -5,7 +5,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/program_options.hpp>
 
-namespace intertalk
+namespace fms
 {
 	class config : private boost::noncopyable
 	{

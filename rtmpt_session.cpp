@@ -11,7 +11,7 @@
 
 #include <iostream>
 
-namespace intertalk
+namespace fms
 {
 	std::uint8_t rtmpt_session::m_poll_time[] = {0x01, 0x03, 0x05, 0x09, 0x11, 0x21};
 

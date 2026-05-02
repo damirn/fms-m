@@ -7,7 +7,7 @@
 #include "rtmp_application.h"
 #include "stats.h"
 
-namespace intertalk
+namespace fms
 {
 	struct auth_status_data
 	{

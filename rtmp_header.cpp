@@ -3,7 +3,7 @@
 
 #include <boost/asio/detail/socket_ops.hpp>
 
-namespace intertalk
+namespace fms
 {
 	rtmp_header::rtmp_header()
 		: m_header_size(0)

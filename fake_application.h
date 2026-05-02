@@ -2,7 +2,7 @@
 
 #include "rtmp_application.h"
 
-namespace intertalk
+namespace fms
 {
 	class fake_application : public rtmp_application
 	{

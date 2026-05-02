@@ -13,7 +13,7 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/identity.hpp>
 
-namespace intertalk
+namespace fms
 {
 	class amf0_illegal_cast : public std::exception
 	{

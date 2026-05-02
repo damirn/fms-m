@@ -19,7 +19,7 @@ namespace attrs = boost::log::attributes;
 namespace expr = boost::log::expressions;
 namespace keywords = boost::log::keywords;
 
-namespace intertalk
+namespace fms
 {
 	BOOST_LOG_GLOBAL_LOGGER_DEFAULT(lg, src::logger_mt)
 

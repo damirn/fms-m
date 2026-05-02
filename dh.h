@@ -4,7 +4,7 @@
 #include <boost/noncopyable.hpp>
 #include <openssl/evp.h>
 
-namespace intertalk
+namespace fms
 {
 	class dh : private boost::noncopyable
 	{

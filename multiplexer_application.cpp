@@ -3,7 +3,7 @@
 #include "node_js_proxy_application.h"
 #include "rtmp_header.h"
 
-namespace intertalk
+namespace fms
 {
 	void multiplexing_application::register_rtmp_application(rtmp_application *app)
 	{

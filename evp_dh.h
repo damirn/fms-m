@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <openssl/evp.h>
 
-namespace intertalk
+namespace fms
 {
 	// OpenSSL 3 EVP_PKEY-based finite-field Diffie-Hellman, replacing the
 	// deprecated low-level DH_* API. Prime p is big-endian bytes, generator g

@@ -7,7 +7,7 @@
 
 #include "rtmp_channel.h"
 
-namespace intertalk
+namespace fms
 {
 	class channel_manager : private boost::noncopyable
 	{

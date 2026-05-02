@@ -5,7 +5,7 @@
 #include <mutex>
 #include <condition_variable>
 
-namespace intertalk
+namespace fms
 {
 	template<typename T>
 	class queue : private boost::noncopyable

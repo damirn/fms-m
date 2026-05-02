@@ -13,7 +13,7 @@
 
 #include <chrono>
 
-namespace intertalk
+namespace fms
 {
 	namespace invoke_functions
 	{
@@ -41,7 +41,7 @@ namespace intertalk
 		m_keep_time = config::instance()->admin_data_keep_time();
 		if (m_keep_time > 3600) // one hour
 		{
-			BOOST_LOG(intertalk::lg::get()) << "Warning, admin data keep time is more than one hour!";
+			BOOST_LOG(fms::lg::get()) << "Warning, admin data keep time is more than one hour!";
 			std::cout << "Warning, admin data keep time is more than one hour!" << std::endl;
 		}
 	}
@@ -63,7 +63,7 @@ namespace intertalk
 		}
 		else
 		{
-			BOOST_LOG(intertalk::lg::get()) << "Warning, cannot open " << config::instance()->password_file();
+			BOOST_LOG(fms::lg::get()) << "Warning, cannot open " << config::instance()->password_file();
 			std::cout << "Warning, cannot open " << config::instance()->password_file() << std::endl;
 		}
 	}

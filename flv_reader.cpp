@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "flv_reader.h"
 
-namespace intertalk
+namespace fms
 {
 	flv_reader::flv_reader(const std::string &name)
 		: m_name(name)
@@ -36,13 +36,13 @@ namespace intertalk
 
 		if (c == 0x08)
 		{
-			intertalk::rtmp_message_audio_data_ptr audio(new intertalk::rtmp_message_audio_data(static_cast<std::uint16_t>(size)));
+			fms::rtmp_message_audio_data_ptr audio(new fms::rtmp_message_audio_data(static_cast<std::uint16_t>(size)));
 			m_f.read((char *)audio->data(), size);
 			m_frame = audio;
 		}
 		else if (c == 0x09)
 		{
-			intertalk::rtmp_message_video_data_ptr video(new intertalk::rtmp_message_video_data(static_cast<std::uint16_t>(size)));
+			fms::rtmp_message_video_data_ptr video(new fms::rtmp_message_video_data(static_cast<std::uint16_t>(size)));
 			m_f.read((char *)video->data(), size);
 			m_frame = video;
 		}

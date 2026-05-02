@@ -7,7 +7,7 @@
 
 #include "io_service_pool.h"
 
-namespace intertalk
+namespace fms
 {
 	class rtmp_app_manager;
 

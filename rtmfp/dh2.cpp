@@ -5,7 +5,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
-namespace intertalk
+namespace fms
 {
 	const std::uint8_t dh2::m_dh_key[eKeySize] = {
 		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
