@@ -51,7 +51,6 @@ namespace fms
 					std::optional<netstream_stats_ptr> stats = m_app_manager->get_stream_stats(i->first);
 					if (!stats)
 					{
-						std::cout << "stats is null" << std::endl;
 						continue;
 					}
 					std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
@@ -147,7 +146,6 @@ namespace fms
 			&& audio->data()[1] == 0x00)
 		{
 			m_aac_config[bcid] = audio;
-			std::cout << "aac config, size: " << (int)audio->size() << std::endl;
 		}
 
 		stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(bcid);
@@ -179,7 +177,6 @@ namespace fms
 		rtmp_message_video_data_ptr video = std::dynamic_pointer_cast<rtmp_message_video_data>(msg);
 		if (video->size() == 0)
 		{
-			std::cout << "Video data is 0 size!" << std::endl;
 			return;
 		}
 
@@ -265,7 +262,6 @@ namespace fms
 				stream_name.erase(pos);
 
 			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is publishing stream '" << stream_name << "'";
-			std::cout << "creating '" << stream_name << "'" << std::endl;
 			m_app_manager->update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, true);
 
 			++i;
@@ -395,8 +391,6 @@ namespace fms
 			args.push_back("-s");
 			args.push_back(stream);
 
-			for(std::vector<std::string>::iterator i = args.begin(); i != args.end(); ++i)
-				std::cout << *i << std::endl;
 #if defined(BOOST_POSIX_API)
 			::signal(SIGCHLD, SIG_IGN);
 #endif
@@ -886,7 +880,6 @@ namespace fms
 			else
 			{
 				client->m_video_time++;
-				std::cout << "Adjusting video timestamp" << std::endl;
 			}
 			tmp->timestamp() = client->m_video_time;
 			client->m_video_epoch = video->timestamp();
@@ -941,7 +934,6 @@ namespace fms
 			++it;
 		}
 		enqueue_async_message(client->m_connection_id, info_msg2);
-		std::cout << "start epoch: " << video->timestamp() << std::endl;
 		notify(client->m_connection_id);
 	}
 
@@ -963,10 +955,8 @@ namespace fms
 
 			client->m_first_audio_packet_seen = true;
 			client->m_audio_epoch = audio->timestamp();
-			std::cout << "audio epoch: " << client->m_audio_epoch << std::endl;
 
 			std::uint32_t start_time = 0;
-			std::cout << "start epoch: " << client->m_start_epoch << std::endl;
 			if (audio->timestamp() > client->m_start_epoch)
 				start_time = client->m_audio_time = audio->timestamp() - client->m_start_epoch;
 			else

@@ -42,7 +42,6 @@ namespace fms
 		if (m_keep_time > 3600) // one hour
 		{
 			BOOST_LOG(fms::lg::get()) << "Warning, admin data keep time is more than one hour!";
-			std::cout << "Warning, admin data keep time is more than one hour!" << std::endl;
 		}
 	}
 
@@ -64,7 +63,6 @@ namespace fms
 		else
 		{
 			BOOST_LOG(fms::lg::get()) << "Warning, cannot open " << config::instance()->password_file();
-			std::cout << "Warning, cannot open " << config::instance()->password_file() << std::endl;
 		}
 	}
 

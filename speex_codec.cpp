@@ -58,7 +58,6 @@ namespace fms
 			ret = speex_decode_int(m_dec_state, &m_dec_bits, reinterpret_cast<std::int16_t *>(to + i * m_frame_size * sizeof(std::int16_t)));
 			if (ret <= -2)
 			{
-				std::cout << "error decoding speex stream" << std::endl;
 				return 0;
 			}
 			else if (ret == -1)

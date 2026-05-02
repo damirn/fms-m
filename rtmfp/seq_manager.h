@@ -25,18 +25,15 @@ namespace fms
 		{
 			if (val <= m_csn || m_sequences.find(val) != m_sequences.end())
 			{
-				std::cout << " duplicate, val " << val << " csn " << m_csn << " ";
 				return _eDuplicate;
 			}
 			if (m_missing.find(val) != m_missing.end())
 			{
-				std::cout << " missing fragment has arrived, ";
 				m_missing.erase(val);
 				m_sum += val;
 				if (m_sum == sum_n_elements()) // gap closed
 				{
 					update_csn(val);
-					std::cout << "gap closed ";
 					return _eGapClosed;
 				}
 				if (val == m_csn + 1)
@@ -52,7 +49,6 @@ namespace fms
 				}
 				else
 					m_sequences.insert(val);
-				std::cout << "gap still present ";
 				return _eGapStillPresent;
 			}
 			m_sum += val;
@@ -61,7 +57,6 @@ namespace fms
 				update_csn(val);
 				return _eOK;
 			}
-			std::cout << " gap produced, sum " << m_sum << " val " << val << " ";
 			m_sequences.insert(val);
 			for (T i = m_csn + 1; i < val; ++i)
 			{

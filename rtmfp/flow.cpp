@@ -23,7 +23,6 @@ namespace fms
 			if (f->m_frag_ctrl == fragment::eWhole && ret != vlu_seq_manager::_eOK)
 			{
 				f->take_ownership();
-				std::cout << "ownership taken, seq " << f->m_seq << std::endl;
 			}
 
 			update_seqs(f->m_seq);
@@ -35,7 +34,6 @@ namespace fms
 	void flow::remove_fragments_until_seq(const vlu_t &seq)
 	{
 		fragment_map_t::iterator i = m_fragments.find(seq);
-		std::cout << " erased " << std::distance(m_fragments.begin(), i) << " fragments" << std::endl;
 		m_fragments.erase(m_fragments.begin(), i);
 		m_fragments.erase(seq);
 		update_seqs(seq);
@@ -57,7 +55,6 @@ namespace fms
 			fragment_ptr f = i->second;
 			if (f->m_frag_ctrl == fragment::eWhole)
 			{
-				std::cout << "message fragment is complete, seq " << f->m_seq << std::endl;
 				m_msg_is_fragmented = false;
 				len = f->m_data_len;
 				return f->m_data;
@@ -77,7 +74,6 @@ namespace fms
 					m_msg_len += j->second->m_data_len;
 					if (j->second->m_frag_ctrl == fragment::eEnd)
 					{
-						std::cout << "message is fragmented, but complete" << std::endl;
 						len = m_msg_len;
 						m_msg_is_fragmented = true;
 						return create_message(i, j);
@@ -117,9 +113,7 @@ namespace fms
 		std::optional<option_ptr> opt = options().get_option(option::eMetadata);
 		if (opt)
 		{
-			std::cout << "has options" << std::endl;
 			option_ptr o = *opt;
-			std::cout << "val len " << o->m_value_len << std::endl;
 		}
 		if (opt && (*opt)->m_value_len >= 2)
 		{
@@ -141,13 +135,11 @@ namespace fms
 
 	vlu_t flow::get_stream_id_from_option(option_ptr opt)
 	{
-		std::cout << "metadata present, stream id: ";
 		stream_array tmp(opt->m_value);
 		tmp.update(opt->m_value_len);
 		tmp.skip(3);
 		vlu_t stream_id;
 		stream_id = tmp.read_vlu();
-		std::cout << stream_id << std::endl;
 		return stream_id;
 	}
 
@@ -267,11 +259,9 @@ namespace fms
 	vlu_t flow::ack_fragments_for_range(const vlu_t &from, const vlu_t &to)
 	{
 		vlu_t tsn = 0;
-		std::cout << "ack_frags from: " << from << " to: " << to << std::endl;
 		fragment_map_t::iterator i = m_fragments.find(from);
 		while (i != m_fragments.end() && i->first <= to)
 		{
-			std::cout << "erasing seq: " << i->first << std::endl;
 			tsn = i->second->m_tsn;
 			m_fragments.erase(i++);
 		}

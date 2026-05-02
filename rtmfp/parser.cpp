@@ -48,10 +48,7 @@ namespace fms
 		{
 			raw >> type >> len;
 
-			std::cout << "Chunk type: " << std::setw(2) << std::setfill('0') << std::hex << (unsigned int)type;
-			std::cout << " Len: " << std::setw(4);
 			len = boost::asio::detail::socket_ops::network_to_host_short(len);
-			std::cout << std::setw(4) << len << std::dec << " (" << len << ")" << std::endl;
 
 			if (type == ePad0 || type == ePadff) // break if padding reached
 				break;
@@ -103,7 +100,6 @@ namespace fms
 			c = new close_ack_chunk;
 			break;
 		default:
-			std::cout << "unknown chunk" << std::endl;
 			break;
 		}
 		if (c)

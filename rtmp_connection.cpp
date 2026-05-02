@@ -38,7 +38,6 @@ namespace fms
 			m_rto_timer.cancel();
 			m_wto_timer.cancel();
 			BOOST_LOG(lg::get()) << "Closing socket for cid: " << m_id;
-			std::cout << "Closing socket for cid: " << m_id;
 			m_socket.close();
 			basic_rtmp_connection::close();
 		}
@@ -288,7 +287,6 @@ namespace fms
 		if (!e && (m_state == eStateReadPackets))
 		{
 			BOOST_LOG(lg::get()) << "cid: " << m_id << " read timeout";
-			std::cout << "Read timeout ";
 			close();
 		}
 	}
@@ -298,7 +296,6 @@ namespace fms
 		if (!e && (m_state == eStateReadPackets))
 		{
 			BOOST_LOG(lg::get()) << "cid: " << m_id << " write timeout";
-			std::cout << "Write timeout ";
 			close();
 		}
 	}

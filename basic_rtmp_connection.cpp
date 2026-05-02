@@ -148,7 +148,6 @@ namespace fms
 		}
 		if (valid)
 		{
-			std::cout << "Handshake successful!" << std::endl;
 			buffer.skip(eHandShakeSize);
 			m_hs_timer.cancel();
 			return true;
@@ -188,7 +187,6 @@ namespace fms
 			create_keys(client_sig, server_sig);
 
 			std::uint32_t server_digest_offset = get_digest_offest(server_sig, m_validation_scheme);
-			std::cout << "server digest offest: " << server_digest_offset << std::endl;
 			std::uint8_t *tmp = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
 			std::memcpy(tmp, server_sig, server_digest_offset);
 			std::memcpy(tmp + server_digest_offset, server_sig + server_digest_offset + SHA256_DIGEST_LENGTH, eHandShakeSize - server_digest_offset - SHA256_DIGEST_LENGTH);
@@ -248,17 +246,14 @@ namespace fms
 	{
 		if (validate_client_scheme(data, 1))
 		{
-			std::cout << "scheme 1" << std::endl;
 			m_validation_scheme = 1;
 			return true;
 		}
 		if (validate_client_scheme(data, 0))
 		{
-			std::cout << "scheme 0" << std::endl;
 			m_validation_scheme = 0;
 			return true;
 		}
-		std::cout << "scheme validation failed" << std::endl;
 		return false;
 	}
 
@@ -287,7 +282,6 @@ namespace fms
 		std::uint32_t client_dh_offset = get_dh_offest(client_sig, m_validation_scheme);
 		std::uint32_t server_dh_offset = get_dh_offest(server_sig, m_validation_scheme);
 
-		std::cout << "client dh offset: " << client_dh_offset << " server dh offest: " << server_dh_offset << std::endl;
 		mydh.create_shared_key(client_sig + client_dh_offset, 128);
 		mydh.copy_public_key(server_sig + server_dh_offset, 128);
 
@@ -300,17 +294,12 @@ namespace fms
 			tmp << std::setw(2) << std::setfill('0') << (int)hash[i];
 
 		m_sid = tmp.str();
-		std::cout << "sid: " << m_sid << std::endl;
 
 		if (m_uses_crypto)
 		{
 			// create RC4 keys
 			std::uint8_t shared_key[128];
 			mydh.copy_shared_key(shared_key, 128);
-			std::cout << "secret key: " << std::hex;
-			for (int i = 0; i < 128; ++i)
-				std::cout << std::setw(2) << std::setfill('0') << (int) shared_key[i] << " ";
-			std::cout << std::dec << std::endl;
 			m_key_in = EVP_CIPHER_CTX_new();
 			m_key_out = EVP_CIPHER_CTX_new();
 			init_RC4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out);

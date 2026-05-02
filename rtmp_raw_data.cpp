@@ -81,7 +81,6 @@ namespace fms
 		}
 		catch (buffer_eof_exception &)
 		{
-			std::cout << "not enough data" << std::endl;
 			buffer.rewind();
 		}
 

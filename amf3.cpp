@@ -22,7 +22,6 @@ namespace fms
 			return read_object(buffer);
 		default:
 			{
-				std::cout << "Fatal! Unknown AMF3 type" << std::endl;
 				throw amf3_read_exception();
 			}
 		}
@@ -62,7 +61,6 @@ namespace fms
 				break;
 			}
 		default:
-			std::cout << "Fatal! Unknown AMF3 type" << std::endl;
 			throw amf3_read_exception();
 		}
 	}

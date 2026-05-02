@@ -73,10 +73,8 @@ namespace fms
 		stream_id_to_flow_id_map_t::iterator i = m_stream_id_to_flow_id.find(stream_id);
 		if (i != m_stream_id_to_flow_id.end())
 		{
-			std::cout << "erasing stream id " << stream_id << " and associated flows ";
 			for (std::set<flow_ptr>::iterator j = i->second.begin(); j != i->second.end(); ++j)
 			{
-				std::cout << (*j)->flow_id() << " " << std::endl;
 				vlu_t flow_id = (*j)->flow_id();
 				m_stream_id_to_flow_id.erase(i);
 				m_receiving_flows.erase(flow_id);
@@ -146,17 +144,12 @@ namespace fms
 		}
 		else
 		{
-			std::cout << " seq not added, ";
 			if (udc->should_abandon())
 			{
-				std::cout << "abandoned";
 				f->remove_fragments_until_seq(udc->forward_seq_number());
 			}
-			else
-				std::cout << "not abandoned";
 		}
 
-		std::cout << " fsq " << udc->forward_seq_number() << std::endl;
 		f->add_sequences_until(udc->forward_seq_number());
 
 		// if there are now seq gaps in f, set m_ack_now to true
@@ -186,7 +179,6 @@ namespace fms
 			f = i->second;
 			flow_sanity_check(f, ndc->should_abandon());
 
-			std::cout << "seq id " << m_next_seq << " flow id " << f->flow_id() << std::endl;
 
 			fragment_ptr frag = std::make_shared<fragment>(m_next_seq, ndc->user_data(), ndc->user_data_len(), ndc->frag_ctl());
 			++m_next_seq;
@@ -199,7 +191,6 @@ namespace fms
 			handle_flow_message(f);
 			return true;
 		}
-		std::cout << "flow not found?" << std::endl;
 		return false;
 	}
 
@@ -209,7 +200,6 @@ namespace fms
 		flow_map_t::iterator i = m_sending_flows.find(rac->flow_id());
 		if (i == m_sending_flows.end())
 		{
-			std::cout << "flow with id " << rac->flow_id() << " not found" << std::endl;
 			return false; // fixme: rethink return
 		}
 		i->second->clear_options();
@@ -234,12 +224,10 @@ namespace fms
 
 	void session::handle_flow_exception_report(flow_exception_report_chunk *)
 	{
-		std::cout << "flow exception" << std::endl;
 	}
 
 	void session::handle_ping(ping_chunk *pc)
 	{
-		std::cout << "ping!" << std::endl;
 		ping_reply_chunk *prc = new ping_reply_chunk(pc->data(), pc->data_len());
 		m_ready_chunk = prc;
 		m_has_data_ready = true;
@@ -336,7 +324,6 @@ namespace fms
 			if (h.timestamp_echo_present() && m_ts_echo_rx != h.timestamp_echo())
 			{
 				m_ts_echo_rx = h.timestamp_echo();
-				std::cout << "ts echo: " << m_ts_echo_rx << std::endl;
 				std::uint32_t rtt_ticks = std::abs(m_service->get_timestamp() - h.timestamp_echo());//) % 0x10000;
 				if (rtt_ticks <= 0x7fff)
 				{
@@ -357,7 +344,6 @@ namespace fms
 						m_erto = m_mrto;
 					else
 						m_erto = ms250;
-					std::cout << "mrto: " << std::chrono::duration_cast<std::chrono::milliseconds>(m_mrto).count() << " erto: " << std::chrono::duration_cast<std::chrono::milliseconds>(m_erto).count() << std::endl;
 				}
 			}
 		}
@@ -411,14 +397,12 @@ namespace fms
 				flow_id_to_stream_id_map_t::iterator i = m_flow_id_to_stream_id.find(f->flow_id());
 				if (i != m_flow_id_to_stream_id.end())
 				{
-					std::cout << "flow " << f->flow_id() << " -> stream " << i->second << std::endl;
 					h.stream_id() = i->second;
 					h.message_length() = len - 5; // msg type + timestamp
 					rtmp_protocol p;
 					if (p.deserialize(s, h))
 					{
 						rtmp_message_ptr msg = p.message();
-						std::cout << "msg type: " << (std::uint32_t) msg->type() << " len: " << h.message_length() << " ts: " << h.timestamp() << std::endl;
 						handle_message(msg, h);
 					}
 				}
@@ -432,12 +416,10 @@ namespace fms
 	{
 		static std::uint8_t marker = 0x0b;
 
-		std::cout << "net group message" << std::endl;
 		std::uint32_t len;
 		const std::uint8_t *data = f->message_data(len);
 		if (len > 0 && data)
 		{
-			std::cout << "got net group data " << len << std::endl;
 			stream_array s(const_cast<std::uint8_t *>(data));
 			s.update(len);
 			group_ptr g = group::deserialize(s);
@@ -445,7 +427,6 @@ namespace fms
 			m_group_membership.push_back(g);
 			if (g->members().size() > 1)
 			{
-				std::cout << "have members in group" << std::endl;
 				vlu_t sending = m_receiving_to_sending_flow[f->flow_id()];
 				stream_array temp;
 				for (std::set<session_weak_ptr>::const_iterator i = g->members().begin(); i != g->members().end(); ++i)
@@ -453,9 +434,6 @@ namespace fms
 					session_ptr tmp = (*i).lock();
 					if (tmp == shared_from_this())
 						continue;
-					std::cout << "wrote peer id (sid " << tmp->id() << ")" << std::endl;
-					hexdump(std::cout, tmp->peer_id_data(), 0x20);
-					std::cout << std::endl;
 					temp << marker;
 					temp.write(tmp->peer_id_data(), 0x20);
 				}
@@ -463,7 +441,6 @@ namespace fms
 				flow_map_t::iterator j = m_sending_flows.find(sending);
 				if (j != m_sending_flows.end())
 				{
-					std::cout << "data prepared for sending" << std::endl;
 					j->second->add_and_fragment_data(temp.read_pos(), temp.wrote_size());
 				}
 			}
@@ -520,7 +497,6 @@ namespace fms
 		temp << ts;
 		result->serialize(temp);
 
-		std::cout << "message to fragment, stream " << result->stream_id();
 		stream_id_to_flow_id_map_t::iterator i = m_stream_id_to_flow_id.find(result->stream_id());
 		if (i != m_stream_id_to_flow_id.end())
 		{
@@ -534,7 +510,6 @@ namespace fms
 			{
 				if ((*k)->usage() == usage)
 				{
-					std::cout << " flow found" << std::endl;
 					break;
 				}
 			}
@@ -544,7 +519,6 @@ namespace fms
 				flow = create_associated_sending_flow(0, result->stream_id());
 				flow->usage() = flow::eAudioVideo;
 				i->second.insert(flow);
-				std::cout << "flow not found, creating new one" << std::endl;
 			}
 			else
 				flow = *k;
@@ -563,7 +537,6 @@ namespace fms
 			m_ts_tx = ts;
 			ts_present = true;
 		}
-		std::cout << "my ts: " << ts << " echo ts: " << m_ts_echo_tx << " incl: " << (int)m_should_include_ts_echo << std::endl;
 
 		header h(false, true, ts, header::eResponder);
 		h.timestamp_present() = ts_present;
@@ -608,12 +581,6 @@ namespace fms
 					vlu_t high_seq = f->get_range_ack(list);
 					range_ack_chunk *rac = new range_ack_chunk(f->flow_id(), 0x7f, high_seq);
 					rac->ranges() = list;
-					if (list.size() > 0)
-					{
-						for (std::list<std::pair<vlu_t, vlu_t> >::iterator j = list.begin(); j != list.end(); ++j)
-							std::cout << "holes: " << (*j).first << " received: " << (*j).second << std::endl;
-					}
-					std::cout << "acking " << high_seq << " flow id " << f->flow_id() << std::endl;
 					rac->serialize(s->raw_packet());
 					delete rac;
 					f->should_ack() = false;
@@ -638,7 +605,6 @@ namespace fms
 				user_data_chunk *uc = new user_data_chunk(fr, f->flow_id(), fr->m_seq - fsn); // fixme: redo this
 				if (f->options().m_options.size() > 0) // set options if not empty
 				{
-					std::cout << "setting options for flow id: " << f->flow_id() << std::endl;
 					uc->options() = f->options();
 				}
 				uc->serialize(s->raw_packet());
@@ -715,7 +681,6 @@ namespace fms
 		{
 			if (!m_did_receive_data)
 			{
-				std::cout << "closing session, no data for " << (int)eTimeOut << " seconds." << std::endl;
 				close();
 				m_service->remove(shared_from_this());
 			}
@@ -742,7 +707,6 @@ namespace fms
 	{
 		if (!e)
 		{
-			std::cout << "Alarm!" << std::endl;
 			m_data_packet_count = 0;
 			bool was_loss = false;
 			for (flow_map_t::iterator i = m_sending_flows.begin(); i != m_sending_flows.end(); ++i)
