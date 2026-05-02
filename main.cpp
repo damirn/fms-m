@@ -15,7 +15,8 @@ int main(int argc, char **argv)
 		return -1;
 
 	// RC4 (RTMPE) lives in OpenSSL 3's legacy provider; load it before any handshake.
-	fms::init_crypto_providers();
+	if (!fms::init_crypto_providers())
+		std::cerr << "Warning: OpenSSL legacy provider not available; RTMPE (encrypted) handshakes will be refused." << std::endl;
 
 	fms::logging *log = new fms::logging;
 	log->init_logging(fms::config::instance()->log_path());
