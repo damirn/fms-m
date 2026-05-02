@@ -41,7 +41,12 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   find_library(APPKIT AppKit REQUIRED)
 ENDIF()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -g -Wall -Wno-write-strings -fno-strict-aliasing -Wno-deprecated-declarations -Wno-deprecated-builtins -Wno-#pragma-messages")
+# -fno-strict-aliasing was dropped: the amf0 double type-pun (the only real
+# aliasing UB) is now a std::memcpy, and the build is clean under -Wstrict-aliasing=2.
+# The -Wno-deprecated-* suppressions remain only to silence Boost 1.76 / libc++
+# C++23 internals (aligned_storage, HMAC/DH nothrow builtins) — our own code no
+# longer triggers any deprecation warning. They can go once Boost is upgraded.
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -g -Wall -Wno-write-strings -Wno-deprecated-declarations -Wno-deprecated-builtins -Wno-#pragma-messages")
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
