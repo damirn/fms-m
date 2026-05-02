@@ -9,8 +9,7 @@
 #include "util.h"
 
 #include <memory>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
+#include <openssl/rand.h>
 
 namespace intertalk
 {
@@ -40,11 +39,8 @@ namespace intertalk
 
 	void service::create_certificate()
 	{
-		boost::random::mt19937 gen(static_cast<std::uint32_t>(std::time(0)));
-		boost::random::uniform_int_distribution<> dist(0, 0xff);
 		std::memcpy(m_cert, m_c1, sizeof(m_c1));
-		for (unsigned int i = 0; i < eCertRandomLen; ++i)
-			m_cert[i + sizeof(m_c1)] = dist(gen);
+		RAND_bytes(m_cert + sizeof(m_c1), eCertRandomLen);   // CSPRNG, not time-seeded MT
 		std::memcpy(m_cert + sizeof(m_c1) + eCertRandomLen, m_c2, sizeof(m_c2));
 	}
 
@@ -390,10 +386,7 @@ namespace intertalk
 		std::memcpy(cookie + off, static_cast<void *>(&ts), sizeof(ts));
 		off += sizeof(ts);
 
-		boost::random::mt19937 gen(static_cast<std::uint32_t>(std::time(0)));
-		boost::random::uniform_int_distribution<> dist(0, 0xff);
-		for (unsigned int i = 0; i < eCookieSize - off; ++i)
-			cookie[i + off] = dist(gen);
+		RAND_bytes(cookie + off, static_cast<int>(eCookieSize - off));   // CSPRNG, not time-seeded MT
 	}
 
 	std::uint32_t service::get_timestamp_ms()
