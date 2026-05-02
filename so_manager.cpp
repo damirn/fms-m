@@ -10,13 +10,13 @@ namespace fms
 
 	bool so_manager::handle_so(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		m_new_message = true;
 		rtmp_message_shared_object::event_list_t &list = so->events();
 		rtmp_message_shared_object::event_list_t::iterator j = list.end();
 
 		rtmp_message_shared_object_ptr ret(new rtmp_message_shared_object(so->name(), so->version(), so->flags()));
 
 		std::unique_lock<std::mutex> lock(m_mutex);
+		m_new_message = true;   // must be written under the lock (was racing)
 
 		for (rtmp_message_shared_object::event_list_t::iterator i = list.begin(); i != j; ++i)
 		{

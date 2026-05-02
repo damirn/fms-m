@@ -45,6 +45,13 @@ namespace fms
 
 	void rtmp_connection::start()
 	{
+		// cache the peer endpoint now (on this connection's thread) so the admin
+		// thread never calls remote_endpoint() on our socket
+		boost::system::error_code ep_ec;
+		boost::asio::ip::tcp::endpoint ep = m_socket.remote_endpoint(ep_ec);
+		if (!ep_ec)
+			m_remote_endpoint = ep.address().to_string() + ":" + std::to_string(ep.port());
+
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
 			boost::asio::transfer_at_least(eHandShakeSize + 1), // magic byte + handshake block
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });

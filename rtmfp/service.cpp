@@ -79,9 +79,11 @@ namespace fms
 				session_ptr s = *ss;
 				if (s->parse(m_buffer))
 				{
-					if (s->has_data_to_send(m_serializer))
+					// don't start a second async_send_to while one is in flight (it
+					// would overwrite the shared serializer buffer mid-send); pending
+					// data is flushed later by handle_send_to -> handle_notify
+					if (!m_write_in_progress && s->has_data_to_send(m_serializer))
 					{
-						//std::cout << "sending " << m_serializer->packet().wrote_size() << " bytes" << std::endl;
 						write(m_serializer->packet(), s->end_point());
 					}
 					else

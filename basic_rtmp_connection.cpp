@@ -41,6 +41,13 @@ namespace fms
 		client_session::close();
 	}
 
+	void basic_rtmp_connection::post_close()
+	{
+		// run close() on this connection's own io_context — its socket/timers are
+		// not safe to touch from another thread (e.g. the admin thread).
+		boost::asio::post(m_io_service, [self = shared_from_this()]() { self->close(); });
+	}
+
 	void basic_rtmp_connection::handle_bytes_read(std::size_t bytes_transferred)
 	{
 		client_session::handle_bytes_read(bytes_transferred);
