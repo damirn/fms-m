@@ -4,7 +4,7 @@
 #include <ostream>
 #include <string>
 
-namespace intertalk
+namespace fms
 {
 	void *memmem(char *, int, char *, int);
 	void hexdump(std::ostream &, void *, int);

@@ -2,7 +2,7 @@
 #include "speex_codec.h"
 #include "config.h"
 
-namespace intertalk
+namespace fms
 {
 	//
 	// reserved_for_header - size in bytes reserved for header

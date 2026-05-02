@@ -9,7 +9,7 @@
 #include "amf0_types.h"
 #include "amf0.h"
 
-namespace intertalk
+namespace fms
 {
 	class stream_array;
 

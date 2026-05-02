@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <boost/noncopyable.hpp>
 
-namespace intertalk
+namespace fms
 {
 	class aes;
 	class header;

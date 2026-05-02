@@ -6,7 +6,7 @@
 #include "json/json.h"
 #include "rtmp_application.h"
 
-namespace intertalk
+namespace fms
 {
 	class multiplexing_application : public rtmp_application
 	{

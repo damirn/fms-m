@@ -2,7 +2,7 @@
 
 #include "rtmp_message.h"
 
-namespace intertalk
+namespace fms
 {
 	class rtmp_message_shared_object : public rtmp_message
 	{

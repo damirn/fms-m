@@ -3,7 +3,7 @@
 #include "rtmp_message.h"
 #include "amf0_types.h"
 
-namespace intertalk
+namespace fms
 {
 	class stream_array;
 	class rtmp_header;

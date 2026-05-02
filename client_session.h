@@ -6,7 +6,7 @@
 #include <chrono>
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	class rtmp_application;
 	class rtmp_app_manager;

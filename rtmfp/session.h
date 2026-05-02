@@ -17,7 +17,7 @@
 #include <memory>
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	class aes;
 	class chunk;

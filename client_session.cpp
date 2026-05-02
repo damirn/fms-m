@@ -3,7 +3,7 @@
 #include "rtmp_app_manager.h"
 #include "rtmp_application.h"
 
-namespace intertalk
+namespace fms
 {
 	client_session::client_session(std::uint32_t id, rtmp_app_manager *app_mngr)
 		: m_id(id)

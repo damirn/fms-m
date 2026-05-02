@@ -14,7 +14,7 @@
 #include "rtmpt_session.h"
 #include "random_string.h"
 
-namespace intertalk
+namespace fms
 {
 	class rtmp_app_manager;
 

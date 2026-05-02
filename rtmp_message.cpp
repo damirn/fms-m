@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-namespace intertalk
+namespace fms
 {
 	void rtmp_message_notify::deserialize(stream_array &buffer)
 	{

@@ -8,7 +8,7 @@
 #include <memory>
 #include <chrono>
 
-namespace intertalk
+namespace fms
 {
 	using string_list_t = std::list<std::string>;
 

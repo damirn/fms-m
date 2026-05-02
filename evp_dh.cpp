@@ -7,7 +7,7 @@
 #include <openssl/dh.h>
 #include <openssl/param_build.h>
 
-namespace intertalk
+namespace fms
 {
 	// Build an EVP_PKEY of type DH from (p, g) and, optionally, a public value.
 	// `selection` is EVP_PKEY_KEY_PARAMETERS (params only) or EVP_PKEY_PUBLIC_KEY.

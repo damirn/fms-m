@@ -7,7 +7,7 @@
 
 #include "dynamic_array.h"
 
-namespace intertalk
+namespace fms
 {
 	namespace detail
 	{

@@ -9,7 +9,7 @@
 #include "audio_sink.h"
 #include "video_sink.h"
 
-namespace intertalk
+namespace fms
 {
 	class flv_writer : public audio_sink, public video_sink, private boost::noncopyable
 	{

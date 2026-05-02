@@ -14,7 +14,7 @@
 #include "rtmp_raw_data.h"
 #include "stream_array.h"
 
-namespace intertalk
+namespace fms
 {
 	class rtmp_application;
 	class rtmp_app_manager;

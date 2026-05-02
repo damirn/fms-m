@@ -4,7 +4,7 @@
 #include <boost/noncopyable.hpp>
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	class audio_codec : private boost::noncopyable
 	{

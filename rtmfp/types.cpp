@@ -4,7 +4,7 @@
 
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	bool option::deserialize(stream_array &buff)
 	{
@@ -22,7 +22,7 @@ namespace intertalk
 			}
 			return true;
 		}
-		catch (intertalk::buffer_eof_exception &)
+		catch (fms::buffer_eof_exception &)
 		{
 			return false;
 		}

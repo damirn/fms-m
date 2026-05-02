@@ -118,7 +118,7 @@ namespace
 	}
 }
 
-namespace intertalk
+namespace fms
 {
 	std::uint8_t *g711_codec::encode(std::uint8_t *data, std::uint32_t size, std::uint32_t &enc_size)
 	{

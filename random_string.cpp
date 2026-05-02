@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <openssl/rand.h>
 
-namespace intertalk
+namespace fms
 {
 	std::string random_string::m_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 

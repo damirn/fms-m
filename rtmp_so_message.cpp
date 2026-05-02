@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "rtmp_so_message.h"
 
-namespace intertalk
+namespace fms
 {
 	void rtmp_message_shared_object::deserialize(stream_array &buffer)
 	{

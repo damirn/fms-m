@@ -10,7 +10,7 @@
 #include "video_call_application.h"
 
 
-namespace intertalk
+namespace fms
 {
 	server::server()
 		: server(config::instance()->threads()) {}

@@ -6,7 +6,7 @@
 #include "rtmp_header.h"
 #include "stream_array.h"
 
-namespace intertalk
+namespace fms
 {
 	class rtmp_channel
 	{

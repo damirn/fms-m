@@ -4,7 +4,7 @@
 
 #include <speex/speex.h>
 
-namespace intertalk
+namespace fms
 {
 	class speex_codec : public audio_codec
 	{

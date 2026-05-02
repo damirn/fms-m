@@ -5,7 +5,7 @@
 
 #include <boost/asio.hpp>
 
-namespace intertalk
+namespace fms
 {
 	std::uint16_t chunk::serialize_chunk_header(stream_array &to)
 	{

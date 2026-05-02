@@ -4,7 +4,7 @@
 #include <boost/asio/detail/socket_ops.hpp>
 #include "stream_array.h"
 
-namespace intertalk
+namespace fms
 {
 	class rtmp_header
 	{

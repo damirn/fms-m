@@ -4,7 +4,7 @@
 #include <boost/logic/tribool.hpp>
 #include <memory>
 
-namespace intertalk
+namespace fms
 {
 	// Forward declarations
 	class rtmp_channel;

@@ -8,10 +8,10 @@
 
 #include "authentication_plugin.h"
 
-using create = intertalk::authentication_plugin *(*)();
-using destroy = void *(*)(intertalk::authentication_plugin *);
+using create = fms::authentication_plugin *(*)();
+using destroy = void *(*)(fms::authentication_plugin *);
 
-namespace intertalk
+namespace fms
 {
 	class authentication_plugin;
 

@@ -2,7 +2,7 @@
 
 #include "audio_codec.h"
 
-namespace intertalk
+namespace fms
 {
 	class g711_codec : public audio_codec
 	{

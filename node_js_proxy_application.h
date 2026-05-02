@@ -9,7 +9,7 @@
 #include <set>
 #include <string>
 
-namespace intertalk
+namespace fms
 {
 	class node_js_proxy_application : public video_bcast_application
 	{

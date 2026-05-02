@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-namespace intertalk
+namespace fms
 {
 	/// A pool of io_context objects.
 	class io_service_pool : private boost::noncopyable
@@ -27,12 +27,12 @@ namespace intertalk
 		using work_guard = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
 		/// The pool of io_contexts.
-		std::vector<std::unique_ptr<boost::asio::io_context>> m_io_services;
+		std::vector<std::unique_ptr<boost::asio::io_context>> m_io_contexts;
 
 		/// The work guards that keep the io_contexts running.
 		std::vector<work_guard> m_work;
 
 		/// The next io_context to use for a connection.
-		std::size_t m_next_io_service;
+		std::size_t m_next_io_context;
 	};
 }

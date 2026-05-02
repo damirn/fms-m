@@ -13,7 +13,7 @@
 #include "rtmp_message.h"
 #include "session.h"
 
-namespace intertalk
+namespace fms
 {
 	rtmp_app_manager::rtmp_app_manager(io_service_pool &io_pool)
 		: m_io_service_pool(io_pool)

@@ -8,7 +8,7 @@
 
 #include "video_bcast_application.h"
 
-namespace intertalk
+namespace fms
 {
 	class mixer;
 	class audio_sink;

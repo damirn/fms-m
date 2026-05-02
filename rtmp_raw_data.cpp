@@ -6,7 +6,7 @@
 #include "rtmp_protocol.h"
 #include "stream_array.h"
 
-namespace intertalk
+namespace fms
 {
 	rtmp_raw_data::rtmp_raw_data()
 		: m_read_header(true)

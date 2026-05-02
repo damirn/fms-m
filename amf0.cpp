@@ -6,7 +6,7 @@
 #include <boost/asio/detail/socket_ops.hpp>
 #include <cstdint>
 
-namespace intertalk
+namespace fms
 {
 	static const std::uint8_t end_of_object[] = { 0x00, 0x00, 0x09 };
 

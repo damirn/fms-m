@@ -5,7 +5,7 @@
 #include <dlfcn.h>
 #endif
 
-namespace intertalk
+namespace fms
 {
 	authentication_manager::authentication_manager()
 		: m_auth_plugin(new no_authentication_plugin)

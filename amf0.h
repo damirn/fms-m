@@ -5,7 +5,7 @@
 
 #include <stdexcept>
 
-namespace intertalk
+namespace fms
 {
 	class amf0_read_exception : public std::runtime_error
 	{

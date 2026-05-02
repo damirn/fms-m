@@ -5,7 +5,7 @@
 #include <memory>
 #include <boost/logic/tribool.hpp>
 
-namespace intertalk
+namespace fms
 {
 	struct auth_data
 	{

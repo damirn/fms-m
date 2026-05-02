@@ -17,7 +17,7 @@
 #include "rtmp_message.h"
 #include "stats.h"
 
-namespace intertalk
+namespace fms
 {
 	class client_session;
 	using client_session_ptr = std::shared_ptr<client_session>;

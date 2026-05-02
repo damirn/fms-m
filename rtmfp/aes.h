@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <openssl/evp.h>
 
-namespace intertalk
+namespace fms
 {
 	class aes
 	{

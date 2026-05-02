@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdint>
 
-namespace intertalk
+namespace fms
 {
 	class random_string
 	{

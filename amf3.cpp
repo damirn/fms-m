@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "amf3.h"
 
-namespace intertalk
+namespace fms
 {
 	amf3_type_ptr amf3::read(stream_array &buffer)
 	{

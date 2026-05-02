@@ -5,7 +5,7 @@
 #include <fstream>
 #include <filesystem>
 
-namespace intertalk
+namespace fms
 {
 	static const char version[] = "0.28.1";
 

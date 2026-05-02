@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <openssl/bn.h>
 
-namespace intertalk
+namespace fms
 {
 	// 1024-bit MODP prime (RFC 2409 group), generator 2 — the RTMP DH group.
 	static const std::uint8_t P1024[] = {

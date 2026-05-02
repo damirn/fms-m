@@ -9,7 +9,7 @@
 #include <boost/log/sources/logger.hpp>
 #include <boost/log/utility/record_ordering.hpp>
 
-namespace intertalk
+namespace fms
 {
 	namespace sinks = boost::log::sinks;
 	namespace src = boost::log::sources;

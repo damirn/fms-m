@@ -5,7 +5,7 @@
 #include "amf0_types.h"
 #include "json/json.h"
 
-namespace intertalk
+namespace fms
 {
 	// JSON to amf0
 	namespace detail

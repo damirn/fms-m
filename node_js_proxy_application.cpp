@@ -3,7 +3,7 @@
 #include "config.h"
 #include "json_amf.h"
 
-namespace intertalk
+namespace fms
 {
 	node_js_proxy_application::node_js_proxy_application(rtmp_app_manager *app_mngr)
 		: video_bcast_application(app_mngr, "proxy")
