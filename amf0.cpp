@@ -300,6 +300,10 @@ namespace fms
 
 	amf0_type_ptr amf0::read(stream_array &buffer)
 	{
+		if (++m_depth > eMaxDepth)   // bound recursion on hostile nested input
+			throw amf0_read_exception();
+		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } guard{ m_depth };
+
 		if (buffer.available() < 1)
 			throw buffer_eof_exception();
 		std::uint8_t type = *(buffer.read_pos()); // peek type

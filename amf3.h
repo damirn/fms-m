@@ -52,5 +52,8 @@ namespace fms
 		using class_data_ptr = std::shared_ptr<class_data>;
 
 		std::map<std::uint32_t, class_data_ptr> m_stored_classes;
+
+		enum { eMaxDepth = 32 };   // cap nested objects (untrusted input)
+		unsigned m_depth = 0;
 	};
 }

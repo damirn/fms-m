@@ -5,6 +5,10 @@ namespace fms
 {
 	amf3_type_ptr amf3::read(stream_array &buffer)
 	{
+		if (++m_depth > eMaxDepth)   // bound recursion on hostile nested input
+			throw amf3_read_exception();
+		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } guard{ m_depth };
+
 		std::uint8_t type;
 		buffer >> type;
 		switch (type)
