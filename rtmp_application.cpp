@@ -400,7 +400,6 @@ namespace fms
 	void rtmp_application::handle_win_ack_size(rtmp_message_ptr msg, std::uint32_t connection_id)
 	{
 		rtmp_message_window_acknowledgement_size_ptr ack = std::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
-		std::cout << "window acknowledgment size: " << ack->size() << std::endl;
 	}
 
 	void rtmp_application::handle_bytes_read(rtmp_message_ptr)
@@ -644,7 +643,6 @@ namespace fms
 		}
 		catch(std::exception &e)
 		{
-			std::cout << "exception " << e.what() << std::endl;
 		}
 	}
 

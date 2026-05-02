@@ -29,7 +29,6 @@ namespace fms
 
 	void rtmpt_session::start()
 	{
-		std::cout << "new rtmpt connection" << std::endl;
 
 		// arm handshake timer
 		arm_hs_timer();

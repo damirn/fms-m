@@ -56,7 +56,6 @@ namespace fms
 	void service::write(stream_array &buffer, boost::asio::ip::udp::endpoint &ep)
 	{
 		m_write_in_progress = true;
-		std::cout << std::dec << "to: " << ep.address().to_string() << ":" << ep.port() << std::endl;
 		m_socket.async_send_to(boost::asio::buffer(buffer.c_array(), buffer.wrote_size()), ep,
 			[this](const boost::system::error_code &ec, std::size_t bytes) { handle_send_to(ec, bytes); });
 	}
@@ -68,7 +67,6 @@ namespace fms
 		if (!e && bytes_received >= ePacketMinLen)
 		{
 			m_buffer.update(bytes_received);
-			std::cout << std::dec << "from: " << m_sender_endpoint.address().to_string() << ":" << m_sender_endpoint.port() << std::endl;
 			std::uint32_t sid = get_sid();
 			if (sid == 0) // startup session
 			{
@@ -116,7 +114,6 @@ namespace fms
 		m_queue.pop();
 
 		std::uint16_t ts = get_timestamp();
-		std::cout << "ts: " << ts << std::endl;
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h);
 		p.second->serialize(m_serializer->raw_packet());
@@ -146,7 +143,6 @@ namespace fms
 
 	std::optional<session_ptr> service::get_session(std::uint32_t sid)
 	{
-		std::cout << "sid: " << sid << std::endl;
 		
 		sid_to_session_map_t::iterator i = m_sessions.find(sid);
 		if (i != m_sessions.end())
@@ -185,7 +181,6 @@ namespace fms
 						if (g->empty())
 						{
 							m_groups.erase(g);
-							std::cout << "group removed" << std::endl;
 						}
 					}
 				}
@@ -238,11 +233,8 @@ namespace fms
 		s.read_vlu();
 		std::uint8_t ihellotype;
 		s >> ihellotype;
-		if (ihellotype == ihello_chunk::eServerIHello)
-			std::cout << "Server ihello" << std::endl;
-		else if (ihellotype == ihello_chunk::eRemotePeerIHello)
+		if (ihellotype == ihello_chunk::eRemotePeerIHello)
 		{
-			std::cout << "remote peer ihello" << std::endl;
 			if (s.available() >= 0x20)
 				return redirect_ihello(ic, s.read_pos());
 		}
@@ -252,7 +244,6 @@ namespace fms
 
 		rhello_chunk rc(ic->tag_len(), ic->tag(), eCookieSize, cookie, eCertLen, m_cert);
 		std::uint16_t ts = get_timestamp();
-		std::cout << "ts: " << ts << std::endl;
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h);
 		rc.serialize(m_serializer->raw_packet());
@@ -271,14 +262,11 @@ namespace fms
 		s->init();
 		s->notifier() = [this]() { notify(); };
 		m_initial_sessions[m_sender_endpoint] = s;
-		std::cout << "created new session" << std::endl;
 
  		s->sid() = iikc->isid();
 
 		dh2 *d = new dh2;
 		d->generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data());
-		std::cout << "peer id (sid " << s->id() << ") is:" << std::endl;
-		hexdump(std::cout, s->peer_id_data(), 0x20);
 
 		d->generate_shared_secret(iikc->initator_cert() + 4, static_cast<std::uint16_t>(iikc->cert_len() - 4));
 
@@ -287,7 +275,6 @@ namespace fms
 		rikeying_chunk ric(boost::asio::detail::socket_ops::host_to_network_long(s->outgoing_sid()), size, rnonce);
 
 		std::uint16_t ts = get_timestamp();
-		std::cout << "ts: " << ts << std::endl;
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h);
 
@@ -306,14 +293,10 @@ namespace fms
 
 	void service::redirect_ihello(ihello_chunk *ic, const std::uint8_t *peer_id)
 	{
-		std::cout << "redirect_ihello, peer id" << std::endl;
-		hexdump(std::cout, const_cast<std::uint8_t *>(peer_id), 0x20);
-		std::cout << std::endl;
 		item tmp(peer_id, false);
 		session_map_t::iterator i = m_session_map.find(tmp);
 		if (i != m_session_map.end())
 		{
-			std::cout << "i have this client" << std::endl;
 			std::uint16_t ts = get_timestamp();
 			i->second->calculate_echo_ts();
 

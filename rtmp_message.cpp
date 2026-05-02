@@ -68,7 +68,6 @@ namespace fms
 		while(buffer.available() > 0)
 			m_params.push_back(m_amf0.read(buffer));
 
-		std::cout << "Invoke |" << m_function->value() << "| id: " << static_cast<std::uint32_t>(m_invoke_id->value()) << std::endl;
 		// debug
 		for (parameters_list_t::iterator i = m_params.begin(); i != m_params.end(); ++i)
 		{
@@ -78,27 +77,21 @@ namespace fms
 				std::cout << "object value: " << std::endl; // << str->value()
 				for (amf0_object::value_type::iterator j = obj->value().begin(); j != obj->value().end(); ++j)
 				{
-					std::cout << "\tkey: '" << j->m_name << "', value: '";
 					if (j->m_value->type() == amf0_type::eAMF0String)
 					{
 						amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(j->m_value);
-						std::cout << str->value() << "'" << std::endl;
 						continue;
 					}
 					if (j->m_value->type() == amf0_type::eAMF0Number)
 					{
 						amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(j->m_value);
-						std::cout << num->value() << "'" << std::endl;
 						continue;
 					}
 					if (j->m_value->type() == amf0_type::eAMF0Boolean)
 					{
 						amf0_boolean_ptr num = std::dynamic_pointer_cast<amf0_boolean>(j->m_value);
-						std::cout << num->value() << "' (bool)" << std::endl;
 						continue;
 					}
-					else
-						std::cout << "(not a string)'" << std::endl;
 				}
 			}
 		}

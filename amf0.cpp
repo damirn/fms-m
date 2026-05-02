@@ -367,7 +367,6 @@ namespace fms
 			}
 		default:
 			{
-				std::cout << "Fatal! Unknown AMF0 type" << std::endl;
 				throw amf0_read_exception();
 			}
 		}

@@ -20,7 +20,6 @@ namespace fms
 
 	void http_connection::start()
 	{
-		std::cout << "new http connection" << std::endl;
 		perform_read();
 	}
 
@@ -79,7 +78,6 @@ namespace fms
 		}
 		else
 		{
-			std::cout << "error: " << e.message() << std::endl;
 			close();
 		}
 	}
@@ -88,7 +86,6 @@ namespace fms
 	{
 		if (!e)
 		{
-			std::cout << "Closing connection due to timeout" << std::endl;
 			close();
 		}
 	}
@@ -120,7 +117,6 @@ namespace fms
 		}
 		else
 		{
-			std::cout << "write failed: " << e.message() << std::endl;
 			close();
 		}
 	}
@@ -133,7 +129,6 @@ namespace fms
 			m_buffer.mark();
 			if (std::memcmp(m_buffer.read_pos(), "POST", 4) != 0)
 			{
-				std::cout << "error, not POST request" << std::endl;
 				return false;
 			}
 			try
@@ -156,7 +151,6 @@ namespace fms
 		}
 		if (m_buffer.available() > 512) // more than 512 bytes in header, but no delimiter?
 			return false;
-		std::cout << "Not enough data in HTTP header" << std::endl;
 		return boost::indeterminate;
 	}
 
@@ -418,7 +412,6 @@ namespace fms
 
 	void http_connection::handle_fcs()
 	{
-		std::cout << "in handle_fcs()" << std::endl;
 
 		boost::asio::ip::tcp::endpoint endpoint = m_socket.local_endpoint();
 		boost::asio::ip::address address = endpoint.address();
@@ -453,7 +446,6 @@ namespace fms
 	void http_connection::handle_open()
 	{
  		m_rtmpt_manager->create_session(m_socket.remote_endpoint(), m_cid);
-		std::cout << "in handle_open() cid: " << m_cid << std::endl;
 
 		m_output_buffer.clear();
 		prepare_http_header(17);
@@ -492,11 +484,6 @@ namespace fms
 
 	void http_connection::close()
 	{
-		boost::system::error_code ec;
-		boost::asio::ip::tcp::endpoint ep = m_socket.remote_endpoint(ec);
-
-		if (!ec)
-			std::cout << "killing socket port: " << ep.port() << std::endl;
 		m_socket.close();
 		m_timer.cancel();
 

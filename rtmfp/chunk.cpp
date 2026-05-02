@@ -43,7 +43,6 @@ namespace fms
 
 			// make a copy of the tag, since it will be needed later
 			m_tag_len = here + len - buff.read_pos();
-			std::cout << m_tag_len << std::endl;
 			m_tag = new std::uint8_t[m_tag_len];
 			std::memcpy(m_tag, buff.read_pos(), m_tag_len);
 			buff.skip(m_tag_len);
