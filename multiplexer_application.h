@@ -3,7 +3,6 @@
 #include <map>
 #include <string>
 
-#include "json/json.h"
 #include "rtmp_application.h"
 
 namespace fms
@@ -27,9 +26,6 @@ namespace fms
 			return false;
 		}
 
-		void send_presence_notification_to_proxy(std::uint32_t, bool);
-
 		std::map<std::string, rtmp_application *> m_apps;
-		std::map<std::uint32_t, std::string> m_id_to_uid_map;
 	};
 }

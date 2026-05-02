@@ -3,7 +3,6 @@
 #include "admin_application.h"
 #include "config.h"
 #include "multiplexer_application.h"
-#include "node_js_proxy_application.h"
 #include "rtmp_app_manager.h"
 #include "service.h"
 #include "video_bcast_application.h"
@@ -130,11 +129,7 @@ namespace fms
 		m_app_manager->register_rtmp_app(new admin_application(m_app_manager));
 		m_app_manager->register_rtmp_app(new video_call_application(m_app_manager));
 
-		node_js_proxy_application *njs = new node_js_proxy_application(m_app_manager);
-		m_app_manager->register_rtmp_app(njs);
-
 		multiplexing_application *mapp = new multiplexing_application(m_app_manager);
-		mapp->register_rtmp_application(njs);
 		mapp->register_rtmp_application(bc);
 		m_app_manager->register_rtmp_app(mapp);
 	}

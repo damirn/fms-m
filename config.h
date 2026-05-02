@@ -99,21 +99,6 @@ namespace fms
 			return m_auth_plugin;
 		}
 
-		const std::string &js_server_socket() const
-		{
-			return m_js_server_socket;
-		}
-
-		const std::string &js_server_address() const
-		{
-			return m_js_server_address;
-		}
-
-		const std::uint16_t &js_server_port() const
-		{
-			return m_js_server_port;
-		}
-
 		const std::string &helper_app() const
 		{
 			return m_helper_app;
@@ -153,9 +138,6 @@ namespace fms
 		std::string m_auth_plugin;
 		std::string m_config_file;
 		std::string m_helper_app;
-		std::string m_js_server_socket;
-		std::string m_js_server_address;
-		std::uint16_t m_js_server_port;
 		std::string m_password_file;
 
 		enum
@@ -168,8 +150,7 @@ namespace fms
 			_eAdminDataKeepTime = 600,
 			_eRTMFPDefaultPort = 1935,
 			_eNotifyThreshold = 2000,
-			_eTerminateThreshold = 3000,
-			_eJSServerPort = 4990
+			_eTerminateThreshold = 3000
 		};
 
 	private:
