@@ -130,7 +130,7 @@ namespace fms
 			std::uint8_t y;
 			if (end - data != 1)
 			{
-				x = *(std::uint16_t *)data;
+				std::memcpy(&x, data, 2);   // avoid unaligned / aliasing UB of *(uint16_t*)data
 				sum += x;
 				data += 2;
 			}

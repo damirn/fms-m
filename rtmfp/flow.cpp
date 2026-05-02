@@ -104,6 +104,8 @@ namespace fms
 		else
 		{
 			delete[] m_data;
+			m_data = nullptr;             // guard against a double delete[]
+			m_msg_is_fragmented = false;
 		}
 	}
 
