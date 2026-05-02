@@ -8,6 +8,11 @@
 
 namespace fms
 {
+	video_call_application::call_instance_data::~call_instance_data()
+	{
+		delete m_mixer;   // the mixer owns (and deletes) m_sink
+	}
+
 	namespace invoke_functions
 	{
 		static const char call[] = "call";

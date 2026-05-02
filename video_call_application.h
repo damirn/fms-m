@@ -41,9 +41,18 @@ namespace fms
 				, m_sink(0)
 			{}
 
+			// owns the mixer, which in turn owns (and deletes) m_sink; deleting
+			// the mixer plugs the leak when an instance is torn down without
+			// having gone through the explicit delete path. Defined out-of-line
+			// because mixer is only forward-declared here.
+			~call_instance_data();
+
+			call_instance_data(const call_instance_data &) = delete;
+			call_instance_data &operator=(const call_instance_data &) = delete;
+
 			std::set<std::uint32_t> m_clients;
 			mixer *m_mixer;
-			audio_sink *m_sink;
+			audio_sink *m_sink;   // non-owning; the mixer owns it
 		};
 
 		using call_instance_data_ptr = std::shared_ptr<call_instance_data>;
