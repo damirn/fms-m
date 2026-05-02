@@ -10,43 +10,54 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Boost 1.76 from Homebrew (keg-only)
-set(BOOST_ROOT /opt/homebrew/opt/boost@1.76)
-set(Boost_NO_SYSTEM_PATHS ON)
 # Code now uses std::chrono / std::filesystem; Boost.Log still needs date_time.
-find_package(Boost 1.76 EXACT COMPONENTS
-  date_time log log_setup program_options system thread
-  REQUIRED)
+set(BOOST_COMPONENTS date_time log log_setup program_options system thread)
+
+if(APPLE)
+  # Homebrew boost@1.76 is keg-only and ships no CMake config, so point the
+  # classic FindBoost module at the keg and pin the version.
+  set(BOOST_ROOT /opt/homebrew/opt/boost@1.76)
+  set(Boost_NO_SYSTEM_PATHS ON)
+  find_package(Boost 1.76 EXACT COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
+else()
+  # Linux and other systems: use whatever Boost the distro provides.
+  find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
+endif()
 message(STATUS "Boost Include: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost Libraries: ${Boost_LIBRARIES}")
 
 add_definitions(-DBOOST_LOG_DYN_LINK)
-# Silence Boost 1.76 header noise under modern clang (global bind placeholders).
+# Silence Boost header noise under modern compilers (global bind placeholders).
 add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
-# Boost 1.76 asio predates C++20's removal of std::result_of; use invoke_result.
+# Boost.Asio <= 1.76 predates C++20's removal of std::result_of; harmless on newer.
 add_definitions(-DBOOST_ASIO_HAS_STD_INVOKE_RESULT=1)
 
-# speex (audio codec) and OpenSSL libcrypto (RTMP handshake / DH) via pkg-config
-set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/speex/lib/pkgconfig:/opt/homebrew/opt/openssl@3/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+# speex (audio codec) and OpenSSL libcrypto (RTMP handshake / DH) via pkg-config.
+if(APPLE)
+  # Homebrew keg-only packages aren't on the default pkg-config search path.
+  set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/speex/lib/pkgconfig:/opt/homebrew/opt/openssl@3/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SPEEX REQUIRED speex)
 pkg_check_modules(CRYPTO REQUIRED libcrypto)
 
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+if(APPLE)
   find_library(CORE_AUDIO CoreAudio REQUIRED)
   find_library(CORE_SERVICES CoreServices REQUIRED)
   find_library(AUDIO_UNIT AudioUnit REQUIRED)
   find_library(AUDIO_TOOLBOX AudioToolbox REQUIRED)
   find_library(FOUNDATION Foundation REQUIRED)
   find_library(APPKIT AppKit REQUIRED)
-ENDIF()
+endif()
 
 # -fno-strict-aliasing was dropped: the amf0 double type-pun (the only real
 # aliasing UB) is now a std::memcpy, and the build is clean under -Wstrict-aliasing=2.
-# The -Wno-deprecated-* suppressions remain only to silence Boost 1.76 / libc++
-# C++23 internals (aligned_storage, HMAC/DH nothrow builtins) — our own code no
-# longer triggers any deprecation warning. They can go once Boost is upgraded.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -g -Wall -Wno-write-strings -Wno-deprecated-declarations -Wno-deprecated-builtins -Wno-#pragma-messages")
+# -Wno-deprecated-* only silences Boost 1.76 / libc++ C++23 header internals.
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -g -Wall -Wno-write-strings -Wno-deprecated-declarations")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  # clang-only spellings; GCC doesn't recognise these and would warn.
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-builtins -Wno-#pragma-messages")
+endif()
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -115,11 +126,7 @@ target_link_libraries(${PROJECT_NAME}
   ${SPEEX_LIBRARIES}
   ${CRYPTO_LIBRARIES})
 
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  target_link_libraries(${PROJECT_NAME} dl)
-ENDIF()
-
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+if(APPLE)
   target_link_libraries(${PROJECT_NAME}
     ${CORE_AUDIO}
     ${CORE_SERVICES}
@@ -127,4 +134,8 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     ${AUDIO_TOOLBOX}
     ${FOUNDATION}
     ${APPKIT})
-ENDIF()
+else()
+  # Linux: dlopen for auth plugins, pthread for Boost.Thread / std::thread.
+  find_package(Threads REQUIRED)
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS} Threads::Threads)
+endif()
