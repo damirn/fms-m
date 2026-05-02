@@ -189,6 +189,8 @@ namespace fms
 
 	void rtmp_message_audio_data::deserialize(stream_array &buffer)
 	{
+		if (buffer.available() < m_size)   // wire length must not exceed the buffer
+			throw buffer_eof_exception();
 		std::memcpy(reinterpret_cast<void *>(m_data.get()), reinterpret_cast<void *>(buffer.read_pos()), m_size);
 		buffer.skip(m_size);
 	}
@@ -201,6 +203,8 @@ namespace fms
 
 	void rtmp_message_video_data::deserialize(stream_array &buffer)
 	{
+		if (buffer.available() < m_size)   // wire length must not exceed the buffer
+			throw buffer_eof_exception();
 		std::memcpy(reinterpret_cast<void *>(m_data.get()), reinterpret_cast<void *>(buffer.read_pos()), m_size);
 		buffer.skip(m_size);
 	}
@@ -240,6 +244,11 @@ namespace fms
 			}
 			buffer >> t;
 			h.stream_id() = boost::asio::detail::socket_ops::network_to_host_long(t);
+
+			// a sub-message can't be longer than what's left of the aggregate;
+			// stop on a bogus length instead of over-allocating / over-reading
+			if (h.message_length() > buffer.available())
+				break;
 
 			rtmp_protocol p;
 			if (p.deserialize(buffer, h))

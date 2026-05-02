@@ -7,6 +7,22 @@
 
 namespace fms
 {
+	// Trailing length of a chunk = (chunk_end - cursor). Rejects underflow (the
+	// variable-length fields overran the declared chunk length, which is only
+	// bounded by the datagram) and overrun (the chunk exceeds what remains in the
+	// datagram). Prevents oversized new[] / out-of-bounds memcpy on hostile input.
+	static bool trailing_len(std::uint8_t *here, std::uint16_t len, stream_array &buff, std::uint16_t &out)
+	{
+		std::uint8_t *end = here + len;
+		if (buff.read_pos() > end)
+			return false;
+		std::size_t n = static_cast<std::size_t>(end - buff.read_pos());
+		if (n > buff.available() || n > 0xFFFF)
+			return false;
+		out = static_cast<std::uint16_t>(n);
+		return true;
+	}
+
 	std::uint16_t chunk::serialize_chunk_header(stream_array &to)
 	{
 		std::uint8_t type = m_type;
@@ -42,7 +58,8 @@ namespace fms
 			buff.skip(static_cast<size_t>(m_epd_len));
 
 			// make a copy of the tag, since it will be needed later
-			m_tag_len = here + len - buff.read_pos();
+			if (!trailing_len(here, len, buff, m_tag_len))
+				return false;
 			m_tag = new std::uint8_t[m_tag_len];
 			std::memcpy(m_tag, buff.read_pos(), m_tag_len);
 			buff.skip(m_tag_len);
@@ -102,7 +119,8 @@ namespace fms
 			m_skic = buff.read_pos();
 			buff.skip(static_cast<size_t>(m_skic_len));
 
-			m_signature_len = here + len - buff.read_pos();
+			if (!trailing_len(here, len, buff, m_signature_len))
+				return false;
 			m_signature = buff.read_pos();
 			buff.skip(m_signature_len);
 
@@ -188,7 +206,8 @@ namespace fms
 				if (!m_option_list.deserialize(buff))
 					return false;
 			}
-			m_user_data_len = here + len - buff.read_pos();
+			if (!trailing_len(here, len, buff, m_user_data_len))
+				return false;
 			m_user_data = buff.read_pos();
 			buff.skip(m_user_data_len);
 			return true;
@@ -230,7 +249,8 @@ namespace fms
 				if (!m_option_list.deserialize(buff))
 					return false;
 			}
-			m_user_data_len = here + len - buff.read_pos();
+			if (!trailing_len(here, len, buff, m_user_data_len))
+				return false;
 			m_user_data = buff.read_pos();
 			buff.skip(m_user_data_len);
 			return true;

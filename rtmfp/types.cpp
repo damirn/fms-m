@@ -15,7 +15,12 @@ namespace fms
 			{
 				std::uint8_t *here = buff.read_pos();
 				m_type = buff.read_vlu();
-				m_value_len = static_cast<std::uint16_t>(m_len - (buff.read_pos() - here));
+				std::size_t consumed = static_cast<std::size_t>(buff.read_pos() - here);
+				// the type VLU must fit inside m_len, and the remaining value must
+				// fit inside the datagram — otherwise the length is malformed
+				if (consumed > m_len || (m_len - consumed) > buff.available())
+					return false;
+				m_value_len = static_cast<std::uint16_t>(m_len - consumed);
 				m_value = new std::uint8_t[m_value_len];
 				std::memcpy(m_value, buff.read_pos(), m_value_len);
 				buff.skip(m_value_len);

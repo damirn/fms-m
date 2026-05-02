@@ -51,5 +51,9 @@ namespace fms
 
 		amf0_type_ptr read(stream_array &);
 		void write(stream_array &, amf0_type_ptr);
+
+	private:
+		enum { eMaxDepth = 32 };   // cap nested objects/arrays (untrusted input)
+		unsigned m_depth = 0;
 	};
 }
