@@ -62,6 +62,7 @@ set(sourceFiles
   config.cpp
   crypto.cpp
   dh.cpp
+  evp_dh.cpp
   flv_reader.cpp
   flv_writer.cpp
   g711_codec.cpp

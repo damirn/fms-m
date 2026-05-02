@@ -1,74 +1,41 @@
 #include "pch.h"
 #include "dh.h"
+#include "evp_dh.h"
+
 #include <stdexcept>
+#include <openssl/bn.h>
 
 namespace intertalk
 {
-	static const char *P1024 =
-		"FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1" \
-		"29024E088A67CC74020BBEA63B139B22514A08798E3404DD" \
-		"EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245" \
-		"E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED" \
-		"EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE65381" \
-		"FFFFFFFFFFFFFFFF";
+	// 1024-bit MODP prime (RFC 2409 group), generator 2 — the RTMP DH group.
+	static const std::uint8_t P1024[] = {
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34,
+		0xC4, 0xC6, 0x62, 0x8B, 0x80, 0xDC, 0x1C, 0xD1, 0x29, 0x02, 0x4E, 0x08, 0x8A, 0x67, 0xCC, 0x74,
+		0x02, 0x0B, 0xBE, 0xA6, 0x3B, 0x13, 0x9B, 0x22, 0x51, 0x4A, 0x08, 0x79, 0x8E, 0x34, 0x04, 0xDD,
+		0xEF, 0x95, 0x19, 0xB3, 0xCD, 0x3A, 0x43, 0x1B, 0x30, 0x2B, 0x0A, 0x6D, 0xF2, 0x5F, 0x14, 0x37,
+		0x4F, 0xE1, 0x35, 0x6D, 0x6D, 0x51, 0xC2, 0x45, 0xE4, 0x85, 0xB5, 0x76, 0x62, 0x5E, 0x7E, 0xC6,
+		0xF4, 0x4C, 0x42, 0xE9, 0xA6, 0x37, 0xED, 0x6B, 0x0B, 0xFF, 0x5C, 0xB6, 0xF4, 0x06, 0xB7, 0xED,
+		0xEE, 0x38, 0x6B, 0xFB, 0x5A, 0x89, 0x9F, 0xA5, 0xAE, 0x9F, 0x24, 0x11, 0x7C, 0x4B, 0x1F, 0xE6,
+		0x49, 0x28, 0x66, 0x51, 0xEC, 0xE6, 0x53, 0x81, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+	};
 
 	void dh::init()
 	{
-		m_dh = DH_new();
-		if (m_dh == 0)
-			throw std::runtime_error("DH_new failed");
-
-		// OpenSSL 1.1+/3.0 makes the DH struct opaque; populate it through
-		// the accessor API instead of touching fields directly.
-		BIGNUM *p = 0;
-		if (BN_hex2bn(&p, P1024) == 0)
-			throw std::runtime_error("BN_hex2bn failed");
-
-		BIGNUM *g = BN_new();
-		if (g == 0)
-		{
-			BN_free(p);
-			throw std::runtime_error("BN_new failed");
-		}
-		BN_set_word(g, 2);
-
-		// DH_set0_pqg takes ownership of p and g on success.
-		if (DH_set0_pqg(m_dh, p, 0, g) == 0)
-		{
-			BN_free(p);
-			BN_free(g);
-			throw std::runtime_error("DH_set0_pqg failed");
-		}
-
-		DH_set_length(m_dh, 1024);
-		DH_generate_key(m_dh);
+		m_pkey = evp_dh_keygen(P1024, sizeof(P1024), 2);
 	}
 
 	void dh::uninit()
 	{
-		if (m_dh != 0)
-			DH_free(m_dh);
-		if (m_peer_public_key != 0)
-			BN_clear_free(m_peer_public_key);
-	}
-
-	bool dh::copy_key(const BIGNUM *key, std::uint8_t *output, std::uint32_t size)
-	{
-		std::int32_t s = BN_num_bytes(key);
-		if (s <= 0 || s > static_cast<std::int32_t>(size))
-			return false;
-		if (BN_bn2bin(key, output) != s)
-			return false;
-		return true;
+		if (m_pkey != 0)
+			EVP_PKEY_free(m_pkey);
 	}
 
 	void dh::create_shared_key(std::uint8_t *key, std::uint16_t size)
 	{
-		std::uint16_t s = DH_size(m_dh);
-		m_shared_key = new std::uint8_t[s];
-		m_peer_public_key = BN_bin2bn(key, size, 0);
-		int ret = DH_compute_key(m_shared_key, m_peer_public_key, m_dh);
-		std::cout << "DH_compute_key: " << ret << std::endl;
+		std::size_t len = 0;
+		m_shared_key = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size, len);
+		if (m_shared_key == 0)
+			throw std::runtime_error("DH shared-key derivation failed");
 	}
 
 	void dh::copy_shared_key(std::uint8_t *key, std::uint16_t size)
@@ -78,15 +45,11 @@ namespace intertalk
 
 	void dh::copy_public_key(std::uint8_t *key, std::uint16_t size)
 	{
-		const BIGNUM *pub_key = 0;
-		DH_get0_key(m_dh, &pub_key, 0);
-		copy_key(pub_key, key, size);
+		evp_dh_pub(m_pkey, key, size);
 	}
 
 	void dh::copy_private_key(std::uint8_t *key, std::uint16_t size)
 	{
-		const BIGNUM *priv_key = 0;
-		DH_get0_key(m_dh, 0, &priv_key);
-		copy_key(priv_key, key, size);
+		evp_dh_priv(m_pkey, key, size);
 	}
 }

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include <openssl/dh.h>
+#include <openssl/evp.h>
 
 namespace intertalk
 {
@@ -36,7 +36,7 @@ namespace intertalk
 
 		enum { eAESKeySize = 0x20, eKeySize = 0x80 };
 		static const std::uint8_t m_dh_key[eKeySize];
-		DH *m_dh;
+		EVP_PKEY *m_pkey;
 		int m_pub_key_size;
 		std::uint8_t *m_pub_key;
 		int m_shared_secret_size;

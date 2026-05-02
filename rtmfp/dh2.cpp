@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "dh2.h"
+#include "evp_dh.h"
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -32,8 +33,8 @@ namespace intertalk
 
 	dh2::~dh2()
 	{
-		if (m_dh)
-			DH_free(m_dh);
+		if (m_pkey)
+			EVP_PKEY_free(m_pkey);
 
 		delete[] m_pub_key;
 		delete[] m_shared_secret;
@@ -42,31 +43,18 @@ namespace intertalk
 
 	void dh2::generate_public_key()
 	{
-		m_dh = DH_new(); // fixme: check for null
+		m_pkey = evp_dh_keygen(m_dh_key, eKeySize, 2);
 
-		// OpenSSL 1.1+/3.0 makes the DH struct opaque; use the accessor API.
-		BIGNUM *p = BN_bin2bn(m_dh_key, eKeySize, nullptr); //prime number
-		BIGNUM *g = BN_new();
-		BN_set_word(g, 2); //group DH 2
-		DH_set0_pqg(m_dh, p, nullptr, g); // takes ownership of p and g
-
-		DH_generate_key(m_dh);
-
-		// It's our key public part
-		const BIGNUM *pub_key = nullptr;
-		DH_get0_key(m_dh, &pub_key, nullptr);
-		m_pub_key_size = BN_num_bytes(pub_key);
-		m_pub_key = new std::uint8_t[m_pub_key_size];
-		BN_bn2bin(pub_key, m_pub_key);
+		// Our public part as big-endian bytes (at most the prime size).
+		m_pub_key = new std::uint8_t[eKeySize];
+		m_pub_key_size = evp_dh_pub(m_pkey, m_pub_key, eKeySize);
 	}
 
 	void dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size)
 	{
-		BIGNUM *bnFarPubKey = BN_bin2bn(remote_pub_key, key_size, nullptr);
-		m_shared_secret_size = DH_size(m_dh);
-		m_shared_secret = new std::uint8_t[m_shared_secret_size];
-		DH_compute_key(m_shared_secret, bnFarPubKey, m_dh);
-		BN_free(bnFarPubKey);
+		std::size_t len = 0;
+		m_shared_secret = evp_dh_derive(m_pkey, m_dh_key, eKeySize, 2, remote_pub_key, key_size, len);
+		m_shared_secret_size = static_cast<int>(len);
 		generate_rnonce();
 	}
 
