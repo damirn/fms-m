@@ -2,7 +2,7 @@
 
 #include <string>
 #include <cstdint>
-#include <boost/detail/atomic_count.hpp>
+#include <atomic>
 #include <boost/functional/hash.hpp>
 #include <boost/noncopyable.hpp>
 #include <memory>
@@ -158,7 +158,7 @@ namespace intertalk
 		app_stats m_stats;
 		std::mutex m_stats_mutex;
 
-		boost::detail::atomic_count m_invoke_id;
+		std::atomic<long> m_invoke_id;
 
 		random_string m_rnd_string;
 
