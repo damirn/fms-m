@@ -183,7 +183,7 @@ namespace fms
 		}
 		else
 		{
-			std::uint16_t cnt = static_cast<std::uint16_t>(std::ceil(static_cast<float>(len) / _eFragmentMaxSize));
+			std::uint16_t cnt = static_cast<std::uint16_t>(std::ceil(static_cast<float>(len) / static_cast<float>(_eFragmentMaxSize)));
 			std::uint8_t ftype = fragment::eBegin;
 			std::uint32_t clen = _eFragmentMaxSize;
 			for (std::uint16_t i = 0; i < cnt; ++i)

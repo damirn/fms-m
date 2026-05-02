@@ -31,6 +31,10 @@ add_definitions(-DBOOST_LOG_DYN_LINK)
 add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
 # Boost.Asio <= 1.76 predates C++20's removal of std::result_of; harmless on newer.
 add_definitions(-DBOOST_ASIO_HAS_STD_INVOKE_RESULT=1)
+# Boost.Asio/date_time internally include deprecated Boost headers (e.g.
+# boost/detail/iterator.hpp) that emit #pragma message notes GCC can't silence
+# with a warning flag; this is Boost's own off-switch for those messages.
+add_definitions(-DBOOST_ALLOW_DEPRECATED_HEADERS)
 
 # speex (audio codec) and OpenSSL libcrypto (RTMP handshake / DH) via pkg-config.
 if(APPLE)
