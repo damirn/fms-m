@@ -88,7 +88,6 @@ set(sourceFiles
   main.cpp
   mixer.cpp
   multiplexer_application.cpp
-  node_js_proxy_application.cpp
   random_string.cpp
   rtmfp/aes.cpp
   rtmfp/chunk.cpp

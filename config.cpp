@@ -61,9 +61,6 @@ namespace fms
 			("terminate-threshold,r", boost::program_options::value<std::uint32_t>(&m_terminate_delay_threshold)->default_value(_eTerminateThreshold), "terminate delay threshold")
 			("version,v", "version information")
 			("helper-app,H", boost::program_options::value<std::string>(&m_helper_app)->default_value(""), "helper app")
-			("js-server-socket,S", boost::program_options::value<std::string>(&m_js_server_socket), "application server socket")
-			("js-server-address,j", boost::program_options::value<std::string>(&m_js_server_address), "application server address")
-			("js-server-port,J", boost::program_options::value<std::uint16_t>(&m_js_server_port)->default_value(_eJSServerPort), "application server port")
 			("password-file,F", boost::program_options::value<std::string>(&m_password_file)->default_value("./passwd"), "password file for admin app")
 			("admin-data-keep-time,A", boost::program_options::value<std::uint32_t>(&m_admin_data_keep_time)->default_value(_eAdminDataKeepTime), "keep time for admin data");
 	}
