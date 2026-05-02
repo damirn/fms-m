@@ -2,8 +2,7 @@
 
 #include <cstdint>
 #include <boost/noncopyable.hpp>
-#include <openssl/dh.h>
-#include <openssl/engine.h>
+#include <openssl/evp.h>
 
 namespace intertalk
 {
@@ -11,8 +10,8 @@ namespace intertalk
 	{
 	public:
 		dh()
-			: m_shared_key(0)
-			, m_peer_public_key(0)
+			: m_pkey(0)
+			, m_shared_key(0)
 		{
 			init();
 		}
@@ -31,10 +30,8 @@ namespace intertalk
 	protected:
 		void init();
 		void uninit();
-		bool copy_key(const BIGNUM *, std::uint8_t *, std::uint32_t);
 
-		DH *m_dh;
+		EVP_PKEY *m_pkey;
 		std::uint8_t *m_shared_key;
-		BIGNUM *m_peer_public_key;
 	};
 }
