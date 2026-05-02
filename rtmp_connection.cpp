@@ -82,7 +82,6 @@ namespace fms
 					return;
 
 				m_state = eStateReadPackets;
-				if (m_state == eStateReadPackets)
 				{
 					arm_timer();
 					if (m_buffer.available() > 0)
@@ -110,15 +109,7 @@ namespace fms
 				rc4_crypt(m_key_in, bytes_transferred, m_buffer.write_pos(), m_buffer.write_pos());
 			m_buffer.update(bytes_transferred);
 			handle_bytes_read(bytes_transferred);
-			boost::tribool result = parse_data(m_buffer);
-			if (result) // message successfully parsed
-			{
-				// todo: handle message
-			}
-			else if (!result)
-			{
-				// todo: handle error
-			}
+			parse_data(m_buffer);   // parses and dispatches messages internally
 //			std::cout << "There are " << m_buffer.available() << " bytes left in the buffer." << std::endl;
 			read_data();
 		}
@@ -166,7 +157,7 @@ namespace fms
 			serialize_message(result, channel);
 			perform_write();
 		}
-		else
+		else if (m_app != 0)   // a write is in flight; queue it (only an app can)
 		{
 			m_app->enqueue_async_message(m_id, result);
 			notify();

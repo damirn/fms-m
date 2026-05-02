@@ -15,7 +15,6 @@
 #include <functional>
 #include <boost/noncopyable.hpp>
 #include <memory>
-#include <memory>
 
 namespace fms
 {

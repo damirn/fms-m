@@ -6,6 +6,8 @@
 #include "rtmp_message.h"
 #include "util.h"
 
+#include <openssl/crypto.h>
+
 #include <fstream>
 #include <list>
 #include <string>
@@ -178,9 +180,28 @@ namespace fms
 	bool admin_application::check_user_and_password(const std::string &user, const std::string &pass)
 	{
 		std::map<std::string, std::string>::const_iterator i = m_password_map.find(user);
-		if (i != m_password_map.end())
-			return i->second == sha256(pass);
-		return false;
+		if (i == m_password_map.end())
+			return false;
+
+		// passwd entry is either legacy "sha256(password)" or salted
+		// "salt$sha256(salt+password)". Compare in constant time to avoid a
+		// timing side-channel on the stored hash.
+		const std::string &stored = i->second;
+		std::string expected, computed;
+		std::size_t sep = stored.find('$');
+		if (sep != std::string::npos)
+		{
+			expected = stored.substr(sep + 1);
+			computed = sha256(stored.substr(0, sep) + pass);
+		}
+		else
+		{
+			expected = stored;
+			computed = sha256(pass);
+		}
+		if (expected.empty() || expected.size() != computed.size())
+			return false;
+		return CRYPTO_memcmp(expected.data(), computed.data(), expected.size()) == 0;
 	}
 
 	void admin_application::delete_connection(std::uint32_t connection_id, const std::string &app_instance /* = "" */)

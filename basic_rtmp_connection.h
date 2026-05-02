@@ -6,7 +6,6 @@
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <memory>
-#include <memory>
 #include <chrono>
 #include <openssl/evp.h>
 
