@@ -74,7 +74,7 @@ namespace fms
 
  		// The next HTTP connection to be accepted.
  		http_connection_ptr m_http_connection;
-		rtmp_app_manager *m_app_manager;
-		service *m_rtmfp_service;
+		rtmp_app_manager *m_app_manager = nullptr;
+		service *m_rtmfp_service = nullptr;
 	};
 }

@@ -18,6 +18,7 @@ namespace fms
 	rtmp_app_manager::rtmp_app_manager(io_service_pool &io_pool)
 		: m_io_service_pool(io_pool)
 		, m_connection_counter(0)
+		, m_admin_app(nullptr)   // only set if an app named "admin" registers
 		, m_io_service(io_pool.get_io_service())
 		, m_timer(m_io_service)
 	{
@@ -357,7 +358,8 @@ namespace fms
 			netstream_stats_ptr data = i->second;
 			m_netstream_stats.erase(i);
 			lock.unlock();
-			m_admin_app->send_stream_deleted_notify(data);
+			if (m_admin_app)
+				m_admin_app->send_stream_deleted_notify(data);
 		}
 	}
 
@@ -376,8 +378,9 @@ namespace fms
 				++i;
 		}
 		lock.unlock();
-		for (netstream_list_t::iterator i = list.begin(); i != list.end(); ++i)
-			m_admin_app->send_stream_deleted_notify(*i);
+		if (m_admin_app)
+			for (netstream_list_t::iterator i = list.begin(); i != list.end(); ++i)
+				m_admin_app->send_stream_deleted_notify(*i);
 	}
 
 	void rtmp_app_manager::update_netstream(const stream_client_id_t &id, const std::string &name, bool is_publish)
@@ -389,7 +392,7 @@ namespace fms
 			i->second->m_name = name;
 			i->second->m_is_published = is_publish;
 			lock.unlock();
-			if (name.find("QOS!") != 0) // QOS streams are of no interest to admin app
+			if (m_admin_app && name.find("QOS!") != 0) // QOS streams are of no interest to admin app
 				m_admin_app->send_new_stream_notify(i->second);
 		}
 	}
@@ -465,7 +468,7 @@ namespace fms
 	{
 		if (!e)
 		{
-			if (m_admin_app->has_active_clients())
+			if (m_admin_app && m_admin_app->has_active_clients())
 			{
 				std::unique_lock<std::mutex> lock(m_mutex);
 				netstream_stats_map_t tmp;
