@@ -198,9 +198,9 @@ namespace fms
 		{
 			a = 1;
 			buffer << a;
-			std::uint16_t *b = reinterpret_cast<std::uint16_t *>(&m_channel_id);
-			++b;
-			buffer << *b;
+			std::uint16_t b;
+			std::memcpy(&b, reinterpret_cast<std::uint8_t *>(&m_channel_id) + 2, sizeof(b));   // high 16 bits
+			buffer << b;
 		}
 
 		if (m_timestamp < 0x00ffffff)
@@ -239,9 +239,9 @@ namespace fms
 		{
 			a = 0x41;
 			buffer << a;
-			std::uint16_t *b = reinterpret_cast<std::uint16_t *>(&m_channel_id);
-			++b;
-			buffer << *b;
+			std::uint16_t b;
+			std::memcpy(&b, reinterpret_cast<std::uint8_t *>(&m_channel_id) + 2, sizeof(b));   // high 16 bits
+			buffer << b;
 		}
 
 		if (m_ts_delta_write < 0x00ffffff)
@@ -280,9 +280,9 @@ namespace fms
 		{
 			a = 0x81;
 			buffer << a;
-			std::uint16_t *b = reinterpret_cast<std::uint16_t *>(&m_channel_id);
-			++b;
-			buffer << *b;
+			std::uint16_t b;
+			std::memcpy(&b, reinterpret_cast<std::uint8_t *>(&m_channel_id) + 2, sizeof(b));   // high 16 bits
+			buffer << b;
 		}
 		if (m_ts_delta_write < 0x00ffffff)
 			buffer.write_uint32_3(m_ts_delta_write);
@@ -315,9 +315,9 @@ namespace fms
 		{
 			a = 0xc1;
 			buffer << a;
-			std::uint16_t *b = reinterpret_cast<std::uint16_t *>(&m_channel_id);
-			++b;
-			buffer << *b;
+			std::uint16_t b;
+			std::memcpy(&b, reinterpret_cast<std::uint8_t *>(&m_channel_id) + 2, sizeof(b));   // high 16 bits
+			buffer << b;
 		}
 	}
 }
