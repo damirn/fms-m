@@ -69,16 +69,16 @@ namespace fms
 				}
 			}
 
-			boost::asio::mutable_buffers_1 write_buffer()
+			boost::asio::mutable_buffer write_buffer()
 			{
 				if (static_cast<std::size_t>(end() - m_write_high_mark) < m_size / 4)
 					check_size(m_size * 2);
-				return boost::asio::mutable_buffers_1(m_write_high_mark, end() - m_write_high_mark);
+				return boost::asio::mutable_buffer(m_write_high_mark, end() - m_write_high_mark);
 			}
 
-			boost::asio::const_buffers_1 read_buffer()
+			boost::asio::const_buffer read_buffer()
 			{
-				return boost::asio::const_buffers_1(m_read, m_write_high_mark - m_read);
+				return boost::asio::const_buffer(m_read, m_write_high_mark - m_read);
 			}
 
 			void update(std::size_t size)
