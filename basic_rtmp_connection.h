@@ -71,7 +71,7 @@ namespace fms
 
 		bool prepare_hand_shake_response(std::uint8_t = ePlainMagic, std::uint8_t * = 0);
 
-		void create_keys(std::uint8_t *, std::uint8_t *);
+		bool create_keys(std::uint8_t *, std::uint8_t *);
 
 		// Find digest and DH key in handshake data
 		static std::uint32_t get_digest_offest(std::uint8_t *, std::uint8_t);

@@ -93,15 +93,12 @@ namespace fms
 		BIGNUM *bn = nullptr;
 		if (EVP_PKEY_get_bn_param(key, name, &bn) != 1)
 			return -1;
-		int n = BN_num_bytes(bn);
-		if (n < 0 || static_cast<std::size_t>(n) > cap)
-		{
-			BN_clear_free(bn);
-			return -1;
-		}
-		BN_bn2bin(bn, out);
+		// Fixed-length, left-zero-padded to the caller's slot (the RTMP/RTMFP
+		// wire format uses a fixed field); plain BN_bn2bin would short-write the
+		// ~1/256 of keys that have leading zero bytes and shift the value.
+		int n = BN_bn2binpad(bn, out, static_cast<int>(cap));
 		BN_clear_free(bn);
-		return n;
+		return n;   // == cap on success, -1 if the value doesn't fit
 	}
 
 	int evp_dh_pub(EVP_PKEY *self, std::uint8_t *out, std::size_t cap)

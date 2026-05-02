@@ -8,6 +8,7 @@
 #include "rtmp_message.h"
 #include "rtmp_protocol.h"
 
+#include <openssl/rand.h>
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
 
@@ -180,11 +181,13 @@ namespace fms
 			server_sig[6] = 0x02;
 			server_sig[7] = 0x01;
 
-			std::uint32_t *p = (std::uint32_t *)(server_sig + 8);
-			for (int i = 2; i < eHandShakeSize / 4; ++i)
-				*p++ = rand();
+			RAND_bytes(server_sig + 8, eHandShakeSize - 8);   // CSPRNG filler (was unseeded rand())
 
-			create_keys(client_sig, server_sig);
+			if (!create_keys(client_sig, server_sig))
+			{
+				close();   // fail closed: never proceed with a broken RTMPE cipher
+				return false;
+			}
 
 			std::uint32_t server_digest_offset = get_digest_offest(server_sig, m_validation_scheme);
 			std::uint8_t *tmp = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
@@ -276,7 +279,7 @@ namespace fms
 		return ret;
 	}
 
-	void basic_rtmp_connection::create_keys(std::uint8_t *client_sig, std::uint8_t *server_sig)
+	bool basic_rtmp_connection::create_keys(std::uint8_t *client_sig, std::uint8_t *server_sig)
 	{
 		dh mydh;
 		std::uint32_t client_dh_offset = get_dh_offest(client_sig, m_validation_scheme);
@@ -302,12 +305,14 @@ namespace fms
 			mydh.copy_shared_key(shared_key, 128);
 			m_key_in = EVP_CIPHER_CTX_new();
 			m_key_out = EVP_CIPHER_CTX_new();
-			init_RC4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out);
+			if (!init_RC4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out))
+				return false;   // fail closed rather than ship cleartext
 
 			// update keys
 			std::uint8_t d[eHandShakeSize];
 			rc4_crypt(m_key_in, eHandShakeSize, d, d);
 			rc4_crypt(m_key_out, eHandShakeSize, d, d);
 		}
+		return true;
 	}
 }

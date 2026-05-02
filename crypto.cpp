@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "crypto.h"
 
+#include <cstring>
 #include <sstream>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -35,52 +36,62 @@ namespace fms
 	std::uint8_t genuine_keys::FMS_key_len = sizeof(genuine_keys::FMS_key);
 	std::uint8_t genuine_keys::FMP_key_len = sizeof(genuine_keys::FP_key);
 
-	void init_crypto_providers()
+	bool init_crypto_providers()
 	{
 		// RC4 lives in the legacy provider in OpenSSL 3; loading any provider
 		// explicitly means we must also load the default one ourselves.
-		OSSL_PROVIDER_load(nullptr, "legacy");
+		bool legacy = OSSL_PROVIDER_load(nullptr, "legacy") != nullptr;
 		OSSL_PROVIDER_load(nullptr, "default");
+		return legacy;   // RC4/RTMPE is unavailable without the legacy provider
 	}
 
 	unsigned int HMAC_SHA256(const std::uint8_t *data, std::uint32_t data_len, const std::uint8_t *key, std::uint32_t key_len, std::uint8_t *res)
 	{
 		// The one-shot HMAC() is not deprecated in OpenSSL 3 (only the HMAC_CTX API is).
 		unsigned int digest_len = 0;
-		HMAC(EVP_sha256(), key, static_cast<int>(key_len), data, data_len, res, &digest_len);
+		if (HMAC(EVP_sha256(), key, static_cast<int>(key_len), data, data_len, res, &digest_len) == nullptr)
+			return 0;
 		return digest_len;
 	}
 
-	static void rc4_init(EVP_CIPHER_CTX *ctx, const std::uint8_t *key16)
+	static bool rc4_init(EVP_CIPHER_CTX *ctx, const std::uint8_t *key16)
 	{
-		EVP_CIPHER_CTX_reset(ctx);
-		EVP_EncryptInit_ex(ctx, EVP_rc4(), nullptr, nullptr, nullptr);
-		EVP_CIPHER_CTX_set_key_length(ctx, 16);   // RC4 has a variable key length
-		EVP_EncryptInit_ex(ctx, nullptr, nullptr, key16, nullptr);
+		const EVP_CIPHER *rc4 = EVP_rc4();   // null if the legacy provider is missing
+		return ctx && rc4
+			&& EVP_CIPHER_CTX_reset(ctx) == 1
+			&& EVP_EncryptInit_ex(ctx, rc4, nullptr, nullptr, nullptr) == 1
+			&& EVP_CIPHER_CTX_set_key_length(ctx, 16) == 1   // RC4 has a variable key length
+			&& EVP_EncryptInit_ex(ctx, nullptr, nullptr, key16, nullptr) == 1;
 	}
 
-	void rc4_crypt(EVP_CIPHER_CTX *ctx, std::size_t len, const std::uint8_t *in, std::uint8_t *out)
+	bool rc4_crypt(EVP_CIPHER_CTX *ctx, std::size_t len, const std::uint8_t *in, std::uint8_t *out)
 	{
 		int outlen = 0;
-		EVP_EncryptUpdate(ctx, out, &outlen, in, static_cast<int>(len));   // stream cipher, in-place ok
+		if (EVP_EncryptUpdate(ctx, out, &outlen, in, static_cast<int>(len)) != 1)   // stream cipher, in-place ok
+		{
+			std::memset(out, 0, len);   // fail closed: never leave plaintext on a "crypto" path
+			return false;
+		}
+		return true;
 	}
 
-	void init_RC4_encryption(const std::uint8_t *secretKey, const std::uint8_t *pubKeyIn, const std::uint8_t *pubKeyOut,
+	bool init_RC4_encryption(const std::uint8_t *secretKey, const std::uint8_t *pubKeyIn, const std::uint8_t *pubKeyOut,
 		EVP_CIPHER_CTX *rc4keyIn, EVP_CIPHER_CTX *rc4keyOut)
 	{
 			std::uint8_t digest[SHA256_DIGEST_LENGTH];
 
-			HMAC_SHA256(pubKeyIn, 128, secretKey, 128, digest);
-			rc4_init(rc4keyOut, digest);
-
-			HMAC_SHA256(pubKeyOut, 128, secretKey, 128, digest);
-			rc4_init(rc4keyIn, digest);
+			if (HMAC_SHA256(pubKeyIn, 128, secretKey, 128, digest) == 0 || !rc4_init(rc4keyOut, digest))
+				return false;
+			if (HMAC_SHA256(pubKeyOut, 128, secretKey, 128, digest) == 0 || !rc4_init(rc4keyIn, digest))
+				return false;
+			return true;
 	}
 
 	std::string sha256(const std::string &s)
 	{
 		unsigned char hash[SHA256_DIGEST_LENGTH];
-		EVP_Digest(s.c_str(), s.length(), hash, nullptr, EVP_sha256(), nullptr);
+		if (EVP_Digest(s.c_str(), s.length(), hash, nullptr, EVP_sha256(), nullptr) != 1)
+			return std::string();   // empty digest -> any password compare fails closed
 		std::ostringstream tmp;
 		tmp << std::hex;
 		for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
