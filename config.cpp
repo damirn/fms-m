@@ -72,7 +72,7 @@ namespace fms
 	{
 		if (m_vm.count("help"))
 		{
-			std::cout << "ANOX Media Server v" << version << std::endl << std::endl;
+			std::cout << "F Media Server v" << version << std::endl << std::endl;
 			std::cout << m_description << std::endl;
 			return false;
 		}
