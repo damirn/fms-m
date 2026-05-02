@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <boost/algorithm/string.hpp>
 #include <chrono>
 
 namespace intertalk
@@ -53,13 +52,12 @@ namespace intertalk
 		if (p.is_open())
 		{
 			std::string line;
-			std::vector<std::string> vec;
 			while (std::getline(p, line))
 			{
-				boost::split(vec, line, boost::is_any_of(":"), boost::token_compress_on);
-				if (vec.size() == 2)
-					m_password_map[vec[0]] = vec[1];
-				vec.clear();
+				// each line is "user:sha256hash" — exactly one ':' separator
+				std::size_t colon = line.find(':');
+				if (colon != std::string::npos && line.find(':', colon + 1) == std::string::npos)
+					m_password_map[line.substr(0, colon)] = line.substr(colon + 1);
 			}
 			p.close();
 		}
