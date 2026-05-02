@@ -63,7 +63,7 @@ namespace intertalk
 
 	void session::unreserve_stream_id(std::uint32_t stream_id)
 	{
-//		m_strand.post(boost::bind(&session::unreserve_stream_id_impl, shared_from_this(), stream_id));
+//		boost::asio::post(m_strand, [self = shared_from_this(), stream_id]() { self->unreserve_stream_id_impl(stream_id); });
 //		unreserve_stream_id_impl(stream_id);
 	}
 
