@@ -1,2 +1,4 @@
 /build/
 /REVIEW_FINDINGS.md
+/build-*/
+/*.log
