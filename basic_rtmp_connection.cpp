@@ -188,7 +188,11 @@ namespace fms
 			server_sig[6] = 0x02;
 			server_sig[7] = 0x01;
 
-			RAND_bytes(server_sig + 8, eHandShakeSize - 8);   // CSPRNG filler (was unseeded rand())
+			if (RAND_bytes(server_sig + 8, eHandShakeSize - 8) != 1)   // CSPRNG filler (was unseeded rand())
+			{
+				close();   // no usable randomness -> refuse the handshake
+				return false;
+			}
 
 			if (!create_keys(client_sig, server_sig))
 			{

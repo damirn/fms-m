@@ -111,11 +111,21 @@ namespace fms
 			return m_time;
 		}
 
-		// Captured once on the connection's own thread; read by the admin thread
-		// instead of calling remote_endpoint() on another thread's socket.
-		const std::string &remote_endpoint_string() const
+		// Written once (before the flag is released) on the accepting thread;
+		// read by the admin thread. The acquire/release pair gives the reader a
+		// happens-before so it never sees a torn string, without a per-session
+		// lock. Returns empty until the endpoint has been captured.
+		std::string remote_endpoint_string() const
 		{
-			return m_remote_endpoint;
+			if (m_endpoint_ready.load(std::memory_order_acquire))
+				return m_remote_endpoint;
+			return std::string();
+		}
+
+		void set_remote_endpoint(const std::string &ep)
+		{
+			m_remote_endpoint = ep;
+			m_endpoint_ready.store(true, std::memory_order_release);
 		}
 
 	protected:
@@ -147,6 +157,7 @@ namespace fms
 
 		// cached peer address:port (see remote_endpoint_string())
 		std::string m_remote_endpoint;
+		std::atomic<bool> m_endpoint_ready{false};
 
 		// stream ids in use
 		std::set<std::uint32_t> m_stream_ids;
