@@ -323,7 +323,7 @@ namespace fms
 
 			rc->addresses().push_back(a);
 			std::copy(i->second->addresses().begin(), i->second->addresses().end(), std::back_insert_iterator<std::list<address> >(rc->addresses()));
-			m_queue.push(std::make_pair(m_sender_endpoint, rc));
+			m_queue.emplace(m_sender_endpoint, rc);
 
 			write(m_serializer->packet(), i->second->end_point());
 		}

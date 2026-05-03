@@ -72,7 +72,7 @@ namespace fms
 		for (parameters_list_t::iterator i = m_params.begin(); i != m_params.end(); ++i)
 		{
 			amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(*i);
-			if (obj.get() != 0)
+			if (obj.get() != nullptr)
 			{
 				for (amf0_object::value_type::iterator j = obj->value().begin(); j != obj->value().end(); ++j)
 				{

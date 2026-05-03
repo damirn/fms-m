@@ -8,7 +8,7 @@ namespace fms
 	client_session::client_session(std::uint32_t id, rtmp_app_manager *app_mngr)
 		: m_id(id)
 		, m_app_manager(app_mngr)
-		, m_app(0)
+		, m_app(nullptr)
 		, m_time(std::chrono::system_clock::now())
 		, m_bytes_read(0)
 		, m_bytes_written(0)
@@ -32,14 +32,14 @@ namespace fms
 	void client_session::handle_bytes_read(std::size_t bytes_transferred)
 	{
 		m_bytes_read += static_cast<std::uint32_t>(bytes_transferred);
-		if (m_app != 0)
+		if (m_app != nullptr)
 			m_app->update_stats(true, true, static_cast<std::uint32_t>(bytes_transferred));
 	}
 
 	void client_session::handle_bytes_written(std::size_t bytes_written)
 	{
 		m_bytes_written += static_cast<std::uint32_t>(bytes_written);
-		if (m_app != 0)
+		if (m_app != nullptr)
 			m_app->update_stats(false, true, static_cast<std::uint32_t>(bytes_written));
 	}
 

@@ -100,11 +100,10 @@ namespace fms
 						++i;
 						continue;
 					}
-					else
-					{
-						std::filesystem::rename(p, tmp);
+					
+											std::filesystem::rename(p, tmp);
 						break;
-					}
+				
 				}
 			}
 		}

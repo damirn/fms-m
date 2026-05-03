@@ -85,18 +85,18 @@ namespace fms
 	}
 
 	mixer::mixer()
-		: simple_mixer()
-		, m_rec_buffer(0)
+		: 
+		 m_rec_buffer(nullptr)
 		, m_init(false)
 		, m_running(false)
 		, m_timestamp(0)
-		, m_sink(0)
+		, m_sink(nullptr)
 		, m_speex_codec(new speex_codec)
 	{}
 
 	mixer::mixer(audio_sink *sink)
-		: simple_mixer()
-		, m_rec_buffer(0)
+		: 
+		 m_rec_buffer(nullptr)
 		, m_init(false)
 		, m_running(false)
 		, m_timestamp(0)
@@ -137,7 +137,7 @@ namespace fms
 		m_streams.clear();
 
 		delete[] m_rec_buffer;
-		m_rec_buffer = 0;
+		m_rec_buffer = nullptr;
 	}
 
 	void mixer::run_loop()
@@ -179,7 +179,7 @@ namespace fms
 
 		std::uint32_t size = 0;
 		std::uint8_t *data = m_speex_codec->encode(reinterpret_cast<std::uint8_t *>(m_rec_buffer), eBufferSize, size);
-		if (data != 0)
+		if (data != nullptr)
 		{
 			data[0] = 0xb2;
 			if (m_sink)

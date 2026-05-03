@@ -86,7 +86,7 @@ namespace fms
 					arm_timer();
 					if (m_buffer.available() > 0)
 					{
-						if (m_key_in != 0) // encrypted data
+						if (m_key_in != nullptr) // encrypted data
 							rc4_crypt(m_key_in, m_buffer.available(), m_buffer.read_pos(), m_buffer.read_pos());
 						parse_data(m_buffer);
 					}
@@ -105,7 +105,7 @@ namespace fms
 	{
 		if (!e)
 		{
-			if (m_key_in != 0)
+			if (m_key_in != nullptr)
 				rc4_crypt(m_key_in, bytes_transferred, m_buffer.write_pos(), m_buffer.write_pos());
 			m_buffer.update(bytes_transferred);
 			handle_bytes_read(bytes_transferred);
@@ -152,12 +152,12 @@ namespace fms
 
 	void rtmp_connection::handle_app_result(rtmp_channel_ptr channel, rtmp_message_ptr result)
 	{
-		if (!m_write_in_progress && (m_app == 0 || (m_app != 0 && !m_app->has_async_messages(m_id))))
+		if (!m_write_in_progress && (m_app == nullptr || (m_app != nullptr && !m_app->has_async_messages(m_id))))
 		{
 			serialize_message(result, channel);
 			perform_write();
 		}
-		else if (m_app != 0)   // a write is in flight; queue it (only an app can)
+		else if (m_app != nullptr)   // a write is in flight; queue it (only an app can)
 		{
 			m_app->enqueue_async_message(m_id, result);
 			notify();
@@ -170,7 +170,7 @@ namespace fms
 			return;
 
 		rtmp_message_ptr result;
-		if (m_app != 0)
+		if (m_app != nullptr)
 		{
 			int i = 0;
 			while (m_app->get_async_message(m_id, result))
@@ -223,7 +223,7 @@ namespace fms
 		rtmp_header h;
 		rtmp_protocol p(m_outgoing_chunk_size);
 		m_messages_written++;
-		if (m_app != 0)
+		if (m_app != nullptr)
 			m_app->update_stats(false, false, 1);
 		if (result->type() == rtmp_message::eMessageChunkSize)
 		{
@@ -241,7 +241,7 @@ namespace fms
 		m_wto_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_wto(ec); });
 
 		// encrypt outgoing data if needed
-		if (m_key_out != 0 && m_output_buffer.wrote_size() > 0)
+		if (m_key_out != nullptr && m_output_buffer.wrote_size() > 0)
 			rc4_crypt(m_key_out, m_output_buffer.wrote_size(), m_output_buffer.read_pos(), m_output_buffer.read_pos());
 
 		boost::asio::async_write(m_socket, m_output_buffer.read_buffer(),

@@ -113,9 +113,8 @@ namespace fms
 			{
 				return m_csn;
 			}
-			else
-			{
-				if (!m_sequences.empty())
+			
+							if (!m_sequences.empty())
 				{
 					set_iterator i = m_missing.begin();
 					T ret = *i - 1;
@@ -127,7 +126,7 @@ namespace fms
 					return ret;
 				}
 				return 0;
-			}
+		
 		}
 
 		const T &csn() const

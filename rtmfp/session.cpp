@@ -57,7 +57,7 @@ namespace fms
 	{
 		m_has_data_ready = false;
 		m_did_receive_data = true;
-		m_ready_chunk = 0;
+		m_ready_chunk = nullptr;
 		return m_parser->parse(data);
 	}
 
@@ -91,7 +91,7 @@ namespace fms
 			user_data_chunk *udc = dynamic_cast<user_data_chunk *>(c);
 			return handle_user_data(udc);
 		}
-		else if (c->type() == chunk::eNextUserData)
+		if (c->type() == chunk::eNextUserData)
 		{
 			next_user_data_chunk *ndc = dynamic_cast<next_user_data_chunk *>(c);
 			return handle_next_user_data(ndc);
@@ -160,12 +160,11 @@ namespace fms
 			handle_flow_message(f);
 			return true;
 		}
-		else
-		{
-			f->add_sequences_until(udc->seq_number());
+		
+					f->add_sequences_until(udc->seq_number());
 			m_ack_now = true;
 			return true;
-		}
+	
 		// fixme: remove this and the associated flow
 		return false;
 	}
@@ -471,7 +470,7 @@ namespace fms
 		boost::tribool ret;
 
 		m_messages_read++;
-		if (m_app != 0) // do we have an rtmp app assigned to us?
+		if (m_app != nullptr) // do we have an rtmp app assigned to us?
 		{
 			ret = m_app->handle_message(msg, m_id, h, result);
 			m_app->update_stats(true, false, 1);
@@ -479,11 +478,11 @@ namespace fms
 		else
 		{
 			ret = m_app_manager->handle_message(msg, m_id, h, result);
-			if (m_app != 0) // if app has been selected, update stats
+			if (m_app != nullptr) // if app has been selected, update stats
 				m_app->update_stats(true, false, 1);
 		}
 
-		if (ret && result.get() != 0)
+		if (ret && result.get() != nullptr)
 			message_to_fragment(result);
 	}
 
@@ -549,12 +548,12 @@ namespace fms
 	{
 		if (m_data_packet_count >= 6) // 3.5.2.3
 			return false;
-		if (m_has_data_ready && m_ready_chunk != 0)
+		if (m_has_data_ready && m_ready_chunk != nullptr)
 		{
 			serialize_header(s);
 			m_ready_chunk->serialize(s->raw_packet());
 			delete m_ready_chunk;
-			m_ready_chunk = 0;
+			m_ready_chunk = nullptr;
 			s->finish_raw_packet(m_sid, m_parser->get_aes());
 
 			m_has_data_ready = false;
@@ -603,7 +602,7 @@ namespace fms
 				fr->m_tsn = m_next_tsn++;
 
 				user_data_chunk *uc = new user_data_chunk(fr, f->flow_id(), fr->m_seq - fsn); // fixme: redo this
-				if (f->options().m_options.size() > 0) // set options if not empty
+				if (!f->options().m_options.empty()) // set options if not empty
 				{
 					uc->options() = f->options();
 				}
@@ -635,7 +634,7 @@ namespace fms
 
 	void session::notify_impl()
 	{
-		if (m_app != 0)
+		if (m_app != nullptr)
 		{
 			rtmp_message_ptr msg;
 			bool has_msg = false;

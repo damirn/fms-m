@@ -124,7 +124,7 @@ namespace fms
 	boost::tribool http_connection::handle_http_header(std::size_t bytes_transferred)
 	{
 		void *pos = memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\n\r\n", 4);
-		if (pos != 0)
+		if (pos != nullptr)
 		{
 			m_buffer.mark();
 			if (std::memcmp(m_buffer.read_pos(), "POST", 4) != 0)
@@ -306,7 +306,7 @@ namespace fms
 					s = eInCommand;
 					continue;
 				}
-				else if (s == eInCommand)
+				if (s == eInCommand)
 					break;
 				continue;
 			}
@@ -319,7 +319,7 @@ namespace fms
 	bool http_connection::get_content_lenght()
 	{
 		std::uint8_t *pos = reinterpret_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\nContent-Length: ", 18));
-		if (pos != 0)
+		if (pos != nullptr)
 		{
 			m_buffer.skip(pos - m_buffer.read_pos() + 18);
 			std::string cl;   // NOT static (see get_command)

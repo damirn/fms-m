@@ -26,7 +26,7 @@ namespace fms
 
 	void dh::uninit()
 	{
-		if (m_pkey != 0)
+		if (m_pkey != nullptr)
 			EVP_PKEY_free(m_pkey);
 	}
 
@@ -34,7 +34,7 @@ namespace fms
 	{
 		std::size_t len = 0;
 		m_shared_key = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size, len);
-		if (m_shared_key == 0)
+		if (m_shared_key == nullptr)
 			throw std::runtime_error("DH shared-key derivation failed");
 	}
 

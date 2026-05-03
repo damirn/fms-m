@@ -164,7 +164,7 @@ namespace fms
 	void data_chunk::create_flags()
 	{
 		m_flags = 0;
-		if (m_option_list.m_options.size() > 0)
+		if (!m_option_list.m_options.empty())
 		{
 			m_options_present = true;
 			m_flags = 0x80;
@@ -278,7 +278,7 @@ namespace fms
 				++cursor;
 				x += cursor + 1;
 				y += x;
-				m_ranges.push_back(std::make_pair(x, y));
+				m_ranges.emplace_back(x, y);
 				cursor = y;
 			}
 			return true;

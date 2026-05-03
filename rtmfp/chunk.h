@@ -316,7 +316,7 @@ namespace fms
 	public:
 		data_chunk()
 			: m_flags(0)
-			, m_user_data(0)
+			, m_user_data(nullptr)
 			, m_user_data_len(0)
 			, m_options_present(false)
 			, m_abandon(false)
@@ -391,8 +391,8 @@ namespace fms
 	public:
 		user_data_chunk()
 			: chunk(eUserData)
-			, data_chunk()
-			, m_flow_id(0)
+			, 
+			 m_flow_id(0)
 			, m_seq_number(0)
 			, m_fsn_offset(0)
 		{}
@@ -441,7 +441,7 @@ namespace fms
 	public:
 		next_user_data_chunk()
 			: chunk(eNextUserData)
-			, data_chunk()
+			 
 		{}
 
 		virtual bool deserialize(stream_array &, std::uint16_t);

@@ -24,7 +24,7 @@ namespace fms
 	{
 		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
-		if (invoke.get() == 0)
+		if (invoke.get() == nullptr)
 			return false;
 
 		if (invoke->function()->value().compare(invoke_functions::call) == 0)
@@ -46,14 +46,14 @@ namespace fms
 	{
 		rtmp_message_audio_data_ptr audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
 		client_session_ptr conn = get_connection(connection_id);
-		if (conn->app_instance().length() != 0 && audio->size() > 0)
+		if (!conn->app_instance().empty() && audio->size() > 0)
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
 			if (m_instance_to_client.find(app_instance) != m_instance_to_client.end())
 			{
 				call_instance_data_ptr data = m_instance_to_client[app_instance];
-				if (data->m_mixer != 0)
+				if (data->m_mixer != nullptr)
 					data->m_mixer->add_audio(connection_id, audio);
 			}
 		}
@@ -115,14 +115,14 @@ namespace fms
 		amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
 
 		client_session_ptr conn = get_connection(connection_id);
-		if (conn->app_instance().length() != 0)
+		if (!conn->app_instance().empty())
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
 			if (m_instance_to_client.find(app_instance) == m_instance_to_client.end())
 				return;
 			call_instance_data_ptr data = m_instance_to_client[app_instance];
-			if (data->m_mixer != 0)
+			if (data->m_mixer != nullptr)
 			{
 				data->m_mixer->add_source_stream(connection_id);
 			}
@@ -149,7 +149,7 @@ namespace fms
 	void video_call_application::add_publisher_to_app_instance(std::uint32_t connection_id)
 	{
 		client_session_ptr conn = get_connection(connection_id);
-		if (conn->app_instance().length() != 0)
+		if (!conn->app_instance().empty())
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
@@ -162,7 +162,7 @@ namespace fms
 			else
 			{
 				m_instance_to_client[app_instance]->m_clients.insert(connection_id);
-				if (m_instance_to_client[app_instance]->m_mixer != 0)
+				if (m_instance_to_client[app_instance]->m_mixer != nullptr)
 					m_instance_to_client[app_instance]->m_mixer->add_source_stream(connection_id);
 			}
 			m_client_to_instance[connection_id] = conn->app_instance();
@@ -189,7 +189,7 @@ namespace fms
 		if (set.size() == 2)
 		{
 			// both clients are connected
-			if (j->second->m_mixer != 0)
+			if (j->second->m_mixer != nullptr)
 				j->second->m_mixer->remove_source_stream(connection_id);
 			std::set<std::uint32_t>::iterator i = set.begin();
 			if (*i == connection_id)
@@ -198,16 +198,16 @@ namespace fms
 		}
 		else
 		{
-			if (j->second->m_mixer != 0)
+			if (j->second->m_mixer != nullptr)
 			{
 				delete j->second->m_mixer;
-				j->second->m_mixer = 0;
+				j->second->m_mixer = nullptr;
 			}
 		}
 
 		set.erase(connection_id);
 		m_client_to_instance.erase(connection_id);
-		if (set.size() == 0)
+		if (set.empty())
 			m_instance_to_client.erase(j);
 	}
 

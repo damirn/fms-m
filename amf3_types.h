@@ -149,7 +149,7 @@ namespace fms
 		{
 			if (v->type() == amf3_type::eAMF3True)
 				return true;
-			else if (v->type() == amf3_type::eAMF3False)
+			if (v->type() == amf3_type::eAMF3False)
 				return false;
 			throw amf3_illegal_cast();
 		}
