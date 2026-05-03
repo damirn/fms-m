@@ -3,6 +3,7 @@
 #include "rtmp_header.h"
 #include "rtmp_so_message.h"
 #include "stream_array.h"
+#include "amf3.h"
 
 namespace fms
 {
@@ -63,9 +64,17 @@ namespace fms
 		}
 		catch (amf0_read_exception &)
 		{
+			return false;   // corrupt AMF0 -> drop the message
+		}
+		catch (amf3_read_exception &)
+		{
+			// corrupt / too-deeply-nested AMF3 -> drop the message. Without this
+			// an amf3_read_exception escapes to the io_context worker thread and
+			// std::terminate()s the whole server (remote DoS). buffer_eof is
+			// deliberately NOT caught here — parse_data needs it to rewind.
 			return false;
 		}
-	}	
+	}
 
 	void rtmp_protocol::serialize(stream_array &buffer, rtmp_message_ptr msg, rtmp_header &new_header, rtmp_header &previous_header)
 	{
