@@ -91,7 +91,6 @@ set(sourceFiles
   logging.cpp
   main.cpp
   mixer.cpp
-  multiplexer_application.cpp
   random_string.cpp
   rtmfp/aes.cpp
   rtmfp/chunk.cpp

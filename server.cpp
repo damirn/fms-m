@@ -2,12 +2,10 @@
 #include "server.h"
 #include "admin_application.h"
 #include "config.h"
-#include "multiplexer_application.h"
 #include "rtmp_app_manager.h"
 #include "service.h"
 #include "video_bcast_application.h"
 #include "video_call_application.h"
-
 
 namespace fms
 {
@@ -128,10 +126,6 @@ namespace fms
 		m_app_manager->register_rtmp_app(bc);
 		m_app_manager->register_rtmp_app(new admin_application(m_app_manager));
 		m_app_manager->register_rtmp_app(new video_call_application(m_app_manager));
-
-		multiplexing_application *mapp = new multiplexing_application(m_app_manager);
-		mapp->register_rtmp_application(bc);
-		m_app_manager->register_rtmp_app(mapp);
 	}
 
 	void server::create_connections()
