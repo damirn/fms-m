@@ -153,6 +153,13 @@ namespace fms
 			HMAC_SHA256(buffer.read_pos(), eHandShakeSize - SHA256_DIGEST_LENGTH, dig, SHA256_DIGEST_LENGTH, sig);
 			if (std::memcmp(sig, buffer.read_pos() + eHandShakeSize - SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH) == 0)
 				valid = true;
+
+			// Some clients (e.g. ffmpeg) send a "simple" C2 that just echoes our
+			// S1 instead of a signed C2. Accept that too — comparing past the
+			// first 8 bytes (time + version, which the peer may rewrite). This is
+			// what production RTMP servers do and keeps Flash's signed C2 working.
+			if (!valid && std::memcmp(buffer.read_pos() + 8, m_tmp_buff.data() + 9, eHandShakeSize - 8) == 0)
+				valid = true;
 		}
 		if (valid)
 		{

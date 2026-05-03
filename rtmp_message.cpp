@@ -74,7 +74,6 @@ namespace fms
 			amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(*i);
 			if (obj.get() != 0)
 			{
-				std::cout << "object value: " << std::endl; // << str->value()
 				for (amf0_object::value_type::iterator j = obj->value().begin(); j != obj->value().end(); ++j)
 				{
 					if (j->m_value->type() == amf0_type::eAMF0String)
