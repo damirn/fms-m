@@ -1,0 +1,3 @@
+0: [2026-Jul-05 16:11:30.450032] [0x1fc4aa140] - FMS 0.28.1 starting.
+1: [2026-Jul-05 16:11:30.452515] [0x1fc4aa140] - Warning, cannot open ./passwd
+2: [2026-Jul-05 16:11:32.545198] [] - Closing socket for cid: 0

@@ -1,0 +1,14 @@
+0: [2026-Jul-05 16:32:07.204522] [0x1fc4aa140] - FMS 0.28.1 starting.
+1: [2026-Jul-05 16:32:07.207727] [0x1fc4aa140] - Warning, cannot open ./passwd
+2: [2026-Jul-05 16:32:09.214322] [] - cid: 0 connecting to bcast
+3: [2026-Jul-05 16:32:09.822878] [] - cid: 0 is publishing stream 'recclean'
+4: [2026-Jul-05 16:32:11.357712] [] - cid: 0 read error
+5: [2026-Jul-05 16:32:11.357760] [] - Closing socket for cid: 0
+6: [2026-Jul-05 16:32:11.489683] [] - cid: 2 connecting to bcast
+7: [2026-Jul-05 16:32:11.489929] [] - cid: 2 is publishing stream 'live1'
+8: [2026-Jul-05 16:32:13.411039] [] - cid: 3 connecting to bcast
+9: [2026-Jul-05 16:32:13.411352] [] - cid: 3 is playing stream 'live1'
+10: [2026-Jul-05 16:32:17.312520] [] - cid: 3 read error
+11: [2026-Jul-05 16:32:17.312566] [] - Closing socket for cid: 3
+12: [2026-Jul-05 16:32:17.333910] [] - cid: 2 read error
+13: [2026-Jul-05 16:32:17.333940] [] - Closing socket for cid: 2
