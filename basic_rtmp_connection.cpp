@@ -25,8 +25,8 @@ namespace fms
 		, m_outgoing_chunk_size(eChunkSize)
 		, m_is_fp9(false)
 		, m_uses_crypto(false)
-		, m_key_in(0)
-		, m_key_out(0)
+		, m_key_in(nullptr)
+		, m_key_out(nullptr)
 	{}
 
 	basic_rtmp_connection::~basic_rtmp_connection()
@@ -79,7 +79,7 @@ namespace fms
 	{
 		if (!e)
 		{
-			if (m_app == 0)
+			if (m_app == nullptr)
 			{
 				close();
 				return;
@@ -105,7 +105,7 @@ namespace fms
 		boost::tribool ret;
 
 		m_messages_read++;
-		if (m_app != 0) // do we have an rtmp app assigned to us?
+		if (m_app != nullptr) // do we have an rtmp app assigned to us?
 		{
 			ret = m_app->handle_message(msg, m_id, channel->received_header(), result);
 			m_app->update_stats(true, false, 1);
@@ -113,11 +113,11 @@ namespace fms
 		else
 		{
 			ret = m_app_manager->handle_message(msg, m_id, channel->received_header(), result);
-			if (m_app != 0) // if app has been selected, update stats
+			if (m_app != nullptr) // if app has been selected, update stats
 				m_app->update_stats(true, false, 1);
 		}
 
-		if (ret && result.get() != 0)
+		if (ret && result.get() != nullptr)
 			handle_app_result(channel, result);
 	}
 

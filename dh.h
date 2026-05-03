@@ -10,8 +10,8 @@ namespace fms
 	{
 	public:
 		dh()
-			: m_pkey(0)
-			, m_shared_key(0)
+			: m_pkey(nullptr)
+			, m_shared_key(nullptr)
 		{
 			init();
 		}

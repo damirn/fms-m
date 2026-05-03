@@ -72,7 +72,7 @@ namespace fms
 	{
 		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
-		if (invoke.get() == 0)
+		if (invoke.get() == nullptr)
 			return false;
 
 		if (!check_client(connection_id) && invoke->function()->value().compare(invoke_functions::connect) != 0)
@@ -139,7 +139,7 @@ namespace fms
 			if ((*i)->type() != amf0_type::eAMF0Boolean && (*i)->type() != amf0_type::eAMF0Null)
 				return false;
 			amf0_boolean_ptr b = std::dynamic_pointer_cast<amf0_boolean>(*i);
-			if (b.get() != 0)
+			if (b.get() != nullptr)
 				active_client = b->value();
 		}
 
@@ -259,7 +259,7 @@ namespace fms
 			obj->add_entry("port", (*i)->m_port);
 			obj->add_entry("protocol", (*i)->m_protocol);
 			obj->add_entry("time", to_simple_string((*i)->m_create_time));
-			if ((*i)->m_username.length() > 0)
+			if (!(*i)->m_username.empty())
 				obj->add_entry("user", (*i)->m_username);
 			list->add_entry(obj);
 		}
@@ -532,7 +532,7 @@ namespace fms
 	void admin_application::dispatch_auth_result(std::uint32_t connection_id, auth_status_data_ptr data, bool to_enqueue /* = false */)
 	{
 		client_data_ptr cd = m_app_manager->get_client_data(data->m_id);
-		if (cd.get() != 0)
+		if (cd.get() != nullptr)
 		{
 			rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_auth_status);
 
@@ -602,7 +602,7 @@ namespace fms
 	void admin_application::enqueue_message(rtmp_message_invoke_ptr msg)
 	{
 		std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
-		m_queue.push_back(std::make_pair(msg, now));
+		m_queue.emplace_back(msg, now);
 		do 
 		{
 			msg_with_ts_t &m = m_queue.front();

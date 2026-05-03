@@ -46,7 +46,7 @@ namespace fms
 	{
 		if (m_apps.find(app_name) != m_apps.end())
 			return m_apps[app_name];
-		return 0;
+		return nullptr;
 	}
 
 	rtmp_connection_ptr rtmp_app_manager::create_connection()
@@ -129,7 +129,7 @@ namespace fms
 			client_session_ptr conn = i->second;
 			m_connections.erase(i);
 			lock.unlock();
-			if (conn->get_app() != 0)
+			if (conn->get_app() != nullptr)
 			{
 				conn->get_app()->delete_connection_by_cid(conn_id, conn->sid());
 				conn->get_app()->delete_connection(conn_id, conn->app_instance());
@@ -176,13 +176,13 @@ namespace fms
 
 		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
-		if (invoke.get() == 0)
+		if (invoke.get() == nullptr)
 			return false;
 
 		if (invoke->function()->value().compare("connect") == 0)
 		{
 			amf0_object_ptr object = std::dynamic_pointer_cast<amf0_object>(invoke->parameters().front());
-			if (object.get() == 0)
+			if (object.get() == nullptr)
 				return false;
 
 			amf0_object::value_type &map = object->value();
@@ -242,7 +242,7 @@ namespace fms
 		for (connection_map_t::iterator i = m_connections.begin(); i != m_connections.end(); ++i)
 		{
 			client_data_ptr data = get_client_data_impl(i->first);
-			if (data.get() != 0)
+			if (data.get() != nullptr)
 				list.push_back(data);
 		}
 	}
@@ -264,13 +264,13 @@ namespace fms
 			client->m_create_time = i->second->create_time();
 			client->m_username = i->second->username();
 
-			if (i->second->get_app() != 0)
+			if (i->second->get_app() != nullptr)
 				client->m_app = i->second->get_app()->app_name();
 			else
 				return client_data_ptr();
 
 			rtmp_connection_ptr conn = std::dynamic_pointer_cast<rtmp_connection>(i->second);
-			if (conn.get() != 0)
+			if (conn.get() != nullptr)
 			{
 				// use the endpoint cached on the connection's thread instead of
 				// calling remote_endpoint() on its socket from the admin thread
@@ -281,7 +281,7 @@ namespace fms
 			else
 			{
 				rtmpt_session_ptr conn = std::dynamic_pointer_cast<rtmpt_session>(i->second);
-				if (conn.get() != 0)
+				if (conn.get() != nullptr)
 				{
 					client->m_ip = conn->address().to_string();
 					client->m_port = 0;
@@ -290,7 +290,7 @@ namespace fms
 				else
 				{
 					session_ptr conn = std::dynamic_pointer_cast<session>(i->second);
-					if (conn.get() != 0)
+					if (conn.get() != nullptr)
 					{
 						client->m_ip = conn->end_point().address().to_string();
 						client->m_port = conn->end_point().port();

@@ -33,13 +33,13 @@ namespace fms
 		option()
 			: m_len(0)
 			, m_type(0)
-			, m_value(0)
+			, m_value(nullptr)
 			, m_value_len(0)
 		{}
 
 		option(std::uint8_t type, const std::uint8_t *value, const std::uint16_t &value_len)
 			: m_type(type)
-			, m_value(0)
+			, m_value(nullptr)
 			, m_value_len(value_len)
 		{
 			if (value && value_len > 0)

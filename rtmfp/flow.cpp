@@ -59,7 +59,7 @@ namespace fms
 				len = f->m_data_len;
 				return f->m_data;
 			}
-			else if (f->m_frag_ctrl == fragment::eEnd || f->m_frag_ctrl == fragment::eMiddle)
+			if (f->m_frag_ctrl == fragment::eEnd || f->m_frag_ctrl == fragment::eMiddle)
 			{
 				m_fragments.erase(i);
 				i = m_fragments.begin();
@@ -91,7 +91,7 @@ namespace fms
 			}
 		}
 		len = 0;
-		return 0;
+		return nullptr;
 	}
 
 	void flow::remove_last_message()
@@ -160,10 +160,9 @@ namespace fms
 				m_fragments.erase(to);
 				return m_data;
 			}
-			else
-				++i;
+							++i;
 		}
-		return 0; // never reached
+		return nullptr; // never reached
 	}
 
 	std::uint16_t flow::add_and_fragment_data(const std::uint8_t *data, const std::uint32_t &len)

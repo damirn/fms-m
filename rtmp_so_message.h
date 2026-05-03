@@ -68,12 +68,12 @@ namespace fms
 		{
 			event()
 				: m_type(0)
-				, m_data(0)
+				, m_data(nullptr)
 			{}
 
 			event(std::uint8_t event_type)
 				: m_type(event_type)
-				, m_data(0)
+				, m_data(nullptr)
 			{}
 
 			~event()

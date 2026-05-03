@@ -69,7 +69,7 @@ namespace fms
 		// Check hand shake response.
 		bool check_hand_shake_response(stream_array &);
 
-		bool prepare_hand_shake_response(std::uint8_t = ePlainMagic, std::uint8_t * = 0);
+		bool prepare_hand_shake_response(std::uint8_t = ePlainMagic, std::uint8_t * = nullptr);
 
 		bool create_keys(std::uint8_t *, std::uint8_t *);
 

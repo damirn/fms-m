@@ -9,8 +9,8 @@ namespace fms
 	public:
 		enum type { eUlaw, eAlaw };
 		g711_codec(type t)
-			: audio_codec()
-			, m_type(t)
+			: 
+			 m_type(t)
 		{}
 
 		virtual std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &);

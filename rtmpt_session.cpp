@@ -67,7 +67,7 @@ namespace fms
 	{
 		rtmp_channel_ptr channel = m_channel_manager->get_channel(msg->channel_id());
 
-		if (m_app != 0)
+		if (m_app != nullptr)
 			m_app->update_stats(false, false, 1);
 
 		if (msg->type() == rtmp_message::eMessageChunkSize)
@@ -83,13 +83,13 @@ namespace fms
 		channel->sent_header() = h;
 
 		std::uint8_t *end = buffer.write_pos();
-		if (m_key_out != 0 && (end - start) > 0)
+		if (m_key_out != nullptr && (end - start) > 0)
 			rc4_crypt(m_key_out, end - start, start, start);
 	}
 
 	void rtmpt_session::serialize_result(stream_array &buffer)
 	{
-		if (m_app != 0 && m_app->has_async_messages(m_id))
+		if (m_app != nullptr && m_app->has_async_messages(m_id))
 		{
 			rtmp_message_ptr result;
 
@@ -120,7 +120,7 @@ namespace fms
 //			std::cout << "RTMP command arrived" << std::endl;
 			m_results.clear();
 			boost::tribool res;
-			if (m_key_in != 0)
+			if (m_key_in != nullptr)
 				rc4_crypt(m_key_in, input.available(), input.read_pos(), input.read_pos());
 			if (m_remaining_data.available() > 0)
 			{
@@ -155,11 +155,10 @@ namespace fms
 			arm_timer();
 			if (input.available() > 0)
 				return handle_data(input, output);
-			else
-			{
-				serialize_poll_time(output);
+			
+							serialize_poll_time(output);
 				return true;
-			}
+		
 		}
 		return false;
 	}

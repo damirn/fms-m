@@ -28,7 +28,7 @@ namespace fms
 	std::uint8_t *speex_codec::encode(std::uint8_t *data, std::uint32_t size, std::uint32_t &enc_size)
 	{
 		if (size == 0 || size != 640)
-			return 0;
+			return nullptr;
 
 		std::uint8_t *enc_buff = new std::uint8_t[m_frame_size * sizeof(spx_int16_t) * 2 + m_reserved_for_header];
 
@@ -47,7 +47,7 @@ namespace fms
 	std::uint8_t *speex_codec::decode(char *to, std::uint8_t *data, std::uint8_t size, std::uint32_t &dec_size)
 	{
 		if (size == 0)
-			return 0;
+			return nullptr;
 
 		speex_bits_read_from(&m_dec_bits, reinterpret_cast<char *>(data), size);
 
@@ -58,9 +58,9 @@ namespace fms
 			ret = speex_decode_int(m_dec_state, &m_dec_bits, reinterpret_cast<std::int16_t *>(to + i * m_frame_size * sizeof(std::int16_t)));
 			if (ret <= -2)
 			{
-				return 0;
+				return nullptr;
 			}
-			else if (ret == -1)
+			if (ret == -1)
 				break;
 			++i;
 		}

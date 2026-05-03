@@ -162,7 +162,7 @@ namespace fms
 	{
 		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
 		for (async_messages_map_t::iterator i = m_async_messages.begin(); i != m_async_messages.end(); ++i)
-			list.push_back(queue_stats(i->first, i->second.first));
+			list.emplace_back(i->first, i->second.first);
 	}
 
 	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, std::uint32_t value)
@@ -188,7 +188,7 @@ namespace fms
 	{
 		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
-		if (invoke.get() == 0)
+		if (invoke.get() == nullptr)
 			return false;
 
 		if (invoke->function()->value().compare(invoke_functions::connect) == 0)
@@ -222,7 +222,7 @@ namespace fms
 	{
 		rtmp_message_shared_object_ptr so = std::dynamic_pointer_cast<rtmp_message_shared_object>(msg);
 
-		if (so.get() == 0)
+		if (so.get() == nullptr)
 			return false;
 
 		return m_so_manager->handle_so(so, connection_id, result);
@@ -554,7 +554,7 @@ namespace fms
 		obj->add_entry("level", "error");
 		obj->add_entry("code", "NetConnection.Connect.Rejected");
 
-		if (msg.length() > 0)
+		if (!msg.empty())
 			obj->add_entry("description", msg);
 
 		result->add_parameter(obj);

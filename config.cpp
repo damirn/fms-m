@@ -9,11 +9,11 @@ namespace fms
 {
 	static const char version[] = "0.28.1";
 
-	config *config::m_instance = 0;
+	config *config::m_instance = nullptr;
 
 	config *config::instance()
 	{
-		if (m_instance == 0)
+		if (m_instance == nullptr)
 			m_instance = new config;
 		return m_instance;
 	}
@@ -96,7 +96,7 @@ namespace fms
 			return false;
 		}
 
-		if (m_flv_folder.size() > 0)
+		if (!m_flv_folder.empty())
 		{
 			try
 			{

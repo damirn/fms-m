@@ -56,7 +56,7 @@ namespace fms
 			if (raw.available() >= len)
 			{
 				if (!deserialize_chunk(type, len, raw))
-					return false;
+		return false;
 			}
 		}
 		if (m_seen_data_chunk)
@@ -68,7 +68,7 @@ namespace fms
 
 	bool parser::deserialize_chunk(std::uint8_t type, std::uint16_t len, stream_array &raw)
 	{
-		chunk *c = 0;
+		chunk *c = nullptr;
 
 		switch (type)
 		{
@@ -109,8 +109,7 @@ namespace fms
 			delete c;
 			return ret;
 		}
-		else
-			return false;
+		return false;
 	}
 
 	bool parser::check_checksum(stream_array &raw)

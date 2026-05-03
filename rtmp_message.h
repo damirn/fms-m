@@ -491,7 +491,7 @@ namespace fms
 	{
 	public:
 		rtmp_message_notify_amf3()
-			: rtmp_message_notify()
+			 
 		{
 			m_type = eMessageNotifyAMF3;
 		}
@@ -565,7 +565,7 @@ namespace fms
 	{
 	public:
 		rtmp_message_invoke_amf3()
-			: rtmp_message_invoke()
+			 
 		{
 			m_type = eMessageInvokeAMF3;
 		}

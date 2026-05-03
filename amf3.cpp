@@ -226,7 +226,7 @@ namespace fms
 				encoding_type = obj_info & 0x03;
 				obj_info >>= 2;
 			}
-			if (class_name.size() > 0)
+			if (!class_name.empty())
 			{
 				// todo
 			}
@@ -248,12 +248,12 @@ namespace fms
 				do 
 				{
 					property_name = read_string(buffer);
-					if (property_name->value().size() > 0)
+					if (!property_name->value().empty())
 					{
 						amf3_type_ptr val = read(buffer);
 						obj->value()[(std::string) *property_name] = val;
 					}
-				} while (property_name->value().size() > 0);
+				} while (!property_name->value().empty());
 			}
 			else
 			{

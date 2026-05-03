@@ -36,7 +36,7 @@ namespace fms
 
 	void authentication_manager::init_plugin(const std::string &plugin_name)
 	{
-		if (plugin_name.size() == 0)
+		if (plugin_name.empty())
 			m_auth_plugin = new no_authentication_plugin;
 		else
 			load_plugin(plugin_name);
@@ -53,14 +53,14 @@ namespace fms
 		destroy d = reinterpret_cast<destroy>(GetProcAddress(h, "destroy_plugin"));
 #else
 		void *h = ::dlopen(plugin_name.c_str(), RTLD_LAZY);
-		if (h == 0)
+		if (h == nullptr)
 			throw std::runtime_error("Cannot load authentication plugin");
 		create c = reinterpret_cast<create>(::dlsym(h, "create_plugin"));
 		destroy d = reinterpret_cast<destroy>(::dlsym(h, "destroy_plugin"));
 #endif
 		// Fail loudly on a malformed plugin rather than leaving m_auth_plugin
 		// null (later deref) or silently defaulting to allow-all.
-		if (c == 0 || d == 0)
+		if (c == nullptr || d == nullptr)
 			throw std::runtime_error("Authentication plugin missing create_plugin/destroy_plugin");
 
 		m_auth_plugin = c();

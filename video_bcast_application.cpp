@@ -76,7 +76,7 @@ namespace fms
 	{
 		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
-		if (invoke.get() == 0)
+		if (invoke.get() == nullptr)
 			return false;
 
 		if (invoke->function()->value().compare(invoke_functions::create_stream) == 0)
@@ -216,8 +216,6 @@ namespace fms
 	void video_bcast_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &h)
 	{
 		rtmp_application::handle_ping(msg, connection_id, h);
-
-		return;
 	}
 
 	boost::tribool video_bcast_application::handle_client_login(std::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &)
@@ -354,7 +352,7 @@ namespace fms
 			sname = stream;
 			return false;
 		}
-		else if (pos < stream.length() - 1)
+		if (pos < stream.length() - 1)
 		{
 			sname = std::string(stream, 0, pos);
 			remote = std::string(stream, pos + 1);
@@ -367,7 +365,7 @@ namespace fms
 	{
 		static const char scss[] = "://";
 
-		if (config::instance()->helper_app().length() > 0 && stream.length() > 0)
+		if (!config::instance()->helper_app().empty() && !stream.empty())
 		{
 			std::string::size_type pos = remote_srv.find(scss);
 			if (pos == std::string::npos)
@@ -378,17 +376,17 @@ namespace fms
 				return;
 
 			std::string app = std::string(remote_srv, pos + 1);
-			if (app.size() == 0)
+			if (app.empty())
 				return;
 			std::string local_srv = "rtmp://localhost:" + config::instance()->rtmp_port() + "/" + app;
 
 			std::vector<std::string> args;
 			args.push_back(config::instance()->helper_app());
-			args.push_back("-r");
+			args.emplace_back("-r");
 			args.push_back(remote_srv);
-			args.push_back("-l");
+			args.emplace_back("-l");
 			args.push_back(local_srv);
-			args.push_back("-s");
+			args.emplace_back("-s");
 			args.push_back(stream);
 
 #if defined(BOOST_POSIX_API)
@@ -862,15 +860,14 @@ namespace fms
 				send_enqueued_video_frames(bcid, video, client);
 				return;
 			}
-			else
-			{
-				client->m_video_sent_from_queue = false;
+			
+							client->m_video_sent_from_queue = false;
 				if (video->timestamp() >= client->m_start_epoch)
 					client->m_video_time = video->timestamp() - client->m_start_epoch;
 				else
 					client->m_video_time = 0;
 				tmp->timestamp() = client->m_video_time;
-			}
+		
 		}
 		else
 		{

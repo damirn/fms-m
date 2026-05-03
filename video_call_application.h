@@ -37,8 +37,8 @@ namespace fms
 		struct call_instance_data
 		{
 			call_instance_data()
-				: m_mixer(0)
-				, m_sink(0)
+				: m_mixer(nullptr)
+				, m_sink(nullptr)
 			{}
 
 			// owns the mixer, which in turn owns (and deletes) m_sink; deleting
