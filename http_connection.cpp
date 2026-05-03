@@ -281,8 +281,8 @@ namespace fms
 
 	http_connection::commands http_connection::get_command()
 	{
-		static std::string command;
-		static char c;
+		std::string command;   // NOT static: shared statics here raced across
+		char c;                // concurrent HTTP (RTMPT) connections on other threads
 		enum state { eBegin, eReadSpace, eInCommand };
 		state s = eBegin;
 
@@ -322,8 +322,8 @@ namespace fms
 		if (pos != 0)
 		{
 			m_buffer.skip(pos - m_buffer.read_pos() + 18);
-			static std::string cl;
-			static char c;
+			std::string cl;   // NOT static (see get_command)
+			char c;
 
 			cl = "";
 			while (true)
