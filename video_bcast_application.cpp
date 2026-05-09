@@ -40,7 +40,7 @@ namespace fms
 	{
 		if (!e)
 		{
-			std::unique_lock<std::mutex> const lock(m_mutex);
+			std::unique_lock const lock(m_mutex);
 			for (auto & m_qos_source : m_qos_sources)
 			{
 				stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(m_qos_source.second);
@@ -140,7 +140,7 @@ namespace fms
 		stream_client_id_t const bcid = std::make_pair(connection_id, audio->stream_id());
 		m_app_manager->update_netstream_stats(bcid, audio->size(), audio->timestamp());
 
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 
 		if (audio->get_codec() == rtmp_message_audio_data::eAAC
 			&& audio->size() > 1
@@ -184,7 +184,7 @@ namespace fms
 		stream_client_id_t const bcid = std::make_pair(connection_id, video->stream_id());
 		m_app_manager->update_netstream_stats(bcid, video->size(), video->timestamp());
 
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 
 		// enqueue video frame for later sending
 		enqueue_video_frame(video, bcid);
@@ -234,14 +234,14 @@ namespace fms
 
 		res = create_stream(invoke, connection_id, stream_id);
 
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		m_clients[connection_id].insert(stream_id);
 	}
 
 	void video_bcast_application::handle_invoke_close_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
 		rtmp_application::close_stream(invoke, connection_id);
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		res = close_stream(connection_id, invoke->stream_id());
 	}
 
@@ -408,7 +408,7 @@ namespace fms
 			rtmp_message_invoke::parameters_list_t::iterator i = params.begin();
 			++i;
 
-			std::unique_lock<std::mutex> const lock(m_mutex);
+			std::unique_lock const lock(m_mutex);
 
 			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
 			std::string stream_name;
@@ -452,7 +452,7 @@ namespace fms
 		{
 			bool const receive = check_bool_value(params);
 			stream_client_id_t cid = std::make_pair(connection_id, invoke->stream_id());
-			std::unique_lock<std::mutex> const lock(m_mutex);
+			std::unique_lock const lock(m_mutex);
 			subscriber_map_t::iterator const i = m_subscribers.find(cid);
 			if (i != m_subscribers.end())
 				i->second->m_receive_audio = receive;
@@ -471,7 +471,7 @@ namespace fms
 		{
 			bool const receive = check_bool_value(params);
 			stream_client_id_t cid = std::make_pair(connection_id, invoke->stream_id());
-			std::unique_lock<std::mutex> const lock(m_mutex);
+			std::unique_lock const lock(m_mutex);
 			subscriber_map_t::iterator const i = m_subscribers.find(cid);
 			if (i != m_subscribers.end())
 			{
@@ -519,7 +519,7 @@ namespace fms
 				if ((*i)->type() != amf0_type::eAMF0Object)
 					return;
 				stream_client_id_t const cid = std::make_pair(connection_id, msg->stream_id());
-				std::unique_lock<std::mutex> const lock(m_mutex);
+				std::unique_lock const lock(m_mutex);
 				update_metadata(cid, *i);
 
 				// send metadata to subscribers
@@ -611,7 +611,7 @@ namespace fms
 
 	void video_bcast_application::check_waiting_clients(std::uint32_t bcaster_id, const std::string &stream_name)
 	{
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		waiting_client_map_t::iterator const i = m_waiting_clients.find(stream_name);
 		if (i == m_waiting_clients.end())
 			return;
@@ -634,7 +634,7 @@ namespace fms
 
 	bool video_bcast_application::add_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id, streams_map_t &streams)
 	{
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		stream_client_id_t const id = std::make_pair(connection_id, stream_id);
 		if (streams.left.find(id) != streams.left.end())
 			return false;
@@ -646,7 +646,7 @@ namespace fms
 
 	bool video_bcast_application::add_recording_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id)
 	{
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		stream_client_id_t const id = std::make_pair(connection_id, stream_id);
 		try
 		{
@@ -668,7 +668,7 @@ namespace fms
 		std::uint32_t const new_stream_id = conn->reserve_stream_id();
 		if (!add_stream(std::string("QOS!" + stream), connection_id, new_stream_id, m_streams))
 			return false;
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		m_qos_sources[std::make_pair(connection_id, stream_id)] = std::make_pair(connection_id, new_stream_id);
 		return true;
 	}
@@ -775,7 +775,7 @@ namespace fms
 	void video_bcast_application::remove_client(std::uint32_t connection_id)
 	{
 		m_app_manager->delete_netstreams(connection_id);
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		client_stream_map_t::iterator const i = m_clients.find(connection_id);
 		if (i != m_clients.end())
 		{

@@ -17,7 +17,7 @@ namespace fms
 
 	void simple_mixer::add_source_stream(std::uint32_t id)
 	{
-		std::unique_lock<std::mutex> const lock(m_streams_mutex);
+		std::unique_lock const lock(m_streams_mutex);
 		if (m_streams.contains(id))
 			return;
 
@@ -26,7 +26,7 @@ namespace fms
 
 	void simple_mixer::remove_source_stream(std::uint32_t id)
 	{
-		std::unique_lock<std::mutex> const lock(m_streams_mutex);
+		std::unique_lock const lock(m_streams_mutex);
 		stream_map_t::iterator const i = m_streams.find(id);
 		if (i != m_streams.end())
 		{
@@ -61,7 +61,7 @@ namespace fms
 	{
 		if (m_active)
 		{
-			std::unique_lock<std::mutex> const lock(m_streams_mutex);
+			std::unique_lock const lock(m_streams_mutex);
 			stream_map_t::iterator const i = m_streams.find(id);
 			if (i != m_streams.end())
 				i->second->m_queue.push(msg);
@@ -72,7 +72,7 @@ namespace fms
 	{
 		if (m_active && size > 0)
 		{
-			std::unique_lock<std::mutex> const lock(m_streams_mutex);
+			std::unique_lock const lock(m_streams_mutex);
 			stream_map_t::iterator const i = m_streams.find(id);
 			if (i != m_streams.end())
 			{
@@ -156,7 +156,7 @@ namespace fms
 		std::vector<std::int32_t> acc(samples, 0);
 
 		{
-			std::unique_lock<std::mutex> const lock(m_streams_mutex);
+			std::unique_lock const lock(m_streams_mutex);
 			for (auto & m_stream : m_streams)
 			{
 				m_stream.second->fill_frame();

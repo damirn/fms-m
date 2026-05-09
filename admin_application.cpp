@@ -144,7 +144,7 @@ namespace fms
 				active_client = b->value();
 		}
 
-		std::unique_lock<std::mutex> lock(m_admin_mutex);
+		std::unique_lock lock(m_admin_mutex);
 		m_clients[connection_id] = active_client;
 		lock.unlock();
 
@@ -209,13 +209,13 @@ namespace fms
 	void admin_application::delete_connection(std::uint32_t connection_id, const std::string &app_instance /* = "" */)
 	{
 		rtmp_application::delete_connection(connection_id, app_instance);
-		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		std::unique_lock const lock(m_admin_mutex);
 		m_clients.erase(connection_id);
 	}
 
 	void admin_application::handle_win_ack_size(rtmp_message_ptr, std::uint32_t connection_id)
 	{
-		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		std::unique_lock const lock(m_admin_mutex);
 		if (m_clients.contains(connection_id))
 		{
 			if (m_clients[connection_id] && !m_queue.empty())
@@ -415,13 +415,13 @@ namespace fms
 
 	bool admin_application::check_client(std::uint32_t connection_id)
 	{
-		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		std::unique_lock const lock(m_admin_mutex);
 		return m_clients.contains(connection_id);
 	}
 
 	bool admin_application::has_active_clients()
 	{
-		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		std::unique_lock const lock(m_admin_mutex);
 		if (m_clients.empty())
 			return false;
 		for (auto & m_client : m_clients)
@@ -448,7 +448,7 @@ namespace fms
 
 	void admin_application::send_auth_status(const auth_status_data_ptr& data)
 	{
-		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		std::unique_lock const lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_auth_result(0, data, true);
 		else
@@ -461,7 +461,7 @@ namespace fms
 
 	void admin_application::send_disconnect_notify(const auth_status_data_ptr& data)
 	{
-		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		std::unique_lock const lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_disconnect(0, data, true);
 		else
@@ -474,7 +474,7 @@ namespace fms
 
 	void admin_application::send_call_status_notify(std::uint32_t connection_id, const amf0_object_ptr& obj)
 	{
-		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		std::unique_lock const lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_call_status(0, connection_id, obj, true);
 		else
@@ -487,7 +487,7 @@ namespace fms
 
 	void admin_application::notify_active_client(const netstream_stats_ptr& data, const std::function<void (std::uint32_t, netstream_stats_ptr)>& func)
 	{
-		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		std::unique_lock const lock(m_admin_mutex);
 		for (auto & m_client : m_clients)
 			if (m_client.second)
 				func(m_client.first, data);
