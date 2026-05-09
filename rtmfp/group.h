@@ -67,18 +67,18 @@ namespace fms
 
 		struct less
 		{
-			bool operator()(const group_ptr a, const group_ptr b) const
+			bool operator()(const group_ptr& a, const group_ptr& b) const
 			{
 				return std::memcmp(a->id(), b->id(), item::eIDLength) < 0;
 			}
 		};
 
-		void add_member(session_ptr s)
+		void add_member(const session_ptr& s)
 		{
 			m_members.insert(session_weak_ptr(s));
 		}
 
-		void remove_member(session_ptr s)
+		void remove_member(const session_ptr& s)
 		{
 			m_members.erase(session_weak_ptr(s));
 		}

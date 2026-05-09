@@ -35,8 +35,8 @@ namespace fms
 
 		bool has_active_clients();
 
-		void send_new_stream_notify(netstream_stats_ptr);
-		void send_stream_deleted_notify(netstream_stats_ptr);
+		void send_new_stream_notify(const netstream_stats_ptr&);
+		void send_stream_deleted_notify(const netstream_stats_ptr&);
 		void send_qos_data(netstream_stats_map_t &);
 
 		void send_auth_status(const auth_status_data_ptr&);
@@ -73,7 +73,7 @@ namespace fms
 		bool check_client(std::uint32_t);
 
 		void notify_active_client(const netstream_stats_ptr&, const std::function<void (std::uint32_t, netstream_stats_ptr)>&);
-		void dispatch_new_stream_notify(std::uint32_t, netstream_stats_ptr);
+		void dispatch_new_stream_notify(std::uint32_t, const netstream_stats_ptr&);
 		void dispatch_delete_stream_notify(std::uint32_t, const netstream_stats_ptr&);
 		void dispatch_qos_data_for_stream_notify(std::uint32_t, const netstream_stats_ptr&);
 

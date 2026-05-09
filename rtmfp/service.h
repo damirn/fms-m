@@ -40,7 +40,7 @@ namespace fms
 			return m_io_service;
 		}
 
-		void remove(session_ptr s)
+		void remove(const session_ptr& s)
 		{
 			remove_session(s->id());
 		}
