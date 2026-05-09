@@ -45,7 +45,7 @@ namespace fms
 
 		rtmp_connection_ptr create_connection();
 		rtmpt_session_ptr create_rtmpt_session();
-		void register_session(client_session_ptr);
+		void register_session(const client_session_ptr&);
 
 		std::uint32_t reserve_connection_id();
 
@@ -61,7 +61,7 @@ namespace fms
 		void set_encoding_for_connection(std::uint32_t, bool);
 		bool is_amf3_encoding(std::uint32_t);
 
-		boost::tribool handle_message(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		boost::tribool handle_message(const rtmp_message_ptr&, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
 
 		io_service_pool &get_io_service_pool()
 		{

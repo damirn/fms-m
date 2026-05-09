@@ -50,22 +50,22 @@ namespace fms
 		boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) override;
 
 		void handle_invoke_create_stream(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
-		void handle_invoke_close_stream(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
+		void handle_invoke_close_stream(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 
 		virtual void handle_invoke_play(rtmp_message_invoke_ptr, std::uint32_t);
 		virtual void handle_invoke_publish(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 
-		void handle_publish_record(rtmp_message_invoke_ptr, std::uint32_t, const std::string &);
+		void handle_publish_record(const rtmp_message_invoke_ptr&, std::uint32_t, const std::string &);
 
-		void handle_invoke_receive_audio(rtmp_message_invoke_ptr, std::uint32_t);
-		void handle_invoke_receive_video(rtmp_message_invoke_ptr, std::uint32_t);
+		void handle_invoke_receive_audio(const rtmp_message_invoke_ptr&, std::uint32_t);
+		void handle_invoke_receive_video(const rtmp_message_invoke_ptr&, std::uint32_t);
 
-		void handle_notify_set_data_frame(rtmp_message_notify_ptr, std::uint32_t);
-		void handle_notify_clear_data_frame(rtmp_message_notify_ptr, std::uint32_t);
+		void handle_notify_set_data_frame(const rtmp_message_notify_ptr&, std::uint32_t);
+		void handle_notify_clear_data_frame(const rtmp_message_notify_ptr&, std::uint32_t);
 		rtmp_message_ptr send_stream_notify(std::uint32_t, std::uint32_t, const std::string &, const std::string &, bool);
 		void send_publish_notify(std::uint32_t, std::uint32_t, const std::string &);
 		void send_metadata(std::uint32_t, std::uint32_t, const stream_client_id_t &);
-		void update_metadata(const stream_client_id_t &, amf0_type_ptr);
+		void update_metadata(const stream_client_id_t &, const amf0_type_ptr&);
 		void check_waiting_clients(std::uint32_t, const std::string &);
 		bool check_bool_value(rtmp_message_invoke::parameters_list_t &);
 
@@ -75,11 +75,11 @@ namespace fms
 
 		void create_stream_client(const stream_client_id_t &, const stream_client_id_t &, bool);
 
-		void enqueue_video_frame(rtmp_message_video_data_ptr, const stream_client_id_t &);
-		void send_video_frame(stream_client_ptr, rtmp_message_video_data_ptr, const stream_client_id_t &);
-		void send_enqueued_video_frames(const stream_client_id_t &, rtmp_message_video_data_ptr, stream_client_ptr);
+		void enqueue_video_frame(const rtmp_message_video_data_ptr&, const stream_client_id_t &);
+		void send_video_frame(const stream_client_ptr&, const rtmp_message_video_data_ptr&, const stream_client_id_t &);
+		void send_enqueued_video_frames(const stream_client_id_t &, const rtmp_message_video_data_ptr&, const stream_client_ptr&);
 
-		void send_audio_frame(rtmp_message_audio_data_ptr, const stream_client_ptr &, const stream_client_id_t &);
+		void send_audio_frame(const rtmp_message_audio_data_ptr&, const stream_client_ptr &, const stream_client_id_t &);
 
 		void send_aac_config(const stream_client_id_t &, const stream_client_ptr &);
 
@@ -130,7 +130,7 @@ namespace fms
 
 
 	private:
-		void add_waiting_client(std::uint32_t, rtmp_message_invoke_ptr, const std::string &);
+		void add_waiting_client(std::uint32_t, const rtmp_message_invoke_ptr&, const std::string &);
 		void update_waiting_client(stream_client_id_t &, bool, bool);
 		bool is_remote_stream(const std::string &, std::string &, std::string &);
 		void spawn_helper(const std::string &, const std::string &);

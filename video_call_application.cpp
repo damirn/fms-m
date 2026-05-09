@@ -60,7 +60,7 @@ namespace fms
 		video_bcast_application::handle_audio_data(msg, connection_id, h);
 	}
 
-	void video_call_application::handle_call_invoke(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
+	void video_call_application::handle_call_invoke(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		if (!check_call_params(params))
@@ -103,7 +103,7 @@ namespace fms
 		return true;
 	}
 
-	void video_call_application::handle_record_invoke(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
+	void video_call_application::handle_record_invoke(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		if (params.size() != 2)

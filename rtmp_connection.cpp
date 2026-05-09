@@ -218,7 +218,7 @@ namespace fms
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
-	void rtmp_connection::serialize_message(rtmp_message_ptr result, rtmp_channel_ptr channel)
+	void rtmp_connection::serialize_message(const rtmp_message_ptr& result, const rtmp_channel_ptr& channel)
 	{
 		rtmp_header h;
 		rtmp_protocol p(m_outgoing_chunk_size);

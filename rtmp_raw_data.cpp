@@ -94,7 +94,7 @@ namespace fms
 	* @note - WindowAcknowledgementSize message is special case since it's considered
 	* internal and application specific.
 	*/
-	void rtmp_raw_data::handle_message(rtmp_channel_ptr channel)
+	void rtmp_raw_data::handle_message(const rtmp_channel_ptr& channel)
 	{
 		rtmp_protocol p;
 		if (p.deserialize(channel->buffer(), channel->received_header()))

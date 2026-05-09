@@ -371,7 +371,7 @@ namespace fms
 		}
 	}
 
-	void session::handle_flow_message(flow_ptr f)
+	void session::handle_flow_message(const flow_ptr& f)
 	{
 		if (f->type() == flow::eNormal)
 			handle_rtmp_flow_message(f);
@@ -379,7 +379,7 @@ namespace fms
 			handle_net_group_flow_message(f);
 	}
 
-	void session::handle_rtmp_flow_message(flow_ptr f)
+	void session::handle_rtmp_flow_message(const flow_ptr& f)
 	{
 		std::uint32_t len;
 		const std::uint8_t *data = f->message_data(len);
@@ -411,7 +411,7 @@ namespace fms
 		}
 	}
 
-	void session::handle_net_group_flow_message(flow_ptr f)
+	void session::handle_net_group_flow_message(const flow_ptr& f)
 	{
 		static std::uint8_t marker = 0x0b;
 
@@ -447,7 +447,7 @@ namespace fms
 		}
 	}
 
-	void session::flow_sanity_check(flow_ptr f, bool should_abandon)
+	void session::flow_sanity_check(const flow_ptr& f, bool should_abandon)
 	{
 		f->should_ack() = true;
 
@@ -464,7 +464,7 @@ namespace fms
 			m_ack_now = true;
 	}
 
-	void session::handle_message(rtmp_message_ptr msg, rtmp_header &h)
+	void session::handle_message(const rtmp_message_ptr& msg, rtmp_header &h)
 	{
 		rtmp_message_ptr result;
 		boost::tribool ret;
@@ -486,7 +486,7 @@ namespace fms
 			message_to_fragment(result);
 	}
 
-	void session::message_to_fragment(rtmp_message_ptr result)
+	void session::message_to_fragment(const rtmp_message_ptr& result)
 	{
 		stream_array temp;
 		std::uint8_t t = result->type();
@@ -594,7 +594,7 @@ namespace fms
 			std::optional<fragment_ptr> frag = f->get_fragment_for_sending(fsn);
 			if (frag)
 			{
-				fragment_ptr fr = *frag;
+				const fragment_ptr& fr = *frag;
 				fr->m_in_flight = true;
 				fr->m_ever_sent = true;
 				fr->m_nak_count = 0;

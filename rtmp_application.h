@@ -58,7 +58,7 @@ namespace fms
 		virtual void delete_connection_by_cid(std::uint32_t, const std::string &) {}
 		virtual void delete_connection(std::uint32_t, const std::string & = "");
 
-		std::uint32_t enqueue_async_message(std::uint32_t, rtmp_message_ptr, bool = false);
+		std::uint32_t enqueue_async_message(std::uint32_t, const rtmp_message_ptr&, bool = false);
 
 		void notify(std::uint32_t);
 
@@ -98,10 +98,10 @@ namespace fms
 		virtual bool check_connect_params(std::uint32_t, const rtmp_message_invoke::parameters_list_t &);
 
 		void check_stream_name(rtmp_message_invoke::parameters_list_t &);
-		rtmp_message_ptr create_stream(rtmp_message_invoke_ptr, std::uint32_t, std::uint32_t);
-		void close_stream(rtmp_message_invoke_ptr, std::uint32_t);
+		rtmp_message_ptr create_stream(const rtmp_message_invoke_ptr&, std::uint32_t, std::uint32_t);
+		void close_stream(const rtmp_message_invoke_ptr&, std::uint32_t);
 
-		boost::tribool handle_invoke_connect(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
+		boost::tribool handle_invoke_connect(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 
 		void create_connect_messages(std::uint32_t, optional_param_list_t = optional_param_list_t());
 		rtmp_message_invoke_ptr create_connect_failure_message(const std::string &);
@@ -198,7 +198,7 @@ namespace fms
 
 		result_handlers_t m_result_handlers;
 
-		std::uint32_t enqueue_async_message(std::uint32_t, rtmp_message_invoke_ptr, result_handler_ptr, bool = false);
+		std::uint32_t enqueue_async_message(std::uint32_t, const rtmp_message_invoke_ptr&, result_handler_ptr, bool = false);
 		void add_result_handler(std::uint32_t, result_handler_ptr);
 		virtual bool handle_invoke_result(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 		virtual void handle_invoke_check_bandwidth(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &result);

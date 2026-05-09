@@ -172,12 +172,12 @@ namespace fms
 		void handle_flow_exception_report(flow_exception_report_chunk *);
 		void handle_ping(ping_chunk *);
 
-		void flow_sanity_check(flow_ptr, bool);
-		void handle_flow_message(flow_ptr);
-		void handle_rtmp_flow_message(flow_ptr);
-		void handle_net_group_flow_message(flow_ptr);
-		void handle_message(rtmp_message_ptr, rtmp_header &);
-		void message_to_fragment(rtmp_message_ptr);
+		void flow_sanity_check(const flow_ptr&, bool);
+		void handle_flow_message(const flow_ptr&);
+		void handle_rtmp_flow_message(const flow_ptr&);
+		void handle_net_group_flow_message(const flow_ptr&);
+		void handle_message(const rtmp_message_ptr&, rtmp_header &);
+		void message_to_fragment(const rtmp_message_ptr&);
 
 		flow_ptr create_receiving_flow(user_data_chunk *);
 		flow_ptr create_sending_flow(const option_list &);

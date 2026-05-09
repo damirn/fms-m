@@ -22,7 +22,7 @@ namespace fms
 		authentication_manager(const std::string &);
 		~authentication_manager();
 
-		boost::tribool authenticate(auth_data_ptr, std::function<void (bool, auth_data_ptr)>);
+		boost::tribool authenticate(auth_data_ptr, const std::function<void (bool, auth_data_ptr)>&);
 
 	protected:
 		void init_plugin(const std::string &);

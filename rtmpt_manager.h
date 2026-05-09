@@ -49,7 +49,7 @@ namespace fms
 		}
 
 	protected:
-		std::string create_id(const boost::asio::ip::address &, rtmpt_session_ptr);
+		std::string create_id(const boost::asio::ip::address &, const rtmpt_session_ptr&);
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
 

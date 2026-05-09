@@ -15,7 +15,7 @@ namespace fms
 		m_fragments.clear();
 	}
 
-	flow::vlu_seq_manager::result flow::add_fragment(fragment_ptr f)
+	flow::vlu_seq_manager::result flow::add_fragment(const fragment_ptr& f)
 	{
 		flow::vlu_seq_manager::result ret = m_seq_manager.add_seq(f->m_seq);
 		if (ret != vlu_seq_manager::_eDuplicate)
@@ -115,8 +115,7 @@ namespace fms
 		std::optional<option_ptr> opt = options().get_option(option::eMetadata);
 		if (opt)
 		{
-			option_ptr o = *opt;
-		}
+					}
 		if (opt && (*opt)->m_value_len >= 2)
 		{
 			if (std::memcmp((*opt)->m_value, TC, 2) == 0)
@@ -135,7 +134,7 @@ namespace fms
 		}
 	}
 
-	vlu_t flow::get_stream_id_from_option(option_ptr opt)
+	vlu_t flow::get_stream_id_from_option(const option_ptr& opt)
 	{
 		stream_array tmp(opt->m_value);
 		tmp.update(opt->m_value_len);

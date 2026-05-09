@@ -167,7 +167,7 @@ namespace fms
 		}
 
 		// false indicates a duplicate
-		vlu_seq_manager::result add_fragment(fragment_ptr);
+		vlu_seq_manager::result add_fragment(const fragment_ptr&);
 		void remove_fragments_until_seq(const vlu_t &);
 		const std::uint8_t *message_data(std::uint32_t &);
 		void remove_last_message();
@@ -244,7 +244,7 @@ namespace fms
 	protected:
 		void update_seqs(const vlu_t &);
 		void parse_option_list();
-		vlu_t get_stream_id_from_option(option_ptr);
+		vlu_t get_stream_id_from_option(const option_ptr&);
 
 		using fragment_map_t = std::map<vlu_t, fragment_ptr>;
 		const std::uint8_t *create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);

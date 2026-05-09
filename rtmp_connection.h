@@ -62,7 +62,7 @@ namespace fms
 		// Handle application's result
 		void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr) override;
 
-		void serialize_message(rtmp_message_ptr, rtmp_channel_ptr);
+		void serialize_message(const rtmp_message_ptr&, const rtmp_channel_ptr&);
 
 		void perform_write();
 

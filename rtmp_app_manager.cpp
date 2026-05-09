@@ -65,7 +65,7 @@ namespace fms
 		return tmp;
 	}
 
-	void rtmp_app_manager::register_session(client_session_ptr s)
+	void rtmp_app_manager::register_session(const client_session_ptr& s)
 	{
 		std::unique_lock<std::mutex> lock(m_mutex);
 		m_connections[s->id()] = s;
@@ -166,7 +166,7 @@ namespace fms
 		return false;
 	}
 
-	boost::tribool rtmp_app_manager::handle_message(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &res)
+	boost::tribool rtmp_app_manager::handle_message(const rtmp_message_ptr& msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &res)
 	{
 		if (msg->type() != rtmp_message::eMessageInvoke)
 		{

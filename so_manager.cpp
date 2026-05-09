@@ -8,7 +8,7 @@ namespace fms
 		: m_app(app)
 	{}
 
-	bool so_manager::handle_so(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_ptr &result)
+	bool so_manager::handle_so(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		rtmp_message_shared_object::event_list_t &list = so->events();
 		rtmp_message_shared_object::event_list_t::iterator j = list.end();
@@ -46,7 +46,7 @@ namespace fms
 		return true;
 	}
 
-	void so_manager::handle_use_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_use_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
 	{
 		const std::string &so_name = so->name()->value();
 		so_map_t::iterator i = m_so_map.find(so_name);
@@ -78,7 +78,7 @@ namespace fms
 		}
 	}
 
-	void so_manager::handle_release_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id)
+	void so_manager::handle_release_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id)
 	{
 		const std::string &so_name = so->name()->value();
 		so_map_t::iterator i = m_so_map.find(so_name);
@@ -93,12 +93,12 @@ namespace fms
 		}
 	}
 
-	void so_manager::handle_req_change_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object::event_ptr e, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_req_change_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object::event_ptr& e, rtmp_message_shared_object_ptr &result)
 	{
 		std::optional<so_manager::so_data_ptr> so_d = find_so(so);
 		if (so_d)
 		{
-			so_manager::so_data_ptr s = *so_d;
+			const so_manager::so_data_ptr& s = *so_d;
 			increase_version(s);
 			s->m_values[e->m_name->value()] = e->m_value;
 
@@ -123,12 +123,12 @@ namespace fms
 		}
 	}
 
-	void so_manager::handle_send_message_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_send_message_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
 	{
 		std::optional<so_manager::so_data_ptr> so_d = find_so(so);
 		if (so_d)
 		{
-			so_manager::so_data_ptr s = *so_d;
+			const so_manager::so_data_ptr& s = *so_d;
 			result = so;
 			const std::set<std::uint32_t> &clients = s->m_clients;
 			for (unsigned int client : clients)
@@ -141,12 +141,12 @@ namespace fms
 		}
 	}
 
-	void so_manager::handle_req_remove_event(rtmp_message_shared_object_ptr so, std::uint32_t connection_id, rtmp_message_shared_object::event_ptr e, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_req_remove_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object::event_ptr& e, rtmp_message_shared_object_ptr &result)
 	{
 		std::optional<so_manager::so_data_ptr> so_d = find_so(so);
 		if (so_d)
 		{
-			so_manager::so_data_ptr s = *so_d;
+			const so_manager::so_data_ptr& s = *so_d;
 			std::map<std::string, amf0_type_ptr>::iterator j = s->m_values.find(e->m_name->value());
 			if (j != s->m_values.end())
 			{
@@ -171,7 +171,7 @@ namespace fms
 		}
 	}
 
-	std::optional<so_manager::so_data_ptr> so_manager::find_so(rtmp_message_shared_object_ptr so)
+	std::optional<so_manager::so_data_ptr> so_manager::find_so(const rtmp_message_shared_object_ptr& so)
 	{
 		const std::string &so_name = so->name()->value();
 		so_map_t::iterator i = m_so_map.find(so_name);

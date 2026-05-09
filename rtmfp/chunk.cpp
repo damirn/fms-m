@@ -178,7 +178,7 @@ namespace fms
 			m_flags |= 0x01;
 	}
 
-	user_data_chunk::user_data_chunk(fragment_ptr frag, const vlu_t &flow_id, const vlu_t &fsn_off)
+	user_data_chunk::user_data_chunk(const fragment_ptr& frag, const vlu_t &flow_id, const vlu_t &fsn_off)
 		: chunk(eUserData)
 		, m_flow_id(flow_id)
 		, m_fsn_offset(fsn_off)

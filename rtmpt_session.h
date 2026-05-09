@@ -63,7 +63,7 @@ namespace fms
 
 		boost::tribool handle_handshake(stream_array &, stream_array &);
 		void handle_results(stream_array &);
-		void serialize_message(rtmp_message_ptr, stream_array &);
+		void serialize_message(const rtmp_message_ptr&, stream_array &);
 
 		std::uint8_t get_poll_time(bool);
 

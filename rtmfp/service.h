@@ -33,7 +33,7 @@ namespace fms
 			boost::asio::post(m_io_service, [this]() { handle_notify(); });
 		}
 
-		void handle_net_group(group_ptr &, session_ptr);
+		void handle_net_group(group_ptr &, const session_ptr&);
 
 		boost::asio::io_service &io_service() const
 		{
