@@ -94,8 +94,8 @@ namespace fms
 			return std::string();   // empty digest -> any password compare fails closed
 		std::ostringstream tmp;
 		tmp << std::hex;
-		for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
-			tmp << std::setw(2) << std::setfill('0') << (std::uint16_t)hash[i];
+		for (unsigned char i : hash)
+			tmp << std::setw(2) << std::setfill('0') << (std::uint16_t)i;
 		return tmp.str();
 	}
 }

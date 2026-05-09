@@ -29,7 +29,7 @@ namespace fms
 	class no_authentication_plugin : public authentication_plugin
 	{
 	public:
-		virtual boost::tribool authenticate(auth_data_ptr)
+		boost::tribool authenticate(auth_data_ptr) override
 		{
 			return true;
 		}

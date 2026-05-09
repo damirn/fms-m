@@ -21,9 +21,9 @@ namespace fms
 		rtmpt_session(std::uint32_t, boost::asio::io_service &, rtmp_app_manager *);
 
 		// Start the first asynchronous operation for the connection.
-		virtual void start();
+		void start() override;
 
-		virtual void notify() {}
+		void notify() override {}
 
 		const std::string &cid() const
 		{
@@ -45,7 +45,7 @@ namespace fms
 			return m_address;
 		}
 
-		virtual void close();
+		void close() override;
 
 		boost::tribool handle_data(stream_array &, stream_array &);
 		void serialize_result(stream_array &);
@@ -55,7 +55,7 @@ namespace fms
 
 	protected:
 		// Handle application's result
-		virtual void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr);
+		void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr) override;
 
 		enum { eNotConnected, eConnected, eClose };
 		enum session_state { eCSIdle, eCSReadHS, eCSReadCommands, eCSInvalid = 0xffff };

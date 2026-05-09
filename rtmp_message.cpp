@@ -69,26 +69,26 @@ namespace fms
 			m_params.push_back(m_amf0.read(buffer));
 
 		// debug
-		for (parameters_list_t::iterator i = m_params.begin(); i != m_params.end(); ++i)
+		for (auto & m_param : m_params)
 		{
-			amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(*i);
+			amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(m_param);
 			if (obj.get() != nullptr)
 			{
-				for (amf0_object::value_type::iterator j = obj->value().begin(); j != obj->value().end(); ++j)
+				for (const auto & j : obj->value())
 				{
-					if (j->m_value->type() == amf0_type::eAMF0String)
+					if (j.m_value->type() == amf0_type::eAMF0String)
 					{
-						amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(j->m_value);
+						amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(j.m_value);
 						continue;
 					}
-					if (j->m_value->type() == amf0_type::eAMF0Number)
+					if (j.m_value->type() == amf0_type::eAMF0Number)
 					{
-						amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(j->m_value);
+						amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(j.m_value);
 						continue;
 					}
-					if (j->m_value->type() == amf0_type::eAMF0Boolean)
+					if (j.m_value->type() == amf0_type::eAMF0Boolean)
 					{
-						amf0_boolean_ptr num = std::dynamic_pointer_cast<amf0_boolean>(j->m_value);
+						amf0_boolean_ptr num = std::dynamic_pointer_cast<amf0_boolean>(j.m_value);
 						continue;
 					}
 				}

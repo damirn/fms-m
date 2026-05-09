@@ -116,9 +116,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 
 		std::uint32_t chunk_size()
 		{
@@ -146,9 +146,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 
 		std::uint32_t bytes_read()
 		{
@@ -204,9 +204,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 
 		std::uint16_t get_type() const
 		{
@@ -243,9 +243,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 
 		const std::uint32_t &size() const
 		{
@@ -275,9 +275,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 
 		const std::uint32_t &size() const
 		{
@@ -319,12 +319,12 @@ namespace fms
 			: rtmp_message(audio_data), m_data(audio_data.m_data), m_size(audio_data.m_size)
 		{}
 
-		~rtmp_message_audio_data()
+		~rtmp_message_audio_data() override
 		{}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 
 		std::uint8_t *data()
 		{
@@ -387,12 +387,12 @@ namespace fms
 			: rtmp_message(video_data), m_data(video_data.m_data), m_size(video_data.m_size)
 		{}
 
-		~rtmp_message_video_data()
+		~rtmp_message_video_data() override
 		{}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 
 		std::uint8_t *data()
 		{
@@ -480,9 +480,9 @@ namespace fms
 			: rtmp_message_with_params(eMessageNotify, function)
 		{}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 	};
 
 	using rtmp_message_notify_ptr = std::shared_ptr<rtmp_message_notify>;
@@ -508,9 +508,9 @@ namespace fms
 			m_type = eMessageNotifyAMF3;
 		}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 	};
 
 	using rtmp_message_notify_amf3_ptr = std::shared_ptr<rtmp_message_notify_amf3>;
@@ -542,15 +542,15 @@ namespace fms
 		{
 			rtmp_message_invoke_ptr msg = rtmp_message_invoke::create_message(function, id);
 
-			for(std::list<amf0_type_ptr>::const_iterator i = args.begin(); i != args.end(); ++i)
-				msg->add_parameter(*i);
+			for(const auto & arg : args)
+				msg->add_parameter(arg);
 
 			return msg;
 		}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 
 		amf0_number_ptr invoke_id()
 		{
@@ -582,9 +582,9 @@ namespace fms
 			m_type = eMessageInvokeAMF3;
 		}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 	};
 
 	using rtmp_message_invoke_amf3_ptr = std::shared_ptr<rtmp_message_invoke_amf3>;
@@ -597,9 +597,9 @@ namespace fms
 			, m_ts(ts)
 		{}
 
-		virtual void deserialize(stream_array &);
+		void deserialize(stream_array &) override;
 
-		virtual void serialize(stream_array &);
+		void serialize(stream_array &) override;
 
 		using message_list_t = std::list<rtmp_message_ptr>;
 
@@ -622,8 +622,8 @@ namespace fms
 			: rtmp_message(eMessageClose)
 		{}
 
-		virtual void deserialize(stream_array &){}
-		virtual void serialize(stream_array &){}
+		void deserialize(stream_array &) override{}
+		void serialize(stream_array &) override{}
 	};
 
 	using rtmp_message_close_ptr = std::shared_ptr<rtmp_message_close>;

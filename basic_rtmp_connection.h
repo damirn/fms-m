@@ -26,18 +26,18 @@ namespace fms
 	public:
 		basic_rtmp_connection(std::uint32_t id, boost::asio::io_service &, rtmp_app_manager *);
 
-		virtual ~basic_rtmp_connection();
+		~basic_rtmp_connection() override;
 
 		// Close connection
-		virtual void close();
-		virtual void post_close();
+		void close() override;
+		void post_close() override;
 
 		boost::asio::io_service &io_service()
 		{
 			return m_io_service;
 		}
 
-		virtual void handle_bytes_read(std::size_t);
+		void handle_bytes_read(std::size_t) override;
 
 		static std::uint32_t get_ack_size()
 		{
@@ -58,10 +58,10 @@ namespace fms
 		void arm_timer();
 
 		// Handle decoded message
-		virtual void handle_message(rtmp_channel_ptr, rtmp_message_ptr);
+		void handle_message(rtmp_channel_ptr, rtmp_message_ptr) override;
 
 		// Handle internal messages
-		virtual void handle_internal_message(rtmp_message_ptr);
+		void handle_internal_message(rtmp_message_ptr) override;
 
 		// Handle application's result
 		virtual void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr) = 0;

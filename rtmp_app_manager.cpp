@@ -29,8 +29,8 @@ namespace fms
 
 	rtmp_app_manager::~rtmp_app_manager()
 	{
-		for(app_map_t::iterator i = m_apps.begin(); i != m_apps.end(); ++i)
-			delete i->second;
+		for(auto & m_app : m_apps)
+			delete m_app.second;
 		delete m_rtmpt_manager;
 		delete m_fake_app;
 	}
@@ -190,16 +190,16 @@ namespace fms
 			if (i != map.end())
 			{
 				amf0_string_ptr app_name = std::dynamic_pointer_cast<amf0_string>(i->m_value);
-				for (app_map_t::iterator j = m_apps.begin(); j != m_apps.end(); ++j)
+				for (auto & m_app : m_apps)
 				{
 					std::string instance;
-					if (check_application_name(app_name->value(), j->first, instance))
+					if (check_application_name(app_name->value(), m_app.first, instance))
 					{
 						BOOST_LOG(lg::get()) << "cid: " << connection_id << " connecting to " << app_name->value();
 						client_session_ptr conn = get_connection(connection_id);
-						conn->set_app(j->second);
+						conn->set_app(m_app.second);
 						conn->app_instance() = instance;
-						return j->second->handle_message(msg, connection_id, header, res);
+						return m_app.second->handle_message(msg, connection_id, header, res);
 					}
 				}
 				BOOST_LOG(lg::get()) << "cid: " << connection_id << " connecting to " << app_name->value() << " which is an unknown app";
@@ -232,16 +232,16 @@ namespace fms
 
 	void rtmp_app_manager::list_applications(string_list_t &list)
 	{
-		for (app_map_t::iterator i = m_apps.begin(); i != m_apps.end(); ++i)
-			list.push_back(i->second->app_name());
+		for (auto & m_app : m_apps)
+			list.push_back(m_app.second->app_name());
 	}
 
 	void rtmp_app_manager::list_clients(client_list_t &list)
 	{
 		std::unique_lock<std::mutex> lock(m_mutex);
-		for (connection_map_t::iterator i = m_connections.begin(); i != m_connections.end(); ++i)
+		for (auto & m_connection : m_connections)
 		{
-			client_data_ptr data = get_client_data_impl(i->first);
+			client_data_ptr data = get_client_data_impl(m_connection.first);
 			if (data.get() != nullptr)
 				list.push_back(data);
 		}
@@ -330,14 +330,14 @@ namespace fms
 	void rtmp_app_manager::list_streams(netstream_list_t &streams)
 	{
 		std::unique_lock<std::mutex> lock(m_mutex);
-		for (netstream_stats_map_t::iterator i = m_netstream_stats.begin(); i != m_netstream_stats.end(); ++i)
-			streams.push_back(i->second);
+		for (auto & m_netstream_stat : m_netstream_stats)
+			streams.push_back(m_netstream_stat.second);
 	}
 
 	void rtmp_app_manager::get_queue_stats(queue_stats_list_t &list)
 	{
-		for (app_map_t::iterator i = m_apps.begin(); i != m_apps.end(); ++i)
-			i->second->get_queue_stats(list);
+		for (auto & m_app : m_apps)
+			m_app.second->get_queue_stats(list);
 	}
 
 	void rtmp_app_manager::create_netstream(const stream_client_id_t &id)
@@ -377,8 +377,8 @@ namespace fms
 		}
 		lock.unlock();
 		if (m_admin_app)
-			for (netstream_list_t::iterator i = list.begin(); i != list.end(); ++i)
-				m_admin_app->send_stream_deleted_notify(*i);
+			for (auto & i : list)
+				m_admin_app->send_stream_deleted_notify(i);
 	}
 
 	void rtmp_app_manager::update_netstream(const stream_client_id_t &id, const std::string &name, bool is_publish)
@@ -471,17 +471,17 @@ namespace fms
 				std::unique_lock<std::mutex> lock(m_mutex);
 				netstream_stats_map_t tmp;
 				std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
-				for (netstream_stats_map_t::iterator i = m_netstream_stats.begin(); i != m_netstream_stats.end(); ++i)
+				for (auto & m_netstream_stat : m_netstream_stats)
 				{
-					if (i->second->m_name.find("QOS!") != 0)
+					if (m_netstream_stat.second->m_name.find("QOS!") != 0)
 					{
-						netstream_stats_ptr stats(new netstream_stats(*(i->second)));
+						netstream_stats_ptr stats(new netstream_stats(*(m_netstream_stat.second)));
 						std::chrono::system_clock::duration td = now - stats->m_start_streaming_time;
 						std::uint32_t kbps = 0;
 						if (std::chrono::duration_cast<std::chrono::seconds>(td).count() != 0)
 							kbps = stats->m_bytes / std::chrono::duration_cast<std::chrono::seconds>(td).count();
 						stats->m_kbps = kbps;
-						tmp[i->first] = stats;
+						tmp[m_netstream_stat.first] = stats;
 					}
 				}
 				lock.unlock();

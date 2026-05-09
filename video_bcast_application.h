@@ -29,9 +29,9 @@ namespace fms
 	public:
 		video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
 
-		virtual ~video_bcast_application() {}
+		~video_bcast_application() override {}
 
-		virtual void delete_connection(std::uint32_t, const std::string & = "");
+		void delete_connection(std::uint32_t, const std::string & = "") override;
 
 	protected:
 		void start_timer()
@@ -42,12 +42,12 @@ namespace fms
 
 		void handle_timer(const boost::system::error_code &);
 
-		virtual boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
-		virtual void handle_notify(rtmp_message_ptr, std::uint32_t);
-		virtual void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &);
-		virtual void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &);
-		virtual void handle_ping(rtmp_message_ptr, std::uint32_t, const rtmp_header &);
-		virtual boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &);
+		boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
+		void handle_notify(rtmp_message_ptr, std::uint32_t) override;
+		void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
+		void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
+		void handle_ping(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
+		boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) override;
 
 		void handle_invoke_create_stream(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 		void handle_invoke_close_stream(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);

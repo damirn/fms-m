@@ -18,7 +18,7 @@ namespace fms
 	class amf0_illegal_cast : public std::exception
 	{
 	public:
-		virtual const char *what() const throw()
+		const char *what() const throw() override
 		{
 			return "amf0 bad cast";
 		}
@@ -354,13 +354,13 @@ namespace fms
 	public:
 		void merge(amf0_object &obj)
 		{
-			for (iterator i = obj.begin(); i != obj.end(); ++i)
+			for (const auto & i : obj)
 			{
-				iterator j = m_value.get<1>().find(i->m_name);
+				iterator j = m_value.get<1>().find(i.m_name);
 				if (j == end())
-					m_value.push_back(*i);
+					m_value.push_back(i);
 				else
-					m_value.get<1>().modify(j, change_value(i->m_value));
+					m_value.get<1>().modify(j, change_value(i.m_value));
 			}
 		}
 	protected:

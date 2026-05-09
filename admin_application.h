@@ -47,17 +47,17 @@ namespace fms
 		void init();
 		void load_password_file();
 
-		virtual boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
 
-		virtual boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &);
-		virtual bool check_connect_params(std::uint32_t, const rtmp_message_invoke::parameters_list_t &);
+		boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) override;
+		bool check_connect_params(std::uint32_t, const rtmp_message_invoke::parameters_list_t &) override;
 		bool check_user_and_password(const std::string &, const std::string &);
-		virtual void delete_connection(std::uint32_t, const std::string & = "");
+		void delete_connection(std::uint32_t, const std::string & = "") override;
 
-		virtual void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) {}
-		virtual void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) {}
+		void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override {}
+		void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override {}
 
-		virtual void handle_win_ack_size(rtmp_message_ptr, std::uint32_t);
+		void handle_win_ack_size(rtmp_message_ptr, std::uint32_t) override;
 
 		void handle_invoke_get_apps(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 		void handle_invoke_get_clients(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);

@@ -40,15 +40,15 @@ namespace fms
 		if (!e)
 		{
 			std::unique_lock<std::mutex> lock(m_mutex);
-			for (qos_map_t::iterator i = m_qos_sources.begin(); i != m_qos_sources.end(); ++i)
+			for (auto & m_qos_source : m_qos_sources)
 			{
-				stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(i->second);
-				stream_client_map_t::left_const_iterator end = m_stream_clients.left.upper_bound(i->second);
+				stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(m_qos_source.second);
+				stream_client_map_t::left_const_iterator end = m_stream_clients.left.upper_bound(m_qos_source.second);
 				while (begin != end)
 				{
 					const stream_client_id_t &ssid = begin->second;
 					++begin;
-					std::optional<netstream_stats_ptr> stats = m_app_manager->get_stream_stats(i->first);
+					std::optional<netstream_stats_ptr> stats = m_app_manager->get_stream_stats(m_qos_source.first);
 					if (!stats)
 					{
 						continue;
@@ -487,19 +487,19 @@ namespace fms
 
 	void video_bcast_application::update_waiting_client(stream_client_id_t &cid, bool is_video, bool to_receive)
 	{
-		for (waiting_client_map_t::iterator i = m_waiting_clients.begin(); i != m_waiting_clients.end(); ++i)
+		for (auto & m_waiting_client : m_waiting_clients)
 		{
 			subscriber fake(cid.first, cid.second, 0);
-			auto j = i->second.find(fake);
-			if (j != i->second.end())
+			auto j = m_waiting_client.second.find(fake);
+			if (j != m_waiting_client.second.end())
 			{
 				subscriber s = *j;
 				if (is_video)
 					s.m_receive_video = to_receive;
 				else
 					s.m_receive_audio = to_receive;
-				i->second.erase(j);
-				i->second.insert(s);
+				m_waiting_client.second.erase(j);
+				m_waiting_client.second.insert(s);
 			}
 		}
 	}
@@ -779,12 +779,12 @@ namespace fms
 		if (i != m_clients.end())
 		{
 			std::set<std::uint32_t> &streams = i->second;
-			for (std::set<std::uint32_t>::iterator j = streams.begin(); j != streams.end(); ++j)
+			for (unsigned int stream : streams)
 			{
-				close_stream(connection_id, *j);
+				close_stream(connection_id, stream);
 				// remove client from subscriber list
-				subscriber fake(connection_id, *j, 0);
-				auto k = m_subscribers_to_stream.find(std::make_pair(connection_id, *j));
+				subscriber fake(connection_id, stream, 0);
+				auto k = m_subscribers_to_stream.find(std::make_pair(connection_id, stream));
 				if (k != m_subscribers_to_stream.end())
 				{
 					auto l = m_waiting_clients.find(k->second);

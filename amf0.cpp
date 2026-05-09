@@ -196,10 +196,10 @@ namespace fms
 		buffer << size;
 
 		amf0_ecma_array::array_t &array = value->value();
-		for (amf0_ecma_array::array_t::iterator i = array.begin(); i != array.end(); ++i)
+		for (auto & i : array)
 		{
-			write_short_string(buffer, i->first.c_str(), static_cast<std::uint16_t >(i->first.size()), true);
-			write(buffer, i->second);
+			write_short_string(buffer, i.first.c_str(), static_cast<std::uint16_t >(i.first.size()), true);
+			write(buffer, i.second);
 		}
 
 		buffer.write(end_of_object, 3);
@@ -238,8 +238,8 @@ namespace fms
 		buffer << size;
 
 		amf0_strict_array::array_t &array = value->value();
-		for (amf0_strict_array::array_t::iterator i = array.begin(); i != array.end(); ++i)
-			write(buffer, *i);
+		for (auto & i : array)
+			write(buffer, i);
 	}
 
 	bool amf0::read_long_string(stream_array &buffer, amf0_long_string_ptr value)

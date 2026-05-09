@@ -84,10 +84,10 @@ namespace fms
 	public:
 		mixer();
 		mixer(audio_sink *);
-		~mixer();
+		~mixer() override;
 
-		virtual void init();
-		virtual void uninit();
+		void init() override;
+		void uninit() override;
 
 	protected:
 		// Timer thread: sums every source's PCM frame, speex-encodes the

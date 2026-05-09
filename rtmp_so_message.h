@@ -21,8 +21,8 @@ namespace fms
 			, m_flags(flags)
 		{}
 
-		virtual void deserialize(stream_array &);
-		virtual void serialize(stream_array &);
+		void deserialize(stream_array &) override;
+		void serialize(stream_array &) override;
 
 		enum
 		{
