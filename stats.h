@@ -31,56 +31,43 @@ namespace fms
 	struct client_stats
 	{
 		client_stats()
-			: m_online_time(0)
-			, m_bytes_read(0)
-			, m_bytes_written(0)
-			, m_messages_read(0)
-			, m_messages_written(0)
+			 
 		{}
-		std::uint32_t m_online_time;
-		std::uint32_t m_bytes_read;
-		std::uint32_t m_bytes_written;
-		std::uint32_t m_messages_read;
-		std::uint32_t m_messages_written;
+		std::uint32_t m_online_time{0};
+		std::uint32_t m_bytes_read{0};
+		std::uint32_t m_bytes_written{0};
+		std::uint32_t m_messages_read{0};
+		std::uint32_t m_messages_written{0};
 	};
 
 	struct app_stats
 	{
 		app_stats()
-			: m_bytes_read(0)
-			, m_bytes_written(0)
-			, m_messages_read(0)
-			, m_messages_written(0)
+			 
 		{}
-		std::uint32_t m_bytes_read;
-		std::uint32_t m_bytes_written;
-		std::uint32_t m_messages_read;
-		std::uint32_t m_messages_written;
+		std::uint32_t m_bytes_read{0};
+		std::uint32_t m_bytes_written{0};
+		std::uint32_t m_messages_read{0};
+		std::uint32_t m_messages_written{0};
 	};
 
 	struct netstream_stats
 	{
 		netstream_stats(std::uint32_t client)
 			: m_client(client)
-			, m_bytes(0)
-			, m_messages(0)
-			, m_messages_dropped(0)
-			, m_ts(0)
-			, m_delay(0)
-			, m_drift(0)
-			, m_kbps(0)
-			, m_time(std::chrono::system_clock::now())
+			, 
+			 m_time(std::chrono::system_clock::now())
 		{}
 		std::uint32_t m_client;
 		std::string m_name;
 		bool m_is_published;
-		std::uint32_t m_bytes;
-		std::uint32_t m_messages;
-		std::uint32_t m_messages_dropped;
-		std::uint32_t m_ts;
-		std::uint32_t m_delay;
-		std::uint32_t m_drift;
-		std::uint32_t m_kbps;
+		std::uint32_t m_bytes{0};
+		std::uint32_t m_messages{0};
+		std::uint32_t m_messages_dropped{0};
+		std::uint32_t m_ts{0};
+		std::uint32_t m_delay{0};
+		std::uint32_t m_drift{0};
+		std::uint32_t m_kbps{0};
 		std::chrono::system_clock::time_point m_time;
 		std::chrono::system_clock::time_point m_start_streaming_time;
 	};

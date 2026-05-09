@@ -22,7 +22,7 @@ namespace fms
 	class authentication_plugin
 	{
 	public:
-		virtual ~authentication_plugin(){}
+		virtual ~authentication_plugin()= default;
 		virtual boost::tribool authenticate(auth_data_ptr) = 0;
 	};
 

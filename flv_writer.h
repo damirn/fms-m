@@ -37,15 +37,15 @@ namespace fms
 		void write_timestamp(std::uint32_t);
 
 		std::ofstream m_file;
-		std::uint32_t m_prev_tag_size;
+		std::uint32_t m_prev_tag_size{0};
 
-		std::uint32_t m_audio_ts;
-		std::uint32_t m_prev_audio_ts;
-		std::uint32_t m_video_ts;
-		std::uint32_t m_prev_video_ts;
+		std::uint32_t m_audio_ts{0};
+		std::uint32_t m_prev_audio_ts{0};
+		std::uint32_t m_video_ts{0};
+		std::uint32_t m_prev_video_ts{0};
 		std::uint32_t m_start_epoch;
-		bool m_first_audio_frame;
-		bool m_first_video_frame;
+		bool m_first_audio_frame{true};
+		bool m_first_video_frame{true};
 
 		enum { eAudioFrame = 0x08, eVideoFrame = 0x09, eScriptFrame = 0x12 };
 		static std::uint8_t m_header[];

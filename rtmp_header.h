@@ -112,16 +112,16 @@ namespace fms
 		void serialize_header_same_source(stream_array &);
 		void serialize_header_timer_change(stream_array &);
 
-		std::uint32_t m_header_size;
-		std::uint32_t m_channel_id;
-		std::uint32_t m_timestamp;
-		std::uint32_t m_ts_delta_write;
-		std::uint32_t m_ts_delta_read;
-		std::uint32_t m_message_length;
-		std::uint32_t m_stream_id;
-		std::uint8_t m_message_type;
-		std::uint8_t m_header_type;
-		bool m_has_extended_ts;
+		std::uint32_t m_header_size{0};
+		std::uint32_t m_channel_id{0};
+		std::uint32_t m_timestamp{0};
+		std::uint32_t m_ts_delta_write{0};
+		std::uint32_t m_ts_delta_read{0};
+		std::uint32_t m_message_length{0};
+		std::uint32_t m_stream_id{0};
+		std::uint8_t m_message_type{0};
+		std::uint8_t m_header_type{0};
+		bool m_has_extended_ts{false};
 
 		enum
 		{

@@ -20,7 +20,7 @@ namespace fms
 	{
 	public:
 		logging()
-			: m_created(false)
+			 
 		{}
 
 		~logging()
@@ -40,14 +40,14 @@ namespace fms
 		// Boost.Log's core/add_sink API traffics in boost::shared_ptr, so these
 		// deliberately stay Boost while the rest of the tree uses std::shared_ptr.
 		using backend_ptr = boost::shared_ptr<backend_t>;
-		typedef sinks::asynchronous_sink<
+		using sink_t = sinks::asynchronous_sink<
 			backend_t,
 			sinks::unbounded_ordering_queue<
 			boost::log::attribute_value_ordering< unsigned int, std::less< unsigned int > >
 			>
-		> sink_t;
+		>;
 		using sink_ptr = boost::shared_ptr<sink_t>;
 		sink_ptr m_sink;
-		bool m_created;
+		bool m_created{false};
 	};
 }

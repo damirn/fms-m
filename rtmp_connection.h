@@ -98,13 +98,13 @@ namespace fms
 			eStateReadPackets,
 			eStateClosing
 		};
-		connection_states m_state;
+		connection_states m_state{eStateReadHS};
 
 		// Buffers for incoming data.
 		stream_array m_buffer;
 		stream_array m_output_buffer;
 
-		bool m_to_close;
+		bool m_to_close{false};
 	};
 
 	using rtmp_connection_ptr = std::shared_ptr<rtmp_connection>;

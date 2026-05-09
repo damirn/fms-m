@@ -10,7 +10,7 @@ namespace fms
 
 	speex_codec::speex_codec(std::uint16_t reserved_for_header /* = 1 */)
 		: audio_codec(reserved_for_header)
-		, m_frame_size(0)
+		 
 	{
 		init_decoder();
 		init_encoder();

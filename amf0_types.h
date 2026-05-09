@@ -53,7 +53,7 @@ namespace fms
 		amf0_type(etype t)
 			: m_type(t) {}
 
-		virtual ~amf0_type() {}
+		virtual ~amf0_type() = default;
 
 		operator bool()
 		{
@@ -245,13 +245,13 @@ namespace fms
 			amf0_type_ptr m_value;
 		};
 
-		typedef boost::multi_index_container<
+		using value_map_t = boost::multi_index_container<
 			entry,
 			boost::multi_index::indexed_by<
 			boost::multi_index::sequenced<>,
 			boost::multi_index::ordered_unique<boost::multi_index::member<entry, std::string, &entry::m_name> >
 			>
-		> value_map_t;
+		>;
 
 		using indexed_value_type = value_map_t::nth_index<0>::type;
 		using indexed_iterator = value_map_t::nth_index<0>::type::iterator;

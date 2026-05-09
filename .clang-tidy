@@ -1,10 +1,16 @@
-# Curated clang-tidy config for fms-m. CLion picks this up automatically.
-# Enables the "clean/tidy" checks we actually apply and mutes the noisy or
-# opinionated ones so the IDE surfaces signal, not style bikeshedding.
+# Curated clang-tidy config for fms-m. CLion reads this automatically and runs
+# ONLY these checks, so the IDE surfaces the cleanups we've actually applied
+# rather than the full firehose (Boost macro noise, magic numbers, design-level
+# member-visibility rules, etc.).
+#
+# Deliberately NOT enabled:
+#  - misc-const-correctness: valuable and already applied, but false-positives on
+#    C-API pointer out-params (OpenSSL EVP_PKEY**) and codec bit-twiddling.
+#  - performance-unnecessary-value-param: applied everywhere except amf0/amf3,
+#    whose template method specializations can't take an automated rewrite.
+#  Both were applied by hand; leaving them off keeps the IDE free of noise.
 Checks: >
   -*,
-  bugprone-*,
-  performance-*,
   modernize-use-nullptr,
   modernize-use-override,
   modernize-use-emplace,
@@ -14,22 +20,23 @@ Checks: >
   modernize-use-equals-delete,
   modernize-use-default-member-init,
   modernize-loop-convert,
+  modernize-redundant-void-arg,
   modernize-make-shared,
   modernize-make-unique,
   readability-else-after-return,
   readability-container-size-empty,
+  readability-container-contains,
+  readability-string-compare,
+  readability-simplify-boolean-expr,
   readability-redundant-member-init,
   readability-redundant-string-init,
   readability-redundant-control-flow,
   readability-redundant-smartptr-get,
-  readability-simplify-boolean-expr,
-  -bugprone-easily-swappable-parameters,
-  -bugprone-narrowing-conversions,
-  -bugprone-implicit-widening-of-multiplication-result,
-  -performance-avoid-endl,
-  -performance-enum-size,
-  -modernize-use-trailing-return-type
+  readability-convert-member-functions-to-static,
+  readability-isolate-declaration,
+  performance-move-const-arg,
+  performance-for-range-copy,
+  performance-unnecessary-copy-initialization
 
-# Report our own headers, not Boost/OpenSSL/system headers.
 HeaderFilterRegex: '(basic_rtmp|rtmp|amf|http|flv|crypto|evp_dh|stream_array|config|server|service|mixer|so_manager|authentication|client_session|channel|logging|util|random|io_service|g711|speex|dh|admin|video_|rtmfp/).*\.h$'
 WarningsAsErrors: ''

@@ -15,8 +15,8 @@ namespace fms
 	{
 		fragment(const vlu_t &seq, const std::uint8_t *data, const std::uint16_t &data_len, const std::uint8_t &frag_ctrl, bool make_copy = false)
 			: m_seq(seq)
-			, m_tsn(0)
-			, m_data_len(data_len)
+			, 
+			 m_data_len(data_len)
 			, m_frag_ctrl(frag_ctrl)
 		{
 			if (frag_ctrl == eWhole && !make_copy)
@@ -56,7 +56,7 @@ namespace fms
 		enum { eWhole = 0, eBegin, eEnd, eMiddle };
 
 		vlu_t m_seq;
-		vlu_t m_tsn;
+		vlu_t m_tsn{0};
 		const std::uint8_t *m_data;
 		std::uint16_t m_data_len;
 		std::uint8_t m_frag_ctrl;

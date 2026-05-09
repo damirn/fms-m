@@ -19,7 +19,7 @@ namespace fms
 	{
 	public:
 		static bool read_short_string(stream_array &, amf0_string_ptr, bool = false);
-		void write_short_string(stream_array &, amf0_string_ptr, bool = false);
+		static void write_short_string(stream_array &, amf0_string_ptr, bool = false);
 		static void write_short_string(stream_array &, const char *, std::uint16_t, bool = false);
 
 		static bool read_boolean(stream_array &, amf0_boolean_ptr);

@@ -6,16 +6,7 @@
 namespace fms
 {
 	rtmp_header::rtmp_header()
-		: m_header_size(0)
-		, m_channel_id(0)
-		, m_timestamp(0)
-		, m_ts_delta_write(0)
-		, m_ts_delta_read(0)
-		, m_message_length(0)
-		, m_stream_id(0)
-		, m_message_type(0)
-		, m_header_type(0)
-		, m_has_extended_ts(false)
+		 
 	{}
 
 	void rtmp_header::deserialize(stream_array &buffer)

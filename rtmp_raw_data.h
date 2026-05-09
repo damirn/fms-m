@@ -26,7 +26,7 @@ namespace fms
 	{
 	public:
 		rtmp_raw_data();
-		virtual ~rtmp_raw_data(){}
+		virtual ~rtmp_raw_data()= default;
 
 	protected:
 		boost::tribool parse_data(stream_array &);
@@ -36,9 +36,9 @@ namespace fms
 		virtual void handle_message(rtmp_channel_ptr, rtmp_message_ptr) = 0;
 		virtual void handle_internal_message(rtmp_message_ptr) = 0;
 
-		bool m_read_header;
+		bool m_read_header{true};
 		channel_manager_ptr m_channel_manager;
-		std::uint32_t m_chunk_size;
+		std::uint32_t m_chunk_size{eChunkSize};
 		std::uint32_t m_channel_id;
 
 		enum { eChunkSize = 128 };

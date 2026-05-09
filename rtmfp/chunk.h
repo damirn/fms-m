@@ -32,7 +32,7 @@ namespace fms
 		{}
 
 		virtual ~chunk()
-		{}
+		= default;
 
 		const type_t &type() const
 		{
@@ -62,7 +62,7 @@ namespace fms
 		{}
 
 		~fihello_chunk() override
-		{}
+		= default;
 
 		const vlu_t &epd_len() const
 		{

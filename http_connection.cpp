@@ -14,8 +14,7 @@ namespace fms
 		, m_id(id)
 		, m_app_manager(app_manager)
 		, m_rtmpt_manager(rtmpt_manager)
-		, m_content_length(0)
-		, m_read_http_header(true)
+		 
 	{}
 
 	void http_connection::start()

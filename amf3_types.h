@@ -40,7 +40,7 @@ namespace fms
 			: m_type(t)
 		{}
 
-		virtual ~amf3_type() {}
+		virtual ~amf3_type() = default;
 
 		operator bool()
 		{

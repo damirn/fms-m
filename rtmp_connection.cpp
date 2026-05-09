@@ -20,8 +20,7 @@ namespace fms
 		, m_socket(io_service)
 		, m_rto_timer(io_service)
 		, m_wto_timer(io_service)
-		, m_state(eStateReadHS)
-		, m_to_close(false)
+		 
 	{}
 
 	rtmp_connection::~rtmp_connection()

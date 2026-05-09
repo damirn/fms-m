@@ -69,17 +69,17 @@ namespace fms
 
 		rtmpt_manager *m_rtmpt_manager;
 
-		bool m_read_http_header;
-		bool m_write_http_header;
-		bool m_http_header_is_complete;
+		bool m_read_http_header{true};
+		bool m_write_http_header{true};
+		bool m_http_header_is_complete{false};
 
-		std::uint8_t m_state;
-		session_state m_sstate;
+		std::uint8_t m_state{eNotConnected};
+		session_state m_sstate{eCSIdle};
 		boost::asio::streambuf m_header;
 
 		enum { eMaxIdleTimes = 6};
-		std::uint8_t m_poll_cnt;
-		std::uint8_t m_poll_index;
+		std::uint8_t m_poll_cnt{0};
+		std::uint8_t m_poll_index{0};
 
 		std::string m_cid;
 		boost::asio::ip::address m_address;

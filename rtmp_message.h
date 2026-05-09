@@ -36,9 +36,7 @@ namespace fms
 
 		rtmp_message(message_type t)
 			: m_type(t)
-			, m_stream_id(0)
-			, m_channel_id(eInvokeChannel)
-			, m_timestamp(0)
+			 
 		{}
 
 		rtmp_message(const rtmp_message &msg)
@@ -48,7 +46,7 @@ namespace fms
 			, m_timestamp(msg.m_timestamp)
 		{}
 		
-		virtual ~rtmp_message() {}
+		virtual ~rtmp_message() = default;
 
 		virtual void deserialize (stream_array &) = 0;
 
@@ -92,9 +90,9 @@ namespace fms
 	protected:
 		std::uint8_t m_type;
 		amf0 m_amf0;
-		std::uint32_t m_stream_id;
-		std::uint32_t m_channel_id;
-		std::uint32_t m_timestamp;
+		std::uint32_t m_stream_id{0};
+		std::uint32_t m_channel_id{eInvokeChannel};
+		std::uint32_t m_timestamp{0};
 
 		enum { eInvokeChannel = 3 };
 	};
@@ -316,11 +314,11 @@ namespace fms
 		{}
 
 		rtmp_message_audio_data(const rtmp_message_audio_data &audio_data)
-			: rtmp_message(audio_data), m_data(audio_data.m_data), m_size(audio_data.m_size)
-		{}
+			 
+		= default;
 
 		~rtmp_message_audio_data() override
-		{}
+		= default;
 
 		void deserialize(stream_array &) override;
 
@@ -384,11 +382,11 @@ namespace fms
 		{}
 
 		rtmp_message_video_data(const rtmp_message_video_data &video_data)
-			: rtmp_message(video_data), m_data(video_data.m_data), m_size(video_data.m_size)
-		{}
+			 
+		= default;
 
 		~rtmp_message_video_data() override
-		{}
+		= default;
 
 		void deserialize(stream_array &) override;
 

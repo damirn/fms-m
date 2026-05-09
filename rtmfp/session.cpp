@@ -28,21 +28,13 @@ namespace fms
 	session::session(service *srv, const boost::asio::ip::udp::endpoint &ep, std::uint32_t reserved_sid, rtmp_app_manager *app_mngr)
 		: client_session(reserved_sid, app_mngr)
 		, m_service(srv)
-		, m_sid(0)
-		, m_outgoing_sid(reserved_sid)
+		, 
+		 m_outgoing_sid(reserved_sid)
 		, m_endpoint(ep)
 		, m_timer(srv->io_service())
 		, m_alarm(srv->io_service())
 		, m_strand(srv->io_service())
-		, m_state(eInitialState)
-		, m_did_receive_data(false)
-		, m_has_data_ready(false)
-		, m_data_packet_count(0)
-		, m_rx_data_packets(0)
-		, m_ack_now(false)
-		, m_next_tsn(1)
-		, m_max_tsn_ack(0)
-		, m_next_flow_id(2)
+		 
 	{
 		m_parser = new parser(*this);
 		initialize_ts_flags();
@@ -96,7 +88,7 @@ namespace fms
 			next_user_data_chunk *ndc = dynamic_cast<next_user_data_chunk *>(c);
 			return handle_next_user_data(ndc);
 		}
-		else if (c->type() == chunk::eDataAcknowledgementRanges)
+		if (c->type() == chunk::eDataAcknowledgementRanges)
 		{
 			range_ack_chunk *rac = dynamic_cast<range_ack_chunk *>(c);
 			return handle_range_ack(rac);

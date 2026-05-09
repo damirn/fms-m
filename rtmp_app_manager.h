@@ -101,12 +101,12 @@ namespace fms
 		void handle_timer(const boost::system::error_code &);
 
 		io_service_pool &m_io_service_pool;
-		std::uint32_t m_connection_counter;
+		std::uint32_t m_connection_counter{0};
 
 		using app_map_t = std::map<std::string, rtmp_application *>;
 		app_map_t m_apps;
 
-		admin_application *m_admin_app;
+		admin_application *m_admin_app{nullptr};
 		fake_application *m_fake_app;
 
 		using connection_map_t = std::unordered_map<std::uint32_t, client_session_ptr>;

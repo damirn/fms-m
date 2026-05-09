@@ -209,19 +209,19 @@ namespace fms
 
 		service *m_service;
 		parser *m_parser;
-		std::uint32_t m_sid;
+		std::uint32_t m_sid{0};
 		std::uint32_t m_outgoing_sid;
 		item m_peer_id;
 		boost::asio::ip::udp::endpoint m_endpoint;
 		boost::asio::steady_timer m_timer;
 		boost::asio::steady_timer m_alarm;
 		boost::asio::io_service::strand m_strand;
-		state_t m_state;
+		state_t m_state{eInitialState};
 
 		chunk *m_ready_chunk;
-		bool m_did_receive_data;
-		bool m_has_data_ready;
-		std::uint8_t m_data_packet_count;
+		bool m_did_receive_data{false};
+		bool m_has_data_ready{false};
+		std::uint8_t m_data_packet_count{0};
 		enum { ePeerIdSize = 0x20 };
 
 		enum { ePad0 = 0, ePadff = 0xff };
@@ -239,17 +239,17 @@ namespace fms
 		bool m_should_include_ts_echo;
 
 		std::uint32_t m_outstanding_bytes;
-		std::uint32_t m_rx_data_packets;
-		bool m_ack_now;
+		std::uint32_t m_rx_data_packets{0};
+		bool m_ack_now{false};
 		bool m_seen_data_chunk;
 
 		vlu_t m_current_flow_id;
 		vlu_t m_next_seq;
 
-		vlu_t m_next_tsn;
-		vlu_t m_max_tsn_ack;
+		vlu_t m_next_tsn{1};
+		vlu_t m_max_tsn_ack{0};
 
-		std::uint32_t m_next_flow_id;
+		std::uint32_t m_next_flow_id{2};
 		using flow_map_t = std::map<vlu_t, flow_ptr>;
 		flow_map_t m_receiving_flows;
 		flow_map_t m_sending_flows;

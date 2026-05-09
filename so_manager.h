@@ -33,9 +33,9 @@ namespace fms
 		struct so_data
 		{
 			so_data()
-				: m_version(1)
+				 
 			{}
-			std::uint32_t m_version;
+			std::uint32_t m_version{1};
 			std::set<std::uint32_t> m_clients;
 			std::map<std::string, amf0_type_ptr> m_values;
 		};

@@ -10,8 +10,7 @@ namespace fms
 	{
 	public:
 		dh()
-			: m_pkey(nullptr)
-			, m_shared_key(nullptr)
+			 
 		{
 			init();
 		}
@@ -31,7 +30,7 @@ namespace fms
 		void init();
 		void uninit();
 
-		EVP_PKEY *m_pkey;
-		std::uint8_t *m_shared_key;
+		EVP_PKEY *m_pkey{nullptr};
+		std::uint8_t *m_shared_key{nullptr};
 	};
 }

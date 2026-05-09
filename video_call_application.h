@@ -23,7 +23,7 @@ namespace fms
 		boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
 		void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
 
-		void handle_call_invoke(const rtmp_message_invoke_ptr&, std::uint32_t);
+		static void handle_call_invoke(const rtmp_message_invoke_ptr&, std::uint32_t);
 		static bool check_call_params(const rtmp_message_invoke::parameters_list_t &params);
 
 		void handle_record_invoke(const rtmp_message_invoke_ptr&, std::uint32_t);
@@ -37,8 +37,7 @@ namespace fms
 		struct call_instance_data
 		{
 			call_instance_data()
-				: m_mixer(nullptr)
-				, m_sink(nullptr)
+				 
 			{}
 
 			// owns the mixer, which in turn owns (and deletes) m_sink; deleting
@@ -51,8 +50,8 @@ namespace fms
 			call_instance_data &operator=(const call_instance_data &) = delete;
 
 			std::set<std::uint32_t> m_clients;
-			mixer *m_mixer;
-			audio_sink *m_sink;   // non-owning; the mixer owns it
+			mixer *m_mixer{nullptr};
+			audio_sink *m_sink{nullptr};   // non-owning; the mixer owns it
 		};
 
 		using call_instance_data_ptr = std::shared_ptr<call_instance_data>;
