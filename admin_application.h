@@ -39,9 +39,9 @@ namespace fms
 		void send_stream_deleted_notify(netstream_stats_ptr);
 		void send_qos_data(netstream_stats_map_t &);
 
-		void send_auth_status(auth_status_data_ptr);
-		void send_disconnect_notify(auth_status_data_ptr);
-		void send_call_status_notify(std::uint32_t, amf0_object_ptr);
+		void send_auth_status(const auth_status_data_ptr&);
+		void send_disconnect_notify(const auth_status_data_ptr&);
+		void send_call_status_notify(std::uint32_t, const amf0_object_ptr&);
 
 	protected:
 		void init();
@@ -59,29 +59,29 @@ namespace fms
 
 		void handle_win_ack_size(rtmp_message_ptr, std::uint32_t) override;
 
-		void handle_invoke_get_apps(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
-		void handle_invoke_get_clients(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
-		void handle_invoke_get_client_stats(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
-		void handle_invoke_get_app_stats(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
-		void handle_invoke_get_streams(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
+		void handle_invoke_get_apps(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
+		void handle_invoke_get_clients(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
+		void handle_invoke_get_client_stats(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
+		void handle_invoke_get_app_stats(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
+		void handle_invoke_get_streams(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 
-		amf0_object_ptr create_stream_stat_obj(netstream_stats_ptr, bool = true);
+		amf0_object_ptr create_stream_stat_obj(const netstream_stats_ptr&, bool = true);
 
-		void handle_invoke_get_queue_stats(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
-		void handle_invoke_kill_client(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
+		void handle_invoke_get_queue_stats(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
+		void handle_invoke_kill_client(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 
 		bool check_client(std::uint32_t);
 
-		void notify_active_client(netstream_stats_ptr, std::function<void (std::uint32_t, netstream_stats_ptr)>);
+		void notify_active_client(const netstream_stats_ptr&, const std::function<void (std::uint32_t, netstream_stats_ptr)>&);
 		void dispatch_new_stream_notify(std::uint32_t, netstream_stats_ptr);
-		void dispatch_delete_stream_notify(std::uint32_t, netstream_stats_ptr);
-		void dispatch_qos_data_for_stream_notify(std::uint32_t, netstream_stats_ptr);
+		void dispatch_delete_stream_notify(std::uint32_t, const netstream_stats_ptr&);
+		void dispatch_qos_data_for_stream_notify(std::uint32_t, const netstream_stats_ptr&);
 
-		void dispatch_auth_result(std::uint32_t, auth_status_data_ptr, bool = false);
-		void dispatch_disconnect(std::uint32_t, auth_status_data_ptr, bool = false);
-		void dispatch_call_status(std::uint32_t, std::uint32_t, amf0_object_ptr, bool = false);
+		void dispatch_auth_result(std::uint32_t, const auth_status_data_ptr&, bool = false);
+		void dispatch_disconnect(std::uint32_t, const auth_status_data_ptr&, bool = false);
+		void dispatch_call_status(std::uint32_t, std::uint32_t, const amf0_object_ptr&, bool = false);
 
-		void enqueue_message(rtmp_message_invoke_ptr);
+		void enqueue_message(const rtmp_message_invoke_ptr&);
 		void send_enqueued_messages(std::uint32_t);
 
 		std::uint32_t m_keep_time;

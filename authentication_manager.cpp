@@ -3,6 +3,8 @@
 
 #ifndef WIN32
 #include <dlfcn.h>
+
+#include <utility>
 #endif
 
 namespace fms
@@ -29,9 +31,9 @@ namespace fms
 			m_destroy(m_auth_plugin);
 	}
 
-	boost::tribool authentication_manager::authenticate(auth_data_ptr data, std::function<void (bool, auth_data_ptr)>)
+	boost::tribool authentication_manager::authenticate(auth_data_ptr data, const std::function<void (bool, auth_data_ptr)>&)
 	{
-		return m_auth_plugin->authenticate(data);
+		return m_auth_plugin->authenticate(std::move(data));
 	}
 
 	void authentication_manager::init_plugin(const std::string &plugin_name)

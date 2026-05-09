@@ -63,7 +63,7 @@ namespace fms
 		}
 	}
 
-	void rtmpt_session::serialize_message(rtmp_message_ptr msg, stream_array &buffer)
+	void rtmpt_session::serialize_message(const rtmp_message_ptr& msg, stream_array &buffer)
 	{
 		rtmp_channel_ptr channel = m_channel_manager->get_channel(msg->channel_id());
 

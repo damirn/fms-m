@@ -76,7 +76,7 @@ namespace fms
 		}
 	}
 
-	void rtmp_protocol::serialize(stream_array &buffer, rtmp_message_ptr msg, rtmp_header &new_header, rtmp_header &previous_header)
+	void rtmp_protocol::serialize(stream_array &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)
 	{
 		stream_array tmp_buffer;
 		msg->serialize(tmp_buffer);

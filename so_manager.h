@@ -19,14 +19,14 @@ namespace fms
 	public:
 		so_manager(rtmp_application *);
 
-		bool handle_so(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_ptr &);
+		bool handle_so(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_ptr &);
 
 	protected:
-		void handle_use_event(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_shared_object_ptr &);
-		void handle_release_event(rtmp_message_shared_object_ptr, std::uint32_t);
-		void handle_req_change_event(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_shared_object::event_ptr, rtmp_message_shared_object_ptr &);
-		void handle_send_message_event(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_shared_object_ptr &);
-		void handle_req_remove_event(rtmp_message_shared_object_ptr, std::uint32_t, rtmp_message_shared_object::event_ptr, rtmp_message_shared_object_ptr &);
+		void handle_use_event(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_shared_object_ptr &);
+		void handle_release_event(const rtmp_message_shared_object_ptr&, std::uint32_t);
+		void handle_req_change_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, rtmp_message_shared_object_ptr &);
+		void handle_send_message_event(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_shared_object_ptr &);
+		void handle_req_remove_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, rtmp_message_shared_object_ptr &);
 
 		rtmp_application *m_app;
 
@@ -47,7 +47,7 @@ namespace fms
 		bool m_new_message;
 		std::mutex m_mutex;
 
-		std::optional<so_data_ptr> find_so(rtmp_message_shared_object_ptr);
+		std::optional<so_data_ptr> find_so(const rtmp_message_shared_object_ptr&);
 
 		void increase_version(so_data_ptr so)
 		{

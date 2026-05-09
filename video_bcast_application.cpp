@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <memory>
 #include <boost/process.hpp>
+#include <utility>
 
 namespace fms
 {
@@ -231,13 +232,13 @@ namespace fms
 		client_session_ptr conn = get_connection(connection_id);
 		std::uint32_t stream_id = conn->reserve_stream_id();
 
-		res = create_stream(invoke, connection_id, stream_id);
+		res = create_stream(std::move(invoke), connection_id, stream_id);
 
 		std::unique_lock<std::mutex> lock(m_mutex);
 		m_clients[connection_id].insert(stream_id);
 	}
 
-	void video_bcast_application::handle_invoke_close_stream(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
+	void video_bcast_application::handle_invoke_close_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
 		rtmp_application::close_stream(invoke, connection_id);
 		std::unique_lock<std::mutex> lock(m_mutex);
@@ -315,7 +316,7 @@ namespace fms
 		}
 	}
 
-	void video_bcast_application::handle_publish_record(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, const std::string &stream)
+	void video_bcast_application::handle_publish_record(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, const std::string &stream)
 	{
 		rtmp_message_invoke_ptr rec_result(new rtmp_message_invoke("onStatus", 0.0f));
 		rec_result->channel_id() = invoke->channel_id();
@@ -444,7 +445,7 @@ namespace fms
 		}
 	}
 
-	void video_bcast_application::handle_invoke_receive_audio(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
+	void video_bcast_application::handle_invoke_receive_audio(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		try
@@ -463,7 +464,7 @@ namespace fms
 		}
 	}
 
-	void video_bcast_application::handle_invoke_receive_video(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
+	void video_bcast_application::handle_invoke_receive_video(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		try
@@ -504,7 +505,7 @@ namespace fms
 		}
 	}
 
-	void video_bcast_application::handle_notify_set_data_frame(rtmp_message_notify_ptr msg, std::uint32_t connection_id)
+	void video_bcast_application::handle_notify_set_data_frame(const rtmp_message_notify_ptr& msg, std::uint32_t connection_id)
 	{
 		rtmp_message_notify::parameters_list_t params = msg->parameters();
 		rtmp_message_notify::parameters_list_t::iterator i = params.begin();
@@ -550,7 +551,7 @@ namespace fms
 		}
 	}
 
-	void video_bcast_application::handle_notify_clear_data_frame(rtmp_message_notify_ptr, std::uint32_t)
+	void video_bcast_application::handle_notify_clear_data_frame(const rtmp_message_notify_ptr&, std::uint32_t)
 	{
 	}
 
@@ -598,7 +599,7 @@ namespace fms
 		}
 	}
 
-	void video_bcast_application::update_metadata(const stream_client_id_t &cid, amf0_type_ptr data)
+	void video_bcast_application::update_metadata(const stream_client_id_t &cid, const amf0_type_ptr& data)
 	{
 		amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(data);
 		metadata_map_t::iterator i = m_metadata.find(cid);
@@ -804,7 +805,7 @@ namespace fms
 		send_stream_notify(connection_id, stream_id, code, desc, true);
 	}
 
-	void video_bcast_application::add_waiting_client(std::uint32_t connection_id, rtmp_message_invoke_ptr invoke, const std::string &str)
+	void video_bcast_application::add_waiting_client(std::uint32_t connection_id, const rtmp_message_invoke_ptr& invoke, const std::string &str)
 	{
 		subscriber wc(connection_id, invoke->stream_id(), invoke->channel_id());
 		m_waiting_clients[str].insert(wc);
@@ -818,7 +819,7 @@ namespace fms
 		m_stream_clients.insert(stream_client_map_t::value_type(broadcaster, subscriber));
 	}
 
-	void video_bcast_application::enqueue_video_frame(rtmp_message_video_data_ptr video, const stream_client_id_t &bcid)
+	void video_bcast_application::enqueue_video_frame(const rtmp_message_video_data_ptr& video, const stream_client_id_t &bcid)
 	{
 		if (video->get_frame_type() == rtmp_message_video_data::eKeyFrame)
 		{
@@ -834,7 +835,7 @@ namespace fms
 			m_video_queue_map[bcid].push_back(video);
 	}
 
-	void video_bcast_application::send_video_frame(stream_client_ptr client, rtmp_message_video_data_ptr video, const stream_client_id_t &bcid)
+	void video_bcast_application::send_video_frame(const stream_client_ptr& client, const rtmp_message_video_data_ptr& video, const stream_client_id_t &bcid)
 	{
 		client->m_key_frame_sent = true;
 
@@ -890,7 +891,7 @@ namespace fms
 		notify(client->m_connection_id);
 	}
 
-	void video_bcast_application::send_enqueued_video_frames(const stream_client_id_t &bcid, rtmp_message_video_data_ptr video, stream_client_ptr client)
+	void video_bcast_application::send_enqueued_video_frames(const stream_client_id_t &bcid, const rtmp_message_video_data_ptr& video, const stream_client_ptr& client)
 	{
 		std::list<rtmp_message_video_data_ptr> &list = m_video_queue_map[bcid];
 		std::uint32_t size = list.size();
@@ -934,7 +935,7 @@ namespace fms
 		notify(client->m_connection_id);
 	}
 
-	void video_bcast_application::send_audio_frame(rtmp_message_audio_data_ptr audio, const stream_client_ptr &client, const stream_client_id_t &src)
+	void video_bcast_application::send_audio_frame(const rtmp_message_audio_data_ptr& audio, const stream_client_ptr &client, const stream_client_id_t &src)
 	{
 		rtmp_message_audio_data_ptr tmp(new rtmp_message_audio_data(*audio));
 		tmp->stream_id() = client->m_stream_id;

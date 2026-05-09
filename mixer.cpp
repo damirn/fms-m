@@ -57,7 +57,7 @@ namespace fms
 		}
 	}
 
-	void simple_mixer::add_audio(std::uint32_t id, rtmp_message_audio_data_ptr msg)
+	void simple_mixer::add_audio(std::uint32_t id, const rtmp_message_audio_data_ptr& msg)
 	{
 		if (m_active)
 		{

@@ -76,7 +76,7 @@ namespace fms
 			std::optional<session_ptr> ss = get_session(sid);
 			if (ss)
 			{
-				session_ptr s = *ss;
+				const session_ptr& s = *ss;
 				if (s->parse(m_buffer))
 				{
 					// don't start a second async_send_to while one is in flight (it
@@ -387,7 +387,7 @@ namespace fms
 		return ts & 0xffff;
 	}
 
-	void service::handle_net_group(group_ptr &g, session_ptr s)
+	void service::handle_net_group(group_ptr &g, const session_ptr& s)
 	{
 		if (g->command() == group::eJoinGroup)
 		{

@@ -110,7 +110,7 @@ namespace fms
 			i->second->m_session->handle_bytes_written(bytes_transferred);
 	}
 
-	std::string rtmpt_manager::create_id(const boost::asio::ip::address &address, rtmpt_session_ptr session)
+	std::string rtmpt_manager::create_id(const boost::asio::ip::address &address, const rtmpt_session_ptr& session)
 	{
 		while(true)
 		{

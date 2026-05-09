@@ -6,6 +6,7 @@
 #include "so_manager.h"
 
 #include <memory>
+#include <utility>
 
 namespace fms
 {
@@ -108,7 +109,7 @@ namespace fms
 			m_delays.erase(j);
 	}
 
-	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, rtmp_message_ptr msg, bool urgent /* = false */)
+	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_ptr& msg, bool urgent /* = false */)
 	{
 		if (m_app_manager->has_connection(connection_id))
 		{
@@ -123,18 +124,18 @@ namespace fms
 		return 0;
 	}
 
-	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, bool urgent /* = false */)
+	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_invoke_ptr& msg, result_handler_ptr res_handler, bool urgent /* = false */)
 	{
 		std::uint32_t size = enqueue_async_message(connection_id, msg, urgent);
 		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
-		m_result_handlers[static_cast<std::uint32_t>(msg->invoke_id()->value())] = res_handler;
+		m_result_handlers[static_cast<std::uint32_t>(msg->invoke_id()->value())] = std::move(res_handler);
 		return size;
 	}
 
 	void rtmp_application::add_result_handler(std::uint32_t invoke_id, result_handler_ptr res_handler)
 	{
 		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
-		m_result_handlers[invoke_id] = res_handler;
+		m_result_handlers[invoke_id] = std::move(res_handler);
 	}
 
 	bool rtmp_application::has_async_messages(std::uint32_t connection_id)
@@ -244,7 +245,7 @@ namespace fms
 
 	void rtmp_application::handle_invoke_check_bandwidth(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_download(a, b, c); }));
+		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_download(std::move(a), std::move(b), c); }));
 		std::uint32_t id = ++m_invoke_id;
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheck", id));
 
@@ -262,7 +263,7 @@ namespace fms
 
 	void rtmp_application::handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_upload(a, b, c); }));
+		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_upload(std::move(a), std::move(b), c); }));
 		std::uint32_t id = ++m_invoke_id;
 		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheckU", id));
 
@@ -424,7 +425,7 @@ namespace fms
 //		std::cout << std::endl;
 	}
 
-	boost::tribool rtmp_application::handle_invoke_connect(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
+	boost::tribool rtmp_application::handle_invoke_connect(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
 		if (!check_connect_params(connection_id, invoke->parameters()))
 		{
@@ -472,7 +473,7 @@ namespace fms
 			throw rtmp_illegal_parameter_exception("String parameter expected");
 	}
 
-	rtmp_message_ptr rtmp_application::create_stream(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, std::uint32_t stream_id)
+	rtmp_message_ptr rtmp_application::create_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, std::uint32_t stream_id)
 	{
 		m_app_manager->create_netstream(std::make_pair(connection_id, stream_id));
 
@@ -489,7 +490,7 @@ namespace fms
 		return result;
 	}
 
-	void rtmp_application::close_stream(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id)
+	void rtmp_application::close_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
 		m_app_manager->delete_netstream(std::make_pair(connection_id, invoke->stream_id()));
 		try

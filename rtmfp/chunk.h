@@ -405,7 +405,7 @@ namespace fms
 			, m_fsn_offset(fsn_off)
 		{}
 
-		user_data_chunk(fragment_ptr, const vlu_t &, const vlu_t &);
+		user_data_chunk(const fragment_ptr&, const vlu_t &, const vlu_t &);
 
 		bool deserialize(stream_array &, std::uint16_t) override;
 		std::uint16_t serialize(stream_array &) override;

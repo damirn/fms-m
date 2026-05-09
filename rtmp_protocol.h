@@ -21,7 +21,7 @@ namespace fms
 
 		bool deserialize(stream_array &, rtmp_header &);
 
-		void serialize(stream_array &, rtmp_message_ptr, rtmp_header &, rtmp_header &);
+		void serialize(stream_array &, const rtmp_message_ptr&, rtmp_header &, rtmp_header &);
 
 		rtmp_message_ptr message()
 		{
