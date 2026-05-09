@@ -11,7 +11,7 @@ namespace fms
 	class rtmp_channel
 	{
 	public:
-		rtmp_channel(std::uint32_t id)
+		explicit rtmp_channel(std::uint32_t id)
 			: m_id(id)
 			 
 		{}

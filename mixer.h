@@ -83,7 +83,7 @@ namespace fms
 	{
 	public:
 		mixer();
-		mixer(audio_sink *);
+		explicit mixer(audio_sink *);
 		~mixer() override;
 
 		void init() override;

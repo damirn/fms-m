@@ -35,7 +35,7 @@ namespace fms
 			eMessageClose = 0xff // fake message, used internally
 		};
 
-		rtmp_message(message_type t)
+		explicit rtmp_message(message_type t)
 			: m_type(t)
 			 
 		{}
@@ -107,7 +107,7 @@ namespace fms
 			: rtmp_message(eMessageChunkSize)
 		{}
 
-		rtmp_message_chunk_size(std::uint32_t chunk_size)
+		explicit rtmp_message_chunk_size(std::uint32_t chunk_size)
 			: rtmp_message(eMessageChunkSize), m_chunk_size(chunk_size)
 		{
 			m_channel_id = 2;
@@ -137,7 +137,7 @@ namespace fms
 			: rtmp_message(eMessageBytesRead)
 		{}
 
-		rtmp_message_bytes_read(std::uint32_t bytes_read)
+		explicit rtmp_message_bytes_read(std::uint32_t bytes_read)
 			: rtmp_message(eMessageBytesRead), m_bytes_read(bytes_read)
 		{
 			m_channel_id = 2;
@@ -234,7 +234,7 @@ namespace fms
 			: rtmp_message(eMessageWindowAcknowledgementSize)
 		{}
 
-		rtmp_message_window_acknowledgement_size(std::uint32_t size)
+		explicit rtmp_message_window_acknowledgement_size(std::uint32_t size)
 			: rtmp_message(eMessageWindowAcknowledgementSize), m_size(size)
 		{
 			m_channel_id = 2;
@@ -302,7 +302,7 @@ namespace fms
 			: rtmp_message(eMessageAudioData), m_size(0)
 		{}
 
-		rtmp_message_audio_data(std::uint16_t size)
+		explicit rtmp_message_audio_data(std::uint16_t size)
 			: rtmp_message(eMessageAudioData), m_data(new std::uint8_t[size]), m_size(size)
 		{}
 
@@ -378,7 +378,7 @@ namespace fms
 	class rtmp_message_video_data : public rtmp_message
 	{
 	public:
-		rtmp_message_video_data(std::uint32_t size)
+		explicit rtmp_message_video_data(std::uint32_t size)
 			: rtmp_message(eMessageVideoData), m_data(new std::uint8_t[size]), m_size(size)
 		{}
 
@@ -471,11 +471,11 @@ namespace fms
 			: rtmp_message_with_params(eMessageNotify)
 		{}
 
-		rtmp_message_notify(const std::string &function)
+		explicit rtmp_message_notify(const std::string &function)
 			: rtmp_message_with_params(eMessageNotify, function)
 		{}
 
-		rtmp_message_notify(amf0_string_ptr function)
+		explicit rtmp_message_notify(amf0_string_ptr function)
 			: rtmp_message_with_params(eMessageNotify, std::move(function))
 		{}
 
@@ -495,13 +495,13 @@ namespace fms
 			m_type = eMessageNotifyAMF3;
 		}
 
-		rtmp_message_notify_amf3(const std::string &function)
+		explicit rtmp_message_notify_amf3(const std::string &function)
 			: rtmp_message_notify(function)
 		{
 			m_type = eMessageNotifyAMF3;
 		}
 
-		rtmp_message_notify_amf3(amf0_string_ptr function)
+		explicit rtmp_message_notify_amf3(amf0_string_ptr function)
 			: rtmp_message_notify(std::move(function))
 		{
 			m_type = eMessageNotifyAMF3;
@@ -591,7 +591,7 @@ namespace fms
 	class rtmp_message_aggregate : public rtmp_message
 	{
 	public:
-		rtmp_message_aggregate(std::uint32_t ts)
+		explicit rtmp_message_aggregate(std::uint32_t ts)
 			: rtmp_message(eMessageAggregate)
 			, m_ts(ts)
 		{}

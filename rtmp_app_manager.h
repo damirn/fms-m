@@ -37,7 +37,7 @@ namespace fms
 	class rtmp_app_manager : private boost::noncopyable
 	{
 	public:
-		rtmp_app_manager(io_service_pool &);
+		explicit rtmp_app_manager(io_service_pool &);
 		~rtmp_app_manager();
 
 		void register_rtmp_app(rtmp_application *);

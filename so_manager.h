@@ -17,7 +17,7 @@ namespace fms
 	class so_manager : private boost::noncopyable
 	{
 	public:
-		so_manager(rtmp_application *);
+		explicit so_manager(rtmp_application *);
 
 		bool handle_so(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_ptr &);
 

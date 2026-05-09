@@ -213,7 +213,7 @@ namespace fms
 		class rtmp_illegal_parameter_exception : public std::runtime_error
 		{
 		public:
-			rtmp_illegal_parameter_exception(const char *err)
+			explicit rtmp_illegal_parameter_exception(const char *err)
 				: std::runtime_error(err)
 			{}
 		};

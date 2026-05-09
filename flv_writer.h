@@ -14,7 +14,7 @@ namespace fms
 	class flv_writer : public audio_sink, public video_sink, private boost::noncopyable
 	{
 	public:
-		flv_writer(const std::string &);
+		explicit flv_writer(const std::string &);
 		~flv_writer() override;
 
 		void write_audio(const char *, std::uint32_t, std::uint32_t) override;

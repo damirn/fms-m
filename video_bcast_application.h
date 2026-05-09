@@ -27,7 +27,7 @@ namespace fms
 	class video_bcast_application : public rtmp_application
 	{
 	public:
-		video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
+		explicit video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
 
 		~video_bcast_application() override = default;
 

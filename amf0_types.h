@@ -51,22 +51,22 @@ namespace fms
 			eAMF0UnknownType = 0xffff
 		};
 
-		amf0_type(etype t)
+		explicit amf0_type(etype t)
 			: m_type(t) {}
 
 		virtual ~amf0_type() = default;
 
-		operator bool()
+		explicit operator bool()
 		{
 			throw amf0_illegal_cast();
 		}
 
-		operator double()
+		explicit operator double()
 		{
 			throw amf0_illegal_cast();
 		}
 
-		operator std::string()
+		explicit operator std::string()
 		{
 			throw amf0_illegal_cast();
 		}
@@ -89,11 +89,11 @@ namespace fms
 			: amf0_type(eAMF0Boolean)
 		{}
 
-		amf0_boolean(bool value)
+		explicit amf0_boolean(bool value)
 			: amf0_type(eAMF0Boolean), m_value(value)
 		{}
 
-		operator bool()
+		explicit operator bool()
 		{
 			return m_value;
 		}
@@ -116,11 +116,11 @@ namespace fms
 			: amf0_type(eAMF0Number)
 		{}
 
-		amf0_number(double value)
+		explicit amf0_number(double value)
 			: amf0_type(eAMF0Number), m_value(value)
 		{}
 
-		operator double()
+		explicit operator double()
 		{
 			return m_value;
 		}
@@ -143,11 +143,11 @@ namespace fms
 			: amf0_type(eAMF0String) 
 		{}
 
-		amf0_string(const std::string &value)
+		explicit amf0_string(const std::string &value)
 			: amf0_type(eAMF0String), m_value(value)
 		{}
 
-		operator std::string()
+		explicit operator std::string()
 		{
 			return m_value;
 		}
@@ -340,7 +340,7 @@ namespace fms
 	private:
 		struct change_value
 		{
-			change_value(const amf0_type_ptr &value)
+			explicit change_value(const amf0_type_ptr &value)
 				: m_value(value)
 			{}
 
@@ -513,7 +513,7 @@ namespace fms
 			: amf0_type(eAMF0AMF3Container)
 		{}
 
-		amf0_amf3_container(amf3_type_ptr data)
+		explicit amf0_amf3_container(amf3_type_ptr data)
 			: amf0_type(eAMF0AMF3Container)
 			, m_data(std::move(data))
 		{}

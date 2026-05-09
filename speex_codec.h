@@ -9,7 +9,7 @@ namespace fms
 	class speex_codec : public audio_codec
 	{
 	public:
-		speex_codec(std::uint16_t = 1);
+		explicit speex_codec(std::uint16_t = 1);
 		~speex_codec() override;
 
 		std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &) override;

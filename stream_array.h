@@ -36,7 +36,7 @@ namespace fms
 				, m_write_high_mark(begin())
 			{}
 
-			stream_array(T *e)
+			explicit stream_array(T *e)
 				: dynamic_array<T>(N, e)
 				, m_size(N)
 				, m_mark(begin())
@@ -363,7 +363,7 @@ namespace fms
 			 
 		= default;
 
-		stream_array(std::uint8_t *e)
+		explicit stream_array(std::uint8_t *e)
 			: detail::stream_array<std::uint8_t, detail::eMaxStreamSize>(e)
 		{}
 	};

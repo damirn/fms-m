@@ -27,7 +27,7 @@ namespace fms
 	class admin_application : public rtmp_application
 	{
 	public:
-		admin_application(rtmp_app_manager *app_manager)
+		explicit admin_application(rtmp_app_manager *app_manager)
 			: rtmp_application(app_manager, "admin")
 		{
 			init();

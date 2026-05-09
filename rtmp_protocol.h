@@ -15,7 +15,7 @@ namespace fms
 			: m_chunk_size(eChunkSize)
 		{}
 
-		rtmp_protocol(std::uint16_t chunk_size)
+		explicit rtmp_protocol(std::uint16_t chunk_size)
 			: m_chunk_size(chunk_size)
 		{}
 
