@@ -48,7 +48,7 @@ namespace fms
 		client_session_ptr const conn = get_connection(connection_id);
 		if (!conn->app_instance().empty() && audio->size() > 0)
 		{
-			std::unique_lock<std::mutex> const lock(m_mutex);
+			std::unique_lock const lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
 			if (m_instance_to_client.contains(app_instance))
 			{
@@ -117,7 +117,7 @@ namespace fms
 		client_session_ptr const conn = get_connection(connection_id);
 		if (!conn->app_instance().empty())
 		{
-			std::unique_lock<std::mutex> const lock(m_mutex);
+			std::unique_lock const lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
 			if (!m_instance_to_client.contains(app_instance))
 				return;
@@ -151,7 +151,7 @@ namespace fms
 		client_session_ptr const conn = get_connection(connection_id);
 		if (!conn->app_instance().empty())
 		{
-			std::unique_lock<std::mutex> const lock(m_mutex);
+			std::unique_lock const lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
 			if (!m_instance_to_client.contains(app_instance))
 			{

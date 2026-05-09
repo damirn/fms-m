@@ -15,7 +15,7 @@ namespace fms
 
 		rtmp_message_shared_object_ptr ret(new rtmp_message_shared_object(so->name(), so->version(), so->flags()));
 
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		m_new_message = true;   // must be written under the lock (was racing)
 
 		for (rtmp_message_shared_object::event_list_t::iterator i = list.begin(); i != j; ++i)

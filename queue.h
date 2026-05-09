@@ -13,7 +13,7 @@ namespace fms
 	public:
 		void push(const T &value)
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock lock(m_mutex);
 			m_queue.push(value);
 			lock.unlock();
 			m_condition.notify_one();
@@ -21,20 +21,20 @@ namespace fms
 
 		bool empty() const
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock lock(m_mutex);
 			return m_queue.empty();
 		}
 
 		void clear()
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock lock(m_mutex);
 			while (!m_queue.empty())
 				m_queue.pop();
 		}
 
 		bool try_pop(T &value)
 		{
-			std::unique_lock<std::mutex> const lock(m_mutex);
+			std::unique_lock const lock(m_mutex);
 			if(m_queue.empty())
 			{
 				return false;
@@ -47,7 +47,7 @@ namespace fms
 
 		void wait_and_pop(T& value)
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock lock(m_mutex);
 			while(m_queue.empty())
 			{
 				m_condition.wait(lock);
@@ -59,14 +59,14 @@ namespace fms
 
 		std::size_t size()
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock lock(m_mutex);
 			return m_queue.size();
 		}
 
 		std::size_t trim(std::size_t elements = 1)
 		{
 			std::size_t cnt = 0;
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock lock(m_mutex);
 			while (m_queue.size() > elements)
 			{
 				m_queue.pop();

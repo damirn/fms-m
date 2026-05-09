@@ -18,7 +18,7 @@ namespace fms
 
 	void rtmpt_manager::create_session(const boost::asio::ip::tcp::endpoint &remote, std::string &id)
 	{
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 
 		rtmpt_session_ptr const session = m_app_manager->create_rtmpt_session();
 		id = create_id(remote.address(), session);
@@ -28,7 +28,7 @@ namespace fms
 
 	void rtmpt_manager::remove_session(const std::string &id)
 	{
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		id_map_t::iterator const i = m_ids.find(id);
 		if (i == m_ids.end())
 			return;
@@ -39,7 +39,7 @@ namespace fms
 
 	bool rtmpt_manager::validate(const boost::asio::ip::tcp::endpoint &remote, const std::string &id, std::uint32_t sequence)
 	{
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		id_map_t::iterator const i = m_ids.find(id);
 		if (i == m_ids.end())
 			return false;
@@ -53,7 +53,7 @@ namespace fms
 
 	std::uint32_t rtmpt_manager::handle_data(const std::string &cid, std::uint32_t seq, stream_array &input, stream_array &output)
 	{
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		id_map_t::iterator const i = m_ids.find(cid);
 		if (i == m_ids.end())
 			return 0;
@@ -87,7 +87,7 @@ namespace fms
 
 	std::uint32_t rtmpt_manager::serialize_result(const std::string &cid, std::uint32_t seq, stream_array &buffer)
 	{
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		id_map_t::iterator const i = m_ids.find(cid);
 		if (i == m_ids.end())
 			return 0;
@@ -100,7 +100,7 @@ namespace fms
 
 	void rtmpt_manager::update_stats(const std::string &id, std::uint32_t bytes_transferred, bool is_inbound)
 	{
-		std::unique_lock<std::mutex> const lock(m_mutex);
+		std::unique_lock const lock(m_mutex);
 		id_map_t::iterator const i = m_ids.find(id);
 		if (i == m_ids.end())
 			return;
@@ -141,7 +141,7 @@ namespace fms
 			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(eTimerInterval)));
 			m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 
-			std::unique_lock<std::mutex> const lock(m_mutex);
+			std::unique_lock const lock(m_mutex);
 			for (id_map_t::iterator i = m_ids.begin(); i != m_ids.end(); )
 			{
 				if (i->second->m_not_alive > 3)
