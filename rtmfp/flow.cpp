@@ -78,7 +78,7 @@ namespace fms
 						m_msg_is_fragmented = true;
 						return create_message(i, j);
 					}
-					else if (j->second->m_frag_ctrl == fragment::eWhole || j->second->m_frag_ctrl == fragment::eBegin)
+					if (j->second->m_frag_ctrl == fragment::eWhole || j->second->m_frag_ctrl == fragment::eBegin)
 					{
 						m_fragments.erase(i, j);
 						i = m_fragments.begin();

@@ -33,6 +33,6 @@ namespace fms
 		std::vector<work_guard> m_work;
 
 		/// The next io_context to use for a connection.
-		std::size_t m_next_io_context;
+		std::size_t m_next_io_context{0};
 	};
 }

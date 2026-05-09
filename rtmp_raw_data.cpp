@@ -9,9 +9,9 @@
 namespace fms
 {
 	rtmp_raw_data::rtmp_raw_data()
-		: m_read_header(true)
-		, m_channel_manager(new channel_manager)
-		, m_chunk_size(eChunkSize)
+		: 
+		 m_channel_manager(new channel_manager)
+		 
 	{}
 
 	/**

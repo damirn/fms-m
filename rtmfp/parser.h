@@ -12,7 +12,7 @@ namespace fms
 	class chunk_handler
 	{
 	public:
-		virtual ~chunk_handler() {}
+		virtual ~chunk_handler() = default;
 		virtual void handle_header(header &) = 0;
 		virtual bool handle_chunk(chunk *) = 0;
 	};
@@ -39,8 +39,8 @@ namespace fms
 
 		chunk_handler &m_chunk_handler;
 		aes *m_aes;
-		std::uint32_t m_rx_data_packets;
-		bool m_ack_now;
+		std::uint32_t m_rx_data_packets{0};
+		bool m_ack_now{false};
 		bool m_seen_data_chunk;
 
 		enum { ePad0 = 0x00, ePadff = 0xff };

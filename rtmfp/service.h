@@ -78,8 +78,8 @@ namespace fms
 		boost::asio::io_service &m_io_service;
 		boost::asio::ip::udp::socket m_socket;
 		boost::asio::ip::udp::endpoint m_sender_endpoint;
-		bool m_read_in_progress;
-		bool m_write_in_progress;
+		bool m_read_in_progress{false};
+		bool m_write_in_progress{false};
 		parser *m_parser;
 		serializer *m_serializer;
 

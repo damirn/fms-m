@@ -20,9 +20,8 @@ namespace fms
 		: m_app_manager(app_manager)
 		, m_io_service(io_service)
 		, m_socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port))
-		, m_read_in_progress(false)
-		, m_write_in_progress(false)
-		, m_start(std::chrono::system_clock::now())
+		, 
+		 m_start(std::chrono::system_clock::now())
 		, m_sessions_iterator(m_sessions.begin())
 	{
 		m_parser = new parser(*this);

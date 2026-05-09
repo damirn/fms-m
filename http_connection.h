@@ -90,12 +90,12 @@ namespace fms
 		std::uint32_t m_sequence;
 
 		// HTTP content length
-		std::uint32_t m_content_length;
+		std::uint32_t m_content_length{0};
 
 		// Current RTMPT command
 		commands m_command;
 
-		bool m_read_http_header;
+		bool m_read_http_header{true};
 		bool m_write_http_header;
 		bool m_http_header_is_complete;
 

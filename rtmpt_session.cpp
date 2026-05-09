@@ -18,13 +18,7 @@ namespace fms
 	rtmpt_session::rtmpt_session(std::uint32_t id, boost::asio::io_service &io_service, rtmp_app_manager *app_manager)
 		: basic_rtmp_connection(id, io_service, app_manager)
 		, m_rtmpt_manager(app_manager->get_rtmpt_manager())
-		, m_read_http_header(true)
-		, m_write_http_header(true)
-		, m_http_header_is_complete(false)
-		, m_state(eNotConnected)
-		, m_sstate(eCSIdle)
-		, m_poll_cnt(0)
-		, m_poll_index(0)
+		 
 	{}
 
 	void rtmpt_session::start()

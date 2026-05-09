@@ -169,7 +169,7 @@ namespace fms
 
 		struct result_handler
 		{
-			virtual ~result_handler(){}
+			virtual ~result_handler()= default;
 			using callback_t = std::function<bool (rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &)>;
 			result_handler(std::uint32_t id, callback_t f)
 				: m_connection_id(id)
@@ -185,11 +185,11 @@ namespace fms
 		{
 			bwcheck_result_handler(std::uint32_t id, callback_t f)
 				: result_handler(id, f)
-				, m_num_called(0)
-				, m_time(std::chrono::system_clock::now())
+				, 
+				 m_time(std::chrono::system_clock::now())
 			{}
 			std::uint32_t m_bytes;
-			std::uint8_t m_num_called;
+			std::uint8_t m_num_called{0};
 			std::chrono::system_clock::time_point m_time;
 			std::chrono::system_clock::duration m_latency;
 		};

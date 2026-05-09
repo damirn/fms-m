@@ -12,7 +12,7 @@ namespace fms
 	class flv_reader : private boost::noncopyable
 	{
 	public:
-		flv_reader(){}
+		flv_reader()= default;
 		flv_reader(const std::string &);
 
 		void open(const std::string &);

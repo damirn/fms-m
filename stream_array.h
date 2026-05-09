@@ -14,7 +14,7 @@ namespace fms
 		class buffer_eof_exception : public std::exception
 		{
 		public:
-			buffer_eof_exception()  {}
+			buffer_eof_exception()  = default;
 		};
 
 		template<typename T, std::size_t N>
@@ -361,7 +361,7 @@ namespace fms
 	public:
 		stream_array()
 			 
-		{}
+		= default;
 
 		stream_array(std::uint8_t *e)
 			: detail::stream_array<std::uint8_t, detail::eMaxStreamSize>(e)

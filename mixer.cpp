@@ -13,7 +13,7 @@ namespace fms
 	{}
 
 	simple_mixer::~simple_mixer()
-	{}
+	= default;
 
 	void simple_mixer::add_source_stream(std::uint32_t id)
 	{

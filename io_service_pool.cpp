@@ -7,7 +7,7 @@
 namespace fms
 {
 	io_service_pool::io_service_pool(std::size_t pool_size)
-		: m_next_io_context(0)
+		 
 	{
 		if (pool_size == 0)
 			throw std::runtime_error("io_service_pool size is 0");

@@ -17,9 +17,8 @@ namespace fms
 {
 	rtmp_app_manager::rtmp_app_manager(io_service_pool &io_pool)
 		: m_io_service_pool(io_pool)
-		, m_connection_counter(0)
-		, m_admin_app(nullptr)   // only set if an app named "admin" registers
-		, m_io_service(io_pool.get_io_service())
+		, 
+		 m_io_service(io_pool.get_io_service())
 		, m_timer(m_io_service)
 	{
 		m_rtmpt_manager = new rtmpt_manager(this);

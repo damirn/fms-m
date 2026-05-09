@@ -13,8 +13,7 @@ namespace fms
 	parser::parser(chunk_handler &h)
 		: m_chunk_handler(h)
 		, m_aes(new aes)
-		, m_rx_data_packets(0)
-		, m_ack_now(false)
+		 
 	{}
 
 	parser::~parser()

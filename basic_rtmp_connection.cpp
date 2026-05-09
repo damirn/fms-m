@@ -19,14 +19,7 @@ namespace fms
 		, m_io_service(io_service)
 		, m_hs_timer(io_service)
 		, m_timer(io_service)
-		, m_bytes_read_notify(eAckSize)
-		, m_write_in_progress(false)
-		, m_current_channel(-1)
-		, m_outgoing_chunk_size(eChunkSize)
-		, m_is_fp9(false)
-		, m_uses_crypto(false)
-		, m_key_in(nullptr)
-		, m_key_out(nullptr)
+		 
 	{}
 
 	basic_rtmp_connection::~basic_rtmp_connection()

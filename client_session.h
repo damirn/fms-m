@@ -16,7 +16,7 @@ namespace fms
 	{
 	public:
 		client_session(std::uint32_t, rtmp_app_manager *);
-		virtual ~client_session(){}
+		virtual ~client_session()= default;
 
 		virtual void start() = 0;
 		virtual void close();
@@ -138,7 +138,7 @@ namespace fms
 		std::string m_username;
 
 		rtmp_app_manager *m_app_manager;
-		rtmp_application *m_app;
+		rtmp_application *m_app{nullptr};
 
 		// start time
 		std::chrono::system_clock::time_point m_time;
@@ -162,7 +162,7 @@ namespace fms
 		// stream ids in use
 		std::set<std::uint32_t> m_stream_ids;
 
-		bool m_uses_amf3;
+		bool m_uses_amf3{false};
 	};
 
 	using client_session_ptr = std::shared_ptr<client_session>;

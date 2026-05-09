@@ -66,13 +66,12 @@ namespace fms
 		struct rtmpt_session_data
 		{
 			rtmpt_session_data(const boost::asio::ip::address &address)
-				: m_sequence(0)
-				, m_not_alive(0)
-				, m_address(address)
+				: 
+				 m_address(address)
 			{}
-			std::uint32_t m_sequence;
+			std::uint32_t m_sequence{0};
 			std::uint32_t m_connection_id;
-			std::uint8_t m_not_alive;
+			std::uint8_t m_not_alive{0};
 			boost::asio::ip::address m_address;
 			rtmpt_session_ptr m_session;
 			using unoreder_data_t = std::map<std::uint32_t, std::pair<std::uint8_t *, std::uint16_t> >;

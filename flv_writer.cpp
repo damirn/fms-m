@@ -10,13 +10,7 @@ namespace fms
 	std::uint8_t flv_writer::m_header[] = { 0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09 };
 
 	flv_writer::flv_writer(const std::string &file_name)
-		: m_prev_tag_size(0)
-		, m_audio_ts(0)
-		, m_prev_audio_ts(0)
-		, m_video_ts(0)
-		, m_prev_video_ts(0)
-		, m_first_audio_frame(true)
-		, m_first_video_frame(true)
+		 
 	{
 		prepare_file(file_name);
 	}

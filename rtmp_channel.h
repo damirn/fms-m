@@ -13,9 +13,7 @@ namespace fms
 	public:
 		rtmp_channel(std::uint32_t id)
 			: m_id(id)
-			, m_message_len(0)
-			, m_prev_message_complete(false)
-			, m_uses_continuation(false)
+			 
 		{}
 
 		const std::uint32_t &id() const
@@ -131,9 +129,9 @@ namespace fms
 
 	protected:
 		std::uint32_t m_id;
-		std::uint32_t m_message_len;
-		bool m_prev_message_complete;
-		bool m_uses_continuation;
+		std::uint32_t m_message_len{0};
+		bool m_prev_message_complete{false};
+		bool m_uses_continuation{false};
 		rtmp_header m_received_header;
 		rtmp_header m_sent_header;
 		stream_array m_buffer;

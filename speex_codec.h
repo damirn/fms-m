@@ -29,7 +29,7 @@ namespace fms
 		void *m_dec_state;
 		SpeexBits m_dec_bits;
 		SpeexBits m_enc_bits;
-		std::int32_t m_frame_size;
+		std::int32_t m_frame_size{0};
 	};
 
 	using speex_codec_ptr = std::shared_ptr<speex_codec>;

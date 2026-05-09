@@ -95,23 +95,23 @@ namespace fms
 		enum { eHandShakeTimeout = 5, ePingInterval = 30 };
 		enum { eEncodingAMF0, eEncodingAMF3 };
 
-		std::uint32_t m_bytes_read_notify;
+		std::uint32_t m_bytes_read_notify{eAckSize};
 		std::uint32_t m_win_ack;
 
-		bool m_write_in_progress;
+		bool m_write_in_progress{false};
 
-		std::int32_t m_current_channel;
-		std::uint16_t m_outgoing_chunk_size;
+		std::int32_t m_current_channel{-1};
+		std::uint16_t m_outgoing_chunk_size{eChunkSize};
 
 		std::array<std::uint8_t, eHandShakeSize + 1> m_tmp_buff;
 
-		bool m_is_fp9;
-		bool m_uses_crypto;
+		bool m_is_fp9{false};
+		bool m_uses_crypto{false};
 		std::uint8_t m_validation_scheme;
 
 		// RC4 keys
-		EVP_CIPHER_CTX *m_key_in;
-		EVP_CIPHER_CTX *m_key_out;
+		EVP_CIPHER_CTX *m_key_in{nullptr};
+		EVP_CIPHER_CTX *m_key_out{nullptr};
 	};
 
 	using basic_rtmp_connection_ptr = std::shared_ptr<basic_rtmp_connection>;

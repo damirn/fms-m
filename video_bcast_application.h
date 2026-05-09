@@ -29,7 +29,7 @@ namespace fms
 	public:
 		video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
 
-		~video_bcast_application() override {}
+		~video_bcast_application() override = default;
 
 		void delete_connection(std::uint32_t, const std::string & = "") override;
 
@@ -141,14 +141,13 @@ namespace fms
 				: m_id(id)
 				, m_stream_id(stream_id)
 				, m_channel_id(channel_id)
-				, m_receive_video(true)
-				, m_receive_audio(true)
+				 
 			{}
 			std::uint32_t m_id;
 			std::uint32_t m_stream_id;
 			std::uint32_t m_channel_id;
-			bool m_receive_video;
-			bool m_receive_audio;
+			bool m_receive_video{true};
+			bool m_receive_audio{true};
 		};
 
 		struct subscriber_comp
