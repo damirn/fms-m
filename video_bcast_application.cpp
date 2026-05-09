@@ -227,7 +227,7 @@ namespace fms
 		return false;
 	}
 
-	void video_bcast_application::handle_invoke_create_stream(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
+	void video_bcast_application::handle_invoke_create_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
 		client_session_ptr const conn = get_connection(connection_id);
 		std::uint32_t const stream_id = conn->reserve_stream_id();

@@ -49,7 +49,7 @@ namespace fms
 		void handle_ping(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
 		boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) override;
 
-		void handle_invoke_create_stream(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
+		void handle_invoke_create_stream(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 		void handle_invoke_close_stream(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 
 		virtual void handle_invoke_play(rtmp_message_invoke_ptr, std::uint32_t);

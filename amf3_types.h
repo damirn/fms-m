@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include <utility>
 
 namespace fms
 {
@@ -140,12 +141,12 @@ namespace fms
 
 	namespace amf3_util
 	{
-		template<typename T> inline T get(amf3_type_ptr)
+		template<typename T> inline T get(const amf3_type_ptr&)
 		{
 			throw amf3_illegal_cast();
 		}
 
-		template<> inline bool get<bool>(amf3_type_ptr v)
+		template<> inline bool get<bool>(const amf3_type_ptr& v)
 		{
 			if (v->type() == amf3_type::eAMF3True)
 				return true;
@@ -154,7 +155,7 @@ namespace fms
 			throw amf3_illegal_cast();
 		}
 
-		template<> inline std::string get<std::string>(amf3_type_ptr v)
+		template<> inline std::string get<std::string>(const amf3_type_ptr& v)
 		{
 			if (v->type() == amf3_type::eAMF3String)
 			{
@@ -164,7 +165,7 @@ namespace fms
 			throw amf3_illegal_cast();
 		}
 
-		template<> inline std::uint32_t get<std::uint32_t>(amf3_type_ptr v)
+		template<> inline std::uint32_t get<std::uint32_t>(const amf3_type_ptr& v)
 		{
 			if (v->type() == amf3_type::eAMF3Integer)
 			{
@@ -191,7 +192,7 @@ namespace fms
 
 		void add_entry(const std::string &key, amf3_type_ptr value)
 		{
-			m_properties[key] = value;
+			m_properties[key] = std::move(value);
 		}
 
 		void add_entry(const std::string &key, const std::string &value)

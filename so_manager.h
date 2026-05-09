@@ -49,7 +49,7 @@ namespace fms
 
 		std::optional<so_data_ptr> find_so(const rtmp_message_shared_object_ptr&);
 
-		void increase_version(so_data_ptr so)
+		void increase_version(const so_data_ptr& so)
 		{
 			if (m_new_message)
 			{

@@ -5,6 +5,7 @@
 #include <memory>
 #include <memory>
 #include <memory>
+#include <utility>
 
 #include "amf0_types.h"
 #include "amf0.h"
@@ -440,7 +441,7 @@ namespace fms
 		{}
 
 		rtmp_message_with_params(rtmp_message::message_type type, amf0_string_ptr function)
-			: rtmp_message(type), m_function(function)
+			: rtmp_message(type), m_function(std::move(function))
 		{}
 
 		amf0_string_ptr function()
@@ -453,7 +454,7 @@ namespace fms
 			return m_params;
 		}
 
-		void add_parameter(amf0_type_ptr parameter)
+		void add_parameter(const amf0_type_ptr& parameter)
 		{
 			m_params.push_back(parameter);
 		}
@@ -475,7 +476,7 @@ namespace fms
 		{}
 
 		rtmp_message_notify(amf0_string_ptr function)
-			: rtmp_message_with_params(eMessageNotify, function)
+			: rtmp_message_with_params(eMessageNotify, std::move(function))
 		{}
 
 		void deserialize(stream_array &) override;
@@ -501,7 +502,7 @@ namespace fms
 		}
 
 		rtmp_message_notify_amf3(amf0_string_ptr function)
-			: rtmp_message_notify(function)
+			: rtmp_message_notify(std::move(function))
 		{
 			m_type = eMessageNotifyAMF3;
 		}
@@ -526,7 +527,7 @@ namespace fms
 			: rtmp_message_with_params(eMessageInvoke, function), m_invoke_id(new amf0_number(id)) {}
 
 		rtmp_message_invoke(amf0_string_ptr function, amf0_number_ptr id)
-			: rtmp_message_with_params(eMessageInvoke, function), m_invoke_id(id) {}
+			: rtmp_message_with_params(eMessageInvoke, std::move(function)), m_invoke_id(std::move(id)) {}
 
 		static rtmp_message_invoke_ptr create_message(const std::string &function, double id = 0.0f)
 		{
@@ -575,7 +576,7 @@ namespace fms
 		}
 
 		rtmp_message_invoke_amf3(amf0_string_ptr function, amf0_number_ptr id)
-			: rtmp_message_invoke(function, id)
+			: rtmp_message_invoke(std::move(function), std::move(id))
 		{
 			m_type = eMessageInvokeAMF3;
 		}

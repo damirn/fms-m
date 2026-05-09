@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "rtmp_message.h"
 
 namespace fms
@@ -16,7 +18,7 @@ namespace fms
 
 		rtmp_message_shared_object(amf0_string_ptr name, std::uint32_t version, std::uint32_t flags)
 			: rtmp_message(eMessageSharedObject)
-			, m_name(name)
+			, m_name(std::move(name))
 			, m_version(version)
 			, m_flags(flags)
 		{}
@@ -96,7 +98,7 @@ namespace fms
 			return m_events;
 		}
 
-		void add_event(event_ptr e)
+		void add_event(const event_ptr& e)
 		{
 			m_events.push_back(e);
 		}

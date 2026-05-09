@@ -12,6 +12,7 @@
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/identity.hpp>
+#include <utility>
 
 namespace fms
 {
@@ -164,12 +165,12 @@ namespace fms
 
 	namespace amf0_util
 	{
-		template<typename T> inline T &get_ref(amf0_type_ptr)
+		template<typename T> inline T &get_ref(const amf0_type_ptr&)
 		{
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline bool &get_ref<bool>(amf0_type_ptr v)
+		template<> inline bool &get_ref<bool>(const amf0_type_ptr& v)
 		{
 			amf0_boolean_ptr const bln = std::dynamic_pointer_cast<amf0_boolean>(v);
 			if (bln.get() != nullptr)
@@ -177,7 +178,7 @@ namespace fms
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline std::string &get_ref<std::string>(amf0_type_ptr v)
+		template<> inline std::string &get_ref<std::string>(const amf0_type_ptr& v)
 		{
 			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(v);
 			if (str.get() != nullptr)
@@ -185,7 +186,7 @@ namespace fms
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline std::uint32_t &get_ref<std::uint32_t>(amf0_type_ptr v)
+		template<> inline std::uint32_t &get_ref<std::uint32_t>(const amf0_type_ptr& v)
 		{
 			amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != nullptr)
@@ -193,12 +194,12 @@ namespace fms
 			throw amf0_illegal_cast();
 		}
 
-		template<typename T> inline T get(amf0_type_ptr)
+		template<typename T> inline T get(const amf0_type_ptr&)
 		{
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline bool get<bool>(amf0_type_ptr v)
+		template<> inline bool get<bool>(const amf0_type_ptr& v)
 		{
 			amf0_boolean_ptr const bln = std::dynamic_pointer_cast<amf0_boolean>(v);
 			if (bln.get() != nullptr)
@@ -206,7 +207,7 @@ namespace fms
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline std::string get<std::string>(amf0_type_ptr v)
+		template<> inline std::string get<std::string>(const amf0_type_ptr& v)
 		{
 			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(v);
 			if (str.get() != nullptr)
@@ -214,7 +215,7 @@ namespace fms
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline std::uint32_t get<std::uint32_t>(amf0_type_ptr v)
+		template<> inline std::uint32_t get<std::uint32_t>(const amf0_type_ptr& v)
 		{
 			amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != nullptr)
@@ -222,7 +223,7 @@ namespace fms
 			throw amf0_illegal_cast();
 		}
 
-		template<> inline std::int32_t get<std::int32_t>(amf0_type_ptr v)
+		template<> inline std::int32_t get<std::int32_t>(const amf0_type_ptr& v)
 		{
 			amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != nullptr)
@@ -237,8 +238,8 @@ namespace fms
 		struct entry
 		{
 			entry(std::string name, amf0_type_ptr value)
-				: m_name(name)
-				, m_value(value)
+				: m_name(std::move(name))
+				, m_value(std::move(value))
 			{}
 
 			std::string m_name;
@@ -294,7 +295,7 @@ namespace fms
 
 		void add_entry(const std::string &key, amf0_type_ptr value)
 		{
-			m_value.push_back(entry(key, value));
+			m_value.push_back(entry(key, std::move(value)));
 		}
 
 		void add_entry(const std::string &key, const std::string &value)
@@ -399,7 +400,7 @@ namespace fms
 			: amf0_type(eAMF0EcmaArray)
 		{}
 
-		void add_entry(const std::string &name, amf0_type_ptr value)
+		void add_entry(const std::string &name, const amf0_type_ptr& value)
 		{
 			m_array.emplace_back(name, value);
 		}
@@ -436,7 +437,7 @@ namespace fms
 			: amf0_type(eAMF0StrictArray)
 		{}
 
-		void add_entry(amf0_type_ptr value)
+		void add_entry(const amf0_type_ptr& value)
 		{
 			m_array.push_back(value);
 		}
@@ -514,7 +515,7 @@ namespace fms
 
 		amf0_amf3_container(amf3_type_ptr data)
 			: amf0_type(eAMF0AMF3Container)
-			, m_data(data)
+			, m_data(std::move(data))
 		{}
 
 		amf3_type_ptr data()
@@ -524,7 +525,7 @@ namespace fms
 
 		void set_data(amf3_type_ptr data)
 		{
-			m_data = data;
+			m_data = std::move(data);
 		}
 
 	protected:

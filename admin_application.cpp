@@ -430,14 +430,14 @@ namespace fms
 		return false;
 	}
 
-	void admin_application::send_new_stream_notify(netstream_stats_ptr data)
+	void admin_application::send_new_stream_notify(const netstream_stats_ptr& data)
 	{
-		notify_active_client(data, [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_new_stream_notify(a, std::move(b)); });
+		notify_active_client(data, [this](std::uint32_t a, const netstream_stats_ptr& b) { dispatch_new_stream_notify(a, b); });
 	}
 
-	void admin_application::send_stream_deleted_notify(netstream_stats_ptr data)
+	void admin_application::send_stream_deleted_notify(const netstream_stats_ptr& data)
 	{
-		notify_active_client(data, [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_delete_stream_notify(a, b); });
+		notify_active_client(data, [this](std::uint32_t a, const netstream_stats_ptr& b) { dispatch_delete_stream_notify(a, b); });
 	}
 
 	void admin_application::send_qos_data(netstream_stats_map_t &map)
@@ -493,7 +493,7 @@ namespace fms
 				func(m_client.first, data);
 	}
 
-	void admin_application::dispatch_new_stream_notify(std::uint32_t connection_id, netstream_stats_ptr data)
+	void admin_application::dispatch_new_stream_notify(std::uint32_t connection_id, const netstream_stats_ptr& data)
 	{
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_new_stream);
 

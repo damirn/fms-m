@@ -9,6 +9,7 @@
 #include <boost/logic/tribool.hpp>
 #include <unordered_map>
 #include <mutex>
+#include <utility>
 
 #include "io_service_pool.h"
 #include "random_string.h"
@@ -173,7 +174,7 @@ namespace fms
 			using callback_t = std::function<bool (rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &)>;
 			result_handler(std::uint32_t id, callback_t f)
 				: m_connection_id(id)
-				, m_call_back(f)
+				, m_call_back(std::move(f))
 			{}
 			std::uint32_t m_connection_id;
 			callback_t m_call_back;
@@ -184,7 +185,7 @@ namespace fms
 		struct bwcheck_result_handler : public result_handler
 		{
 			bwcheck_result_handler(std::uint32_t id, callback_t f)
-				: result_handler(id, f)
+				: result_handler(id, std::move(f))
 				, 
 				 m_time(std::chrono::system_clock::now())
 			{}
