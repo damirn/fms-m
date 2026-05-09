@@ -175,9 +175,9 @@ namespace fms
 			const std::list<group_weak_ptr> &grps = i->second->group_membership();
 			if (!grps.empty())
 			{
-				for (std::list<group_weak_ptr>::const_iterator j = grps.begin(); j != grps.end(); ++j)
+				for (const auto & grp : grps)
 				{
-					if (group_ptr g = (*j).lock())
+					if (group_ptr g = grp.lock())
 					{
 						g->remove_member(i->second);
 						if (g->empty())

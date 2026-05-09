@@ -230,9 +230,9 @@ namespace fms
 		amf0_strict_array_ptr list(new amf0_strict_array);
 		string_list_t apps;
 		m_app_manager->list_applications(apps);
-		for (std::list<std::string>::iterator i = apps.begin(); i != apps.end(); ++i)
+		for (auto & app : apps)
 		{
-			amf0_string_ptr str(new amf0_string(*i));
+			amf0_string_ptr str(new amf0_string(app));
 			list->add_entry(str);
 		}
 		res->add_parameter(list);
@@ -249,18 +249,18 @@ namespace fms
 		amf0_strict_array_ptr list(new amf0_strict_array);
 		client_list_t clients;
 		m_app_manager->list_clients(clients);
-		for (client_list_t::iterator i = clients.begin(); i != clients.end(); ++i)
+		for (auto & client : clients)
 		{
 			amf0_object_ptr obj(new amf0_object);
-			obj->add_entry("id", (*i)->m_id);
-			obj->add_entry("sid", (*i)->m_sid);
-			obj->add_entry("app", (*i)->m_app);
-			obj->add_entry("ip", (*i)->m_ip);
-			obj->add_entry("port", (*i)->m_port);
-			obj->add_entry("protocol", (*i)->m_protocol);
-			obj->add_entry("time", to_simple_string((*i)->m_create_time));
-			if (!(*i)->m_username.empty())
-				obj->add_entry("user", (*i)->m_username);
+			obj->add_entry("id", client->m_id);
+			obj->add_entry("sid", client->m_sid);
+			obj->add_entry("app", client->m_app);
+			obj->add_entry("ip", client->m_ip);
+			obj->add_entry("port", client->m_port);
+			obj->add_entry("protocol", client->m_protocol);
+			obj->add_entry("time", to_simple_string(client->m_create_time));
+			if (!client->m_username.empty())
+				obj->add_entry("user", client->m_username);
 			list->add_entry(obj);
 		}
 		res->add_parameter(list);
@@ -347,8 +347,8 @@ namespace fms
 		netstream_list_t streams;
 		m_app_manager->list_streams(streams);
 
-		for (netstream_list_t::iterator i = streams.begin(); i != streams.end(); ++i)
-			list->add_entry(create_stream_stat_obj(*i));
+		for (auto & stream : streams)
+			list->add_entry(create_stream_stat_obj(stream));
 
 		res->add_parameter(list);
 
@@ -384,11 +384,11 @@ namespace fms
 		amf0_strict_array_ptr list(new amf0_strict_array);
 		queue_stats_list_t queue_stats;
 		m_app_manager->get_queue_stats(queue_stats);
-		for (queue_stats_list_t::iterator i = queue_stats.begin(); i != queue_stats.end(); ++i)
+		for (auto & queue_stat : queue_stats)
 		{
 			amf0_object_ptr obj(new amf0_object);
-			obj->add_entry("client", (*i).m_client);
-			obj->add_entry("messages", (*i).m_messages);
+			obj->add_entry("client", queue_stat.m_client);
+			obj->add_entry("messages", queue_stat.m_messages);
 			list->add_entry(obj);
 		}
 		res->add_parameter(list);
@@ -424,8 +424,8 @@ namespace fms
 		std::unique_lock<std::mutex> lock(m_admin_mutex);
 		if (m_clients.empty())
 			return false;
-		for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
-			if (i->second)
+		for (auto & m_client : m_clients)
+			if (m_client.second)
 				return true;
 		return false;
 	}
@@ -442,8 +442,8 @@ namespace fms
 
 	void admin_application::send_qos_data(netstream_stats_map_t &map)
 	{
-		for (netstream_stats_map_t::iterator i = map.begin(); i != map.end(); ++i)
-			notify_active_client(i->second, [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_qos_data_for_stream_notify(a, b); });
+		for (auto & i : map)
+			notify_active_client(i.second, [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_qos_data_for_stream_notify(a, b); });
 	}
 
 	void admin_application::send_auth_status(auth_status_data_ptr data)
@@ -453,9 +453,9 @@ namespace fms
 			dispatch_auth_result(0, data, true);
 		else
 		{
-			for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
-				if (i->second)
-					dispatch_auth_result(i->first, data);
+			for (auto & m_client : m_clients)
+				if (m_client.second)
+					dispatch_auth_result(m_client.first, data);
 		}
 	}
 
@@ -466,9 +466,9 @@ namespace fms
 			dispatch_disconnect(0, data, true);
 		else
 		{
-			for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
-				if (i->second)
-					dispatch_disconnect(i->first, data);
+			for (auto & m_client : m_clients)
+				if (m_client.second)
+					dispatch_disconnect(m_client.first, data);
 		}
 	}
 
@@ -479,18 +479,18 @@ namespace fms
 			dispatch_call_status(0, connection_id, obj, true);
 		else
 		{
-			for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
-				if (i->second)
-					dispatch_call_status(i->first, connection_id, obj);
+			for (auto & m_client : m_clients)
+				if (m_client.second)
+					dispatch_call_status(m_client.first, connection_id, obj);
 		}
 	}
 
 	void admin_application::notify_active_client(netstream_stats_ptr data, std::function<void (std::uint32_t, netstream_stats_ptr)> func)
 	{
 		std::unique_lock<std::mutex> lock(m_admin_mutex);
-		for (std::map<std::uint32_t, bool>::iterator i = m_clients.begin(); i != m_clients.end(); ++i)
-			if (i->second)
-				func(i->first, data);
+		for (auto & m_client : m_clients)
+			if (m_client.second)
+				func(m_client.first, data);
 	}
 
 	void admin_application::dispatch_new_stream_notify(std::uint32_t connection_id, netstream_stats_ptr data)

@@ -15,10 +15,10 @@ namespace fms
 	{
 	public:
 		flv_writer(const std::string &);
-		~flv_writer();
+		~flv_writer() override;
 
-		virtual void write_audio(const char *, std::uint32_t, std::uint32_t);
-		virtual void write_video(const char *, std::uint32_t, std::uint32_t);
+		void write_audio(const char *, std::uint32_t, std::uint32_t) override;
+		void write_video(const char *, std::uint32_t, std::uint32_t) override;
 
 		void write_script(const char *, std::uint32_t, std::uint32_t);
 

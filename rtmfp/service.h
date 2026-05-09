@@ -26,7 +26,7 @@ namespace fms
 	{
 	public:
 		service(boost::asio::io_service &, std::uint16_t, rtmp_app_manager *);
-		~service();
+		~service() override;
 
 		void notify()
 		{
@@ -63,8 +63,8 @@ namespace fms
 		void handle_notify();
 
 		// chunk handler stuff
-		virtual void handle_header(header &);
-		virtual bool handle_chunk(chunk *);
+		void handle_header(header &) override;
+		bool handle_chunk(chunk *) override;
 
 		void handle_ihello(ihello_chunk *);
 		void handle_iikeying(iikeying_chunk *);

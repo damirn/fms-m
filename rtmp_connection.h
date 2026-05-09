@@ -14,17 +14,17 @@ namespace fms
 		// Construct a connection with the given io_service.
 		rtmp_connection(std::uint32_t, boost::asio::io_service &, rtmp_app_manager *);
 
-		~rtmp_connection();
+		~rtmp_connection() override;
 
 		// Start the first asynchronous operation for the connection.
-		virtual void start();
+		void start() override;
 
-		virtual void notify()
+		void notify() override
 		{
 			boost::asio::post(m_io_service, [self = shared_from_this()]() { self->handle_notify(); });
 		}
 
-		virtual void close();
+		void close() override;
 
 		// Get the socket associated with the connection.
 		boost::asio::ip::tcp::socket& socket()
@@ -60,7 +60,7 @@ namespace fms
 		void handle_write(const boost::system::error_code &);
 
 		// Handle application's result
-		virtual void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr);
+		void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr) override;
 
 		void serialize_message(rtmp_message_ptr, rtmp_channel_ptr);
 

@@ -271,33 +271,33 @@ namespace fms
 
 	void flow::update_nak_count(const vlu_t &max_tsn)
 	{
-		for (fragment_map_t::iterator i = m_fragments.begin(); i != m_fragments.end(); ++i)
+		for (auto & m_fragment : m_fragments)
 		{
-			if (i->second->m_in_flight && i->second->m_tsn < max_tsn)
+			if (m_fragment.second->m_in_flight && m_fragment.second->m_tsn < max_tsn)
 			{
-				i->second->m_nak_count++;
-				if (i->second->m_nak_count >= 3) // 3.6.2.5
-					i->second->m_in_flight = false;
+				m_fragment.second->m_nak_count++;
+				if (m_fragment.second->m_nak_count >= 3) // 3.6.2.5
+					m_fragment.second->m_in_flight = false;
 			}
 		}
 	}
 
 	std::optional<option_ptr> flow::metadata()
 	{
-		for (std::list<option_ptr>::iterator i = m_options.m_options.begin(); i != m_options.m_options.end(); ++i)
-			if ((*i)->m_type == option::eMetadata)
-				return std::optional<option_ptr>(*i);
+		for (auto & m_option : m_options.m_options)
+			if (m_option->m_type == option::eMetadata)
+				return std::optional<option_ptr>(m_option);
 		return std::optional<option_ptr>();
 	}
 
 	bool flow::on_timeout_alarm()
 	{
 		bool ret = false;
-		for (fragment_map_t::iterator i = m_fragments.begin(); i != m_fragments.end(); ++i)
+		for (auto & m_fragment : m_fragments)
 		{
-			if (i->second->m_in_flight)
+			if (m_fragment.second->m_in_flight)
 			{
-				i->second->m_in_flight = false;
+				m_fragment.second->m_in_flight = false;
 				ret = true;
 			}
 		}

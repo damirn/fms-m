@@ -13,8 +13,8 @@ namespace fms
 			 m_type(t)
 		{}
 
-		virtual std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &);
-		virtual std::uint8_t *decode(char *, std::uint8_t *, std::uint8_t, std::uint32_t &);
+		std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &) override;
+		std::uint8_t *decode(char *, std::uint8_t *, std::uint8_t, std::uint32_t &) override;
 
 	protected:
 		type m_type;

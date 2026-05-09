@@ -10,7 +10,7 @@ namespace fms
 	class amf3_illegal_cast : public std::exception
 	{
 	public:
-		virtual const char *what() const throw()
+		const char *what() const throw() override
 		{
 			return "amf3 bad cast";
 		}

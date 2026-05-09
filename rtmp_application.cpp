@@ -161,8 +161,8 @@ namespace fms
 	void rtmp_application::get_queue_stats(queue_stats_list_t &list)
 	{
 		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
-		for (async_messages_map_t::iterator i = m_async_messages.begin(); i != m_async_messages.end(); ++i)
-			list.emplace_back(i->first, i->second.first);
+		for (auto & m_async_message : m_async_messages)
+			list.emplace_back(m_async_message.first, m_async_message.second.first);
 	}
 
 	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, std::uint32_t value)
@@ -534,8 +534,8 @@ namespace fms
 		if (param)
 		{
 			amf0_parameter_list_t &list = *param;
-			for (amf0_parameter_list_t::iterator i = list.begin(); i != list.end(); ++i)
-				obj3->add_entry((*i).first, (*i).second);
+			for (auto & i : list)
+				obj3->add_entry(i.first, i.second);
 		}
 
 		obj1->add_entry("data", obj3);

@@ -132,8 +132,8 @@ namespace fms
 				m_thread.join();
 		}
 
-		for (stream_map_t::iterator i = m_streams.begin(); i != m_streams.end(); ++i)
-			delete i->second;
+		for (auto & m_stream : m_streams)
+			delete m_stream.second;
 		m_streams.clear();
 
 		delete[] m_rec_buffer;
@@ -157,10 +157,10 @@ namespace fms
 
 		{
 			std::unique_lock<std::mutex> lock(m_streams_mutex);
-			for (stream_map_t::iterator i = m_streams.begin(); i != m_streams.end(); ++i)
+			for (auto & m_stream : m_streams)
 			{
-				i->second->fill_frame();
-				const short *src = reinterpret_cast<const short *>(i->second->m_buffer);
+				m_stream.second->fill_frame();
+				const short *src = reinterpret_cast<const short *>(m_stream.second->m_buffer);
 				for (std::size_t s = 0; s < samples; ++s)
 					acc[s] += src[s];
 			}

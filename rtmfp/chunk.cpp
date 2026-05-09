@@ -95,8 +95,8 @@ namespace fms
 		to.write_vlu(m_tag_len);
 		to.write(m_tag, static_cast<std::size_t>(m_tag_len));
 
-		for (std::list<address>::iterator i = m_addresses.begin(); i != m_addresses.end(); ++i)
-			to << *i;
+		for (auto & m_addresse : m_addresses)
+			to << m_addresse;
 
 		return serialize_chunk_header(to);
 	}
@@ -298,10 +298,10 @@ namespace fms
 		to.write_vlu(m_buff_blocks_available);
 		to.write_vlu(m_cumulative_ack);
 
-		for (range_ack_chunk::range_list_t::iterator i = m_ranges.begin(); i != m_ranges.end(); ++i)
+		for (auto & m_range : m_ranges)
 		{
-			to.write_vlu((*i).first);
-			to.write_vlu((*i).second);
+			to.write_vlu(m_range.first);
+			to.write_vlu(m_range.second);
 		}
 
 		return serialize_chunk_header(to);

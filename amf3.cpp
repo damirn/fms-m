@@ -267,10 +267,10 @@ namespace fms
 					cdata->m_properties = names;
 					m_stored_classes[obj_info] = cdata;
 				}
-				for (string_list_t::iterator i = names.begin(); i != names.end(); ++i)
+				for (auto & name : names)
 				{
 					amf3_type_ptr val = read(buffer);
-					obj->value()[(*i)] = val;
+					obj->value()[name] = val;
 				}
 			}
 		}
@@ -293,13 +293,13 @@ namespace fms
 			obj_info |= cnt << 4;
 			write_integer(buffer, obj_info);
 			write_string(buffer, class_name);
-			for (amf3_object_type::value_map_t::iterator i = val_map.begin(); i != val_map.end(); ++i)
+			for (auto & i : val_map)
 			{
-				amf3_string_type_ptr key(new amf3_string_type(i->first));
+				amf3_string_type_ptr key(new amf3_string_type(i.first));
 				write_string(buffer, key);
 			}
-			for (amf3_object_type::value_map_t::iterator i = val_map.begin(); i != val_map.end(); ++i)
-				write(buffer, i->second);
+			for (auto & i : val_map)
+				write(buffer, i.second);
 		}
 	}
 

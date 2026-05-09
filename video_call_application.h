@@ -20,16 +20,16 @@ namespace fms
 			: video_bcast_application(app_manager, "video_call") {}
 
 	protected:
-		virtual boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
-		virtual void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &);
+		boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
+		void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
 
 		void handle_call_invoke(rtmp_message_invoke_ptr, std::uint32_t);
 		bool check_call_params(const rtmp_message_invoke::parameters_list_t &params);
 
 		void handle_record_invoke(rtmp_message_invoke_ptr, std::uint32_t);
 
-		virtual void add_publisher_to_app_instance(std::uint32_t);
-		virtual void video_call_end_notify(std::uint32_t);
+		void add_publisher_to_app_instance(std::uint32_t) override;
+		void video_call_end_notify(std::uint32_t) override;
 
 		void send_call_end_notify(std::uint32_t);
 

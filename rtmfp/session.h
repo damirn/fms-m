@@ -47,7 +47,7 @@ namespace fms
 	{
 	public:
 		session(service *, const boost::asio::ip::udp::endpoint &, std::uint32_t, rtmp_app_manager *);
-		~session();
+		~session() override;
 
 		void init()
 		{
@@ -126,9 +126,9 @@ namespace fms
 			return m_notifier;
 		}
 
-		virtual void start(){}
-		virtual void close();
-		virtual void notify();
+		void start() override{}
+		void close() override;
+		void notify() override;
 
 		aes *get_aes()
 		{
@@ -185,13 +185,13 @@ namespace fms
 		flow_ptr create_net_group_associated_sending_flow(const vlu_t &);
 
 		// chunk handler stuff
-		virtual void handle_header(header &h)
+		void handle_header(header &h) override
 		{
 			calculate_ts(h);
 		}
 
-		virtual void unreserve_stream_id(std::uint32_t);
-		virtual bool handle_chunk(chunk *);
+		void unreserve_stream_id(std::uint32_t) override;
+		bool handle_chunk(chunk *) override;
 
 		void unreserve_stream_id_impl(std::uint32_t);
 

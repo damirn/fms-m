@@ -55,8 +55,8 @@ namespace fms
 			while(m_app->get_async_message(m_id, msg))
 				serialize_message(msg, buffer);
 
-			for (std::list<rtmp_message_ptr>::iterator i = m_results.begin(); i != m_results.end(); ++i)
-				serialize_message(*i, buffer);
+			for (auto & m_result : m_results)
+				serialize_message(m_result, buffer);
 			m_results.clear();
 
 			m_http_header_is_complete = true;

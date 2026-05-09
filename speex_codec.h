@@ -10,10 +10,10 @@ namespace fms
 	{
 	public:
 		speex_codec(std::uint16_t = 1);
-		~speex_codec();
+		~speex_codec() override;
 
-		virtual std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &);
-		virtual std::uint8_t *decode(char *, std::uint8_t *, std::uint8_t, std::uint32_t &);
+		std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &) override;
+		std::uint8_t *decode(char *, std::uint8_t *, std::uint8_t, std::uint32_t &) override;
 
 		// returns frame size in bytes
 		const std::int32_t frame_size() const

@@ -68,12 +68,12 @@ namespace fms
 		result->add_event(clear_event);
 
 		const std::map<std::string, amf0_type_ptr> &values = i->second->m_values;
-		for (std::map<std::string, amf0_type_ptr>::const_iterator i = values.begin(); i != values.end(); ++i)
+		for (const auto & value : values)
 		{
 			rtmp_message_shared_object::event_ptr e(new rtmp_message_shared_object::event(rtmp_message_shared_object::eChange));
-			amf0_string_ptr s(new amf0_string(i->first));
+			amf0_string_ptr s(new amf0_string(value.first));
 			e->m_name = s;
-			e->m_value = i->second;
+			e->m_value = value.second;
 			result->add_event(e);
 		}
 	}
@@ -108,17 +108,17 @@ namespace fms
 			result->add_event(ev);
 
 			const std::set<std::uint32_t> &clients = s->m_clients;
-			for (std::set<std::uint32_t>::const_iterator j = clients.begin(); j != clients.end(); ++j)
+			for (unsigned int client : clients)
 			{
-				if (*j == connection_id)
+				if (client == connection_id)
 					continue;
 				rtmp_message_shared_object_ptr notify(new rtmp_message_shared_object(so->name(), s->m_version, 0));
 				rtmp_message_shared_object::event_ptr evc(new rtmp_message_shared_object::event(rtmp_message_shared_object::eChange));
 				evc->m_name = e->m_name;
 				evc->m_value = e->m_value;
 				notify->add_event(evc);
-				m_app->enqueue_async_message(*j, notify);
-				m_app->notify(*j);
+				m_app->enqueue_async_message(client, notify);
+				m_app->notify(client);
 			}
 		}
 	}
@@ -131,12 +131,12 @@ namespace fms
 			so_manager::so_data_ptr s = *so_d;
 			result = so;
 			const std::set<std::uint32_t> &clients = s->m_clients;
-			for (std::set<std::uint32_t>::const_iterator j = clients.begin(); j != clients.end(); ++j)
+			for (unsigned int client : clients)
 			{
-				if (*j == connection_id)
+				if (client == connection_id)
 					continue;
-				m_app->enqueue_async_message(*j, so);
-				m_app->notify(*j);
+				m_app->enqueue_async_message(client, so);
+				m_app->notify(client);
 			}
 		}
 	}
@@ -160,12 +160,12 @@ namespace fms
 				notify->add_event(evc);
 
 				result = notify;
-				for (std::set<std::uint32_t>::const_iterator k = clients.begin(); k != clients.end(); ++k)
+				for (unsigned int client : clients)
 				{
-					if (*k == connection_id)
+					if (client == connection_id)
 						continue;
-					m_app->enqueue_async_message(*k, notify);
-					m_app->notify(*k);
+					m_app->enqueue_async_message(client, notify);
+					m_app->notify(client);
 				}
 			}
 		}

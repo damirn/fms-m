@@ -428,9 +428,9 @@ namespace fms
 			{
 				vlu_t sending = m_receiving_to_sending_flow[f->flow_id()];
 				stream_array temp;
-				for (std::set<session_weak_ptr>::const_iterator i = g->members().begin(); i != g->members().end(); ++i)
+				for (const auto & i : g->members())
 				{
-					session_ptr tmp = (*i).lock();
+					session_ptr tmp = i.lock();
 					if (tmp == shared_from_this())
 						continue;
 					temp << marker;
@@ -708,9 +708,9 @@ namespace fms
 		{
 			m_data_packet_count = 0;
 			bool was_loss = false;
-			for (flow_map_t::iterator i = m_sending_flows.begin(); i != m_sending_flows.end(); ++i)
+			for (auto & m_sending_flow : m_sending_flows)
 			{
-				if (i->second->on_timeout_alarm())
+				if (m_sending_flow.second->on_timeout_alarm())
 					was_loss = true;
 			}
 			if (was_loss)

@@ -61,7 +61,7 @@ namespace fms
 			, m_tag(const_cast<std::uint8_t *>(tag))
 		{}
 
-		~fihello_chunk()
+		~fihello_chunk() override
 		{}
 
 		const vlu_t &epd_len() const
@@ -84,11 +84,11 @@ namespace fms
 			return m_tag;
 		}
 
-		virtual bool deserialize(stream_array &, std::uint16_t)
+		bool deserialize(stream_array &, std::uint16_t) override
 		{
 			return true; // not implemented
 		}
-		virtual std::uint16_t serialize(stream_array &);
+		std::uint16_t serialize(stream_array &) override;
 
 	protected:
 		vlu_t m_epd_len;
@@ -105,7 +105,7 @@ namespace fms
 			: chunk(eInitiatorHello)
 		{}
 
-		~ihello_chunk()
+		~ihello_chunk() override
 		{
 			delete[] m_tag;
 		}
@@ -132,8 +132,8 @@ namespace fms
 			return m_tag;
 		}
 
-		virtual bool deserialize(stream_array &, std::uint16_t);
-		virtual std::uint16_t serialize(stream_array &)
+		bool deserialize(stream_array &, std::uint16_t) override;
+		std::uint16_t serialize(stream_array &) override
 		{
 			return 0;
 		} // not implemented
@@ -162,11 +162,11 @@ namespace fms
 			, m_cert(cert)
 		{}
 
-		virtual bool deserialize(stream_array &, std::uint16_t)
+		bool deserialize(stream_array &, std::uint16_t) override
 		{
 			return true;
 		}  // not implemented
-		virtual std::uint16_t serialize(stream_array &);
+		std::uint16_t serialize(stream_array &) override;
 
 	protected:
 		std::uint16_t m_tag_len;
@@ -188,7 +188,7 @@ namespace fms
 			std::memcpy(const_cast<std::uint8_t *>(m_tag), tag, m_tag_len);
 		}
 
-		~redirect_chunk()
+		~redirect_chunk() override
 		{
 			delete[] m_tag;
 		}
@@ -203,11 +203,11 @@ namespace fms
 			return m_addresses;
 		}
 
-		virtual bool deserialize(stream_array &, std::uint16_t)
+		bool deserialize(stream_array &, std::uint16_t) override
 		{
 			return true;
 		}  // not implemented
-		virtual std::uint16_t serialize(stream_array &);
+		std::uint16_t serialize(stream_array &) override;
 
 	protected:
 		std::uint16_t m_tag_len;
@@ -267,8 +267,8 @@ namespace fms
 			return m_signature;
 		}
 
-		virtual bool deserialize(stream_array &, std::uint16_t);
-		virtual std::uint16_t serialize(stream_array &)
+		bool deserialize(stream_array &, std::uint16_t) override;
+		std::uint16_t serialize(stream_array &) override
 		{
 			return 0;
 		} // not implemented
@@ -295,11 +295,11 @@ namespace fms
 			, m_skrc(skrc)
 		{}
 
-		virtual bool deserialize(stream_array &, std::uint16_t)
+		bool deserialize(stream_array &, std::uint16_t) override
 		{
 			return true;
 		}  // not implemented
-		virtual std::uint16_t serialize(stream_array &);
+		std::uint16_t serialize(stream_array &) override;
 
 	protected:
 		static std::uint8_t m_marker;
@@ -407,8 +407,8 @@ namespace fms
 
 		user_data_chunk(fragment_ptr, const vlu_t &, const vlu_t &);
 
-		virtual bool deserialize(stream_array &, std::uint16_t);
-		virtual std::uint16_t serialize(stream_array &);
+		bool deserialize(stream_array &, std::uint16_t) override;
+		std::uint16_t serialize(stream_array &) override;
 
 		const vlu_t &flow_id() const
 		{
@@ -444,8 +444,8 @@ namespace fms
 			 
 		{}
 
-		virtual bool deserialize(stream_array &, std::uint16_t);
-		virtual std::uint16_t serialize(stream_array &)
+		bool deserialize(stream_array &, std::uint16_t) override;
+		std::uint16_t serialize(stream_array &) override
 		{
 			return 0;
 		} // not implemented
@@ -465,8 +465,8 @@ namespace fms
 			, m_cumulative_ack(cumulative_ack)
 		{}
 
-		virtual bool deserialize(stream_array &, std::uint16_t);
-		virtual std::uint16_t serialize(stream_array &);
+		bool deserialize(stream_array &, std::uint16_t) override;
+		std::uint16_t serialize(stream_array &) override;
 
 		const vlu_t &flow_id() const
 		{
@@ -515,8 +515,8 @@ namespace fms
 			: chunk(eFlowExceptionReportChunk)
 		{}
 
-		virtual bool deserialize(stream_array &, std::uint16_t);
-		virtual std::uint16_t serialize(stream_array &)
+		bool deserialize(stream_array &, std::uint16_t) override;
+		std::uint16_t serialize(stream_array &) override
 		{
 			return 0;
 		} // not implemented
@@ -543,8 +543,8 @@ namespace fms
 			: chunk(ePing)
 		{}
 
-		virtual bool deserialize(stream_array &, std::uint16_t);
-		virtual std::uint16_t serialize(stream_array &)
+		bool deserialize(stream_array &, std::uint16_t) override;
+		std::uint16_t serialize(stream_array &) override
 		{
 			return 0;
 		} // not implemented
@@ -573,11 +573,11 @@ namespace fms
 			, m_data(data)
 		{}
 
-		virtual bool deserialize(stream_array &, std::uint16_t)
+		bool deserialize(stream_array &, std::uint16_t) override
 		{
 			return true;
 		} // not implemented
-		virtual std::uint16_t serialize(stream_array &);
+		std::uint16_t serialize(stream_array &) override;
 
 	protected:
 		std::uint16_t m_data_len;
@@ -591,8 +591,8 @@ namespace fms
 			: chunk(eSessionCloseAcknowledgement)
 		{}
 
-		virtual bool deserialize(stream_array &, std::uint16_t);
-		virtual std::uint16_t serialize(stream_array &)
+		bool deserialize(stream_array &, std::uint16_t) override;
+		std::uint16_t serialize(stream_array &) override
 		{
 			return 0;
 		} // not implemented
