@@ -9,7 +9,7 @@ namespace fms
 	class audio_codec : private boost::noncopyable
 	{
 	public:
-		audio_codec(std::uint16_t reserved = 1)
+		explicit audio_codec(std::uint16_t reserved = 1)
 			: m_reserved_for_header(reserved)
 		{}
 

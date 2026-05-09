@@ -13,7 +13,7 @@ namespace fms
 	{
 	public:
 		flv_reader()= default;
-		flv_reader(const std::string &);
+		explicit flv_reader(const std::string &);
 
 		void open(const std::string &);
 

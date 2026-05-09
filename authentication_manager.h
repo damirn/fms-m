@@ -19,7 +19,7 @@ namespace fms
 	{
 	public:
 		authentication_manager();
-		authentication_manager(const std::string &);
+		explicit authentication_manager(const std::string &);
 		~authentication_manager();
 
 		boost::tribool authenticate(auth_data_ptr, const std::function<void (bool, auth_data_ptr)>&);

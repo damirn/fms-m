@@ -21,7 +21,7 @@ namespace fms
 	class rtmpt_manager : private boost::noncopyable
 	{
 	public:
-		rtmpt_manager(rtmp_app_manager *);
+		explicit rtmpt_manager(rtmp_app_manager *);
 
 		void create_session(const boost::asio::ip::tcp::endpoint &, std::string &);
 		void remove_session(const std::string &);
@@ -65,7 +65,7 @@ namespace fms
 
 		struct rtmpt_session_data
 		{
-			rtmpt_session_data(const boost::asio::ip::address &address)
+			explicit rtmpt_session_data(const boost::asio::ip::address &address)
 				: 
 				 m_address(address)
 			{}

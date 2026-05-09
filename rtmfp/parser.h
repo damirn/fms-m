@@ -20,7 +20,7 @@ namespace fms
 	class parser
 	{
 	public:
-		parser(chunk_handler &);
+		explicit parser(chunk_handler &);
 		~parser();
 
 		bool parse(stream_array &);

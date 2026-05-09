@@ -53,7 +53,7 @@ namespace fms
 
 	struct netstream_stats
 	{
-		netstream_stats(std::uint32_t client)
+		explicit netstream_stats(std::uint32_t client)
 			: m_client(client)
 			, 
 			 m_time(std::chrono::system_clock::now())

@@ -27,7 +27,7 @@ namespace fms
 			eResponderInitialKeying = 0x78
 		};
 
-		chunk (type_t t)
+		explicit chunk (type_t t)
 			: m_type(t)
 		{}
 

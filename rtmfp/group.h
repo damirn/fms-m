@@ -24,7 +24,7 @@ namespace fms
 	public:
 		enum commands { eJoinGroup = 0x01 };
 
-		group(std::uint8_t *id)
+		explicit group(std::uint8_t *id)
 			: item(id, false)
 		{}
 

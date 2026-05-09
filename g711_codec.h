@@ -8,7 +8,7 @@ namespace fms
 	{
 	public:
 		enum type { eUlaw, eAlaw };
-		g711_codec(type t)
+		explicit g711_codec(type t)
 			: 
 			 m_type(t)
 		{}

@@ -37,23 +37,23 @@ namespace fms
 			eAMF3ByteArray
 		};
 
-		amf3_type(etype t)
+		explicit amf3_type(etype t)
 			: m_type(t)
 		{}
 
 		virtual ~amf3_type() = default;
 
-		operator bool()
+		explicit operator bool()
 		{
 			throw amf3_illegal_cast();
 		}
 
-		operator double()
+		explicit operator double()
 		{
 			throw amf3_illegal_cast();
 		}
 
-		operator std::string()
+		explicit operator std::string()
 		{
 			throw amf3_illegal_cast();
 		}
@@ -72,7 +72,7 @@ namespace fms
 	class amf3_empty_type : public amf3_type
 	{
 	public:
-		amf3_empty_type(amf3_type::etype t)
+		explicit amf3_empty_type(amf3_type::etype t)
 			: amf3_type(t)
 		{}
 	};
@@ -86,7 +86,7 @@ namespace fms
 			: amf3_type(amf3_type::eAMF3Integer)
 		{}
 
-		amf3_integer_type(std::uint32_t value)
+		explicit amf3_integer_type(std::uint32_t value)
 			: amf3_type(amf3_type::eAMF3Integer)
 			, m_value(value)
 		{}
@@ -114,11 +114,11 @@ namespace fms
 			: amf3_type(amf3_type::eAMF3String)
 		{}
 
-		amf3_string_type(const std::string &value)
+		explicit amf3_string_type(const std::string &value)
 			: amf3_type(amf3_type::eAMF3String), m_value(value)
 		{}
 
-		operator std::string()
+		explicit operator std::string()
 		{
 			return m_value;
 		}

@@ -73,7 +73,7 @@ namespace fms
 				, m_data(nullptr)
 			{}
 
-			event(std::uint8_t event_type)
+			explicit event(std::uint8_t event_type)
 				: m_type(event_type)
 				, m_data(nullptr)
 			{}

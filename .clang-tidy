@@ -11,6 +11,7 @@
 #  Both were applied by hand; leaving them off keeps the IDE free of noise.
 Checks: >
   -*,
+  google-explicit-constructor,
   modernize-use-nullptr,
   modernize-use-override,
   modernize-use-emplace,
