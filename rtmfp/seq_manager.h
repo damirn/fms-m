@@ -120,7 +120,7 @@ namespace fms
 					T ret = *i - 1;
 					while (i != m_missing.end())
 					{
-						std::pair<T, T> pair = count_sequence(i);
+						std::pair<T, T> const pair = count_sequence(i);
 						list.push_back(pair);
 					}
 					return ret;
@@ -148,7 +148,7 @@ namespace fms
 
 		std::uint64_t sum_n_elements()
 		{
-			std::uint64_t tmp = m_csn + m_sequences.size() + 1;
+			std::uint64_t const tmp = m_csn + m_sequences.size() + 1;
 			return tmp * (tmp + 1) / 2;
 		}
 

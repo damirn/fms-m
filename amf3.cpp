@@ -42,25 +42,25 @@ namespace fms
 		case amf3_type::eAMF3False:
 		case amf3_type::eAMF3True:
 			{
-				amf3_empty_type_ptr tmp = std::dynamic_pointer_cast<amf3_empty_type>(type);
+				amf3_empty_type_ptr const tmp = std::dynamic_pointer_cast<amf3_empty_type>(type);
 				write_empty_type(buffer, tmp);
 				break;
 			}
 		case amf3_type::eAMF3Integer:
 			{
-				amf3_integer_type_ptr tmp = std::dynamic_pointer_cast<amf3_integer_type>(type);
+				amf3_integer_type_ptr const tmp = std::dynamic_pointer_cast<amf3_integer_type>(type);
 				write_integer(buffer, tmp);
 				break;
 			}
 		case amf3_type::eAMF3String:
 			{
-				amf3_string_type_ptr tmp = std::dynamic_pointer_cast<amf3_string_type>(type);
+				amf3_string_type_ptr const tmp = std::dynamic_pointer_cast<amf3_string_type>(type);
 				write_string(buffer, tmp);
 				break;
 			}
 		case amf3_type::eAMF3Object:
 			{
-				amf3_object_type_ptr tmp = std::dynamic_pointer_cast<amf3_object_type>(type);
+				amf3_object_type_ptr const tmp = std::dynamic_pointer_cast<amf3_object_type>(type);
 				write_object(buffer, tmp);
 				break;
 			}
@@ -116,7 +116,7 @@ namespace fms
 
 	void amf3::write_integer(stream_array &buffer, amf3_integer_type_ptr value)
 	{
-		std::uint32_t tmp = value->value();
+		std::uint32_t const tmp = value->value();
 		write_integer(buffer, tmp);
 	}
 
@@ -193,7 +193,7 @@ namespace fms
 		amf3_object_type_ptr obj(new amf3_object_type);
 		std::uint32_t obj_info = read_u29(buffer);
 		std::uint32_t encoding_type = 0;
-		bool is_stored = (obj_info & 0x01) == 0;
+		bool const is_stored = (obj_info & 0x01) == 0;
 		obj_info >>= 1;
 
 		if (is_stored)
@@ -204,12 +204,12 @@ namespace fms
 		{
 			string_list_t names;
 			std::string class_name;
-			bool is_class = (obj_info & 0x01) == 0;
+			bool const is_class = (obj_info & 0x01) == 0;
 			obj_info >>= 1;
 
 			if (is_class)
 			{
-				std::map<std::uint32_t, class_data_ptr>::iterator i = m_stored_classes.find(obj_info);
+				std::map<std::uint32_t, class_data_ptr>::iterator const i = m_stored_classes.find(obj_info);
 				if (i != m_stored_classes.end())
 				{
 					encoding_type = i->second->m_encoding_type;
@@ -221,7 +221,7 @@ namespace fms
 			}
 			else
 			{
-				amf3_string_type_ptr str = read_string(buffer);
+				amf3_string_type_ptr const str = read_string(buffer);
 				class_name = str->value();
 				encoding_type = obj_info & 0x03;
 				obj_info >>= 2;
@@ -239,7 +239,7 @@ namespace fms
 				amf3_string_type_ptr property_name;
 				if (!is_class)
 				{
-					class_data_ptr cdata(new class_data);
+					class_data_ptr const cdata(new class_data);
 					cdata->m_class_name = class_name;
 					cdata->m_encoding_type = encoding_type;
 					cdata->m_properties = names;
@@ -250,7 +250,7 @@ namespace fms
 					property_name = read_string(buffer);
 					if (!property_name->value().empty())
 					{
-						amf3_type_ptr val = read(buffer);
+						amf3_type_ptr const val = read(buffer);
 						obj->value()[(std::string) *property_name] = val;
 					}
 				} while (!property_name->value().empty());
@@ -261,7 +261,7 @@ namespace fms
 				{
 					for (std::uint32_t i = 0; i < obj_info; ++i)
 						names.push_back((std::string)*read_string(buffer));
-					class_data_ptr cdata(new class_data);
+					class_data_ptr const cdata(new class_data);
 					cdata->m_class_name = class_name;
 					cdata->m_encoding_type = encoding_type;
 					cdata->m_properties = names;
@@ -269,7 +269,7 @@ namespace fms
 				}
 				for (auto & name : names)
 				{
-					amf3_type_ptr val = read(buffer);
+					amf3_type_ptr const val = read(buffer);
 					obj->value()[name] = val;
 				}
 			}
@@ -279,8 +279,8 @@ namespace fms
 
 	void amf3::write_object(stream_array &buffer, amf3_object_type_ptr obj)
 	{
-		std::uint8_t enc_type = 0;
-		amf3_string_type_ptr class_name(new amf3_string_type(""));
+		std::uint8_t const enc_type = 0;
+		amf3_string_type_ptr const class_name(new amf3_string_type(""));
 
 		// todo: check other encodings
 
@@ -288,14 +288,14 @@ namespace fms
 		obj_info |= enc_type << 2;
 		if (enc_type == 0)
 		{
-			amf3_object_type::value_map_t &val_map = obj->value();
-			std::uint32_t cnt = val_map.size();
+			amf3_object_type::value_map_t  const&val_map = obj->value();
+			std::uint32_t const cnt = val_map.size();
 			obj_info |= cnt << 4;
 			write_integer(buffer, obj_info);
 			write_string(buffer, class_name);
 			for (auto & i : val_map)
 			{
-				amf3_string_type_ptr key(new amf3_string_type(i.first));
+				amf3_string_type_ptr const key(new amf3_string_type(i.first));
 				write_string(buffer, key);
 			}
 			for (auto & i : val_map)

@@ -62,7 +62,8 @@ namespace fms
 		m_packet.rewind_write();
 
 		// ssid
-		std::uint32_t x, y;
+		std::uint32_t x;
+		std::uint32_t y;
 		m_packet.mark();
 		m_packet.skip(4);
 		m_packet >> x >> y;

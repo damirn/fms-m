@@ -65,14 +65,14 @@ namespace fms
 
 	void rtmpt_session::serialize_message(const rtmp_message_ptr& msg, stream_array &buffer)
 	{
-		rtmp_channel_ptr channel = m_channel_manager->get_channel(msg->channel_id());
+		rtmp_channel_ptr const channel = m_channel_manager->get_channel(msg->channel_id());
 
 		if (m_app != nullptr)
 			m_app->update_stats(false, false, 1);
 
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
-			rtmp_message_chunk_size_ptr cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg);
+			rtmp_message_chunk_size_ptr const cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg);
 			set_outgoing_chunk_size(cs->chunk_size());
 		}
 
@@ -82,7 +82,7 @@ namespace fms
 		p.serialize(buffer, msg, h, channel->sent_header());
 		channel->sent_header() = h;
 
-		std::uint8_t *end = buffer.write_pos();
+		std::uint8_t  const*end = buffer.write_pos();
 		if (m_key_out != nullptr && (end - start) > 0)
 			rc4_crypt(m_key_out, end - start, start, start);
 	}
@@ -210,7 +210,7 @@ namespace fms
 		if (!prepare_hand_shake_response(magic, client_sig))
 			return false;
 
-		std::uint8_t c = get_poll_time(true);
+		std::uint8_t const c = get_poll_time(true);
 		output.write(&c, 1);
 		output.write(m_tmp_buff.data(), eHandShakeSize + 1);
 

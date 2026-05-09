@@ -22,7 +22,7 @@ namespace fms
 		void generate_symetric_keys(const std::uint8_t *, std::uint16_t, const std::uint8_t *, std::uint16_t,
 			std::uint8_t *, std::uint8_t *);
 
-		void generate_peer_id(const std::uint8_t *, std::uint16_t, std::uint8_t *);
+		static void generate_peer_id(const std::uint8_t *, std::uint16_t, std::uint8_t *);
 
 		const std::uint8_t *rnonce(std::uint16_t &size) const
 		{

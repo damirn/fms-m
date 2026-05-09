@@ -18,7 +18,7 @@ namespace fms
 		return m_instance;
 	}
 
-	const char *config::version_string() const
+	const char *config::version_string() 
 	{
 		return version;
 	}
@@ -67,20 +67,20 @@ namespace fms
 
 	bool config::check_params()
 	{
-		if (m_vm.count("help"))
+		if (m_vm.contains("help"))
 		{
 			std::cout << "F Media Server v" << version << std::endl << std::endl;
 			std::cout << m_description << std::endl;
 			return false;
 		}
 
-		if (m_vm.count("version"))
+		if (m_vm.contains("version"))
 		{
 			std::cout << version << std::endl;
 			return false;
 		}
 
-		if (m_vm.count("config-file"))
+		if (m_vm.contains("config-file"))
 			if (!parse_config_file())
 				return false;
 

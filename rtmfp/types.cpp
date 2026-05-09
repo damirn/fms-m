@@ -13,9 +13,9 @@ namespace fms
 			m_len = buff.read_vlu();
 			if (m_len != 0)
 			{
-				std::uint8_t *here = buff.read_pos();
+				std::uint8_t  const*here = buff.read_pos();
 				m_type = buff.read_vlu();
-				std::size_t consumed = static_cast<std::size_t>(buff.read_pos() - here);
+				std::size_t const consumed = static_cast<std::size_t>(buff.read_pos() - here);
 				// the type VLU must fit inside m_len, and the remaining value must
 				// fit inside the datagram — otherwise the length is malformed
 				if (consumed > m_len || (m_len - consumed) > buff.available())
@@ -40,8 +40,8 @@ namespace fms
 			to.write_vlu(m_len);
 			return 1;
 		}
-		std::uint8_t *here = to.write_pos();
-		vlu_t size = stream_array::get_vlu_size(m_type) + m_value_len;
+		std::uint8_t  const*here = to.write_pos();
+		vlu_t const size = stream_array::get_vlu_size(m_type) + m_value_len;
 		to.mark_write();
 		to.skip_write(stream_array::get_vlu_size(size));
 		to.write_vlu(m_type);

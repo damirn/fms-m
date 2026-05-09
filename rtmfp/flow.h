@@ -244,7 +244,7 @@ namespace fms
 	protected:
 		void update_seqs(const vlu_t &);
 		void parse_option_list();
-		vlu_t get_stream_id_from_option(const option_ptr&);
+		static vlu_t get_stream_id_from_option(const option_ptr&);
 
 		using fragment_map_t = std::map<vlu_t, fragment_ptr>;
 		const std::uint8_t *create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);

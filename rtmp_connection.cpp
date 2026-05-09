@@ -48,7 +48,7 @@ namespace fms
 		// cache the peer endpoint now (on this connection's thread) so the admin
 		// thread never calls remote_endpoint() on our socket
 		boost::system::error_code ep_ec;
-		boost::asio::ip::tcp::endpoint ep = m_socket.remote_endpoint(ep_ec);
+		boost::asio::ip::tcp::endpoint const ep = m_socket.remote_endpoint(ep_ec);
 		if (!ep_ec)
 			set_remote_endpoint(ep.address().to_string() + ":" + std::to_string(ep.port()));
 
@@ -186,7 +186,7 @@ namespace fms
 					break;
 				}
 				++i;
-				rtmp_channel_ptr channel = m_channel_manager->get_channel(result->channel_id());
+				rtmp_channel_ptr const channel = m_channel_manager->get_channel(result->channel_id());
 				serialize_message(result, channel);
 			}
 			if (i > 0)
@@ -227,7 +227,7 @@ namespace fms
 			m_app->update_stats(false, false, 1);
 		if (result->type() == rtmp_message::eMessageChunkSize)
 		{
-			rtmp_message_chunk_size_ptr cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(result);
+			rtmp_message_chunk_size_ptr const cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(result);
 			set_outgoing_chunk_size(cs->chunk_size());
 		}
 		p.serialize(m_output_buffer, result, h, channel->sent_header());

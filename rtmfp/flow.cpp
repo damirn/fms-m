@@ -17,7 +17,7 @@ namespace fms
 
 	flow::vlu_seq_manager::result flow::add_fragment(const fragment_ptr& f)
 	{
-		flow::vlu_seq_manager::result ret = m_seq_manager.add_seq(f->m_seq);
+		flow::vlu_seq_manager::result const ret = m_seq_manager.add_seq(f->m_seq);
 		if (ret != vlu_seq_manager::_eDuplicate)
 		{
 			if (f->m_frag_ctrl == fragment::eWhole && ret != vlu_seq_manager::_eOK)
@@ -33,7 +33,7 @@ namespace fms
 
 	void flow::remove_fragments_until_seq(const vlu_t &seq)
 	{
-		fragment_map_t::iterator i = m_fragments.find(seq);
+		fragment_map_t::iterator const i = m_fragments.find(seq);
 		m_fragments.erase(m_fragments.begin(), i);
 		m_fragments.erase(seq);
 		update_seqs(seq);
@@ -48,11 +48,11 @@ namespace fms
 
 	const std::uint8_t *flow::message_data(std::uint32_t &len)
 	{
-		vlu_t csn = m_seq_manager.csn();
+		vlu_t const csn = m_seq_manager.csn();
 		fragment_map_t::iterator i = m_fragments.begin();
 		while (i != m_fragments.end() && i->second->m_seq <= csn)
 		{
-			fragment_ptr f = i->second;
+			fragment_ptr const f = i->second;
 			if (f->m_frag_ctrl == fragment::eWhole)
 			{
 				m_msg_is_fragmented = false;
@@ -169,18 +169,18 @@ namespace fms
 		std::uint16_t frags = 1;
 		if (len <= _eFragmentMaxSize)
 		{
-			fragment_ptr frag = std::make_shared<fragment>(next_sn(), data, len, static_cast<std::uint8_t>(fragment::eWhole), true);
+			fragment_ptr const frag = std::make_shared<fragment>(next_sn(), data, len, static_cast<std::uint8_t>(fragment::eWhole), true);
 			frag->set_send_flags();
 			add_fragment(frag);
 		}
 		else
 		{
-			std::uint16_t cnt = static_cast<std::uint16_t>(std::ceil(static_cast<float>(len) / static_cast<float>(_eFragmentMaxSize)));
+			std::uint16_t const cnt = static_cast<std::uint16_t>(std::ceil(static_cast<float>(len) / static_cast<float>(_eFragmentMaxSize)));
 			std::uint8_t ftype = fragment::eBegin;
 			std::uint32_t clen = _eFragmentMaxSize;
 			for (std::uint16_t i = 0; i < cnt; ++i)
 			{
-				fragment_ptr frag = std::make_shared<fragment>(next_sn(), data + i * _eFragmentMaxSize, clen, ftype, true);
+				fragment_ptr const frag = std::make_shared<fragment>(next_sn(), data + i * _eFragmentMaxSize, clen, ftype, true);
 				frag->set_send_flags();
 				add_fragment(frag);
 				if (i != cnt - 2)

@@ -65,7 +65,7 @@ namespace fms
 		void handle_invoke_get_app_stats(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 		void handle_invoke_get_streams(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 
-		amf0_object_ptr create_stream_stat_obj(const netstream_stats_ptr&, bool = true);
+		static amf0_object_ptr create_stream_stat_obj(const netstream_stats_ptr&, bool = true);
 
 		void handle_invoke_get_queue_stats(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 		void handle_invoke_kill_client(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);

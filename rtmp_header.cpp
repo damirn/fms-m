@@ -81,7 +81,7 @@ namespace fms
 	void rtmp_header::serialize(stream_array &buffer, rtmp_header &previous_header)
 	{
 		std::uint32_t size = eHeaderNewSize;
-		std::uint32_t prev_delta = previous_header.m_ts_delta_write;
+		std::uint32_t const prev_delta = previous_header.m_ts_delta_write;
 
 		if (previous_header.m_timestamp > m_timestamp)
 		{

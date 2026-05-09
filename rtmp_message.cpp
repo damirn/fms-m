@@ -19,7 +19,7 @@ namespace fms
 	{
 		m_amf0.write_short_string(buffer, m_function);
 		parameters_list_t::iterator i;
-		parameters_list_t::iterator end = m_params.end();
+		parameters_list_t::iterator const end = m_params.end();
 
 		for(i = m_params.begin(); i != end; ++i)
 			m_amf0.write(buffer, *i);
@@ -27,7 +27,7 @@ namespace fms
 
 	void rtmp_message_notify_amf3::deserialize(stream_array &buffer)
 	{
-		std::uint8_t type = *(buffer.read_pos());
+		std::uint8_t const type = *(buffer.read_pos());
 		if (type == 0x00)
 		{
 			buffer.skip(1);
@@ -44,7 +44,7 @@ namespace fms
 
 	void rtmp_message_invoke_amf3::deserialize(stream_array &buffer)
 	{
-		std::uint8_t type = *(buffer.read_pos());
+		std::uint8_t const type = *(buffer.read_pos());
 		if (type == 0x00)
 		{
 			buffer.skip(1);
@@ -71,24 +71,24 @@ namespace fms
 		// debug
 		for (auto & m_param : m_params)
 		{
-			amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(m_param);
+			amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(m_param);
 			if (obj.get() != nullptr)
 			{
 				for (const auto & j : obj->value())
 				{
 					if (j.m_value->type() == amf0_type::eAMF0String)
 					{
-						amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(j.m_value);
+						amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(j.m_value);
 						continue;
 					}
 					if (j.m_value->type() == amf0_type::eAMF0Number)
 					{
-						amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(j.m_value);
+						amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(j.m_value);
 						continue;
 					}
 					if (j.m_value->type() == amf0_type::eAMF0Boolean)
 					{
-						amf0_boolean_ptr num = std::dynamic_pointer_cast<amf0_boolean>(j.m_value);
+						amf0_boolean_ptr const num = std::dynamic_pointer_cast<amf0_boolean>(j.m_value);
 						continue;
 					}
 				}
@@ -101,7 +101,7 @@ namespace fms
 		m_amf0.write_short_string(buffer, m_function);
 		m_amf0.write_number(buffer, m_invoke_id);
 		parameters_list_t::iterator i;
-		parameters_list_t::iterator end = m_params.end();
+		parameters_list_t::iterator const end = m_params.end();
 
 		for(i = m_params.begin(); i != end; ++i)
 			m_amf0.write(buffer, *i);
@@ -228,7 +228,7 @@ namespace fms
 
 			h.message_type() = c;
 			h.message_length() = buffer.read_uint32_3();
-			std::uint32_t ts = buffer.read_uint32_3();
+			std::uint32_t const ts = buffer.read_uint32_3();
 			if (first)
 			{
 				first = false;

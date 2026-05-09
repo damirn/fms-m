@@ -65,7 +65,7 @@ namespace fms
 		std::uint8_t b = amf0_type::eAMF0Boolean;
 		buffer << b;
 
-		b = value->value() == true ? 1 : 0;
+		b = value->value() ? 1 : 0;
 		buffer << b;
 	}
 
@@ -110,11 +110,11 @@ namespace fms
 		if (buffer.available() < 3)
 			return false;
 
-		while (buffer.available() >= 3 && !(*(buffer.read_pos()) == 0 && *(buffer.read_pos() + 1) == 0 && *(buffer.read_pos() + 2) == 9))
+		while (buffer.available() >= 3 && (*(buffer.read_pos()) != 0 || *(buffer.read_pos() + 1) != 0 || *(buffer.read_pos() + 2) != 9))
 		{
-			amf0_string_ptr key(new amf0_string);
+			amf0_string_ptr const key(new amf0_string);
 			read_short_string(buffer, key, true);
-			amf0_type_ptr val(read(buffer));
+			amf0_type_ptr const val(read(buffer));
 			value->add_entry((std::string) *key, val);
 		}
 		buffer.skip(3);
@@ -174,11 +174,11 @@ namespace fms
 
 		buffer.skip(sizeof(std::uint32_t));
 
-		while (buffer.available() >= 3 && !(*(buffer.read_pos()) == 0 && *(buffer.read_pos() + 1) == 0 && *(buffer.read_pos() + 2) == 9))
+		while (buffer.available() >= 3 && (*(buffer.read_pos()) != 0 || *(buffer.read_pos() + 1) != 0 || *(buffer.read_pos() + 2) != 9))
 		{
-			amf0_string_ptr key(new amf0_string);
+			amf0_string_ptr const key(new amf0_string);
 			read_short_string(buffer, key, true);
-			amf0_type_ptr val(read(buffer));
+			amf0_type_ptr const val(read(buffer));
 			value->add_entry((std::string) *key, val);
 		}
 		buffer.skip(3);
@@ -195,7 +195,7 @@ namespace fms
 		size = boost::asio::detail::socket_ops::host_to_network_long(size);
 		buffer << size;
 
-		amf0_ecma_array::array_t &array = value->value();
+		amf0_ecma_array::array_t  const&array = value->value();
 		for (auto & i : array)
 		{
 			write_short_string(buffer, i.first.c_str(), static_cast<std::uint16_t >(i.first.size()), true);
@@ -221,7 +221,7 @@ namespace fms
 
 		for (std::uint32_t i = 0; i < cnt; ++i)
 		{
-			amf0_type_ptr val(read(buffer));
+			amf0_type_ptr const val(read(buffer));
 			value->add_entry(val);
 		}
 
@@ -237,7 +237,7 @@ namespace fms
 		size = boost::asio::detail::socket_ops::host_to_network_long(size);
 		buffer << size;
 
-		amf0_strict_array::array_t &array = value->value();
+		amf0_strict_array::array_t  const&array = value->value();
 		for (auto & i : array)
 			write(buffer, i);
 	}
@@ -284,7 +284,7 @@ namespace fms
 			return false;
 
 		amf3 m3;
-		amf3_type_ptr type = m3.read(buffer);
+		amf3_type_ptr const type = m3.read(buffer);
 		value->set_data(type);
 
 		return true;
@@ -306,7 +306,7 @@ namespace fms
 
 		if (buffer.available() < 1)
 			throw buffer_eof_exception();
-		std::uint8_t type = *(buffer.read_pos()); // peek type
+		std::uint8_t const type = *(buffer.read_pos()); // peek type
 		switch (type)
 		{
 		case amf0_type::eAMF0Number:
@@ -382,25 +382,25 @@ namespace fms
 		{
 		case amf0_type::eAMF0Number:
 			{
-				amf0_number_ptr tmp = std::dynamic_pointer_cast<amf0_number>(type);
+				amf0_number_ptr const tmp = std::dynamic_pointer_cast<amf0_number>(type);
 				write_number(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0Boolean:
 			{
-				amf0_boolean_ptr tmp = std::dynamic_pointer_cast<amf0_boolean>(type);
+				amf0_boolean_ptr const tmp = std::dynamic_pointer_cast<amf0_boolean>(type);
 				write_boolean(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0String:
 			{
-				amf0_string_ptr tmp = std::dynamic_pointer_cast<amf0_string>(type);
+				amf0_string_ptr const tmp = std::dynamic_pointer_cast<amf0_string>(type);
 				write_short_string(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0Object:
 			{
-				amf0_object_ptr tmp = std::dynamic_pointer_cast<amf0_object>(type);
+				amf0_object_ptr const tmp = std::dynamic_pointer_cast<amf0_object>(type);
 				write_object(buffer, tmp);
 				break;
 			}
@@ -416,25 +416,25 @@ namespace fms
 			}
 		case amf0_type::eAMF0EcmaArray:
 			{
-				amf0_ecma_array_ptr tmp = std::dynamic_pointer_cast<amf0_ecma_array>(type);
+				amf0_ecma_array_ptr const tmp = std::dynamic_pointer_cast<amf0_ecma_array>(type);
 				write_mixed_array(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0StrictArray:
 			{
-				amf0_strict_array_ptr tmp = std::dynamic_pointer_cast<amf0_strict_array>(type);
+				amf0_strict_array_ptr const tmp = std::dynamic_pointer_cast<amf0_strict_array>(type);
 				write_strict_array(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0LongString:
 			{
-				amf0_long_string_ptr tmp = std::dynamic_pointer_cast<amf0_long_string>(type);
+				amf0_long_string_ptr const tmp = std::dynamic_pointer_cast<amf0_long_string>(type);
 				write_long_string(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0AMF3Container:
 			{
-				amf0_amf3_container_ptr tmp = std::dynamic_pointer_cast<amf0_amf3_container>(type);
+				amf0_amf3_container_ptr const tmp = std::dynamic_pointer_cast<amf0_amf3_container>(type);
 				write_amf3_container(buffer, tmp);
 				break;
 			}

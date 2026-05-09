@@ -22,18 +22,18 @@ namespace fms
 
 	boost::tribool video_call_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
+		rtmp_message_invoke_ptr const invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == nullptr)
 			return false;
 
-		if (invoke->function()->value().compare(invoke_functions::call) == 0)
+		if (invoke->function()->value() == invoke_functions::call)
 		{
 			handle_call_invoke(invoke, connection_id);
 			return false;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::record) == 0)
+		if (invoke->function()->value() == invoke_functions::record)
 		{
 			handle_record_invoke(invoke, connection_id);
 			return false;
@@ -44,15 +44,15 @@ namespace fms
 
 	void video_call_application::handle_audio_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &h)
 	{
-		rtmp_message_audio_data_ptr audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
-		client_session_ptr conn = get_connection(connection_id);
+		rtmp_message_audio_data_ptr const audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
+		client_session_ptr const conn = get_connection(connection_id);
 		if (!conn->app_instance().empty() && audio->size() > 0)
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock<std::mutex> const lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
-			if (m_instance_to_client.find(app_instance) != m_instance_to_client.end())
+			if (m_instance_to_client.contains(app_instance))
 			{
-				call_instance_data_ptr data = m_instance_to_client[app_instance];
+				call_instance_data_ptr const data = m_instance_to_client[app_instance];
 				if (data->m_mixer != nullptr)
 					data->m_mixer->add_audio(connection_id, audio);
 			}
@@ -70,15 +70,15 @@ namespace fms
 		++i;
 
 		amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
-		std::string caller = str->value();
+		std::string const caller = str->value();
 
 		++i;
 		str = std::dynamic_pointer_cast<amf0_string>(*i);
-		std::string callee = str->value();
+		std::string const callee = str->value();
 
 		++i;
 		str = std::dynamic_pointer_cast<amf0_string>(*i);
-		std::string call_id = str->value();
+		std::string const call_id = str->value();
 	}
 
 	bool video_call_application::check_call_params(const rtmp_message_invoke::parameters_list_t &params)
@@ -112,16 +112,16 @@ namespace fms
 		++i;
 		if ((*i)->type() != amf0_type::eAMF0String)
 			return;
-		amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
+		amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
 
-		client_session_ptr conn = get_connection(connection_id);
+		client_session_ptr const conn = get_connection(connection_id);
 		if (!conn->app_instance().empty())
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock<std::mutex> const lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
-			if (m_instance_to_client.find(app_instance) == m_instance_to_client.end())
+			if (!m_instance_to_client.contains(app_instance))
 				return;
-			call_instance_data_ptr data = m_instance_to_client[app_instance];
+			call_instance_data_ptr const data = m_instance_to_client[app_instance];
 			if (data->m_mixer != nullptr)
 			{
 				data->m_mixer->add_source_stream(connection_id);
@@ -130,8 +130,8 @@ namespace fms
 			{
 				try
 				{
-					std::filesystem::path flv_name(str->value() + ".flv");
-					std::filesystem::path flv_full_name = config::instance()->flv_folder() / flv_name;
+					std::filesystem::path const flv_name(str->value() + ".flv");
+					std::filesystem::path const flv_full_name = config::instance()->flv_folder() / flv_name;
 
 					data->m_sink = new flv_writer(flv_full_name.string());
 					data->m_mixer = new mixer(data->m_sink);
@@ -148,14 +148,14 @@ namespace fms
 
 	void video_call_application::add_publisher_to_app_instance(std::uint32_t connection_id)
 	{
-		client_session_ptr conn = get_connection(connection_id);
+		client_session_ptr const conn = get_connection(connection_id);
 		if (!conn->app_instance().empty())
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock<std::mutex> const lock(m_mutex);
 			const std::string &app_instance = conn->app_instance();
-			if (m_instance_to_client.find(app_instance) == m_instance_to_client.end())
+			if (!m_instance_to_client.contains(app_instance))
 			{
-				call_instance_data_ptr tmp(new call_instance_data);
+				call_instance_data_ptr const tmp(new call_instance_data);
 				tmp->m_clients.insert(connection_id);
 				m_instance_to_client[app_instance] = tmp;
 			}
@@ -172,11 +172,11 @@ namespace fms
 	void video_call_application::video_call_end_notify(std::uint32_t connection_id)
 	{
 		// no lock since the lock has already been aquired
-		client_instance_map_t::iterator i = m_client_to_instance.find(connection_id);
+		client_instance_map_t::iterator const i = m_client_to_instance.find(connection_id);
 		if (i == m_client_to_instance.end())
 			return;
 
-		instance_client_map_t::iterator j = m_instance_to_client.find(i->second);
+		instance_client_map_t::iterator const j = m_instance_to_client.find(i->second);
 		if (j == m_instance_to_client.end())
 		{
 			m_client_to_instance.erase(i);
@@ -184,7 +184,7 @@ namespace fms
 		}
 
 		std::set<std::uint32_t> &set = j->second->m_clients;
-		if (set.find(connection_id) == set.end())
+		if (!set.contains(connection_id))
 			return;
 		if (set.size() == 2)
 		{
@@ -213,9 +213,9 @@ namespace fms
 
 	void video_call_application::send_call_end_notify(std::uint32_t connection_id)
 	{
-		rtmp_message_invoke_ptr result(new rtmp_message_invoke(invoke_functions::call_end, 0.0f));
+		rtmp_message_invoke_ptr const result(new rtmp_message_invoke(invoke_functions::call_end, 0.0f));
 
-		amf0_null_ptr null(new amf0_null);
+		amf0_null_ptr const null(new amf0_null);
 		result->add_parameter(null);
 
 		enqueue_async_message(connection_id, result);

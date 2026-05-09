@@ -40,7 +40,7 @@ namespace fms
 	{
 		// RC4 lives in the legacy provider in OpenSSL 3; loading any provider
 		// explicitly means we must also load the default one ourselves.
-		bool legacy = OSSL_PROVIDER_load(nullptr, "legacy") != nullptr;
+		bool const legacy = OSSL_PROVIDER_load(nullptr, "legacy") != nullptr;
 		OSSL_PROVIDER_load(nullptr, "default");
 		return legacy;   // RC4/RTMPE is unavailable without the legacy provider
 	}
@@ -94,7 +94,7 @@ namespace fms
 			return std::string();   // empty digest -> any password compare fails closed
 		std::ostringstream tmp;
 		tmp << std::hex;
-		for (unsigned char i : hash)
+		for (unsigned char const i : hash)
 			tmp << std::setw(2) << std::setfill('0') << (std::uint16_t)i;
 		return tmp.str();
 	}

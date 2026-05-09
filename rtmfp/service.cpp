@@ -67,7 +67,7 @@ namespace fms
 		if (!e && bytes_received >= ePacketMinLen)
 		{
 			m_buffer.update(bytes_received);
-			std::uint32_t sid = get_sid();
+			std::uint32_t const sid = get_sid();
 			if (sid == 0) // startup session
 			{
 				handle_startup_session();
@@ -115,7 +115,7 @@ namespace fms
 		endpoint_chunk_pair_t p = m_queue.front();
 		m_queue.pop();
 
-		std::uint16_t ts = get_timestamp();
+		std::uint16_t const ts = get_timestamp();
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h);
 		p.second->serialize(m_serializer->raw_packet());
@@ -146,12 +146,12 @@ namespace fms
 	std::optional<session_ptr> service::get_session(std::uint32_t sid)
 	{
 		
-		sid_to_session_map_t::iterator i = m_sessions.find(sid);
+		sid_to_session_map_t::iterator const i = m_sessions.find(sid);
 		if (i != m_sessions.end())
 			return std::optional<session_ptr>(i->second);
 
 		// search through initial sessions
-		endpoint_to_session_map_t::iterator j = m_initial_sessions.find(m_sender_endpoint);
+		endpoint_to_session_map_t::iterator const j = m_initial_sessions.find(m_sender_endpoint);
 		if (j != m_initial_sessions.end() && j->second->outgoing_sid() == sid)
 		{
 			session_ptr s = j->second;
@@ -167,7 +167,7 @@ namespace fms
 	void service::remove_session(std::uint32_t sid)
 	{
 		// fixme: stalled initial sessions should be removed too
-		sid_to_session_map_t::iterator i = m_sessions.find(sid);
+		sid_to_session_map_t::iterator const i = m_sessions.find(sid);
 		if (i != m_sessions.end())
 		{
 			m_initial_sessions.erase(i->second->end_point());
@@ -177,7 +177,7 @@ namespace fms
 			{
 				for (const auto & grp : grps)
 				{
-					if (group_ptr g = grp.lock())
+					if (group_ptr const g = grp.lock())
 					{
 						g->remove_member(i->second);
 						if (g->empty())
@@ -245,7 +245,7 @@ namespace fms
 		create_cookie(cookie);
 
 		rhello_chunk rc(ic->tag_len(), ic->tag(), eCookieSize, cookie, eCertLen, m_cert);
-		std::uint16_t ts = get_timestamp();
+		std::uint16_t const ts = get_timestamp();
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h);
 		rc.serialize(m_serializer->raw_packet());
@@ -260,7 +260,7 @@ namespace fms
 		if (iikc->cert_len() < 0x84)
 			return;
 
-		session_ptr s = std::make_shared<session>(this, m_sender_endpoint, m_app_manager->reserve_connection_id(), m_app_manager);
+		session_ptr const s = std::make_shared<session>(this, m_sender_endpoint, m_app_manager->reserve_connection_id(), m_app_manager);
 		s->init();
 		s->notifier() = [this]() { notify(); };
 		m_initial_sessions[m_sender_endpoint] = s;
@@ -276,7 +276,7 @@ namespace fms
 		const std::uint8_t *rnonce = d->rnonce(size);
 		rikeying_chunk ric(boost::asio::detail::socket_ops::host_to_network_long(s->outgoing_sid()), size, rnonce);
 
-		std::uint16_t ts = get_timestamp();
+		std::uint16_t const ts = get_timestamp();
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h);
 
@@ -295,11 +295,11 @@ namespace fms
 
 	void service::redirect_ihello(ihello_chunk *ic, const std::uint8_t *peer_id)
 	{
-		item tmp(peer_id, false);
-		session_map_t::iterator i = m_session_map.find(tmp);
+		item const tmp(peer_id, false);
+		session_map_t::iterator const i = m_session_map.find(tmp);
 		if (i != m_session_map.end())
 		{
-			std::uint16_t ts = get_timestamp();
+			std::uint16_t const ts = get_timestamp();
 			i->second->calculate_echo_ts();
 
 			header h(false, true, ts, header::eResponder);
@@ -316,7 +316,7 @@ namespace fms
 			m_serializer->finish_raw_packet(i->second->sid(), i->second->get_aes());
 
 			redirect_chunk *rc = new redirect_chunk(ic->tag_len(), ic->tag());
-			boost::asio::ip::address_v4 tmp = i->second->end_point().address().to_v4();
+			boost::asio::ip::address_v4 const tmp = i->second->end_point().address().to_v4();
 			a.m_type = 0x02;
 			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(tmp.to_ulong());
 			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(i->second->end_point().port());
@@ -348,10 +348,7 @@ namespace fms
 
 		std::uint32_t ts;
 		std::memcpy(static_cast<void *>(&ts), const_cast<std::uint8_t *>(cookie + off), sizeof(ts));
-		if ((get_timestamp_ms() - ts) > 95000)
-			return false;
-
-		return true;
+		return (get_timestamp_ms() - ts) <= 95000;
 	}
 
 	void service::create_cookie(std::uint8_t *cookie)
@@ -376,14 +373,14 @@ namespace fms
 
 	std::uint32_t service::get_timestamp_ms()
 	{
-		std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
-		std::chrono::system_clock::duration delta = now - m_start;
+		std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
+		std::chrono::system_clock::duration const delta = now - m_start;
 		return static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 	}
 
 	std::uint16_t service::get_timestamp()
 	{
-		std::uint32_t ts = get_timestamp_ms() / 4; // 4ms clock resolution
+		std::uint32_t const ts = get_timestamp_ms() / 4; // 4ms clock resolution
 		return ts & 0xffff;
 	}
 
@@ -391,7 +388,7 @@ namespace fms
 	{
 		if (g->command() == group::eJoinGroup)
 		{
-			group_set_t::iterator i = m_groups.find(g);
+			group_set_t::iterator const i = m_groups.find(g);
 			if (i == m_groups.end())
 			{
 				g->take_ownership();

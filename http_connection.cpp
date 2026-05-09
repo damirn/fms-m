@@ -206,9 +206,7 @@ namespace fms
 
 		if (m_command == eCmdFcs)
 		{
-			if (get_content_lenght())
-				return true;
-			return false;
+			return get_content_lenght();
 		}
 
 		if (m_command != eCmdOpen) // if cmd is not Open, get and validate fields
@@ -246,10 +244,7 @@ namespace fms
 		}
 
 		m_buffer >> c;
-		if (c != '/')
-			return false;
-
-		return true;
+		return c == '/';
 	}
 
 	bool http_connection::get_sequence()
@@ -318,7 +313,7 @@ namespace fms
 
 	bool http_connection::get_content_lenght()
 	{
-		std::uint8_t *pos = reinterpret_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\nContent-Length: ", 18));
+		std::uint8_t  const*pos = reinterpret_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\nContent-Length: ", 18));
 		if (pos != nullptr)
 		{
 			m_buffer.skip(pos - m_buffer.read_pos() + 18);
@@ -404,7 +399,7 @@ namespace fms
 		m_output_buffer.clear();
 		m_buffer.clear();
 		prepare_http_header(1);
-		char c = 0x00;
+		char const c = 0x00;
 		add_to_http_header(c);
 		m_http_header_is_complete = true;
 		perform_write();
@@ -413,9 +408,9 @@ namespace fms
 	void http_connection::handle_fcs()
 	{
 
-		boost::asio::ip::tcp::endpoint endpoint = m_socket.local_endpoint();
-		boost::asio::ip::address address = endpoint.address();
-		std::string str = address.to_string();
+		boost::asio::ip::tcp::endpoint const endpoint = m_socket.local_endpoint();
+		boost::asio::ip::address const address = endpoint.address();
+		std::string const str = address.to_string();
 		prepare_http_header(str.size());
 		m_http_header_is_complete = true;
 		add_to_http_header(str.c_str());
@@ -429,7 +424,7 @@ namespace fms
 
 		m_buffer.clear();
 		m_output_buffer.clear();
-		std::uint32_t size = m_rtmpt_manager->serialize_result(m_cid, m_sequence, m_output_buffer);
+		std::uint32_t const size = m_rtmpt_manager->serialize_result(m_cid, m_sequence, m_output_buffer);
 		prepare_http_header(size);
 
 		if (size < 32)
@@ -464,7 +459,7 @@ namespace fms
 //		std::cout << "content length OK: " << m_content_length << std::endl;
 
 		m_output_buffer.clear();
-		std::uint32_t size = m_rtmpt_manager->handle_data(m_cid, m_sequence, m_buffer, m_output_buffer);
+		std::uint32_t const size = m_rtmpt_manager->handle_data(m_cid, m_sequence, m_buffer, m_output_buffer);
 
 		m_buffer.clear();
 		prepare_http_header(size);

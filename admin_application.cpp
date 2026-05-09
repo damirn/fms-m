@@ -57,7 +57,7 @@ namespace fms
 			while (std::getline(p, line))
 			{
 				// each line is "user:sha256hash" — exactly one ':' separator
-				std::size_t colon = line.find(':');
+				std::size_t const colon = line.find(':');
 				if (colon != std::string::npos && line.find(':', colon + 1) == std::string::npos)
 					m_password_map[line.substr(0, colon)] = line.substr(colon + 1);
 			}
@@ -71,57 +71,57 @@ namespace fms
 
 	boost::tribool admin_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
+		rtmp_message_invoke_ptr const invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == nullptr)
 			return false;
 
-		if (!check_client(connection_id) && invoke->function()->value().compare(invoke_functions::connect) != 0)
+		if (!check_client(connection_id) && invoke->function()->value() != invoke_functions::connect)
 			return false;
 
-		if (invoke->function()->value().compare(invoke_functions::get_applications) == 0)
+		if (invoke->function()->value() == invoke_functions::get_applications)
 		{
 			handle_invoke_get_apps(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::get_clients) == 0)
+		if (invoke->function()->value() == invoke_functions::get_clients)
 		{
 			handle_invoke_get_clients(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::get_client_stats) == 0)
+		if (invoke->function()->value() == invoke_functions::get_client_stats)
 		{
 			handle_invoke_get_client_stats(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::get_app_stats) == 0)
+		if (invoke->function()->value() == invoke_functions::get_app_stats)
 		{
 			handle_invoke_get_app_stats(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::get_streams) == 0)
+		if (invoke->function()->value() == invoke_functions::get_streams)
 		{
 			handle_invoke_get_streams(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::get_queue_stats) == 0)
+		if (invoke->function()->value() == invoke_functions::get_queue_stats)
 		{
 			handle_invoke_get_queue_stats(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::dump_pools) == 0)
+		if (invoke->function()->value() == invoke_functions::dump_pools)
 		{
 			// pool dumping was pjsip-specific; no-op now that pjsip is removed
 			return false;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::kill_client) == 0)
+		if (invoke->function()->value() == invoke_functions::kill_client)
 		{
 			handle_invoke_kill_client(invoke, connection_id, result);
 			return false;
@@ -139,7 +139,7 @@ namespace fms
 			--i;
 			if ((*i)->type() != amf0_type::eAMF0Boolean && (*i)->type() != amf0_type::eAMF0Null)
 				return false;
-			amf0_boolean_ptr b = std::dynamic_pointer_cast<amf0_boolean>(*i);
+			amf0_boolean_ptr const b = std::dynamic_pointer_cast<amf0_boolean>(*i);
 			if (b.get() != nullptr)
 				active_client = b->value();
 		}
@@ -166,21 +166,21 @@ namespace fms
 
 		amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
 
-		std::string user = str->value();
+		std::string const user = str->value();
 
 		++i;
 		if ((*i)->type() != amf0_type::eAMF0String)
 			return false;
 
 		str = std::dynamic_pointer_cast<amf0_string>(*i);
-		std::string pass = str->value();
+		std::string const pass = str->value();
 
 		return check_user_and_password(user, pass);
 	}
 
 	bool admin_application::check_user_and_password(const std::string &user, const std::string &pass)
 	{
-		std::map<std::string, std::string>::const_iterator i = m_password_map.find(user);
+		std::map<std::string, std::string>::const_iterator const i = m_password_map.find(user);
 		if (i == m_password_map.end())
 			return false;
 
@@ -188,8 +188,9 @@ namespace fms
 		// "salt$sha256(salt+password)". Compare in constant time to avoid a
 		// timing side-channel on the stored hash.
 		const std::string &stored = i->second;
-		std::string expected, computed;
-		std::size_t sep = stored.find('$');
+		std::string expected;
+		std::string computed;
+		std::size_t const sep = stored.find('$');
 		if (sep != std::string::npos)
 		{
 			expected = stored.substr(sep + 1);
@@ -208,14 +209,14 @@ namespace fms
 	void admin_application::delete_connection(std::uint32_t connection_id, const std::string &app_instance /* = "" */)
 	{
 		rtmp_application::delete_connection(connection_id, app_instance);
-		std::unique_lock<std::mutex> lock(m_admin_mutex);
+		std::unique_lock<std::mutex> const lock(m_admin_mutex);
 		m_clients.erase(connection_id);
 	}
 
 	void admin_application::handle_win_ack_size(rtmp_message_ptr, std::uint32_t connection_id)
 	{
-		std::unique_lock<std::mutex> lock(m_admin_mutex);
-		if (m_clients.find(connection_id) != m_clients.end())
+		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		if (m_clients.contains(connection_id))
 		{
 			if (m_clients[connection_id] && !m_queue.empty())
 				send_enqueued_messages(connection_id);
@@ -224,16 +225,16 @@ namespace fms
 
 	void admin_application::handle_invoke_get_apps(const rtmp_message_invoke_ptr& invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
-		amf0_strict_array_ptr list(new amf0_strict_array);
+		amf0_strict_array_ptr const list(new amf0_strict_array);
 		string_list_t apps;
 		m_app_manager->list_applications(apps);
 		for (auto & app : apps)
 		{
-			amf0_string_ptr str(new amf0_string(app));
+			amf0_string_ptr const str(new amf0_string(app));
 			list->add_entry(str);
 		}
 		res->add_parameter(list);
@@ -243,16 +244,16 @@ namespace fms
 
 	void admin_application::handle_invoke_get_clients(const rtmp_message_invoke_ptr& invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
-		amf0_strict_array_ptr list(new amf0_strict_array);
+		amf0_strict_array_ptr const list(new amf0_strict_array);
 		client_list_t clients;
 		m_app_manager->list_clients(clients);
 		for (auto & client : clients)
 		{
-			amf0_object_ptr obj(new amf0_object);
+			amf0_object_ptr const obj(new amf0_object);
 			obj->add_entry("id", client->m_id);
 			obj->add_entry("sid", client->m_sid);
 			obj->add_entry("app", client->m_app);
@@ -279,16 +280,16 @@ namespace fms
 		if ((*i)->type() != amf0_type::eAMF0Number)
 			return;
 
-		amf0_number_ptr id = std::dynamic_pointer_cast<amf0_number>(*i);
+		amf0_number_ptr const id = std::dynamic_pointer_cast<amf0_number>(*i);
 
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
 		client_stats stats;
 		if (m_app_manager->get_client_stats(static_cast<std::uint32_t>(id->value()), stats))
 		{
-			amf0_object_ptr obj(new amf0_object);
+			amf0_object_ptr const obj(new amf0_object);
 			obj->add_entry("time", stats.m_online_time);
 			obj->add_entry("bytes_in", stats.m_bytes_read);
 			obj->add_entry("bytes_out", stats.m_bytes_written);
@@ -298,7 +299,7 @@ namespace fms
 		}
 		else
 		{
-			amf0_string_ptr str(new amf0_string("No such client"));
+			amf0_string_ptr const str(new amf0_string("No such client"));
 			res->add_parameter(str);
 		}
 		result = res;
@@ -314,16 +315,16 @@ namespace fms
 		if ((*i)->type() != amf0_type::eAMF0String)
 			return;
 
-		amf0_string_ptr app = std::dynamic_pointer_cast<amf0_string>(*i);
+		amf0_string_ptr const app = std::dynamic_pointer_cast<amf0_string>(*i);
 
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
 		std::optional<app_stats> stats = m_app_manager->get_app_stats(app->value());
 		if (stats)
 		{
-			amf0_object_ptr obj(new amf0_object);
+			amf0_object_ptr const obj(new amf0_object);
 			obj->add_entry("bytes_in", (*stats).m_bytes_read);
 			obj->add_entry("bytes_out", (*stats).m_bytes_written);
 			obj->add_entry("msgs_in", (*stats).m_messages_read);
@@ -332,7 +333,7 @@ namespace fms
 		}
 		else
 		{
-			amf0_string_ptr str(new amf0_string("No such application"));
+			amf0_string_ptr const str(new amf0_string("No such application"));
 			res->add_parameter(str);
 		}
 		result = res;
@@ -340,11 +341,11 @@ namespace fms
 
 	void admin_application::handle_invoke_get_streams(const rtmp_message_invoke_ptr& invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
-		amf0_strict_array_ptr list(new amf0_strict_array);
+		amf0_strict_array_ptr const list(new amf0_strict_array);
 		netstream_list_t streams;
 		m_app_manager->list_streams(streams);
 
@@ -378,16 +379,16 @@ namespace fms
 
 	void admin_application::handle_invoke_get_queue_stats(const rtmp_message_invoke_ptr& invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
-		amf0_strict_array_ptr list(new amf0_strict_array);
+		amf0_strict_array_ptr const list(new amf0_strict_array);
 		queue_stats_list_t queue_stats;
 		m_app_manager->get_queue_stats(queue_stats);
 		for (auto & queue_stat : queue_stats)
 		{
-			amf0_object_ptr obj(new amf0_object);
+			amf0_object_ptr const obj(new amf0_object);
 			obj->add_entry("client", queue_stat.m_client);
 			obj->add_entry("messages", queue_stat.m_messages);
 			list->add_entry(obj);
@@ -407,22 +408,20 @@ namespace fms
 		if ((*i)->type() != amf0_type::eAMF0Number)
 			return;
 
-		amf0_number_ptr id = std::dynamic_pointer_cast<amf0_number>(*i);
+		amf0_number_ptr const id = std::dynamic_pointer_cast<amf0_number>(*i);
 
 		m_app_manager->destroy_connection(static_cast<std::uint32_t>(id->value()));
 	}
 
 	bool admin_application::check_client(std::uint32_t connection_id)
 	{
-		std::unique_lock<std::mutex> lock(m_admin_mutex);
-		if (m_clients.find(connection_id) == m_clients.end())
-			return false;
-		return true;
+		std::unique_lock<std::mutex> const lock(m_admin_mutex);
+		return m_clients.contains(connection_id);
 	}
 
 	bool admin_application::has_active_clients()
 	{
-		std::unique_lock<std::mutex> lock(m_admin_mutex);
+		std::unique_lock<std::mutex> const lock(m_admin_mutex);
 		if (m_clients.empty())
 			return false;
 		for (auto & m_client : m_clients)
@@ -433,12 +432,12 @@ namespace fms
 
 	void admin_application::send_new_stream_notify(netstream_stats_ptr data)
 	{
-		notify_active_client(std::move(data), [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_new_stream_notify(a, std::move(b)); });
+		notify_active_client(data, [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_new_stream_notify(a, std::move(b)); });
 	}
 
 	void admin_application::send_stream_deleted_notify(netstream_stats_ptr data)
 	{
-		notify_active_client(std::move(data), [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_delete_stream_notify(a, std::move(b)); });
+		notify_active_client(data, [this](std::uint32_t a, netstream_stats_ptr b) { dispatch_delete_stream_notify(a, b); });
 	}
 
 	void admin_application::send_qos_data(netstream_stats_map_t &map)
@@ -449,7 +448,7 @@ namespace fms
 
 	void admin_application::send_auth_status(const auth_status_data_ptr& data)
 	{
-		std::unique_lock<std::mutex> lock(m_admin_mutex);
+		std::unique_lock<std::mutex> const lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_auth_result(0, data, true);
 		else
@@ -462,7 +461,7 @@ namespace fms
 
 	void admin_application::send_disconnect_notify(const auth_status_data_ptr& data)
 	{
-		std::unique_lock<std::mutex> lock(m_admin_mutex);
+		std::unique_lock<std::mutex> const lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_disconnect(0, data, true);
 		else
@@ -475,7 +474,7 @@ namespace fms
 
 	void admin_application::send_call_status_notify(std::uint32_t connection_id, const amf0_object_ptr& obj)
 	{
-		std::unique_lock<std::mutex> lock(m_admin_mutex);
+		std::unique_lock<std::mutex> const lock(m_admin_mutex);
 		if (m_clients.empty())
 			dispatch_call_status(0, connection_id, obj, true);
 		else
@@ -488,7 +487,7 @@ namespace fms
 
 	void admin_application::notify_active_client(const netstream_stats_ptr& data, const std::function<void (std::uint32_t, netstream_stats_ptr)>& func)
 	{
-		std::unique_lock<std::mutex> lock(m_admin_mutex);
+		std::unique_lock<std::mutex> const lock(m_admin_mutex);
 		for (auto & m_client : m_clients)
 			if (m_client.second)
 				func(m_client.first, data);
@@ -496,9 +495,9 @@ namespace fms
 
 	void admin_application::dispatch_new_stream_notify(std::uint32_t connection_id, netstream_stats_ptr data)
 	{
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_new_stream);
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_new_stream);
 
-		amf0_object_ptr obj = create_stream_stat_obj(std::move(data));
+		amf0_object_ptr const obj = create_stream_stat_obj(data);
 		res->add_parameter(obj);
 		enqueue_async_message(connection_id, res);
 		notify(connection_id);
@@ -506,12 +505,12 @@ namespace fms
 
 	void admin_application::dispatch_delete_stream_notify(std::uint32_t connection_id, const netstream_stats_ptr& data)
 	{
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_delete_stream);
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_delete_stream);
 
-		amf0_number_ptr id(new amf0_number(data->m_client));
+		amf0_number_ptr const id(new amf0_number(data->m_client));
 		res->add_parameter(id);
 
-		amf0_string_ptr str(new amf0_string(data->m_name));
+		amf0_string_ptr const str(new amf0_string(data->m_name));
 		res->add_parameter(str);
 
 		enqueue_async_message(connection_id, res);
@@ -520,9 +519,9 @@ namespace fms
 
 	void admin_application::dispatch_qos_data_for_stream_notify(std::uint32_t connection_id, const netstream_stats_ptr& data)
 	{
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_qos);
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_qos);
 
-		amf0_object_ptr obj = create_stream_stat_obj(data, false);
+		amf0_object_ptr const obj = create_stream_stat_obj(data, false);
 		obj->add_entry("kbps", data->m_kbps);
 		res->add_parameter(obj);
 
@@ -532,12 +531,12 @@ namespace fms
 
 	void admin_application::dispatch_auth_result(std::uint32_t connection_id, const auth_status_data_ptr& data, bool to_enqueue /* = false */)
 	{
-		client_data_ptr cd = m_app_manager->get_client_data(data->m_id);
+		client_data_ptr const cd = m_app_manager->get_client_data(data->m_id);
 		if (cd.get() != nullptr)
 		{
-			rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_auth_status);
+			rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_auth_status);
 
-			amf0_object_ptr obj(new amf0_object);
+			amf0_object_ptr const obj(new amf0_object);
 			obj->add_entry("sid", cd->m_sid);
 			obj->add_entry("cid", data->m_id);
 			obj->add_entry("ip", cd->m_ip);
@@ -561,9 +560,9 @@ namespace fms
 
 	void admin_application::dispatch_disconnect(std::uint32_t connection_id, const auth_status_data_ptr& data, bool to_enqueue /* = false */)
 	{
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_disconnect);
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_disconnect);
 
-		amf0_object_ptr obj(new amf0_object);
+		amf0_object_ptr const obj(new amf0_object);
 		obj->add_entry("sid", data->m_sid);
 		obj->add_entry("cid", data->m_id);
 		obj->add_entry("time", to_simple_string(data->m_time));
@@ -582,9 +581,9 @@ namespace fms
 
 	void admin_application::dispatch_call_status(std::uint32_t connection_id, std::uint32_t cid, const amf0_object_ptr& o, bool to_enqueue /* = false */)
 	{
-		rtmp_message_invoke_ptr res = rtmp_message_invoke::create_message(invoke_functions::on_call_status);
+		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_call_status);
 
-		amf0_object_ptr obj(new amf0_object);
+		amf0_object_ptr const obj(new amf0_object);
 		obj->add_entry("cid", cid);
 		obj->add_entry("time", to_simple_string(std::chrono::system_clock::now()));
 		obj->add_entry("call_data", o);
@@ -602,12 +601,12 @@ namespace fms
 
 	void admin_application::enqueue_message(const rtmp_message_invoke_ptr& msg)
 	{
-		std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
+		std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
 		m_queue.emplace_back(msg, now);
 		do 
 		{
-			msg_with_ts_t &m = m_queue.front();
-			std::chrono::system_clock::duration ts = now - m.second;
+			msg_with_ts_t  const&m = m_queue.front();
+			std::chrono::system_clock::duration const ts = now - m.second;
 			if (static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::seconds>(ts).count()) > m_keep_time)
 				m_queue.pop_front();
 			else
@@ -619,7 +618,7 @@ namespace fms
 	{
 		while (!m_queue.empty())
 		{
-			msg_with_ts_t &msg = m_queue.front();
+			msg_with_ts_t  const&msg = m_queue.front();
 			enqueue_async_message(connection_id, msg.first);
 			notify(connection_id);
 			m_queue.pop_front();

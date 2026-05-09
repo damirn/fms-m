@@ -56,10 +56,10 @@ namespace fms
 			{
 				if (m_mark < m_read)
 					m_read = m_mark;
-				std::size_t len = static_cast<std::size_t>(m_write_high_mark - m_read);
+				std::size_t const len = static_cast<std::size_t>(m_write_high_mark - m_read);
 				if (len > 0 && begin() != m_read)
 				{
-					std::size_t shift = static_cast<std::size_t>(m_read - begin());
+					std::size_t const shift = static_cast<std::size_t>(m_read - begin());
 					std::memmove(begin(), reinterpret_cast<void *>(m_read), len);
 					m_write -= shift;
 					m_write_high_mark = begin() + len;
@@ -107,11 +107,11 @@ namespace fms
 			{
 				if (available_for_write() < size)
 				{
-					std::size_t s1 = m_mark - begin();
-					std::size_t s2 = m_read - begin();
-					std::size_t s3 = m_read_barrier - begin();
-					std::size_t s4 = m_write - begin();
-					std::size_t s5 = m_write_high_mark - begin();
+					std::size_t const s1 = m_mark - begin();
+					std::size_t const s2 = m_read - begin();
+					std::size_t const s3 = m_read_barrier - begin();
+					std::size_t const s4 = m_write - begin();
+					std::size_t const s5 = m_write_high_mark - begin();
 
 					while (wrote_size() + size > m_size)
 						m_size <<= 1;
@@ -149,7 +149,7 @@ namespace fms
 				do 
 				{
 					*this >> a;
-					more = (a & 0x80) == 0x80 ? true : false;
+					more = (a & 0x80) == 0x80;
 					v = a & 0x7f;
 					ret = (ret << 7) + v;
 				}

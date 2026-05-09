@@ -34,7 +34,7 @@ namespace fms
 
 		bool try_pop(T &value)
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock<std::mutex> const lock(m_mutex);
 			if(m_queue.empty())
 			{
 				return false;

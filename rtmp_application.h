@@ -97,14 +97,14 @@ namespace fms
 
 		virtual bool check_connect_params(std::uint32_t, const rtmp_message_invoke::parameters_list_t &);
 
-		void check_stream_name(rtmp_message_invoke::parameters_list_t &);
+		static void check_stream_name(rtmp_message_invoke::parameters_list_t &);
 		rtmp_message_ptr create_stream(const rtmp_message_invoke_ptr&, std::uint32_t, std::uint32_t);
 		void close_stream(const rtmp_message_invoke_ptr&, std::uint32_t);
 
 		boost::tribool handle_invoke_connect(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
 
 		void create_connect_messages(std::uint32_t, optional_param_list_t = optional_param_list_t());
-		rtmp_message_invoke_ptr create_connect_failure_message(const std::string &);
+		static rtmp_message_invoke_ptr create_connect_failure_message(const std::string &);
 		void send_play_start_messages(std::uint32_t, std::uint32_t, std::uint32_t, const std::string &);
 		void send_close(std::uint32_t);
 
@@ -121,7 +121,7 @@ namespace fms
 		std::uint32_t get_delay(std::uint32_t);
 
 		enum data_type { eData, eVideo, eAudio, eControl = 4 };
-		std::uint32_t stream_to_channel(std::uint32_t stream_id, data_type type)
+		static std::uint32_t stream_to_channel(std::uint32_t stream_id, data_type type)
 		{
 			if (stream_id == 0)
 			{
@@ -129,7 +129,7 @@ namespace fms
 					return 3;
 				return 2;
 			}
-			std::uint32_t channel = 4 + ((stream_id - 1) * 5);
+			std::uint32_t const channel = 4 + ((stream_id - 1) * 5);
 			if (type == eData)
 				return channel;
 			if (type == eVideo)
@@ -141,7 +141,7 @@ namespace fms
 			return channel; // never reached
 		}
 
-		rtmp_message_invoke_ptr create_error_status(std::uint32_t, std::uint32_t, const char *);
+		static rtmp_message_invoke_ptr create_error_status(std::uint32_t, std::uint32_t, const char *);
 
 		rtmp_app_manager *m_app_manager;
 		std::string m_app_name;

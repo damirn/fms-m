@@ -96,7 +96,7 @@ namespace fms
 		}
 
 	protected:
-		bool check_application_name(const std::string &, const std::string &, std::string &);
+		static bool check_application_name(const std::string &, const std::string &, std::string &);
 		void start_timer();
 		void handle_timer(const boost::system::error_code &);
 

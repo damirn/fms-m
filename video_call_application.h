@@ -24,7 +24,7 @@ namespace fms
 		void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
 
 		void handle_call_invoke(const rtmp_message_invoke_ptr&, std::uint32_t);
-		bool check_call_params(const rtmp_message_invoke::parameters_list_t &params);
+		static bool check_call_params(const rtmp_message_invoke::parameters_list_t &params);
 
 		void handle_record_invoke(const rtmp_message_invoke_ptr&, std::uint32_t);
 

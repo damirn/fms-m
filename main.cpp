@@ -10,7 +10,7 @@
 
 int main(int argc, char **argv)
 {
-	bool cli_ok = fms::config::instance()->parse_cli(argc, argv);
+	bool const cli_ok = fms::config::instance()->parse_cli(argc, argv);
 	if (!cli_ok)
 		return -1;
 
