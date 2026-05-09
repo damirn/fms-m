@@ -25,11 +25,11 @@ namespace fms
 		void write(stream_array &, amf3_type_ptr);
 
 	protected:
-		amf3_empty_type_ptr read_empty_type(stream_array &, std::uint8_t);
-		void write_empty_type(stream_array &, amf3_empty_type_ptr);
+		static amf3_empty_type_ptr read_empty_type(stream_array &, std::uint8_t);
+		static void write_empty_type(stream_array &, amf3_empty_type_ptr);
 
 		amf3_integer_type_ptr read_integer(stream_array &);
-		void write_integer(stream_array &, std::uint32_t);
+		static void write_integer(stream_array &, std::uint32_t);
 		void write_integer(stream_array &, amf3_integer_type_ptr);
 
 		amf3_string_type_ptr read_string(stream_array &);
@@ -38,7 +38,7 @@ namespace fms
 		amf3_object_type_ptr read_object(stream_array &);
 		void write_object(stream_array &, amf3_object_type_ptr);
 
-		std::uint32_t read_u29(stream_array &);
+		static std::uint32_t read_u29(stream_array &);
 
 		using string_list_t = std::list<std::string>;
 

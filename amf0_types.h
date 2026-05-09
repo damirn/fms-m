@@ -171,7 +171,7 @@ namespace fms
 
 		template<> inline bool &get_ref<bool>(amf0_type_ptr v)
 		{
-			amf0_boolean_ptr bln = std::dynamic_pointer_cast<amf0_boolean>(v);
+			amf0_boolean_ptr const bln = std::dynamic_pointer_cast<amf0_boolean>(v);
 			if (bln.get() != nullptr)
 				return bln->value();
 			throw amf0_illegal_cast();
@@ -179,7 +179,7 @@ namespace fms
 
 		template<> inline std::string &get_ref<std::string>(amf0_type_ptr v)
 		{
-			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(v);
+			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(v);
 			if (str.get() != nullptr)
 				return str->value();
 			throw amf0_illegal_cast();
@@ -187,7 +187,7 @@ namespace fms
 
 		template<> inline std::uint32_t &get_ref<std::uint32_t>(amf0_type_ptr v)
 		{
-			amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(v);
+			amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != nullptr)
 				return reinterpret_cast<std::uint32_t &>(num->value());
 			throw amf0_illegal_cast();
@@ -200,7 +200,7 @@ namespace fms
 
 		template<> inline bool get<bool>(amf0_type_ptr v)
 		{
-			amf0_boolean_ptr bln = std::dynamic_pointer_cast<amf0_boolean>(v);
+			amf0_boolean_ptr const bln = std::dynamic_pointer_cast<amf0_boolean>(v);
 			if (bln.get() != nullptr)
 				return bln->value();
 			throw amf0_illegal_cast();
@@ -208,7 +208,7 @@ namespace fms
 
 		template<> inline std::string get<std::string>(amf0_type_ptr v)
 		{
-			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(v);
+			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(v);
 			if (str.get() != nullptr)
 				return str->value();
 			throw amf0_illegal_cast();
@@ -216,7 +216,7 @@ namespace fms
 
 		template<> inline std::uint32_t get<std::uint32_t>(amf0_type_ptr v)
 		{
-			amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(v);
+			amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != nullptr)
 				return static_cast<std::uint32_t>(num->value());
 			throw amf0_illegal_cast();
@@ -224,7 +224,7 @@ namespace fms
 
 		template<> inline std::int32_t get<std::int32_t>(amf0_type_ptr v)
 		{
-			amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(v);
+			amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != nullptr)
 				return static_cast<std::int32_t>(num->value());
 			throw amf0_illegal_cast();
@@ -299,19 +299,19 @@ namespace fms
 
 		void add_entry(const std::string &key, const std::string &value)
 		{
-			amf0_string_ptr str(new amf0_string(value));
+			amf0_string_ptr const str(new amf0_string(value));
 			m_value.push_back(entry(key, str));
 		}
 
 		void add_entry(const std::string &key, double value)
 		{
-			amf0_number_ptr num(new amf0_number(value));
+			amf0_number_ptr const num(new amf0_number(value));
 			m_value.push_back(entry(key, num));
 		}
 
 		template <typename T> bool get(const std::string &field, T &value)
 		{
-			value_type::iterator i = m_value.get<1>().find(field);
+			value_type::iterator const i = m_value.get<1>().find(field);
 			if (i != end())
 			{
 				try
@@ -330,7 +330,7 @@ namespace fms
 
 		amf0_type_ptr get(const std::string &field)
 		{
-			value_type::iterator i = m_value.get<1>().find(field);
+			value_type::iterator const i = m_value.get<1>().find(field);
 			if (i != end())
 				return i->m_value;
 			return amf0_type_ptr();
@@ -356,7 +356,7 @@ namespace fms
 		{
 			for (const auto & i : obj)
 			{
-				iterator j = m_value.get<1>().find(i.m_name);
+				iterator const j = m_value.get<1>().find(i.m_name);
 				if (j == end())
 					m_value.push_back(i);
 				else
@@ -406,13 +406,13 @@ namespace fms
 
 		void add_entry(const std::string &name, const std::string &value)
 		{
-			amf0_string_ptr str(new amf0_string(value));
+			amf0_string_ptr const str(new amf0_string(value));
 			m_array.emplace_back(name, str);
 		}
 
 		void add_entry(const std::string &name, double value)
 		{
-			amf0_number_ptr num(new amf0_number(value));
+			amf0_number_ptr const num(new amf0_number(value));
 			m_array.emplace_back(name, num);
 		}
 
@@ -443,13 +443,13 @@ namespace fms
 
 		void add_entry(const std::string &value)
 		{
-			amf0_string_ptr str(new amf0_string(value));
+			amf0_string_ptr const str(new amf0_string(value));
 			m_array.push_back(str);
 		}
 
 		void add_entry(double value)
 		{
-			amf0_number_ptr num(new amf0_number(value));
+			amf0_number_ptr const num(new amf0_number(value));
 			m_array.push_back(num);
 		}
 

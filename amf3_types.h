@@ -158,7 +158,7 @@ namespace fms
 		{
 			if (v->type() == amf3_type::eAMF3String)
 			{
-				amf3_string_type_ptr str = std::dynamic_pointer_cast<amf3_string_type>(v);
+				amf3_string_type_ptr const str = std::dynamic_pointer_cast<amf3_string_type>(v);
 				return str->value();
 			}
 			throw amf3_illegal_cast();
@@ -168,7 +168,7 @@ namespace fms
 		{
 			if (v->type() == amf3_type::eAMF3Integer)
 			{
-				amf3_integer_type_ptr num = std::dynamic_pointer_cast<amf3_integer_type>(v);
+				amf3_integer_type_ptr const num = std::dynamic_pointer_cast<amf3_integer_type>(v);
 				return num->value();
 			}
 			throw amf3_illegal_cast();
@@ -196,19 +196,19 @@ namespace fms
 
 		void add_entry(const std::string &key, const std::string &value)
 		{
-			amf3_string_type_ptr tmp(new amf3_string_type(value));
+			amf3_string_type_ptr const tmp(new amf3_string_type(value));
 			m_properties[key] = tmp;
 		}
 
 		void add_entry(const std::string &key, std::uint32_t value)
 		{
-			amf3_integer_type_ptr tmp(new amf3_integer_type(value));
+			amf3_integer_type_ptr const tmp(new amf3_integer_type(value));
 			m_properties[key] = tmp;
 		}
 
 		template <typename T> bool get(const std::string &field, T &value)
 		{
-			value_map_t::iterator i = m_properties.find(field);
+			value_map_t::iterator const i = m_properties.find(field);
 			if (i != m_properties.end())
 			{
 				try

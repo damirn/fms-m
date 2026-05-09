@@ -98,8 +98,8 @@ namespace fms
 	{
 		std::size_t operator()(const stream_client_id_t &c) const noexcept
 		{
-			std::size_t h1 = std::hash<std::uint32_t>{}(c.first);
-			std::size_t h2 = std::hash<std::uint32_t>{}(c.second);
+			std::size_t const h1 = std::hash<std::uint32_t>{}(c.first);
+			std::size_t const h2 = std::hash<std::uint32_t>{}(c.second);
 			return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
 		}
 	};

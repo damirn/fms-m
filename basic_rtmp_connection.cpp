@@ -55,7 +55,7 @@ namespace fms
 		if (m_bytes_read >= m_bytes_read_notify)
 		{
 			m_bytes_read_notify += m_win_ack;
-			rtmp_message_bytes_read_ptr msg(new rtmp_message_bytes_read(m_bytes_read));
+			rtmp_message_bytes_read_ptr const msg(new rtmp_message_bytes_read(m_bytes_read));
 			m_app->enqueue_async_message(m_id, msg);
 			notify();
 			//std::cout << "Sending bytes read: " << m_bytes_read << " bytes." << std::endl;
@@ -87,7 +87,7 @@ namespace fms
 			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(ePingInterval)));
 			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 
-			rtmp_message_ping_ptr msg(new rtmp_message_ping(rtmp_message_ping::ePingRequest, get_timestamp()));
+			rtmp_message_ping_ptr const msg(new rtmp_message_ping(rtmp_message_ping::ePingRequest, get_timestamp()));
 			m_app->enqueue_async_message(m_id, msg);
 			notify();
 		}
@@ -125,12 +125,12 @@ namespace fms
 	{
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
-			rtmp_message_chunk_size_ptr cs_msg = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg);
+			rtmp_message_chunk_size_ptr const cs_msg = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg);
 			m_chunk_size = cs_msg->chunk_size();
 		}
 		else if (msg->type() == rtmp_message::eMessageWindowAcknowledgementSize)
 		{
-			rtmp_message_window_acknowledgement_size_ptr ack = std::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
+			rtmp_message_window_acknowledgement_size_ptr const ack = std::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
 			m_win_ack = m_bytes_read_notify = ack->size();
 		}
 	}
@@ -148,7 +148,7 @@ namespace fms
 			std::uint8_t sig[SHA256_DIGEST_LENGTH];
 			std::uint8_t dig[SHA256_DIGEST_LENGTH];
 			std::uint8_t *srv_dig = m_tmp_buff.data() + 1;
-			std::uint32_t digest = get_digest_offest(srv_dig, m_validation_scheme);
+			std::uint32_t const digest = get_digest_offest(srv_dig, m_validation_scheme);
 			HMAC_SHA256(srv_dig + digest, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, dig);
 			HMAC_SHA256(buffer.read_pos(), eHandShakeSize - SHA256_DIGEST_LENGTH, dig, SHA256_DIGEST_LENGTH, sig);
 			if (std::memcmp(sig, buffer.read_pos() + eHandShakeSize - SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH) == 0)
@@ -207,7 +207,7 @@ namespace fms
 				return false;
 			}
 
-			std::uint32_t server_digest_offset = get_digest_offest(server_sig, m_validation_scheme);
+			std::uint32_t const server_digest_offset = get_digest_offest(server_sig, m_validation_scheme);
 			std::uint8_t *tmp = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
 			std::memcpy(tmp, server_sig, server_digest_offset);
 			std::memcpy(tmp + server_digest_offset, server_sig + server_digest_offset + SHA256_DIGEST_LENGTH, eHandShakeSize - server_digest_offset - SHA256_DIGEST_LENGTH);
@@ -218,7 +218,7 @@ namespace fms
 
 			std::memcpy(server_sig + server_digest_offset, tmp_hash, SHA256_DIGEST_LENGTH);
 
-			std::uint32_t key_challenge_offset = get_digest_offest(client_sig, m_validation_scheme);
+			std::uint32_t const key_challenge_offset = get_digest_offest(client_sig, m_validation_scheme);
 			HMAC_SHA256(client_sig + key_challenge_offset, SHA256_DIGEST_LENGTH, genuine_keys::FMS_key, genuine_keys::FMS_key_len, tmp_hash);
 			HMAC_SHA256(client_sig, eHandShakeSize - SHA256_DIGEST_LENGTH, tmp_hash, SHA256_DIGEST_LENGTH, client_sig + eHandShakeSize - SHA256_DIGEST_LENGTH);
 		}
@@ -280,7 +280,7 @@ namespace fms
 
 	bool basic_rtmp_connection::validate_client_scheme(std::uint8_t *client_sig, std::uint8_t scheme)
 	{
-		std::uint32_t offset = get_digest_offest(client_sig, scheme);
+		std::uint32_t const offset = get_digest_offest(client_sig, scheme);
 
 		std::uint8_t *buff = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
 		std::memcpy(buff, client_sig, offset);
@@ -300,8 +300,8 @@ namespace fms
 	bool basic_rtmp_connection::create_keys(std::uint8_t *client_sig, std::uint8_t *server_sig)
 	{
 		dh mydh;
-		std::uint32_t client_dh_offset = get_dh_offest(client_sig, m_validation_scheme);
-		std::uint32_t server_dh_offset = get_dh_offest(server_sig, m_validation_scheme);
+		std::uint32_t const client_dh_offset = get_dh_offest(client_sig, m_validation_scheme);
+		std::uint32_t const server_dh_offset = get_dh_offest(server_sig, m_validation_scheme);
 
 		mydh.create_shared_key(client_sig + client_dh_offset, 128);
 		mydh.copy_public_key(server_sig + server_dh_offset, 128);

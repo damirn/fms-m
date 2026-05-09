@@ -70,12 +70,12 @@ namespace fms
 	void session::unreserve_stream_id_impl(std::uint32_t stream_id)
 	{
 		client_session::unreserve_stream_id(stream_id);
-		stream_id_to_flow_id_map_t::iterator i = m_stream_id_to_flow_id.find(stream_id);
+		stream_id_to_flow_id_map_t::iterator const i = m_stream_id_to_flow_id.find(stream_id);
 		if (i != m_stream_id_to_flow_id.end())
 		{
 			for (std::set<flow_ptr>::iterator j = i->second.begin(); j != i->second.end(); ++j)
 			{
-				vlu_t flow_id = (*j)->flow_id();
+				vlu_t const flow_id = (*j)->flow_id();
 				m_stream_id_to_flow_id.erase(i);
 				m_receiving_flows.erase(flow_id);
 				m_sending_flows.erase(flow_id);
@@ -122,7 +122,7 @@ namespace fms
 	bool session::handle_user_data(user_data_chunk *udc)
 	{
 		flow_ptr f;
-		flow_map_t::iterator i = m_receiving_flows.find(udc->flow_id());
+		flow_map_t::iterator const i = m_receiving_flows.find(udc->flow_id());
 		if (i == m_receiving_flows.end())
 			f = create_receiving_flow(udc);
 		else
@@ -136,7 +136,7 @@ namespace fms
 		flow_sanity_check(f, udc->should_abandon());
 
 //		std::cout << "seq id " << udc->seq_number() << " flow id " << f->flow_id();
-		fragment_ptr frag = std::make_shared<fragment>(udc->seq_number(), udc->user_data(), udc->user_data_len(), udc->frag_ctl());
+		fragment_ptr const frag = std::make_shared<fragment>(udc->seq_number(), udc->user_data(), udc->user_data_len(), udc->frag_ctl());
 		if (!udc->should_abandon() && f->state() == flow::eOpen)
 		{
 			if (!f->add_fragment(frag))
@@ -172,14 +172,14 @@ namespace fms
 	bool session::handle_next_user_data(next_user_data_chunk *ndc)
 	{
 		flow_ptr f;
-		flow_map_t::iterator i = m_receiving_flows.find(m_current_flow_id);
+		flow_map_t::iterator const i = m_receiving_flows.find(m_current_flow_id);
 		if (i != m_receiving_flows.end())
 		{
 			f = i->second;
 			flow_sanity_check(f, ndc->should_abandon());
 
 
-			fragment_ptr frag = std::make_shared<fragment>(m_next_seq, ndc->user_data(), ndc->user_data_len(), ndc->frag_ctl());
+			fragment_ptr const frag = std::make_shared<fragment>(m_next_seq, ndc->user_data(), ndc->user_data_len(), ndc->frag_ctl());
 			++m_next_seq;
 			if (!ndc->should_abandon() && f->state() == flow::eOpen)
 			{
@@ -196,7 +196,7 @@ namespace fms
 	bool session::handle_range_ack(range_ack_chunk *rac)
 	{
 		// 3.6.2.4
-		flow_map_t::iterator i = m_sending_flows.find(rac->flow_id());
+		flow_map_t::iterator const i = m_sending_flows.find(rac->flow_id());
 		if (i == m_sending_flows.end())
 		{
 			return false; // fixme: rethink return
@@ -243,8 +243,8 @@ namespace fms
 			{
 				if (f->has_associated_flow_id())
 				{
-					vlu_t assoc_fid = f->associated_flow_id();
-					flow_map_t::iterator i = m_sending_flows.find(assoc_fid);
+					vlu_t const assoc_fid = f->associated_flow_id();
+					flow_map_t::iterator const i = m_sending_flows.find(assoc_fid);
 					if (i == m_sending_flows.end() || i->second->state() != flow::eOpen)
 						f->state() = flow::eRejected;
 				}
@@ -254,14 +254,14 @@ namespace fms
 					m_flow_id_to_stream_id[f->flow_id()] = static_cast<std::uint32_t>(stream_id);
 					if (m_stream_id_to_flow_id[static_cast<std::uint32_t>(stream_id)].empty())
 					{
-						flow_ptr data_flow = create_associated_sending_flow(f->flow_id(), stream_id);
+						flow_ptr const data_flow = create_associated_sending_flow(f->flow_id(), stream_id);
 						m_stream_id_to_flow_id[static_cast<std::uint32_t>(stream_id)].insert(data_flow);
 					}
 				}
 			}
 			else if (f->type() == flow::eNetGroup)
 			{
-				flow_ptr s = create_net_group_associated_sending_flow(f->flow_id());
+				flow_ptr const s = create_net_group_associated_sending_flow(f->flow_id());
 				m_receiving_to_sending_flow[f->flow_id()] = s->flow_id();
 			}
 		}
@@ -323,13 +323,13 @@ namespace fms
 			if (h.timestamp_echo_present() && m_ts_echo_rx != h.timestamp_echo())
 			{
 				m_ts_echo_rx = h.timestamp_echo();
-				std::uint32_t rtt_ticks = std::abs(m_service->get_timestamp() - h.timestamp_echo());//) % 0x10000;
+				std::uint32_t const rtt_ticks = std::abs(m_service->get_timestamp() - h.timestamp_echo());//) % 0x10000;
 				if (rtt_ticks <= 0x7fff)
 				{
-					std::uint32_t rtt = rtt_ticks * 4;
+					std::uint32_t const rtt = rtt_ticks * 4;
 					if (std::chrono::duration_cast<std::chrono::milliseconds>(m_srtt).count() != 0)
 					{
-						std::uint32_t rtt_delta = std::abs(static_cast<std::int32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(m_srtt).count()) - static_cast<std::int32_t>(rtt));
+						std::uint32_t const rtt_delta = std::abs(static_cast<std::int32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(m_srtt).count()) - static_cast<std::int32_t>(rtt));
 						m_rttvar = (m_rttvar * 3 + std::chrono::milliseconds(static_cast<long>(rtt_delta))) / 4;
 						m_srtt = (m_srtt * 7 + std::chrono::milliseconds(static_cast<long>(rtt))) / 8;
 					}
@@ -351,9 +351,9 @@ namespace fms
 	void session::calculate_echo_ts()
 	{
 		// 3.5.2.2.
-		std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
-		std::chrono::system_clock::duration delta = now - m_ts_rx_time;
-		std::uint32_t rx_elapsed = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
+		std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
+		std::chrono::system_clock::duration const delta = now - m_ts_rx_time;
+		std::uint32_t const rx_elapsed = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 		if (rx_elapsed > 128000)
 		{
 			m_should_include_ts_echo = false;
@@ -362,7 +362,7 @@ namespace fms
 		}
 		else
 		{
-			std::uint32_t ts_echo = (m_ts_rx + rx_elapsed / 4);
+			std::uint32_t const ts_echo = (m_ts_rx + rx_elapsed / 4);
 			if (m_ts_echo_tx != ts_echo)
 			{
 				m_ts_echo_tx = ts_echo;
@@ -393,7 +393,7 @@ namespace fms
 				s.update(len);
 				s >> h.message_type() >> h.timestamp();
 				h.timestamp() = boost::asio::detail::socket_ops::network_to_host_long(h.timestamp());
-				flow_id_to_stream_id_map_t::iterator i = m_flow_id_to_stream_id.find(f->flow_id());
+				flow_id_to_stream_id_map_t::iterator const i = m_flow_id_to_stream_id.find(f->flow_id());
 				if (i != m_flow_id_to_stream_id.end())
 				{
 					h.stream_id() = i->second;
@@ -401,7 +401,7 @@ namespace fms
 					rtmp_protocol p;
 					if (p.deserialize(s, h))
 					{
-						rtmp_message_ptr msg = p.message();
+						rtmp_message_ptr const msg = p.message();
 						handle_message(msg, h);
 					}
 				}
@@ -426,18 +426,18 @@ namespace fms
 			m_group_membership.push_back(g);
 			if (g->members().size() > 1)
 			{
-				vlu_t sending = m_receiving_to_sending_flow[f->flow_id()];
+				vlu_t const sending = m_receiving_to_sending_flow[f->flow_id()];
 				stream_array temp;
 				for (const auto & i : g->members())
 				{
-					session_ptr tmp = i.lock();
+					session_ptr const tmp = i.lock();
 					if (tmp == shared_from_this())
 						continue;
 					temp << marker;
 					temp.write(tmp->peer_id_data(), 0x20);
 				}
 
-				flow_map_t::iterator j = m_sending_flows.find(sending);
+				flow_map_t::iterator const j = m_sending_flows.find(sending);
 				if (j != m_sending_flows.end())
 				{
 					j->second->add_and_fragment_data(temp.read_pos(), temp.wrote_size());
@@ -496,7 +496,7 @@ namespace fms
 		temp << ts;
 		result->serialize(temp);
 
-		stream_id_to_flow_id_map_t::iterator i = m_stream_id_to_flow_id.find(result->stream_id());
+		stream_id_to_flow_id_map_t::iterator const i = m_stream_id_to_flow_id.find(result->stream_id());
 		if (i != m_stream_id_to_flow_id.end())
 		{
 			flow::usage_t usage = flow::eData;
@@ -528,7 +528,7 @@ namespace fms
 	void session::serialize_header(serializer *s)
 	{
 		calculate_echo_ts();
-		std::uint16_t ts = m_service->get_timestamp();
+		std::uint16_t const ts = m_service->get_timestamp();
 		bool ts_present = false;
 
 		if (ts != m_ts_tx)
@@ -573,11 +573,11 @@ namespace fms
 			// ack receiving flows
 			for (i = m_receiving_flows.begin(); i != m_receiving_flows.end(); ++i)
 			{
-				flow_ptr f = i->second;
+				flow_ptr const f = i->second;
 				if (f->should_ack())
 				{
 					std::list<std::pair<vlu_t, vlu_t> > list;
-					vlu_t high_seq = f->get_range_ack(list);
+					vlu_t const high_seq = f->get_range_ack(list);
 					range_ack_chunk *rac = new range_ack_chunk(f->flow_id(), 0x7f, high_seq);
 					rac->ranges() = list;
 					rac->serialize(s->raw_packet());
@@ -589,7 +589,7 @@ namespace fms
 		}
 		for (i = m_sending_flows.begin(); i != m_sending_flows.end(); ++i)
 		{
-			flow_ptr f = i->second;
+			flow_ptr const f = i->second;
 			vlu_t fsn;
 			std::optional<fragment_ptr> frag = f->get_fragment_for_sending(fsn);
 			if (frag)
@@ -654,13 +654,13 @@ namespace fms
 
 	void session::add_peer_address(const std::string &addr)
 	{
-		std::string::size_type i = addr.find(':');
+		std::string::size_type const i = addr.find(':');
 		if (i != std::string::npos && i < addr.size())
 		{
-			std::string ip = std::string(addr, 0, i);
-			std::string port = std::string(addr, i + 1);
+			std::string const ip = std::string(addr, 0, i);
+			std::string const port = std::string(addr, i + 1);
 			address a;
-			boost::asio::ip::address_v4 ad = boost::asio::ip::address_v4::from_string(ip);
+			boost::asio::ip::address_v4 const ad = boost::asio::ip::address_v4::from_string(ip);
 			a.m_type = 0x01; // fixme: replace with enum
 			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(ad.to_ulong());
 			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(static_cast<std::uint16_t>(std::stoul(port)));
@@ -717,7 +717,7 @@ namespace fms
 			{
 				// 3.5.2.2
 				static const std::chrono::system_clock::duration s10 = std::chrono::seconds(10);
-				std::chrono::system_clock::duration erto_backoff = std::chrono::milliseconds(static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(m_erto).count() * 1.4142));
+				std::chrono::system_clock::duration const erto_backoff = std::chrono::milliseconds(static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(m_erto).count() * 1.4142));
 				std::chrono::system_clock::duration erto_capped;
 				if (erto_backoff < s10)
 					erto_capped = erto_backoff;

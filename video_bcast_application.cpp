@@ -40,11 +40,11 @@ namespace fms
 	{
 		if (!e)
 		{
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock<std::mutex> const lock(m_mutex);
 			for (auto & m_qos_source : m_qos_sources)
 			{
 				stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(m_qos_source.second);
-				stream_client_map_t::left_const_iterator end = m_stream_clients.left.upper_bound(m_qos_source.second);
+				stream_client_map_t::left_const_iterator const end = m_stream_clients.left.upper_bound(m_qos_source.second);
 				while (begin != end)
 				{
 					const stream_client_id_t &ssid = begin->second;
@@ -54,14 +54,14 @@ namespace fms
 					{
 						continue;
 					}
-					std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
-					std::chrono::system_clock::duration td = now - (*stats)->m_start_streaming_time;
+					std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
+					std::chrono::system_clock::duration const td = now - (*stats)->m_start_streaming_time;
 					if (std::chrono::duration_cast<std::chrono::seconds>(td).count() == 0)
 						continue;
-					std::uint32_t kbps = (*stats)->m_bytes / std::chrono::duration_cast<std::chrono::seconds>(td).count();
-					amf0_number_ptr bw = std::make_shared<amf0_number>(kbps);
-					amf0_number_ptr d = std::make_shared<amf0_number>((*stats)->m_delay);
-					rtmp_message_notify_ptr msg = std::make_shared<rtmp_message_notify>(notify_functions::onQOS);
+					std::uint32_t const kbps = (*stats)->m_bytes / std::chrono::duration_cast<std::chrono::seconds>(td).count();
+					amf0_number_ptr const bw = std::make_shared<amf0_number>(kbps);
+					amf0_number_ptr const d = std::make_shared<amf0_number>((*stats)->m_delay);
+					rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>(notify_functions::onQOS);
 					msg->stream_id() = ssid.second;
 					msg->add_parameter(d);
 					msg->add_parameter(bw);
@@ -75,48 +75,48 @@ namespace fms
 
 	boost::tribool video_bcast_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
+		rtmp_message_invoke_ptr const invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == nullptr)
 			return false;
 
-		if (invoke->function()->value().compare(invoke_functions::create_stream) == 0)
+		if (invoke->function()->value() == invoke_functions::create_stream)
 		{
 			handle_invoke_create_stream(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::close_stream) == 0)
+		if (invoke->function()->value() == invoke_functions::close_stream)
 		{
 			handle_invoke_close_stream(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::publish) == 0)
+		if (invoke->function()->value() == invoke_functions::publish)
 		{
 			handle_invoke_publish(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::play) == 0)
+		if (invoke->function()->value() == invoke_functions::play)
 		{
 			handle_invoke_play(invoke, connection_id);
 			return boost::indeterminate;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::receive_audio) == 0)
+		if (invoke->function()->value() == invoke_functions::receive_audio)
 		{
 			handle_invoke_receive_audio(invoke, connection_id);
 			return false;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::receive_video) == 0)
+		if (invoke->function()->value() == invoke_functions::receive_video)
 		{
 			handle_invoke_receive_video(invoke, connection_id);
 			return false;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::delete_stream) == 0)
+		if (invoke->function()->value() == invoke_functions::delete_stream)
 			return false;
 
 		return rtmp_application::handle_invoke(msg, connection_id, header, result);
@@ -124,23 +124,23 @@ namespace fms
 
 	void video_bcast_application::handle_notify(rtmp_message_ptr msg, std::uint32_t connection_id)
 	{
-		rtmp_message_notify_ptr notify = std::dynamic_pointer_cast<rtmp_message_notify>(msg);
-		if (notify->function()->value().compare(notify_functions::set_data_frame) == 0)
+		rtmp_message_notify_ptr const notify = std::dynamic_pointer_cast<rtmp_message_notify>(msg);
+		if (notify->function()->value() == notify_functions::set_data_frame)
 			handle_notify_set_data_frame(notify, connection_id);
-		else if (notify->function()->value().compare(notify_functions::clear_data_frame) == 0)
+		else if (notify->function()->value() == notify_functions::clear_data_frame)
 			handle_notify_clear_data_frame(notify, connection_id);
 	}
 
 	void video_bcast_application::handle_audio_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
 	{
-		rtmp_message_audio_data_ptr audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
+		rtmp_message_audio_data_ptr const audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
 
 //		std::cout << "audio timestamp: " << msg->timestamp() << " cid: " << connection_id << std::endl;
 
-		stream_client_id_t bcid = std::make_pair(connection_id, audio->stream_id());
+		stream_client_id_t const bcid = std::make_pair(connection_id, audio->stream_id());
 		m_app_manager->update_netstream_stats(bcid, audio->size(), audio->timestamp());
 
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::unique_lock<std::mutex> const lock(m_mutex);
 
 		if (audio->get_codec() == rtmp_message_audio_data::eAAC
 			&& audio->size() > 1
@@ -150,15 +150,15 @@ namespace fms
 		}
 
 		stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(bcid);
-		stream_client_map_t::left_const_iterator end = m_stream_clients.left.upper_bound(bcid);
+		stream_client_map_t::left_const_iterator const end = m_stream_clients.left.upper_bound(bcid);
 		while (begin != end)
 		{
 			const stream_client_id_t &ssid = begin->second;
 			++begin;
-			subscriber_map_t::iterator cli = m_subscribers.find(ssid);
+			subscriber_map_t::iterator const cli = m_subscribers.find(ssid);
 			if (cli != m_subscribers.end())
 			{
-				stream_client_ptr client = cli->second;
+				stream_client_ptr const client = cli->second;
 				if (!client->m_receive_audio)// || (!client->m_key_frame_sent && client->m_stream_was_playing))
 					continue;
 
@@ -166,7 +166,7 @@ namespace fms
 			}
 		}
 
-		flv_writer_map_t::iterator i = m_flv_writers.find(bcid);
+		flv_writer_map_t::iterator const i = m_flv_writers.find(bcid);
 		if (i != m_flv_writers.end() && audio->size() > 0)
 			i->second->write_audio(reinterpret_cast<char *>(audio->data()), audio->size(), audio->timestamp());
 	}
@@ -175,32 +175,32 @@ namespace fms
 	{
 //		std::cout << "video timestamp: " << msg->timestamp() << " cid: " << connection_id << std::endl;
 
-		rtmp_message_video_data_ptr video = std::dynamic_pointer_cast<rtmp_message_video_data>(msg);
+		rtmp_message_video_data_ptr const video = std::dynamic_pointer_cast<rtmp_message_video_data>(msg);
 		if (video->size() == 0)
 		{
 			return;
 		}
 
-		stream_client_id_t bcid = std::make_pair(connection_id, video->stream_id());
+		stream_client_id_t const bcid = std::make_pair(connection_id, video->stream_id());
 		m_app_manager->update_netstream_stats(bcid, video->size(), video->timestamp());
 
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::unique_lock<std::mutex> const lock(m_mutex);
 
 		// enqueue video frame for later sending
 		enqueue_video_frame(video, bcid);
 
 		stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(bcid);
-		stream_client_map_t::left_const_iterator end = m_stream_clients.left.upper_bound(bcid);
+		stream_client_map_t::left_const_iterator const end = m_stream_clients.left.upper_bound(bcid);
 		while (begin != end)
 		{
 			const stream_client_id_t &ssid = begin->second;
 			++begin;
-			subscriber_map_t::iterator cli = m_subscribers.find(ssid);
+			subscriber_map_t::iterator const cli = m_subscribers.find(ssid);
 			if (cli != m_subscribers.end())
 			{
-				stream_client_ptr client = cli->second;
+				stream_client_ptr const client = cli->second;
 
-				bool has_data_to_send = !m_video_queue_map[bcid].empty();
+				bool const has_data_to_send = !m_video_queue_map[bcid].empty();
 				if (!client->m_receive_video ||	(client->m_stream_was_playing && !client->m_key_frame_sent && !has_data_to_send) ||
 					(!client->m_stream_was_playing && !client->m_key_frame_sent && video->get_frame_type() != rtmp_message_video_data::eKeyFrame))
 					continue;
@@ -209,7 +209,7 @@ namespace fms
 			}
 		}
 
-		flv_writer_map_t::iterator i = m_flv_writers.find(bcid);
+		flv_writer_map_t::iterator const i = m_flv_writers.find(bcid);
 		if (i != m_flv_writers.end() && video->size() > 2)
 			i->second->write_video(reinterpret_cast<char *>(video->data()), video->size(), video->timestamp());
 	}
@@ -229,19 +229,19 @@ namespace fms
 
 	void video_bcast_application::handle_invoke_create_stream(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
-		client_session_ptr conn = get_connection(connection_id);
-		std::uint32_t stream_id = conn->reserve_stream_id();
+		client_session_ptr const conn = get_connection(connection_id);
+		std::uint32_t const stream_id = conn->reserve_stream_id();
 
-		res = create_stream(std::move(invoke), connection_id, stream_id);
+		res = create_stream(invoke, connection_id, stream_id);
 
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::unique_lock<std::mutex> const lock(m_mutex);
 		m_clients[connection_id].insert(stream_id);
 	}
 
 	void video_bcast_application::handle_invoke_close_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
 		rtmp_application::close_stream(invoke, connection_id);
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::unique_lock<std::mutex> const lock(m_mutex);
 		res = close_stream(connection_id, invoke->stream_id());
 	}
 
@@ -254,9 +254,9 @@ namespace fms
 
 			rtmp_message_invoke::parameters_list_t::iterator i = params.begin();
 			++i;
-			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
+			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
 			std::string stream_name = str->value();
-			std::string::size_type pos = stream_name.find('?');
+			std::string::size_type const pos = stream_name.find('?');
 			if (pos != std::string::npos)
 				stream_name.erase(pos);
 
@@ -269,19 +269,19 @@ namespace fms
 			{
 				if ((*i)->type() == amf0_type::eAMF0String)
 				{
-					amf0_string_ptr param = std::dynamic_pointer_cast<amf0_string>(*i);
+					amf0_string_ptr const param = std::dynamic_pointer_cast<amf0_string>(*i);
 					record = param->value() == "record";
 				}
 			}
 
-			rtmp_message_invoke_ptr result(new rtmp_message_invoke("onStatus", 0.0f));
+			rtmp_message_invoke_ptr const result(new rtmp_message_invoke("onStatus", 0.0f));
 			result->channel_id() = invoke->channel_id();
 			result->stream_id() = invoke->stream_id();
 
-			amf0_null_ptr null(new amf0_null);
+			amf0_null_ptr const null(new amf0_null);
 			result->add_parameter(null);
 
-			amf0_object_ptr obj(new amf0_object);
+			amf0_object_ptr const obj(new amf0_object);
 
 			if (add_stream(stream_name, connection_id, invoke->stream_id(), m_streams))
 			{
@@ -318,14 +318,14 @@ namespace fms
 
 	void video_bcast_application::handle_publish_record(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, const std::string &stream)
 	{
-		rtmp_message_invoke_ptr rec_result(new rtmp_message_invoke("onStatus", 0.0f));
+		rtmp_message_invoke_ptr const rec_result(new rtmp_message_invoke("onStatus", 0.0f));
 		rec_result->channel_id() = invoke->channel_id();
 		rec_result->stream_id() = invoke->stream_id();
 
-		amf0_null_ptr null(new amf0_null);
+		amf0_null_ptr const null(new amf0_null);
 		rec_result->add_parameter(null);
 
-		amf0_object_ptr obj(new amf0_object);
+		amf0_object_ptr const obj(new amf0_object);
 
 		if (add_recording_stream(stream, connection_id, invoke->stream_id()))
 		{
@@ -347,7 +347,7 @@ namespace fms
 
 	bool video_bcast_application::is_remote_stream(const std::string &stream, std::string &sname, std::string &remote)
 	{
-		std::string::size_type pos = stream.find('@');
+		std::string::size_type const pos = stream.find('@');
 		if (pos == std::string::npos)
 		{
 			sname = stream;
@@ -376,10 +376,10 @@ namespace fms
 			if (pos == std::string::npos)
 				return;
 
-			std::string app = std::string(remote_srv, pos + 1);
+			std::string const app = std::string(remote_srv, pos + 1);
 			if (app.empty())
 				return;
-			std::string local_srv = "rtmp://localhost:" + config::instance()->rtmp_port() + "/" + app;
+			std::string const local_srv = "rtmp://localhost:" + config::instance()->rtmp_port() + "/" + app;
 
 			std::vector<std::string> args;
 			args.push_back(config::instance()->helper_app());
@@ -408,19 +408,19 @@ namespace fms
 			rtmp_message_invoke::parameters_list_t::iterator i = params.begin();
 			++i;
 
-			std::unique_lock<std::mutex> lock(m_mutex);
+			std::unique_lock<std::mutex> const lock(m_mutex);
 
-			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
+			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
 			std::string stream_name;
 			std::string remote_srv;
-			bool is_remote = is_remote_stream(str->value(), stream_name, remote_srv);
+			bool const is_remote = is_remote_stream(str->value(), stream_name, remote_srv);
 
 			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << str->value() << "'";
 			if (is_remote)
 				BOOST_LOG(lg::get()) << "stream '" << stream_name << "' is on remote server (" << remote_srv << ")";
 
 			stream_client_id_t bcaster_id;
-			bool res = get_broadcaster_id(stream_name, bcaster_id, m_streams);
+			bool const res = get_broadcaster_id(stream_name, bcaster_id, m_streams);
 			add_waiting_client(connection_id, invoke, stream_name);
 			if (!res) // we still don't have broadcaster for this stream
 			{
@@ -429,7 +429,7 @@ namespace fms
 			}
 			else
 			{
-				stream_client_id_t cid = std::make_pair(connection_id, invoke->stream_id());
+				stream_client_id_t const cid = std::make_pair(connection_id, invoke->stream_id());
 				create_stream_client(bcaster_id, cid, true);
 				m_app_manager->update_netstream(cid, stream_name, false);
 			}
@@ -439,7 +439,7 @@ namespace fms
 		}
 		catch (rtmp_illegal_parameter_exception &e)
 		{
-			rtmp_message_invoke_ptr res = create_error_status(invoke->channel_id(), invoke->stream_id(), e.what());
+			rtmp_message_invoke_ptr const res = create_error_status(invoke->channel_id(), invoke->stream_id(), e.what());
 			enqueue_async_message(connection_id, res);
 			notify(connection_id);
 		}
@@ -450,10 +450,10 @@ namespace fms
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		try
 		{
-			bool receive = check_bool_value(params);
+			bool const receive = check_bool_value(params);
 			stream_client_id_t cid = std::make_pair(connection_id, invoke->stream_id());
-			std::unique_lock<std::mutex> lock(m_mutex);
-			subscriber_map_t::iterator i = m_subscribers.find(cid);
+			std::unique_lock<std::mutex> const lock(m_mutex);
+			subscriber_map_t::iterator const i = m_subscribers.find(cid);
 			if (i != m_subscribers.end())
 				i->second->m_receive_audio = receive;
 			else
@@ -469,10 +469,10 @@ namespace fms
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		try
 		{
-			bool receive = check_bool_value(params);
+			bool const receive = check_bool_value(params);
 			stream_client_id_t cid = std::make_pair(connection_id, invoke->stream_id());
-			std::unique_lock<std::mutex> lock(m_mutex);
-			subscriber_map_t::iterator i = m_subscribers.find(cid);
+			std::unique_lock<std::mutex> const lock(m_mutex);
+			subscriber_map_t::iterator const i = m_subscribers.find(cid);
 			if (i != m_subscribers.end())
 			{
 				i->second->m_receive_video = receive;
@@ -490,7 +490,7 @@ namespace fms
 	{
 		for (auto & m_waiting_client : m_waiting_clients)
 		{
-			subscriber fake(cid.first, cid.second, 0);
+			subscriber const fake(cid.first, cid.second, 0);
 			auto j = m_waiting_client.second.find(fake);
 			if (j != m_waiting_client.second.end())
 			{
@@ -512,36 +512,36 @@ namespace fms
 
 		if (params.size() == 2 && (*i)->type() == amf0_type::eAMF0String)
 		{
-			amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
-			if (str->value().compare("onMetaData") == 0)
+			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
+			if (str->value() == "onMetaData")
 			{
 				++i;
 				if ((*i)->type() != amf0_type::eAMF0Object)
 					return;
-				stream_client_id_t cid = std::make_pair(connection_id, msg->stream_id());
-				std::unique_lock<std::mutex> lock(m_mutex);
+				stream_client_id_t const cid = std::make_pair(connection_id, msg->stream_id());
+				std::unique_lock<std::mutex> const lock(m_mutex);
 				update_metadata(cid, *i);
 
 				// send metadata to subscribers
 				stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(cid);
-				stream_client_map_t::left_const_iterator end = m_stream_clients.left.upper_bound(cid);
+				stream_client_map_t::left_const_iterator const end = m_stream_clients.left.upper_bound(cid);
 				while (begin != end)
 				{
 					const stream_client_id_t &ssid = begin->second;
 					++begin;
-					subscriber_map_t::iterator cli = m_subscribers.find(ssid);
+					subscriber_map_t::iterator const cli = m_subscribers.find(ssid);
 					if (cli != m_subscribers.end())
 					{
-						stream_client_ptr client = cli->second;
+						stream_client_ptr const client = cli->second;
 						send_metadata(client->m_connection_id, client->m_stream_id, cid);
 					}
 				}
 
-				flv_writer_map_t::iterator j = m_flv_writers.find(cid);
+				flv_writer_map_t::iterator const j = m_flv_writers.find(cid);
 				if (j != m_flv_writers.end())
 				{
 					stream_array tmp;
-					amf0_string_ptr str(new amf0_string("onMetaData"));
+					amf0_string_ptr const str(new amf0_string("onMetaData"));
 					amf0 a;
 					a.write(tmp, str);
 					a.write(tmp, *i);
@@ -559,10 +559,10 @@ namespace fms
 	{
 		rtmp_message_invoke_ptr result(new rtmp_message_invoke("onStatus", 0.0f));
 		result->stream_id() = stream_id;
-		amf0_null_ptr null(new amf0_null);
+		amf0_null_ptr const null(new amf0_null);
 		result->add_parameter(null);
 
-		amf0_object_ptr obj(new amf0_object);
+		amf0_object_ptr const obj(new amf0_object);
 
 		obj->add_entry("level", "status");
 		obj->add_entry("code", code);
@@ -588,10 +588,10 @@ namespace fms
 
 	void video_bcast_application::send_metadata(std::uint32_t connection_id, std::uint32_t stream_id, const stream_client_id_t &cid)
 	{
-		metadata_map_t::iterator i = m_metadata.find(cid);
+		metadata_map_t::iterator const i = m_metadata.find(cid);
 		if (i != m_metadata.end())
 		{
-			rtmp_message_notify_ptr msg(new rtmp_message_notify("onMetaData"));
+			rtmp_message_notify_ptr const msg(new rtmp_message_notify("onMetaData"));
 			msg->stream_id() = stream_id;
 			msg->parameters().push_back(i->second);
 			enqueue_async_message(connection_id, msg);
@@ -601,8 +601,8 @@ namespace fms
 
 	void video_bcast_application::update_metadata(const stream_client_id_t &cid, const amf0_type_ptr& data)
 	{
-		amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(data);
-		metadata_map_t::iterator i = m_metadata.find(cid);
+		amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(data);
+		metadata_map_t::iterator const i = m_metadata.find(cid);
 		if (i == m_metadata.end())
 			m_metadata[cid] = obj;
 		else
@@ -611,12 +611,12 @@ namespace fms
 
 	void video_bcast_application::check_waiting_clients(std::uint32_t bcaster_id, const std::string &stream_name)
 	{
-		std::unique_lock<std::mutex> lock(m_mutex);
-		waiting_client_map_t::iterator i = m_waiting_clients.find(stream_name);
+		std::unique_lock<std::mutex> const lock(m_mutex);
+		waiting_client_map_t::iterator const i = m_waiting_clients.find(stream_name);
 		if (i == m_waiting_clients.end())
 			return;
 
-		std::set<subscriber, subscriber_comp> wclients = i->second;
+		std::set<subscriber, subscriber_comp> const wclients = i->second;
 
 		std::for_each(i->second.begin(), i->second.end(), [&](const subscriber &s)
 		{
@@ -625,7 +625,7 @@ namespace fms
 			stream_client_id_t id;
 			if (!get_broadcaster_id(stream_name, id, m_streams))
 				return;
-			stream_client_id_t cid = std::make_pair(s.m_id, s.m_stream_id);
+			stream_client_id_t const cid = std::make_pair(s.m_id, s.m_stream_id);
 			create_stream_client(id, cid, false);
 			m_subscribers[cid]->m_receive_audio = s.m_receive_audio;
 			m_subscribers[cid]->m_receive_video = s.m_receive_video;
@@ -634,8 +634,8 @@ namespace fms
 
 	bool video_bcast_application::add_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id, streams_map_t &streams)
 	{
-		std::unique_lock<std::mutex> lock(m_mutex);
-		stream_client_id_t id = std::make_pair(connection_id, stream_id);
+		std::unique_lock<std::mutex> const lock(m_mutex);
+		stream_client_id_t const id = std::make_pair(connection_id, stream_id);
 		if (streams.left.find(id) != streams.left.end())
 			return false;
 		if (streams.right.find(stream) != streams.right.end())
@@ -646,12 +646,12 @@ namespace fms
 
 	bool video_bcast_application::add_recording_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id)
 	{
-		std::unique_lock<std::mutex> lock(m_mutex);
-		stream_client_id_t id = std::make_pair(connection_id, stream_id);
+		std::unique_lock<std::mutex> const lock(m_mutex);
+		stream_client_id_t const id = std::make_pair(connection_id, stream_id);
 		try
 		{
-			std::filesystem::path flv_name(stream + ".flv");
-			std::filesystem::path flv_full_name = config::instance()->flv_folder() / flv_name;
+			std::filesystem::path const flv_name(stream + ".flv");
+			std::filesystem::path const flv_full_name = config::instance()->flv_folder() / flv_name;
 			flv_writer *fw = new flv_writer(flv_full_name.string());
 			m_flv_writers[id] = fw;
 		}
@@ -664,18 +664,18 @@ namespace fms
 
 	bool video_bcast_application::add_qos_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id)
 	{
-		client_session_ptr conn = get_connection(connection_id);
-		std::uint32_t new_stream_id = conn->reserve_stream_id();
+		client_session_ptr const conn = get_connection(connection_id);
+		std::uint32_t const new_stream_id = conn->reserve_stream_id();
 		if (!add_stream(std::string("QOS!" + stream), connection_id, new_stream_id, m_streams))
 			return false;
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::unique_lock<std::mutex> const lock(m_mutex);
 		m_qos_sources[std::make_pair(connection_id, stream_id)] = std::make_pair(connection_id, new_stream_id);
 		return true;
 	}
 
 	bool video_bcast_application::get_broadcaster_id(const std::string &stream, stream_client_id_t &id, streams_map_t &streams)
 	{
-		streams_map_t::right_const_iterator i = streams.right.find(stream);
+		streams_map_t::right_const_iterator const i = streams.right.find(stream);
 		if (i == streams.right.end())
 			return false;
 
@@ -695,7 +695,7 @@ namespace fms
 		if ((*i)->type() != amf0_type::eAMF0Boolean)
 			throw rtmp_illegal_parameter_exception("Boolean parameter expected");
 
-		amf0_boolean_ptr val = std::dynamic_pointer_cast<amf0_boolean>(*i);
+		amf0_boolean_ptr const val = std::dynamic_pointer_cast<amf0_boolean>(*i);
 		return val->value();
 	}
 
@@ -704,8 +704,8 @@ namespace fms
 		bool is_broadcaster = false;
 		rtmp_message_ptr ret;
 
-		stream_client_id_t cid = std::make_pair(connection_id, stream_id);
-		streams_map_t::left_iterator i = m_streams.left.find(cid);
+		stream_client_id_t const cid = std::make_pair(connection_id, stream_id);
+		streams_map_t::left_iterator const i = m_streams.left.find(cid);
 		std::string stream_name;
 		if (i != m_streams.left.end())
 		{
@@ -726,27 +726,27 @@ namespace fms
 			m_video_queue_map.erase(cid);
 			m_avc_config.erase(cid);
 			m_aac_config.erase(cid);
-			if (m_qos_sources.find(cid) != m_qos_sources.end())
+			if (m_qos_sources.contains(cid))
 			{
 				close_stream(m_qos_sources[cid].first, m_qos_sources[cid].second);
 				m_qos_sources.erase(cid);
 			}
 
 			stream_client_map_t::left_iterator begin = m_stream_clients.left.lower_bound(cid);
-			stream_client_map_t::left_iterator end = m_stream_clients.left.upper_bound(cid);
+			stream_client_map_t::left_iterator const end = m_stream_clients.left.upper_bound(cid);
 			while (begin != end)
 			{
-				stream_client_id_t ssid = begin->second;
+				stream_client_id_t const ssid = begin->second;
 				begin = m_stream_clients.left.erase(begin++);
-				subscriber_map_t::iterator cli = m_subscribers.find(ssid);
+				subscriber_map_t::iterator const cli = m_subscribers.find(ssid);
 				if (cli != m_subscribers.end())
 				{
-					stream_client_ptr client = cli->second;
+					stream_client_ptr const client = cli->second;
 					notify_client(ssid.first, ssid.second, stream_name);
 					m_subscribers.erase(cli);
 				}
 			}
-			flv_writer_map_t::iterator i = m_flv_writers.find(cid);
+			flv_writer_map_t::iterator const i = m_flv_writers.find(cid);
 			if (i != m_flv_writers.end())
 			{
 				i->second->close();
@@ -764,7 +764,7 @@ namespace fms
 			const std::string desc("Stopped playing " + stream_name + ".");
 			ret = send_stream_notify(connection_id, stream_id, code, desc, false);
 
-			stream_client_map_t::right_iterator cli = m_stream_clients.right.find(cid);
+			stream_client_map_t::right_iterator const cli = m_stream_clients.right.find(cid);
 			if (cli != m_stream_clients.right.end())
 				m_stream_clients.right.erase(cli);
 			m_subscribers.erase(cid);
@@ -775,16 +775,16 @@ namespace fms
 	void video_bcast_application::remove_client(std::uint32_t connection_id)
 	{
 		m_app_manager->delete_netstreams(connection_id);
-		std::unique_lock<std::mutex> lock(m_mutex);
-		client_stream_map_t::iterator i = m_clients.find(connection_id);
+		std::unique_lock<std::mutex> const lock(m_mutex);
+		client_stream_map_t::iterator const i = m_clients.find(connection_id);
 		if (i != m_clients.end())
 		{
-			std::set<std::uint32_t> &streams = i->second;
-			for (unsigned int stream : streams)
+			std::set<std::uint32_t>  const&streams = i->second;
+			for (unsigned int const stream : streams)
 			{
 				close_stream(connection_id, stream);
 				// remove client from subscriber list
-				subscriber fake(connection_id, stream, 0);
+				subscriber const fake(connection_id, stream, 0);
 				auto k = m_subscribers_to_stream.find(std::make_pair(connection_id, stream));
 				if (k != m_subscribers_to_stream.end())
 				{
@@ -807,14 +807,14 @@ namespace fms
 
 	void video_bcast_application::add_waiting_client(std::uint32_t connection_id, const rtmp_message_invoke_ptr& invoke, const std::string &str)
 	{
-		subscriber wc(connection_id, invoke->stream_id(), invoke->channel_id());
+		subscriber const wc(connection_id, invoke->stream_id(), invoke->channel_id());
 		m_waiting_clients[str].insert(wc);
 		m_subscribers_to_stream[std::make_pair(connection_id, invoke->stream_id())] = str;
 	}
 
 	void video_bcast_application::create_stream_client(const stream_client_id_t &broadcaster, const stream_client_id_t &subscriber, bool stream_is_playing)
 	{
-		stream_client_ptr client(new stream_client(subscriber.first, subscriber.second, stream_is_playing));
+		stream_client_ptr const client(new stream_client(subscriber.first, subscriber.second, stream_is_playing));
 		m_subscribers[subscriber] = client;
 		m_stream_clients.insert(stream_client_map_t::value_type(broadcaster, subscriber));
 	}
@@ -825,7 +825,7 @@ namespace fms
 		{
 			if (video->get_codec() == rtmp_message_video_data::eAVC)
 			{
-				if (m_avc_config.find(bcid) == m_avc_config.end() && video->size() > 1 && video->data()[1] == 0)
+				if (!m_avc_config.contains(bcid) && video->size() > 1 && video->data()[1] == 0)
 					m_avc_config[bcid] = video;
 			}
 			m_video_queue_map[bcid].clear();
@@ -839,7 +839,7 @@ namespace fms
 	{
 		client->m_key_frame_sent = true;
 
-		rtmp_message_video_data_ptr tmp(new rtmp_message_video_data(*video));
+		rtmp_message_video_data_ptr const tmp(new rtmp_message_video_data(*video));
 		tmp->stream_id() = client->m_stream_id;
 		tmp->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 
@@ -852,8 +852,8 @@ namespace fms
 			if (!client->m_first_audio_packet_seen) // this is the very first a/v frame we see
 				client->m_start_epoch = video->timestamp();
 
-			std::list<rtmp_message_video_data_ptr> &list = m_video_queue_map[bcid];
-			std::uint32_t size = list.size();
+			std::list<rtmp_message_video_data_ptr>  const&list = m_video_queue_map[bcid];
+			std::uint32_t const size = list.size();
 
 			if (client->m_stream_was_playing && size > 1) // if stream was playing when this client connected, send video frames from the queue
 			{
@@ -872,7 +872,7 @@ namespace fms
 		}
 		else
 		{
-			std::int32_t t = video->timestamp() - client->m_video_epoch;
+			std::int32_t const t = video->timestamp() - client->m_video_epoch;
 			if (t >= 0)
 				client->m_video_time += t;
 			else
@@ -894,19 +894,19 @@ namespace fms
 	void video_bcast_application::send_enqueued_video_frames(const stream_client_id_t &bcid, const rtmp_message_video_data_ptr& video, const stream_client_ptr& client)
 	{
 		std::list<rtmp_message_video_data_ptr> &list = m_video_queue_map[bcid];
-		std::uint32_t size = list.size();
+		std::uint32_t const size = list.size();
 
-		avc_decoder_config_map_t::iterator i = m_avc_config.find(bcid);
+		avc_decoder_config_map_t::iterator const i = m_avc_config.find(bcid);
 		if (i != m_avc_config.end())
 		{
-			rtmp_message_video_data_ptr conf(new rtmp_message_video_data(*i->second));
+			rtmp_message_video_data_ptr const conf(new rtmp_message_video_data(*i->second));
 			conf->timestamp() = 0;
 			conf->stream_id() = client->m_stream_id;
 			conf->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 			enqueue_async_message(client->m_connection_id, conf);
 		}
-		rtmp_message_video_data_ptr info_msg(new rtmp_message_video_data(2));
-		std::uint8_t tag = (static_cast<std::uint8_t>(rtmp_message_video_data::eVideoInfo) << 4) | video->get_codec();
+		rtmp_message_video_data_ptr const info_msg(new rtmp_message_video_data(2));
+		std::uint8_t const tag = (static_cast<std::uint8_t>(rtmp_message_video_data::eVideoInfo) << 4) | video->get_codec();
 		info_msg->data()[0] = tag;
 		info_msg->data()[1] = 0x00;
 		info_msg->timestamp() = 0;
@@ -914,7 +914,7 @@ namespace fms
 		info_msg->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 		enqueue_async_message(client->m_connection_id, info_msg);
 
-		rtmp_message_video_data_ptr info_msg2(new rtmp_message_video_data(2));
+		rtmp_message_video_data_ptr const info_msg2(new rtmp_message_video_data(2));
 		info_msg2->data()[0] = tag;
 		info_msg2->data()[1] = 0x01;
 		info_msg2->timestamp() = 0;
@@ -924,7 +924,7 @@ namespace fms
 		std::list<rtmp_message_video_data_ptr>::iterator it = list.begin();
 		for (std::uint32_t cnt = 0; cnt < size; ++cnt)
 		{
-			rtmp_message_video_data_ptr tmp2(new rtmp_message_video_data(**it));
+			rtmp_message_video_data_ptr const tmp2(new rtmp_message_video_data(**it));
 			tmp2->stream_id() = client->m_stream_id;
 			tmp2->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 			tmp2->timestamp() = 0;
@@ -937,7 +937,7 @@ namespace fms
 
 	void video_bcast_application::send_audio_frame(const rtmp_message_audio_data_ptr& audio, const stream_client_ptr &client, const stream_client_id_t &src)
 	{
-		rtmp_message_audio_data_ptr tmp(new rtmp_message_audio_data(*audio));
+		rtmp_message_audio_data_ptr const tmp(new rtmp_message_audio_data(*audio));
 		tmp->stream_id() = client->m_stream_id;
 		tmp->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
 
@@ -961,7 +961,7 @@ namespace fms
 				start_time = client->m_audio_time = 0;
 			tmp->timestamp() = client->m_audio_time;
 
-			rtmp_message_audio_data_ptr tmp2(new rtmp_message_audio_data);
+			rtmp_message_audio_data_ptr const tmp2(new rtmp_message_audio_data);
 			tmp2->stream_id() = client->m_stream_id;
 			tmp2->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
 			tmp2->timestamp() = start_time;
@@ -984,10 +984,10 @@ namespace fms
 
 	void video_bcast_application::send_aac_config(const stream_client_id_t &src, const stream_client_ptr &client)
 	{
-		aac_decoder_config_map_t::iterator i = m_aac_config.find(src);
+		aac_decoder_config_map_t::iterator const i = m_aac_config.find(src);
 		if (i != m_aac_config.end())
 		{
-			rtmp_message_audio_data_ptr conf(new rtmp_message_audio_data(*i->second));
+			rtmp_message_audio_data_ptr const conf(new rtmp_message_audio_data(*i->second));
 			conf->timestamp() = 0;
 			conf->stream_id() = client->m_stream_id;
 			conf->channel_id() = stream_to_channel(client->m_stream_id, eAudio);

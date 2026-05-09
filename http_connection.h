@@ -52,7 +52,7 @@ namespace fms
 		enum commands { eCmdInvalid, eCmdFcs, eCmdOpen, eCmdIdle, eCmdSend, eCmdClose };
 
 		commands get_command();
-		commands get_command(const std::string &);
+		static commands get_command(const std::string &);
 		boost::tribool handle_command();
 
 		// RTMPT commands

@@ -79,7 +79,7 @@ namespace fms
 
 		// Client validation
 		bool validate_client(std::uint8_t *);
-		bool validate_client_scheme(std::uint8_t *, std::uint8_t);
+		static bool validate_client_scheme(std::uint8_t *, std::uint8_t);
 
 		boost::asio::io_service &m_io_service;
 

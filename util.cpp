@@ -13,7 +13,7 @@ namespace fms
 {
 	std::string to_simple_string(std::chrono::system_clock::time_point tp)
 	{
-		std::time_t t = std::chrono::system_clock::to_time_t(tp);
+		std::time_t const t = std::chrono::system_clock::to_time_t(tp);
 		std::tm tm{};
 		localtime_r(&t, &tm);
 		std::ostringstream os;
@@ -35,8 +35,9 @@ namespace fms
 
 	void hexdump(std::ostream &s, void *ptr, int buflen)
 	{
-		unsigned char *buf = (unsigned char*)ptr;
-		int i, j;
+		unsigned char  const*buf = (unsigned char*)ptr;
+		int i;
+		int j;
 		s << std::hex << std::setfill('0');
 		for (i = 0; i < buflen; i += 16)
 		{

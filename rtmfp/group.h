@@ -32,7 +32,7 @@ namespace fms
 		{
 			std::uint8_t cmnd;
 			s >> cmnd;
-			vlu_t size = s.read_vlu();
+			vlu_t const size = s.read_vlu();
 			if (s.available() >= size && size == (item::eIDLength + 1))
 			{
 				std::uint8_t type;
@@ -49,7 +49,7 @@ namespace fms
 
 		void take_ownership()
 		{
-			std::uint8_t *tmp = m_id;
+			std::uint8_t  const*tmp = m_id;
 			m_id = new std::uint8_t[item::eIDLength];
 			std::memcpy(reinterpret_cast<void *>(m_id), tmp, item::eIDLength);
 			m_owner = true;

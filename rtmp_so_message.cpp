@@ -17,7 +17,7 @@ namespace fms
 
 		while(buffer.available() > 0)
 		{
-			event_ptr ev = deserialize_event(buffer);
+			event_ptr const ev = deserialize_event(buffer);
 			m_events.push_back(ev);
 		}
 	}
@@ -35,7 +35,7 @@ namespace fms
 		tmp = 0;
 		buffer << tmp;
 
-		event_list_t::iterator j = m_events.end();
+		event_list_t::iterator const j = m_events.end();
 		for (event_list_t::iterator i = m_events.begin(); i != j; ++i)
 			serialize_event(buffer, *i);
 	}
@@ -72,7 +72,7 @@ namespace fms
 
 	void rtmp_message_shared_object::deserialize_request_change_event(stream_array &buffer, event_ptr &ev)
 	{
-		amf0_string_ptr str(new amf0_string);
+		amf0_string_ptr const str(new amf0_string);
 		m_amf0.read_short_string(buffer, str, true);
 		ev->m_name = str;
 		ev->m_value = m_amf0.read(buffer);
@@ -80,7 +80,7 @@ namespace fms
 
 	void rtmp_message_shared_object::deserialize_request_remove_event(stream_array &buffer, event_ptr &ev)
 	{
-		amf0_string_ptr str(new amf0_string);
+		amf0_string_ptr const str(new amf0_string);
 		m_amf0.read_short_string(buffer, str, true);
 		ev->m_name = str;
 	}
@@ -117,7 +117,7 @@ namespace fms
 			m_amf0.write_short_string(buffer, ev->m_name, true);
 			if (ev->m_type != eSuccess && ev->m_type != eRemove)
 				m_amf0.write(buffer, ev->m_value);
-			std::uint8_t *now = buffer.write_pos();
+			std::uint8_t  const*now = buffer.write_pos();
 			size = boost::asio::detail::socket_ops::host_to_network_long(now - pos - 4);
 			std::memcpy(reinterpret_cast<void *>(pos), reinterpret_cast<void *>(&size), sizeof(size));
 		}

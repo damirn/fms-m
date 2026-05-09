@@ -67,7 +67,7 @@ namespace fms
 		void send_metadata(std::uint32_t, std::uint32_t, const stream_client_id_t &);
 		void update_metadata(const stream_client_id_t &, const amf0_type_ptr&);
 		void check_waiting_clients(std::uint32_t, const std::string &);
-		bool check_bool_value(rtmp_message_invoke::parameters_list_t &);
+		static bool check_bool_value(rtmp_message_invoke::parameters_list_t &);
 
 		rtmp_message_ptr close_stream(std::uint32_t, std::uint32_t = 0);
 		void notify_client(std::uint32_t, std::uint32_t, const std::string &);
@@ -123,7 +123,7 @@ namespace fms
 		bool add_recording_stream(const std::string &, std::uint32_t, std::uint32_t);
 		bool add_qos_stream(const std::string &, std::uint32_t, std::uint32_t);
 
-		bool get_broadcaster_id(const std::string &, stream_client_id_t &, streams_map_t &);
+		static bool get_broadcaster_id(const std::string &, stream_client_id_t &, streams_map_t &);
 
 		virtual void add_publisher_to_app_instance(std::uint32_t) {}
 		virtual void video_call_end_notify(std::uint32_t) {}
@@ -132,8 +132,8 @@ namespace fms
 	private:
 		void add_waiting_client(std::uint32_t, const rtmp_message_invoke_ptr&, const std::string &);
 		void update_waiting_client(stream_client_id_t &, bool, bool);
-		bool is_remote_stream(const std::string &, std::string &, std::string &);
-		void spawn_helper(const std::string &, const std::string &);
+		static bool is_remote_stream(const std::string &, std::string &, std::string &);
+		static void spawn_helper(const std::string &, const std::string &);
 
 		struct subscriber
 		{

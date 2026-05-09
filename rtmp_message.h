@@ -533,7 +533,7 @@ namespace fms
 		static rtmp_message_invoke_ptr create_message(const std::string &function, double id = 0.0f)
 		{
 			rtmp_message_invoke_ptr msg = std::make_shared<rtmp_message_invoke>(function, id);
-			amf0_null_ptr null(new amf0_null);
+			amf0_null_ptr const null(new amf0_null);
 			msg->add_parameter(null);
 			return msg;
 		}

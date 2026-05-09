@@ -17,8 +17,8 @@ namespace fms
 
 	void simple_mixer::add_source_stream(std::uint32_t id)
 	{
-		std::unique_lock<std::mutex> lock(m_streams_mutex);
-		if (m_streams.find(id) != m_streams.end())
+		std::unique_lock<std::mutex> const lock(m_streams_mutex);
+		if (m_streams.contains(id))
 			return;
 
 		m_streams[id] = new stream_data;
@@ -26,8 +26,8 @@ namespace fms
 
 	void simple_mixer::remove_source_stream(std::uint32_t id)
 	{
-		std::unique_lock<std::mutex> lock(m_streams_mutex);
-		stream_map_t::iterator i = m_streams.find(id);
+		std::unique_lock<std::mutex> const lock(m_streams_mutex);
+		stream_map_t::iterator const i = m_streams.find(id);
 		if (i != m_streams.end())
 		{
 			delete i->second;
@@ -61,8 +61,8 @@ namespace fms
 	{
 		if (m_active)
 		{
-			std::unique_lock<std::mutex> lock(m_streams_mutex);
-			stream_map_t::iterator i = m_streams.find(id);
+			std::unique_lock<std::mutex> const lock(m_streams_mutex);
+			stream_map_t::iterator const i = m_streams.find(id);
 			if (i != m_streams.end())
 				i->second->m_queue.push(msg);
 		}
@@ -72,11 +72,11 @@ namespace fms
 	{
 		if (m_active && size > 0)
 		{
-			std::unique_lock<std::mutex> lock(m_streams_mutex);
-			stream_map_t::iterator i = m_streams.find(id);
+			std::unique_lock<std::mutex> const lock(m_streams_mutex);
+			stream_map_t::iterator const i = m_streams.find(id);
 			if (i != m_streams.end())
 			{
-				rtmp_message_audio_data_ptr audio(new rtmp_message_audio_data(size + 1));
+				rtmp_message_audio_data_ptr const audio(new rtmp_message_audio_data(size + 1));
 				audio->data()[0] = 0x00;
 				std::memcpy((void *)(audio->data() + 1), (void *) data, size);
 				i->second->m_queue.push(audio);
@@ -156,7 +156,7 @@ namespace fms
 		std::vector<std::int32_t> acc(samples, 0);
 
 		{
-			std::unique_lock<std::mutex> lock(m_streams_mutex);
+			std::unique_lock<std::mutex> const lock(m_streams_mutex);
 			for (auto & m_stream : m_streams)
 			{
 				m_stream.second->fill_frame();

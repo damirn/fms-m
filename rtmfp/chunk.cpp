@@ -13,10 +13,10 @@ namespace fms
 	// datagram). Prevents oversized new[] / out-of-bounds memcpy on hostile input.
 	static bool trailing_len(std::uint8_t *here, std::uint16_t len, stream_array &buff, std::uint16_t &out)
 	{
-		std::uint8_t *end = here + len;
+		std::uint8_t  const*end = here + len;
 		if (buff.read_pos() > end)
 			return false;
-		std::size_t n = static_cast<std::size_t>(end - buff.read_pos());
+		std::size_t const n = static_cast<std::size_t>(end - buff.read_pos());
 		if (n > buff.available() || n > 0xFFFF)
 			return false;
 		out = static_cast<std::uint16_t>(n);
@@ -26,7 +26,7 @@ namespace fms
 	std::uint16_t chunk::serialize_chunk_header(stream_array &to)
 	{
 		std::uint8_t type = m_type;
-		std::uint16_t len = to.rewind_write() - eChunkHeaderSize;
+		std::uint16_t const len = to.rewind_write() - eChunkHeaderSize;
 		std::uint16_t nlen = boost::asio::detail::socket_ops::host_to_network_short(len);
 		to << type << nlen;
 		//to.update(to.wrote_size());
@@ -265,14 +265,15 @@ namespace fms
 	{
 		try
 		{
-			std::uint8_t *here = buff.read_pos();
+			std::uint8_t  const*here = buff.read_pos();
 			m_flowid = buff.read_vlu();
 			m_buff_blocks_available = buff.read_vlu();
 			m_cumulative_ack = buff.read_vlu();
 			vlu_t cursor = m_cumulative_ack;
 			while (here + len > buff.read_pos())
 			{
-				vlu_t x, y;
+				vlu_t x;
+				vlu_t y;
 				x = buff.read_vlu();
 				y = buff.read_vlu();
 				++cursor;

@@ -109,7 +109,7 @@ namespace fms
 			return m_password_file;
 		}
 
-		const char *version_string() const;
+		static const char *version_string() ;
 
 	protected:
 		void create_description();

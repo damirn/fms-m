@@ -105,7 +105,7 @@ namespace fms
 		if (c)
 		{
 			c->deserialize(raw, len);
-			bool ret = m_chunk_handler.handle_chunk(c);
+			bool const ret = m_chunk_handler.handle_chunk(c);
 			delete c;
 			return ret;
 		}
@@ -122,7 +122,7 @@ namespace fms
 	std::uint16_t parser::calculate_checksum(std::uint8_t *data, size_t size)
 	{
 		int sum = 0;
-		std::uint8_t *end = data + size;
+		std::uint8_t  const*end = data + size;
 		while (data < end)
 		{
 			std::uint16_t x;

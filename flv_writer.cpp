@@ -84,7 +84,7 @@ namespace fms
 	void flv_writer::prepare_file(const std::string &file_name)
 	{
 		std::error_code ec;
-		std::filesystem::path p(file_name);
+		std::filesystem::path const p(file_name);
 
 		if (std::filesystem::exists(p, ec))
 		{
@@ -110,7 +110,7 @@ namespace fms
 		m_file.open(file_name.c_str(), std::ios_base::binary);
 		if (!m_file.is_open())
 		{
-			std::string err = "Cannot open " + file_name;
+			std::string const err = "Cannot open " + file_name;
 			throw std::runtime_error(err);
 		}
 		m_file.write(reinterpret_cast<char *>(m_header), sizeof(m_header));
@@ -135,7 +135,7 @@ namespace fms
 	{
 		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(v);
 
-		std::uint8_t *b = reinterpret_cast<std::uint8_t *> (&tmp);
+		std::uint8_t  const*b = reinterpret_cast<std::uint8_t *> (&tmp);
 
 		for (std::uint8_t i = 1; i < 4; ++i)
 			m_file << b[i];
@@ -146,7 +146,7 @@ namespace fms
 		write_uint32_3(timestamp);
 
 		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(timestamp);
-		std::uint8_t *b = reinterpret_cast<std::uint8_t *> (&tmp);
+		std::uint8_t  const*b = reinterpret_cast<std::uint8_t *> (&tmp);
 
 		m_file << b[0];
 	}

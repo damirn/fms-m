@@ -34,7 +34,7 @@ namespace fms
 
 	protected:
 		bool parse_chunks(stream_array &);
-		bool check_checksum(stream_array &);
+		static bool check_checksum(stream_array &);
 		bool deserialize_chunk(std::uint8_t, std::uint16_t, stream_array &);
 
 		chunk_handler &m_chunk_handler;

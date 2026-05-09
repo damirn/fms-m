@@ -105,7 +105,7 @@ namespace fms
 		event_ptr deserialize_event(stream_array &);
 		void deserialize_request_change_event(stream_array &, event_ptr &);
 		void deserialize_request_remove_event(stream_array &, event_ptr &);
-		void deserialize_send_message_event(std::uint32_t, stream_array &, event_ptr &);
+		static void deserialize_send_message_event(std::uint32_t, stream_array &, event_ptr &);
 		void serialize_event(stream_array &, event_ptr &);
 
 		amf0_string_ptr m_name;

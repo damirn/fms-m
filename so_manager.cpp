@@ -11,11 +11,11 @@ namespace fms
 	bool so_manager::handle_so(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		rtmp_message_shared_object::event_list_t &list = so->events();
-		rtmp_message_shared_object::event_list_t::iterator j = list.end();
+		rtmp_message_shared_object::event_list_t::iterator const j = list.end();
 
 		rtmp_message_shared_object_ptr ret(new rtmp_message_shared_object(so->name(), so->version(), so->flags()));
 
-		std::unique_lock<std::mutex> lock(m_mutex);
+		std::unique_lock<std::mutex> const lock(m_mutex);
 		m_new_message = true;   // must be written under the lock (was racing)
 
 		for (rtmp_message_shared_object::event_list_t::iterator i = list.begin(); i != j; ++i)
@@ -52,7 +52,7 @@ namespace fms
 		so_map_t::iterator i = m_so_map.find(so_name);
 		if (i == m_so_map.end())
 		{
-			so_data_ptr data(new so_data);
+			so_data_ptr const data(new so_data);
 			i = m_so_map.insert(std::map<std::string, so_data_ptr>::value_type(so_name, data)).first;
 			data->m_clients.insert(connection_id);
 		}
@@ -61,17 +61,17 @@ namespace fms
 
 		result->flags() = 0x20;
 
-		rtmp_message_shared_object::event_ptr use_event(new rtmp_message_shared_object::event(rtmp_message_shared_object::eUseSuccess));
+		rtmp_message_shared_object::event_ptr const use_event(new rtmp_message_shared_object::event(rtmp_message_shared_object::eUseSuccess));
 		result->add_event(use_event);
 
-		rtmp_message_shared_object::event_ptr clear_event(new rtmp_message_shared_object::event(rtmp_message_shared_object::eClear));
+		rtmp_message_shared_object::event_ptr const clear_event(new rtmp_message_shared_object::event(rtmp_message_shared_object::eClear));
 		result->add_event(clear_event);
 
 		const std::map<std::string, amf0_type_ptr> &values = i->second->m_values;
 		for (const auto & value : values)
 		{
-			rtmp_message_shared_object::event_ptr e(new rtmp_message_shared_object::event(rtmp_message_shared_object::eChange));
-			amf0_string_ptr s(new amf0_string(value.first));
+			rtmp_message_shared_object::event_ptr const e(new rtmp_message_shared_object::event(rtmp_message_shared_object::eChange));
+			amf0_string_ptr const s(new amf0_string(value.first));
 			e->m_name = s;
 			e->m_value = value.second;
 			result->add_event(e);
@@ -81,10 +81,10 @@ namespace fms
 	void so_manager::handle_release_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id)
 	{
 		const std::string &so_name = so->name()->value();
-		so_map_t::iterator i = m_so_map.find(so_name);
+		so_map_t::iterator const i = m_so_map.find(so_name);
 		if (i != m_so_map.end())
 		{
-			if (i->second->m_clients.find(connection_id) != i->second->m_clients.end())
+			if (i->second->m_clients.contains(connection_id))
 			{
 				i->second->m_clients.erase(connection_id);
 				if (i->second->m_clients.empty())
@@ -103,17 +103,17 @@ namespace fms
 			s->m_values[e->m_name->value()] = e->m_value;
 
 			result->version() = s->m_version;
-			rtmp_message_shared_object::event_ptr ev(new rtmp_message_shared_object::event(rtmp_message_shared_object::eSuccess));
+			rtmp_message_shared_object::event_ptr const ev(new rtmp_message_shared_object::event(rtmp_message_shared_object::eSuccess));
 			ev->m_name = e->m_name;
 			result->add_event(ev);
 
 			const std::set<std::uint32_t> &clients = s->m_clients;
-			for (unsigned int client : clients)
+			for (unsigned int const client : clients)
 			{
 				if (client == connection_id)
 					continue;
-				rtmp_message_shared_object_ptr notify(new rtmp_message_shared_object(so->name(), s->m_version, 0));
-				rtmp_message_shared_object::event_ptr evc(new rtmp_message_shared_object::event(rtmp_message_shared_object::eChange));
+				rtmp_message_shared_object_ptr const notify(new rtmp_message_shared_object(so->name(), s->m_version, 0));
+				rtmp_message_shared_object::event_ptr const evc(new rtmp_message_shared_object::event(rtmp_message_shared_object::eChange));
 				evc->m_name = e->m_name;
 				evc->m_value = e->m_value;
 				notify->add_event(evc);
@@ -131,7 +131,7 @@ namespace fms
 			const so_manager::so_data_ptr& s = *so_d;
 			result = so;
 			const std::set<std::uint32_t> &clients = s->m_clients;
-			for (unsigned int client : clients)
+			for (unsigned int const client : clients)
 			{
 				if (client == connection_id)
 					continue;
@@ -147,20 +147,20 @@ namespace fms
 		if (so_d)
 		{
 			const so_manager::so_data_ptr& s = *so_d;
-			std::map<std::string, amf0_type_ptr>::iterator j = s->m_values.find(e->m_name->value());
+			std::map<std::string, amf0_type_ptr>::iterator const j = s->m_values.find(e->m_name->value());
 			if (j != s->m_values.end())
 			{
 				s->m_values.erase(j);
 				increase_version(s);
 
 				const std::set<std::uint32_t> &clients = s->m_clients;
-				rtmp_message_shared_object_ptr notify(new rtmp_message_shared_object(so->name(), s->m_version, 0));
-				rtmp_message_shared_object::event_ptr evc(new rtmp_message_shared_object::event(rtmp_message_shared_object::eRemove));
+				rtmp_message_shared_object_ptr const notify(new rtmp_message_shared_object(so->name(), s->m_version, 0));
+				rtmp_message_shared_object::event_ptr const evc(new rtmp_message_shared_object::event(rtmp_message_shared_object::eRemove));
 				evc->m_name = e->m_name;
 				notify->add_event(evc);
 
 				result = notify;
-				for (unsigned int client : clients)
+				for (unsigned int const client : clients)
 				{
 					if (client == connection_id)
 						continue;
@@ -174,7 +174,7 @@ namespace fms
 	std::optional<so_manager::so_data_ptr> so_manager::find_so(const rtmp_message_shared_object_ptr& so)
 	{
 		const std::string &so_name = so->name()->value();
-		so_map_t::iterator i = m_so_map.find(so_name);
+		so_map_t::iterator const i = m_so_map.find(so_name);
 		if (i != m_so_map.end())
 			return std::optional<so_manager::so_data_ptr>(i->second);
 		return std::optional<so_manager::so_data_ptr>();

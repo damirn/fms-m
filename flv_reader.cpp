@@ -30,8 +30,8 @@ namespace fms
 		if (m_f.eof())
 			return false;
 
-		std::uint32_t size = read_uint32_3();
-		std::uint32_t ts = read_uint32_3();
+		std::uint32_t const size = read_uint32_3();
+		std::uint32_t const ts = read_uint32_3();
 		m_f.seekg(4, std::ios_base::cur);
 
 		if (c == 0x08)
@@ -42,14 +42,14 @@ namespace fms
 				m_f.seekg(size + 4, std::ios_base::cur);
 				return read_frame();
 			}
-			fms::rtmp_message_audio_data_ptr audio(new fms::rtmp_message_audio_data(static_cast<std::uint16_t>(size)));
+			fms::rtmp_message_audio_data_ptr const audio(new fms::rtmp_message_audio_data(static_cast<std::uint16_t>(size)));
 			m_f.read((char *)audio->data(), size);
 			m_frame = audio;
 		}
 		else if (c == 0x09)
 		{
 			// allocate the full 24-bit tag size (was truncated to 16 bits -> heap overflow)
-			fms::rtmp_message_video_data_ptr video(new fms::rtmp_message_video_data(size));
+			fms::rtmp_message_video_data_ptr const video(new fms::rtmp_message_video_data(size));
 			m_f.read((char *)video->data(), size);
 			m_frame = video;
 		}

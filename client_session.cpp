@@ -24,8 +24,8 @@ namespace fms
 
 	std::uint32_t client_session::get_timestamp()
 	{
-		std::chrono::system_clock::time_point now(std::chrono::system_clock::now());
-		std::chrono::system_clock::duration delta = now - m_time;
+		std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
+		std::chrono::system_clock::duration const delta = now - m_time;
 		return static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 	}
 
@@ -48,7 +48,7 @@ namespace fms
 		std::uint32_t stream_id = 1;
 		while (true)
 		{
-			if (m_stream_ids.find(stream_id) == m_stream_ids.end())
+			if (!m_stream_ids.contains(stream_id))
 			{
 				m_stream_ids.insert(stream_id);
 				break;
@@ -60,7 +60,7 @@ namespace fms
 
 	void client_session::unreserve_stream_id(std::uint32_t stream_id)
 	{
-		if (m_stream_ids.find(stream_id) != m_stream_ids.end())
+		if (m_stream_ids.contains(stream_id))
 			m_stream_ids.erase(stream_id);
 	}
 }

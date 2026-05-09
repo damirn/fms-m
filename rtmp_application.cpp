@@ -98,13 +98,13 @@ namespace fms
 	void rtmp_application::delete_connection(std::uint32_t conn_id, const std::string &)
 	{
 		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
-		async_messages_map_t::iterator i = m_async_messages.find(conn_id);
+		async_messages_map_t::iterator const i = m_async_messages.find(conn_id);
 		if (i != m_async_messages.end())
 			m_async_messages.erase(i);
 		lock.unlock();
 	
-		std::unique_lock<std::mutex> lock2(m_delay_mutex);
-		delay_map_t::iterator j = m_delays.find(conn_id);
+		std::unique_lock<std::mutex> const lock2(m_delay_mutex);
+		delay_map_t::iterator const j = m_delays.find(conn_id);
 		if (j != m_delays.end())
 			m_delays.erase(j);
 	}
@@ -113,7 +113,7 @@ namespace fms
 	{
 		if (m_app_manager->has_connection(connection_id))
 		{
-			std::unique_lock<std::mutex> lock(m_async_messages_mutex);
+			std::unique_lock<std::mutex> const lock(m_async_messages_mutex);
 			if (urgent)
 				m_async_messages[connection_id].second.push_front(msg);
 			else
@@ -126,31 +126,29 @@ namespace fms
 
 	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_invoke_ptr& msg, result_handler_ptr res_handler, bool urgent /* = false */)
 	{
-		std::uint32_t size = enqueue_async_message(connection_id, msg, urgent);
-		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
+		std::uint32_t const size = enqueue_async_message(connection_id, msg, urgent);
+		std::unique_lock<std::mutex> const lock(m_async_messages_mutex);
 		m_result_handlers[static_cast<std::uint32_t>(msg->invoke_id()->value())] = std::move(res_handler);
 		return size;
 	}
 
 	void rtmp_application::add_result_handler(std::uint32_t invoke_id, result_handler_ptr res_handler)
 	{
-		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
+		std::unique_lock<std::mutex> const lock(m_async_messages_mutex);
 		m_result_handlers[invoke_id] = std::move(res_handler);
 	}
 
 	bool rtmp_application::has_async_messages(std::uint32_t connection_id)
 	{
-		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
-		async_messages_map_t::iterator i = m_async_messages.find(connection_id);
-		if (i == m_async_messages.end() || i->second.second.empty())
-			return false;
-		return true;
+		std::unique_lock<std::mutex> const lock(m_async_messages_mutex);
+		async_messages_map_t::iterator const i = m_async_messages.find(connection_id);
+		return !(i == m_async_messages.end() || i->second.second.empty());
 	}
 
 	bool rtmp_application::get_async_message(std::uint32_t connection_id, rtmp_message_ptr &msg)
 	{
-		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
-		async_messages_map_t::iterator i = m_async_messages.find(connection_id);
+		std::unique_lock<std::mutex> const lock(m_async_messages_mutex);
+		async_messages_map_t::iterator const i = m_async_messages.find(connection_id);
 		if (i == m_async_messages.end() || i->second.second.empty())
 			return false;
 		msg = i->second.second.front();
@@ -161,14 +159,14 @@ namespace fms
 
 	void rtmp_application::get_queue_stats(queue_stats_list_t &list)
 	{
-		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
+		std::unique_lock<std::mutex> const lock(m_async_messages_mutex);
 		for (auto & m_async_message : m_async_messages)
 			list.emplace_back(m_async_message.first, m_async_message.second.first);
 	}
 
 	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, std::uint32_t value)
 	{
-		std::unique_lock<std::mutex> lock(m_stats_mutex);
+		std::unique_lock<std::mutex> const lock(m_stats_mutex);
 		if (is_inbound)
 		{
 			if (is_bytes)
@@ -187,33 +185,33 @@ namespace fms
 
 	boost::tribool rtmp_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
 	{
-		rtmp_message_invoke_ptr invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
+		rtmp_message_invoke_ptr const invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
 		if (invoke.get() == nullptr)
 			return false;
 
-		if (invoke->function()->value().compare(invoke_functions::connect) == 0)
+		if (invoke->function()->value() == invoke_functions::connect)
 			return handle_invoke_connect(invoke, connection_id, result);
 
-		if (invoke->function()->value().compare(invoke_functions::check_bandwidth) == 0)
+		if (invoke->function()->value() == invoke_functions::check_bandwidth)
 		{
 			handle_invoke_check_bandwidth(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::check_upload_bandwidth) == 0)
+		if (invoke->function()->value() == invoke_functions::check_upload_bandwidth)
 		{
 			handle_invoke_check_upload_bandwidth(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::setPeerInfo) == 0)
+		if (invoke->function()->value() == invoke_functions::setPeerInfo)
 		{
 			handle_invoke_set_peer_info(invoke, connection_id, result);
 			return true;
 		}
 
-		if (invoke->function()->value().compare(invoke_functions::result) == 0)
+		if (invoke->function()->value() == invoke_functions::result)
 			return handle_invoke_result(invoke, connection_id, result);
 
 		return false;
@@ -221,7 +219,7 @@ namespace fms
 
 	bool rtmp_application::handle_shared_object(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
 	{
-		rtmp_message_shared_object_ptr so = std::dynamic_pointer_cast<rtmp_message_shared_object>(msg);
+		rtmp_message_shared_object_ptr const so = std::dynamic_pointer_cast<rtmp_message_shared_object>(msg);
 
 		if (so.get() == nullptr)
 			return false;
@@ -232,10 +230,10 @@ namespace fms
 	bool rtmp_application::handle_invoke_result(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		std::unique_lock<std::mutex> lock(m_async_messages_mutex);
-		result_handlers_t::iterator i = m_result_handlers.find(static_cast<std::uint32_t>(msg->invoke_id()->value()));
+		result_handlers_t::iterator const i = m_result_handlers.find(static_cast<std::uint32_t>(msg->invoke_id()->value()));
 		if (i != m_result_handlers.end())
 		{
-			result_handler_ptr res = i->second;
+			result_handler_ptr const res = i->second;
 			m_result_handlers.erase(i);
 			lock.unlock();
 			return res->m_call_back(msg, res, result);
@@ -245,15 +243,15 @@ namespace fms
 
 	void rtmp_application::handle_invoke_check_bandwidth(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_download(std::move(a), std::move(b), c); }));
-		std::uint32_t id = ++m_invoke_id;
-		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheck", id));
+		bwcheck_result_handler_ptr const res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_download(std::move(a), std::move(b), c); }));
+		std::uint32_t const id = ++m_invoke_id;
+		rtmp_message_invoke_ptr const res(new rtmp_message_invoke("onBWCheck", id));
 
 		client_stats stats;
 		m_app_manager->get_client_stats(connection_id, stats);
 		res_handler->m_bytes = stats.m_bytes_written;
 
-		amf0_null_ptr null(new amf0_null);
+		amf0_null_ptr const null(new amf0_null);
 		res->add_parameter(null);
 
 		res->add_parameter(m_rnd_str);
@@ -263,15 +261,15 @@ namespace fms
 
 	void rtmp_application::handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_upload(std::move(a), std::move(b), c); }));
-		std::uint32_t id = ++m_invoke_id;
-		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheckU", id));
+		bwcheck_result_handler_ptr const res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_upload(std::move(a), std::move(b), c); }));
+		std::uint32_t const id = ++m_invoke_id;
+		rtmp_message_invoke_ptr const res(new rtmp_message_invoke("onBWCheckU", id));
 
 		client_stats stats;
 		m_app_manager->get_client_stats(connection_id, stats);
 		res_handler->m_bytes = stats.m_bytes_read;
 
-		amf0_null_ptr null(new amf0_null);
+		amf0_null_ptr const null(new amf0_null);
 		res->add_parameter(null);
 
 		add_result_handler(id, res_handler);
@@ -280,23 +278,23 @@ namespace fms
 
 	bool rtmp_application::handle_result_bw_check_upload(rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr bw_res = std::dynamic_pointer_cast<bwcheck_result_handler>(res_handler);
+		bwcheck_result_handler_ptr const bw_res = std::dynamic_pointer_cast<bwcheck_result_handler>(res_handler);
 		client_stats stats;
 		m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
 
-		std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-		std::chrono::system_clock::duration delta = now - bw_res->m_time;
+		std::chrono::system_clock::time_point const now = std::chrono::system_clock::now();
+		std::chrono::system_clock::duration const delta = now - bw_res->m_time;
 
 		std::uint32_t kbps = 100;
 		if (std::chrono::duration_cast<std::chrono::milliseconds>(delta).count() != 0)
 			kbps = static_cast<std::uint32_t>((stats.m_bytes_read - bw_res->m_bytes) * 8 / std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 
-		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWDoneU", 0.0f));
-		amf0_null_ptr null(new amf0_null);
+		rtmp_message_invoke_ptr const res(new rtmp_message_invoke("onBWDoneU", 0.0f));
+		amf0_null_ptr const null(new amf0_null);
 		res->add_parameter(null);
 
-		amf0_strict_array_ptr array(new amf0_strict_array);
-		amf0_number_ptr num(new amf0_number(kbps));
+		amf0_strict_array_ptr const array(new amf0_strict_array);
+		amf0_number_ptr const num(new amf0_number(kbps));
 		array->add_entry(num);
 		res->add_parameter(array);
 
@@ -307,18 +305,18 @@ namespace fms
 
 	bool rtmp_application::handle_result_bw_check_download(rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr bw_res = std::dynamic_pointer_cast<bwcheck_result_handler>(res_handler);
+		bwcheck_result_handler_ptr const bw_res = std::dynamic_pointer_cast<bwcheck_result_handler>(res_handler);
 		if (bw_res->m_num_called == 0) // first time we got this result set
 		{
 			bw_res->m_num_called++;
 			bw_res->m_time = std::chrono::system_clock::now();
 
 			// we call onBWCheck w/o parameters only to try to measure the latency
-			std::uint32_t id = ++m_invoke_id;
-			rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheck", id));
-			amf0_null_ptr null(new amf0_null);
+			std::uint32_t const id = ++m_invoke_id;
+			rtmp_message_invoke_ptr const res(new rtmp_message_invoke("onBWCheck", id));
+			amf0_null_ptr const null(new amf0_null);
 			res->add_parameter(null);
-			amf0_boolean_ptr boolean(new amf0_boolean(true));
+			amf0_boolean_ptr const boolean(new amf0_boolean(true));
 			res->add_parameter(boolean);
 
 			result = res;
@@ -329,16 +327,16 @@ namespace fms
 		if (bw_res->m_num_called == 1)
 		{
 			bw_res->m_num_called++;
-			std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+			std::chrono::system_clock::time_point const now = std::chrono::system_clock::now();
 			bw_res->m_latency = now - bw_res->m_time;
 			bw_res->m_time = now;
 			client_stats stats;
 			m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
 			bw_res->m_bytes = stats.m_bytes_written;
 
-			std::uint32_t id = ++m_invoke_id;
-			rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWCheck", id));
-			amf0_null_ptr null(new amf0_null);
+			std::uint32_t const id = ++m_invoke_id;
+			rtmp_message_invoke_ptr const res(new rtmp_message_invoke("onBWCheck", id));
+			amf0_null_ptr const null(new amf0_null);
 			res->add_parameter(null);
 			res->add_parameter(m_rnd_str);
 
@@ -350,7 +348,7 @@ namespace fms
 		client_stats stats;
 		m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
 
-		std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+		std::chrono::system_clock::time_point const now = std::chrono::system_clock::now();
 		std::chrono::system_clock::duration dt = now - bw_res->m_time;
 		dt -= bw_res->m_latency;
 		if (std::chrono::duration_cast<std::chrono::milliseconds>(dt).count() <= 0)
@@ -360,12 +358,12 @@ namespace fms
 		if (std::chrono::duration_cast<std::chrono::milliseconds>(dt).count() != 0)
 			kbps = static_cast<std::uint32_t>((stats.m_bytes_written - bw_res->m_bytes) * 8 / std::chrono::duration_cast<std::chrono::milliseconds>(dt).count());
 
-		rtmp_message_invoke_ptr res(new rtmp_message_invoke("onBWDone", 0.0f));
-		amf0_null_ptr null(new amf0_null);
+		rtmp_message_invoke_ptr const res(new rtmp_message_invoke("onBWDone", 0.0f));
+		amf0_null_ptr const null(new amf0_null);
 		res->add_parameter(null);
 
-		amf0_strict_array_ptr array(new amf0_strict_array);
-		amf0_number_ptr num(new amf0_number(kbps));
+		amf0_strict_array_ptr const array(new amf0_strict_array);
+		amf0_number_ptr const num(new amf0_number(kbps));
 		array->add_entry(num);
 		res->add_parameter(array);
 
@@ -378,8 +376,8 @@ namespace fms
 	{
 		try
 		{
-			client_session_ptr c = get_connection(connection_id);
-			session_ptr s = std::dynamic_pointer_cast<session>(c);
+			client_session_ptr const c = get_connection(connection_id);
+			session_ptr const s = std::dynamic_pointer_cast<session>(c);
 			rtmp_message_invoke::parameters_list_t &params = info->parameters();
 			if (params.size() > 1)
 			{
@@ -387,20 +385,20 @@ namespace fms
 				++i;
 				while (i != params.end() && (*i)->type() == amf0_type::eAMF0String)
 				{
-					amf0_string_ptr addr = std::dynamic_pointer_cast<amf0_string>(*i);
+					amf0_string_ptr const addr = std::dynamic_pointer_cast<amf0_string>(*i);
 					s->add_peer_address(addr->value());
 					++i;
 				}
 			}
 		}
 		catch (std::runtime_error &){}
-		rtmp_message_ping_ptr ping = std::make_shared<rtmp_message_ping>(0x29, 0x3a98, 0x2710);
+		rtmp_message_ping_ptr const ping = std::make_shared<rtmp_message_ping>(0x29, 0x3a98, 0x2710);
 		result = ping;
 	}
 
 	void rtmp_application::handle_win_ack_size(rtmp_message_ptr msg, std::uint32_t connection_id)
 	{
-		rtmp_message_window_acknowledgement_size_ptr ack = std::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
+		rtmp_message_window_acknowledgement_size_ptr const ack = std::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
 	}
 
 	void rtmp_application::handle_bytes_read(rtmp_message_ptr)
@@ -411,14 +409,14 @@ namespace fms
 
 	void rtmp_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
 	{
-		rtmp_message_ping_ptr ping = std::dynamic_pointer_cast<rtmp_message_ping>(msg);
+		rtmp_message_ping_ptr const ping = std::dynamic_pointer_cast<rtmp_message_ping>(msg);
 //		std::cout << "ping type: " << ping->get_type();
 		if (ping->get_type() == rtmp_message_ping::ePingResponse)
 		{
 //			std::cout << " timestamp: " << ping->get_value();
-			std::uint32_t delay = get_timestamp(connection_id) - ping->get_value();
+			std::uint32_t const delay = get_timestamp(connection_id) - ping->get_value();
 //			std::cout << " delta: " << delay;
-			std::unique_lock<std::mutex> lock(m_delay_mutex);
+			std::unique_lock<std::mutex> const lock(m_delay_mutex);
 			m_delays[connection_id] = delay;
 		}
 
@@ -441,16 +439,16 @@ namespace fms
 		if (list.empty())
 			return false;
 
-		rtmp_message_invoke::parameters_list_t::const_iterator i = list.begin();
+		rtmp_message_invoke::parameters_list_t::const_iterator const i = list.begin();
 		if ((*i)->type() == amf0_type::eAMF0Object)
 		{
-			amf0_object_ptr obj = std::dynamic_pointer_cast<amf0_object>(*i);
+			amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(*i);
 			amf0_object::value_type &map = obj->value();
-			amf0_object::value_type::iterator j = map.find("objectEncoding");
+			amf0_object::value_type::iterator const j = map.find("objectEncoding");
 
 			if (j != map.end() && j->m_value->type() == amf0_type::eAMF0Number)
 			{
-				amf0_number_ptr num = std::dynamic_pointer_cast<amf0_number>(j->m_value);
+				amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(j->m_value);
 				m_app_manager->set_encoding_for_connection(connection_id, num->value() == 3.0);
 			}
 			else
@@ -481,10 +479,10 @@ namespace fms
 		result->channel_id() = invoke->channel_id();
 		result->stream_id() = invoke->stream_id();
 
-		amf0_null_ptr null(new amf0_null);
+		amf0_null_ptr const null(new amf0_null);
 		result->add_parameter(null);
 
-		amf0_number_ptr num(new amf0_number(stream_id));
+		amf0_number_ptr const num(new amf0_number(stream_id));
 		result->add_parameter(num);
 
 		return result;
@@ -495,7 +493,7 @@ namespace fms
 		m_app_manager->delete_netstream(std::make_pair(connection_id, invoke->stream_id()));
 		try
 		{
-			client_session_ptr conn = get_connection(connection_id);
+			client_session_ptr const conn = get_connection(connection_id);
 			//conn->unreserve_stream_id(invoke->stream_id());
 		}
 		catch (std::runtime_error &)
@@ -504,19 +502,19 @@ namespace fms
 
 	void rtmp_application::create_connect_messages(std::uint32_t connection_id, optional_param_list_t param /* = optional_param_list_t() */)
 	{
-		std::uint32_t ack_size = rtmp_connection::get_ack_size();
-		rtmp_message_window_acknowledgement_size_ptr was_m(new rtmp_message_window_acknowledgement_size(ack_size));
-		rtmp_message_set_peer_bandwidth_ptr spb_m(new rtmp_message_set_peer_bandwidth(ack_size, 0x02));
+		std::uint32_t const ack_size = rtmp_connection::get_ack_size();
+		rtmp_message_window_acknowledgement_size_ptr const was_m(new rtmp_message_window_acknowledgement_size(ack_size));
+		rtmp_message_set_peer_bandwidth_ptr const spb_m(new rtmp_message_set_peer_bandwidth(ack_size, 0x02));
 //		rtmp_message_ping_ptr png_m(new rtmp_message_ping(rtmp_message_ping::ePingStreamBegin, 0));
 
 		enqueue_async_message(connection_id, was_m);
 		enqueue_async_message(connection_id, spb_m);
 //		enqueue_async_message(connection_id, png_m);
 
-		rtmp_message_invoke_ptr result(new rtmp_message_invoke(invoke_functions::result, 1.0f));
+		rtmp_message_invoke_ptr const result(new rtmp_message_invoke(invoke_functions::result, 1.0f));
 
-		amf0_object_ptr obj1(new amf0_object);
-		amf0_object_ptr obj2(new amf0_object);
+		amf0_object_ptr const obj1(new amf0_object);
+		amf0_object_ptr const obj2(new amf0_object);
 
 		obj2->add_entry("fmsVer", "FMS/3,5,3,824");
 		obj2->add_entry("capabilities", 127.0f);
@@ -526,15 +524,15 @@ namespace fms
 		obj1->add_entry("code", "NetConnection.Connect.Success");
 		obj1->add_entry("description", "Connection succeeded.");
 
-		double encoding = m_app_manager->is_amf3_encoding(connection_id) ? 3.0f : 0.0f;
+		double const encoding = m_app_manager->is_amf3_encoding(connection_id) ? 3.0f : 0.0f;
 		obj1->add_entry("objectEncoding", encoding);
 
-		amf0_ecma_array_ptr obj3(new amf0_ecma_array);
-		amf0_string_ptr ver(new amf0_string("3,5,3,824"));
+		amf0_ecma_array_ptr const obj3(new amf0_ecma_array);
+		amf0_string_ptr const ver(new amf0_string("3,5,3,824"));
 		obj3->add_entry("version", ver);
 		if (param)
 		{
-			amf0_parameter_list_t &list = *param;
+			amf0_parameter_list_t  const&list = *param;
 			for (auto & i : list)
 				obj3->add_entry(i.first, i.second);
 		}
@@ -551,7 +549,7 @@ namespace fms
 	{
 		rtmp_message_invoke_ptr result = rtmp_message_invoke::create_message(invoke_functions::error, 1.0f);
 
-		amf0_object_ptr obj(new amf0_object);
+		amf0_object_ptr const obj(new amf0_object);
 		obj->add_entry("level", "error");
 		obj->add_entry("code", "NetConnection.Connect.Rejected");
 
@@ -564,20 +562,20 @@ namespace fms
 
 	void rtmp_application::send_play_start_messages(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t channel_id, const std::string &stream_name)
 	{
-		rtmp_message_chunk_size_ptr cs(new rtmp_message_chunk_size(4096));
+		rtmp_message_chunk_size_ptr const cs(new rtmp_message_chunk_size(4096));
 		enqueue_async_message(connection_id, cs);
 
-		rtmp_message_ping_ptr ping(new rtmp_message_ping(rtmp_message_ping::ePingStreamBegin, stream_id));
+		rtmp_message_ping_ptr const ping(new rtmp_message_ping(rtmp_message_ping::ePingStreamBegin, stream_id));
 		enqueue_async_message(connection_id, ping);
 
-		rtmp_message_invoke_ptr result(new rtmp_message_invoke("onStatus", 0.0f));
+		rtmp_message_invoke_ptr const result(new rtmp_message_invoke("onStatus", 0.0f));
 		result->stream_id() = stream_id;
 		result->channel_id() = channel_id;
 
-		amf0_null_ptr null(new amf0_null);
+		amf0_null_ptr const null(new amf0_null);
 		result->add_parameter(null);
 
-		amf0_object_ptr obj(new amf0_object);
+		amf0_object_ptr const obj(new amf0_object);
 
 		obj->add_entry("level", "status");
 		obj->add_entry("code", "NetStream.Play.Reset");
@@ -589,13 +587,13 @@ namespace fms
 
 		enqueue_async_message(connection_id, result);
 
-		rtmp_message_invoke_ptr result2(new rtmp_message_invoke("onStatus", 0.0f));
+		rtmp_message_invoke_ptr const result2(new rtmp_message_invoke("onStatus", 0.0f));
 		result2->stream_id() = stream_id;
 		result2->channel_id() = channel_id;
 
 		result2->add_parameter(null);
 
-		amf0_object_ptr obj2(new amf0_object);
+		amf0_object_ptr const obj2(new amf0_object);
 
 		obj2->add_entry("level", "status");
 		obj2->add_entry("code", "NetStream.Play.Start");
@@ -612,7 +610,7 @@ namespace fms
 
 	void rtmp_application::send_close(std::uint32_t connection_id)
 	{
-		rtmp_message_invoke_ptr result = rtmp_message_invoke::create_message(invoke_functions::close, 0);
+		rtmp_message_invoke_ptr const result = rtmp_message_invoke::create_message(invoke_functions::close, 0);
 		enqueue_async_message(connection_id, result);
 	}
 
@@ -621,7 +619,7 @@ namespace fms
 		send_close(connection_id);
 		if (close_socket)
 		{
-			rtmp_message_close_ptr cm(new rtmp_message_close);
+			rtmp_message_close_ptr const cm(new rtmp_message_close);
 			enqueue_async_message(connection_id, cm);
 		}
 		notify(connection_id);
@@ -629,7 +627,7 @@ namespace fms
 
 	void rtmp_application::gracefully_close_connection_with_reason(std::uint32_t connection_id, std::uint32_t reason)
 	{
-		rtmp_message_invoke_ptr result = rtmp_message_invoke::create_message(invoke_functions::close, 0);
+		rtmp_message_invoke_ptr const result = rtmp_message_invoke::create_message(invoke_functions::close, 0);
 		result->add_parameter(std::make_shared<amf0_number>(reason));
 		enqueue_async_message(connection_id, result);
 		notify(connection_id);
@@ -639,7 +637,7 @@ namespace fms
 	{
 		try
 		{
-			client_session_ptr conn = get_connection(connection_id);
+			client_session_ptr const conn = get_connection(connection_id);
 			conn->notify();
 		}
 		catch(std::exception &e)
@@ -651,7 +649,7 @@ namespace fms
 	{
 		try
 		{
-			client_session_ptr conn = get_connection(connection_id);
+			client_session_ptr const conn = get_connection(connection_id);
 			return conn->get_timestamp();
 		}
 		catch(std::exception &)
@@ -662,8 +660,8 @@ namespace fms
 
 	std::uint32_t rtmp_application::get_delay(std::uint32_t connetion_id)
 	{
-		std::unique_lock<std::mutex> lock(m_delay_mutex);
-		if (m_delays.find(connetion_id) != m_delays.end())
+		std::unique_lock<std::mutex> const lock(m_delay_mutex);
+		if (m_delays.contains(connetion_id))
 			return m_delays[connetion_id];
 		return 0;
 	}
@@ -674,10 +672,10 @@ namespace fms
 		result->channel_id() = channel_id;
 		result->stream_id() = stream_id;
 
-		amf0_null_ptr null(new amf0_null);
+		amf0_null_ptr const null(new amf0_null);
 		result->add_parameter(null);
 
-		amf0_object_ptr obj(new amf0_object);
+		amf0_object_ptr const obj(new amf0_object);
 
 		obj->add_entry("level", "error");
 		obj->add_entry("code", "NetStream.Failed");
