@@ -125,9 +125,9 @@ namespace fms
 		enc_size = size >> 1;
 		enc_size += m_reserved_for_header;
 		std::uint8_t *enc_buff = new std::uint8_t[enc_size];
-		std::uint8_t *dst = enc_buff + m_reserved_for_header;
+		std::uint8_t *dst = enc_buff + m_reserved_for_header;  // NOLINT(misc-const-correctness): pointer is advanced/written below
 
-		short *d = reinterpret_cast<short *>(data);
+		short *d = reinterpret_cast<short *>(data);  // NOLINT(misc-const-correctness)
 		for (std::uint32_t i = 0; i < enc_size - m_reserved_for_header; ++i)
 		{
 			if (m_type == eAlaw)
@@ -140,7 +140,7 @@ namespace fms
 
 	std::uint8_t *g711_codec::decode(char *to, std::uint8_t *data, std::uint8_t size, std::uint32_t &dec_size)
 	{
-		short *d = reinterpret_cast<short *>(to);
+		short *d = reinterpret_cast<short *>(to);  // NOLINT(misc-const-correctness): pointer is advanced/written below
 		for (std::uint8_t i = 0; i < size; ++i)
 		{
 			if (m_type == eAlaw)
