@@ -3,15 +3,16 @@
 # rather than the full firehose (Boost macro noise, magic numbers, design-level
 # member-visibility rules, etc.).
 #
-# Deliberately NOT enabled:
-#  - misc-const-correctness: valuable and already applied, but false-positives on
-#    C-API pointer out-params (OpenSSL EVP_PKEY**) and codec bit-twiddling.
-#  - performance-unnecessary-value-param: applied everywhere except amf0/amf3,
-#    whose template method specializations can't take an automated rewrite.
-#  Both were applied by hand; leaving them off keeps the IDE free of noise.
+# misc-const-correctness and performance-unnecessary-value-param are enabled and
+# applied tree-wide. Their handful of false-positives (OpenSSL EVP_PKEY** out-
+# params and codec pointer bit-twiddling in evp_dh.cpp / g711_codec.cpp) carry
+# inline // NOLINT(misc-const-correctness) markers, so the IDE stays clean.
 Checks: >
   -*,
   google-explicit-constructor,
+  misc-const-correctness,
+  performance-unnecessary-value-param,
+  readability-make-member-function-const,
   modernize-use-nullptr,
   modernize-use-override,
   modernize-use-emplace,

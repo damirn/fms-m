@@ -26,7 +26,7 @@ namespace fms
 			OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PUB_KEY, pub_bn);
 		OSSL_PARAM *params = OSSL_PARAM_BLD_to_param(bld);
 
-		EVP_PKEY *key = nullptr;
+		EVP_PKEY *key = nullptr;  // NOLINT(misc-const-correctness): written through OpenSSL C API out-param
 		EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_from_name(nullptr, "DH", nullptr);
 		if (ctx && params && EVP_PKEY_fromdata_init(ctx) > 0)
 			EVP_PKEY_fromdata(ctx, &key, selection, params);
@@ -46,7 +46,7 @@ namespace fms
 		if (!params_key)
 			throw std::runtime_error("DH parameter key build failed");
 
-		EVP_PKEY *key = nullptr;
+		EVP_PKEY *key = nullptr;  // NOLINT(misc-const-correctness): written through OpenSSL C API out-param
 		EVP_PKEY_CTX *kctx = EVP_PKEY_CTX_new(params_key, nullptr);
 		if (!kctx || EVP_PKEY_keygen_init(kctx) <= 0 || EVP_PKEY_keygen(kctx, &key) <= 0)
 		{
@@ -96,7 +96,7 @@ namespace fms
 		// Fixed-length, left-zero-padded to the caller's slot (the RTMP/RTMFP
 		// wire format uses a fixed field); plain BN_bn2bin would short-write the
 		// ~1/256 of keys that have leading zero bytes and shift the value.
-		int n = BN_bn2binpad(bn, out, static_cast<int>(cap));
+		int n = BN_bn2binpad(bn, out, static_cast<int>(cap));  // NOLINT(misc-const-correctness)
 		BN_clear_free(bn);
 		return n;   // == cap on success, -1 if the value doesn't fit
 	}
