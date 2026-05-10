@@ -202,7 +202,7 @@ namespace fms
 		m_message = msg;
 	}
 
-	void rtmp_protocol::chunk_buffer(stream_array &buffer, stream_array &input, rtmp_header &header)
+	void rtmp_protocol::chunk_buffer(stream_array &buffer, stream_array &input, rtmp_header &header) const
 	{
 		std::size_t size = input.size();
 		if (size != 0)

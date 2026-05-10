@@ -119,7 +119,7 @@ namespace fms
 
 		void serialize(stream_array &) override;
 
-		std::uint32_t chunk_size()
+		std::uint32_t chunk_size() const
 		{
 			return m_chunk_size;
 		}
@@ -149,7 +149,7 @@ namespace fms
 
 		void serialize(stream_array &) override;
 
-		std::uint32_t bytes_read()
+		std::uint32_t bytes_read() const
 		{
 			return m_bytes_read;
 		}
@@ -330,7 +330,7 @@ namespace fms
 			return m_data.get();
 		}
 
-		std::uint16_t size()
+		std::uint16_t size() const
 		{
 			return m_size;
 		}
@@ -398,7 +398,7 @@ namespace fms
 			return m_data.get();
 		}
 
-		std::uint32_t size()
+		std::uint32_t size() const
 		{
 			return m_size;
 		}

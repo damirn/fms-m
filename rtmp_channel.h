@@ -116,7 +116,7 @@ namespace fms
 			return m_received_header.message_length() == m_message_len;
 		}
 
-		std::size_t data_size()
+		std::size_t data_size() const
 		{
 			return m_message_len;
 		}

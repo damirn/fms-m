@@ -93,7 +93,7 @@ namespace fms
 			: amf0_type(eAMF0Boolean), m_value(value)
 		{}
 
-		explicit operator bool()
+		explicit operator bool() const
 		{
 			return m_value;
 		}
@@ -120,7 +120,7 @@ namespace fms
 			: amf0_type(eAMF0Number), m_value(value)
 		{}
 
-		explicit operator double()
+		explicit operator double() const
 		{
 			return m_value;
 		}
@@ -344,7 +344,7 @@ namespace fms
 				: m_value(value)
 			{}
 
-			void operator()(entry &val)
+			void operator()(entry &val) const
 			{
 				val.m_value = m_value;
 			}

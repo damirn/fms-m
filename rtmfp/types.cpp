@@ -33,7 +33,7 @@ namespace fms
 		}
 	}
 
-	std::uint16_t option::serialize(stream_array &to)
+	std::uint16_t option::serialize(stream_array &to) const
 	{
 		if (m_len == 0)
 		{
@@ -52,7 +52,7 @@ namespace fms
 		return to.write_pos() - here;
 	}
 
-	vlu_t option::value_as_vlu()
+	vlu_t option::value_as_vlu() const
 	{
 		stream_array t(m_value);
 		t.update(m_value_len);

@@ -172,7 +172,7 @@ namespace fms
 		const std::uint8_t *message_data(std::uint32_t &);
 		void remove_last_message();
 
-		vlu_t last_ack_seq()
+		vlu_t last_ack_seq() const
 		{
 			return m_last_ack_seq;
 		}
@@ -229,7 +229,7 @@ namespace fms
 			return m_seq_manager.get_range_ack(list);
 		}
 
-		std::uint32_t stream_id()
+		std::uint32_t stream_id() const
 		{
 			return static_cast<std::uint32_t>(m_stream_id);
 		}

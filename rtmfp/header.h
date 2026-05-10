@@ -37,7 +37,7 @@ namespace fms
 		{}
 
 		void deserialize(stream_array &);
-		void serialize(stream_array &);
+		void serialize(stream_array &) const;
 
 		// mode
 		enum { eForbidden = 0, eInitiator, eResponder, eStartup };
