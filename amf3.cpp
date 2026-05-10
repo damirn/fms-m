@@ -31,7 +31,7 @@ namespace fms
 		}
 	}
 
-	void amf3::write(stream_array &buffer, amf3_type_ptr type)
+	void amf3::write(stream_array &buffer, const amf3_type_ptr& type)
 	{
 		std::uint8_t marker = type->type();
 		buffer << marker;
@@ -95,7 +95,7 @@ namespace fms
 		return ret;
 	}
 
-	void amf3::write_empty_type(stream_array &buffer, amf3_empty_type_ptr empty_type)
+	void amf3::write_empty_type(stream_array &buffer, const amf3_empty_type_ptr& empty_type)
 	{
 		std::uint8_t type = empty_type->type();
 		buffer << type;
@@ -114,7 +114,7 @@ namespace fms
 		return ret;
 	}
 
-	void amf3::write_integer(stream_array &buffer, amf3_integer_type_ptr value)
+	void amf3::write_integer(stream_array &buffer, const amf3_integer_type_ptr& value)
 	{
 		std::uint32_t const tmp = value->value();
 		write_integer(buffer, tmp);
@@ -180,7 +180,7 @@ namespace fms
 		return str;
 	}
 
-	void amf3::write_string(stream_array &buffer, amf3_string_type_ptr value)
+	void amf3::write_string(stream_array &buffer, const amf3_string_type_ptr& value)
 	{
 		std::uint32_t len = value->value().length();
 		len = (len << 1) | 0x01;
@@ -277,7 +277,7 @@ namespace fms
 		return obj;
 	}
 
-	void amf3::write_object(stream_array &buffer, amf3_object_type_ptr obj)
+	void amf3::write_object(stream_array &buffer, const amf3_object_type_ptr& obj)
 	{
 		std::uint8_t const enc_type = 0;
 		amf3_string_type_ptr const class_name(new amf3_string_type(""));
