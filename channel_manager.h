@@ -14,7 +14,7 @@ namespace fms
 	public:
 		rtmp_channel_ptr get_channel(std::uint32_t id)
 		{
-			channel_map_t::iterator const i = m_channels.find(id);
+			auto const i = m_channels.find(id);
 			if (i == m_channels.end())
 			{
 				rtmp_channel_ptr tmp(new rtmp_channel(id));

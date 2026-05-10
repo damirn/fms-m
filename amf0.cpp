@@ -94,7 +94,7 @@ namespace fms
 		buffer << b;
 
 		double d = value->value();
-		std::uint8_t *tmp = reinterpret_cast<std::uint8_t *> (&d);
+		auto *tmp = reinterpret_cast<std::uint8_t *> (&d);
 
 		for (int i = 7; i >= 0; --i)
 			buffer << tmp[i];
@@ -191,7 +191,7 @@ namespace fms
 		std::uint8_t b = amf0_type::eAMF0EcmaArray;
 		buffer << b;
 
-		std::uint32_t size = static_cast<std::uint32_t>(value->value().size());
+		auto size = static_cast<std::uint32_t>(value->value().size());
 		size = boost::asio::detail::socket_ops::host_to_network_long(size);
 		buffer << size;
 
@@ -233,7 +233,7 @@ namespace fms
 		std::uint8_t b = amf0_type::eAMF0StrictArray;
 		buffer << b;
 
-		std::uint32_t size = static_cast<std::uint32_t>(value->value().size());
+		auto size = static_cast<std::uint32_t>(value->value().size());
 		size = boost::asio::detail::socket_ops::host_to_network_long(size);
 		buffer << size;
 
@@ -269,7 +269,7 @@ namespace fms
 		std::uint8_t b = amf0_type::eAMF0LongString;
 		buffer << b;
 
-		std::uint32_t size = static_cast<std::uint32_t>(value->size());
+		auto size = static_cast<std::uint32_t>(value->size());
 		size = boost::asio::detail::socket_ops::host_to_network_long(size);
 		buffer << size;
 

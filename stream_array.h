@@ -56,10 +56,10 @@ namespace fms
 			{
 				if (m_mark < m_read)
 					m_read = m_mark;
-				std::size_t const len = static_cast<std::size_t>(m_write_high_mark - m_read);
+				auto const len = static_cast<std::size_t>(m_write_high_mark - m_read);
 				if (len > 0 && begin() != m_read)
 				{
-					std::size_t const shift = static_cast<std::size_t>(m_read - begin());
+					auto const shift = static_cast<std::size_t>(m_read - begin());
 					std::memmove(begin(), reinterpret_cast<void *>(m_read), len);
 					m_write -= shift;
 					m_write_high_mark = begin() + len;
@@ -186,7 +186,7 @@ namespace fms
 				check_size(3);
 				std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(v);
 
-				std::uint8_t *b = reinterpret_cast<std::uint8_t *> (&tmp);
+				auto *b = reinterpret_cast<std::uint8_t *> (&tmp);
 
 				for (std::uint8_t i = 1; i < 4; ++i)
 					*this << b[i];

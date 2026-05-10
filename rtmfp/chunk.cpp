@@ -16,7 +16,7 @@ namespace fms
 		std::uint8_t  const*end = here + len;
 		if (buff.read_pos() > end)
 			return false;
-		std::size_t const n = static_cast<std::size_t>(end - buff.read_pos());
+		auto const n = static_cast<std::size_t>(end - buff.read_pos());
 		if (n > buff.available() || n > 0xFFFF)
 			return false;
 		out = static_cast<std::uint16_t>(n);

@@ -201,7 +201,7 @@ namespace fms
 			}
 
 			std::uint32_t const server_digest_offset = get_digest_offest(server_sig, m_validation_scheme);
-			std::uint8_t *tmp = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
+			auto *tmp = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
 			std::memcpy(tmp, server_sig, server_digest_offset);
 			std::memcpy(tmp + server_digest_offset, server_sig + server_digest_offset + SHA256_DIGEST_LENGTH, eHandShakeSize - server_digest_offset - SHA256_DIGEST_LENGTH);
 
@@ -275,7 +275,7 @@ namespace fms
 	{
 		std::uint32_t const offset = get_digest_offest(client_sig, scheme);
 
-		std::uint8_t *buff = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
+		auto *buff = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
 		std::memcpy(buff, client_sig, offset);
 		std::memcpy(buff + offset, client_sig + offset + SHA256_DIGEST_LENGTH, eHandShakeSize - offset - SHA256_DIGEST_LENGTH);
 

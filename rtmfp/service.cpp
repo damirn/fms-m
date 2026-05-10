@@ -145,12 +145,12 @@ namespace fms
 	std::optional<session_ptr> service::get_session(std::uint32_t sid)
 	{
 		
-		sid_to_session_map_t::iterator const i = m_sessions.find(sid);
+		auto const i = m_sessions.find(sid);
 		if (i != m_sessions.end())
 			return std::optional<session_ptr>(i->second);
 
 		// search through initial sessions
-		endpoint_to_session_map_t::iterator const j = m_initial_sessions.find(m_sender_endpoint);
+		auto const j = m_initial_sessions.find(m_sender_endpoint);
 		if (j != m_initial_sessions.end() && j->second->outgoing_sid() == sid)
 		{
 			session_ptr s = j->second;
@@ -166,7 +166,7 @@ namespace fms
 	void service::remove_session(std::uint32_t sid)
 	{
 		// fixme: stalled initial sessions should be removed too
-		sid_to_session_map_t::iterator const i = m_sessions.find(sid);
+		auto const i = m_sessions.find(sid);
 		if (i != m_sessions.end())
 		{
 			m_initial_sessions.erase(i->second->end_point());
@@ -216,12 +216,12 @@ namespace fms
 	{
 		if (c->type() == chunk::eInitiatorHello)
 		{
-			ihello_chunk *ic = dynamic_cast<ihello_chunk *>(c);
+			auto *ic = dynamic_cast<ihello_chunk *>(c);
 			handle_ihello(ic);
 		}
 		else if (c->type() == chunk::eInitiatorInitialKeying)
 		{
-			iikeying_chunk *iikc = dynamic_cast<iikeying_chunk *>(c);
+			auto *iikc = dynamic_cast<iikeying_chunk *>(c);
 			handle_iikeying(iikc);
 		}
 		return false;
@@ -295,7 +295,7 @@ namespace fms
 	void service::redirect_ihello(ihello_chunk *ic, const std::uint8_t *peer_id)
 	{
 		item const tmp(peer_id, false);
-		session_map_t::iterator const i = m_session_map.find(tmp);
+		auto const i = m_session_map.find(tmp);
 		if (i != m_session_map.end())
 		{
 			std::uint16_t const ts = get_timestamp();
@@ -314,7 +314,7 @@ namespace fms
 			fi.serialize(m_serializer->raw_packet());
 			m_serializer->finish_raw_packet(i->second->sid(), i->second->get_aes());
 
-			redirect_chunk *rc = new redirect_chunk(ic->tag_len(), ic->tag());
+			auto *rc = new redirect_chunk(ic->tag_len(), ic->tag());
 			boost::asio::ip::address_v4 const tmp = i->second->end_point().address().to_v4();
 			a.m_type = 0x02;
 			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(tmp.to_ulong());
@@ -387,7 +387,7 @@ namespace fms
 	{
 		if (g->command() == group::eJoinGroup)
 		{
-			group_set_t::iterator const i = m_groups.find(g);
+			auto const i = m_groups.find(g);
 			if (i == m_groups.end())
 			{
 				g->take_ownership();

@@ -209,7 +209,7 @@ namespace fms
 
 		template <typename T> bool get(const std::string &field, T &value)
 		{
-			value_map_t::iterator const i = m_properties.find(field);
+			auto const i = m_properties.find(field);
 			if (i != m_properties.end())
 			{
 				try

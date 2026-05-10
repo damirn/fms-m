@@ -29,7 +29,7 @@ namespace fms
 	void rtmpt_manager::remove_session(const std::string &id)
 	{
 		std::unique_lock const lock(m_mutex);
-		id_map_t::iterator const i = m_ids.find(id);
+		auto const i = m_ids.find(id);
 		if (i == m_ids.end())
 			return;
 		rtmpt_session_data_ptr const session = i->second;
@@ -40,7 +40,7 @@ namespace fms
 	bool rtmpt_manager::validate(const boost::asio::ip::tcp::endpoint &remote, const std::string &id, std::uint32_t sequence)
 	{
 		std::unique_lock const lock(m_mutex);
-		id_map_t::iterator const i = m_ids.find(id);
+		auto const i = m_ids.find(id);
 		if (i == m_ids.end())
 			return false;
 
@@ -54,7 +54,7 @@ namespace fms
 	std::uint32_t rtmpt_manager::handle_data(const std::string &cid, std::uint32_t seq, stream_array &input, stream_array &output)
 	{
 		std::unique_lock const lock(m_mutex);
-		id_map_t::iterator const i = m_ids.find(cid);
+		auto const i = m_ids.find(cid);
 		if (i == m_ids.end())
 			return 0;
 		i->second->m_not_alive = 0;
@@ -76,7 +76,7 @@ namespace fms
 		}
 		else
 		{
-			std::uint8_t *data = new std::uint8_t[input.available()];
+			auto *data = new std::uint8_t[input.available()];
 			std::memcpy(data, input.read_pos(), input.available());
 			i->second->m_out_of_order_data[seq] = std::make_pair(data, input.available());
 			i->second->m_session->serialize_poll_time(output);
@@ -88,7 +88,7 @@ namespace fms
 	std::uint32_t rtmpt_manager::serialize_result(const std::string &cid, std::uint32_t seq, stream_array &buffer)
 	{
 		std::unique_lock const lock(m_mutex);
-		id_map_t::iterator const i = m_ids.find(cid);
+		auto const i = m_ids.find(cid);
 		if (i == m_ids.end())
 			return 0;
 		i->second->m_not_alive = 0;
@@ -101,7 +101,7 @@ namespace fms
 	void rtmpt_manager::update_stats(const std::string &id, std::uint32_t bytes_transferred, bool is_inbound)
 	{
 		std::unique_lock const lock(m_mutex);
-		id_map_t::iterator const i = m_ids.find(id);
+		auto const i = m_ids.find(id);
 		if (i == m_ids.end())
 			return;
 		if (is_inbound)
@@ -117,7 +117,7 @@ namespace fms
 			std::string id;
 			m_rnd_string.generate(eIDSize, id);
 
-			id_map_t::iterator const i = m_ids.find(id);
+			auto const i = m_ids.find(id);
 			if (i == m_ids.end())
 			{
 				rtmpt_session_data_ptr const tmp(new rtmpt_session_data(address));
@@ -142,7 +142,7 @@ namespace fms
 			m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 
 			std::unique_lock const lock(m_mutex);
-			for (id_map_t::iterator i = m_ids.begin(); i != m_ids.end(); )
+			for (auto i = m_ids.begin(); i != m_ids.end(); )
 			{
 				if (i->second->m_not_alive > 3)
 				{

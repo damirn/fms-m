@@ -66,7 +66,7 @@ namespace fms
 		if (!check_call_params(params))
 			return;
 
-		rtmp_message_invoke::parameters_list_t::const_iterator i = params.begin();
+		auto i = params.begin();
 		++i;
 
 		amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
@@ -86,7 +86,7 @@ namespace fms
 		if (params.size() < 4)
 			return false;
 
-		rtmp_message_invoke::parameters_list_t::const_iterator i = params.begin();
+		auto i = params.begin();
 		if ((*i)->type() != amf0_type::eAMF0Null)
 			return false;
 
@@ -108,7 +108,7 @@ namespace fms
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		if (params.size() != 2)
 			return;
-		rtmp_message_invoke::parameters_list_t::iterator i = params.begin();
+		auto i = params.begin();
 		++i;
 		if ((*i)->type() != amf0_type::eAMF0String)
 			return;
@@ -172,11 +172,11 @@ namespace fms
 	void video_call_application::video_call_end_notify(std::uint32_t connection_id)
 	{
 		// no lock since the lock has already been aquired
-		client_instance_map_t::iterator const i = m_client_to_instance.find(connection_id);
+		auto const i = m_client_to_instance.find(connection_id);
 		if (i == m_client_to_instance.end())
 			return;
 
-		instance_client_map_t::iterator const j = m_instance_to_client.find(i->second);
+		auto const j = m_instance_to_client.find(i->second);
 		if (j == m_instance_to_client.end())
 		{
 			m_client_to_instance.erase(i);
@@ -191,7 +191,7 @@ namespace fms
 			// both clients are connected
 			if (j->second->m_mixer != nullptr)
 				j->second->m_mixer->remove_source_stream(connection_id);
-			std::set<std::uint32_t>::iterator i = set.begin();
+			auto i = set.begin();
 			if (*i == connection_id)
 				++i;
 			send_call_end_notify(*i);

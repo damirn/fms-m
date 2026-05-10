@@ -35,8 +35,8 @@ namespace fms
 		tmp = 0;
 		buffer << tmp;
 
-		event_list_t::iterator const j = m_events.end();
-		for (event_list_t::iterator i = m_events.begin(); i != j; ++i)
+		auto const j = m_events.end();
+		for (auto i = m_events.begin(); i != j; ++i)
 			serialize_event(buffer, *i);
 	}
 

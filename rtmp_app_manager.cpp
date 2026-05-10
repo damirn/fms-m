@@ -87,7 +87,7 @@ namespace fms
 	void rtmp_app_manager::delete_http_connection(std::uint32_t id)
 	{
 		std::unique_lock const lock(m_mutex);
-		http_connection_map_t::iterator const i = m_http_conns.find(id);
+		auto const i = m_http_conns.find(id);
 		if (i != m_http_conns.end())
 			m_http_conns.erase(i);
 	}
@@ -95,7 +95,7 @@ namespace fms
 	client_session_ptr rtmp_app_manager::get_connection(std::uint32_t conn_id)
 	{
 		std::unique_lock const lock(m_mutex);
-		connection_map_t::iterator const i = m_connections.find(conn_id);
+		auto const i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return i->second;
 		throw std::runtime_error("No such connection");
@@ -104,7 +104,7 @@ namespace fms
 	const std::string &rtmp_app_manager::get_app_instance(std::uint32_t conn_id)
 	{
 		std::unique_lock const lock(m_mutex);
-		connection_map_t::iterator const i = m_connections.find(conn_id);
+		auto const i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return i->second->app_instance();
 		throw std::runtime_error("No such connection");
@@ -113,14 +113,14 @@ namespace fms
 	bool rtmp_app_manager::has_connection(std::uint32_t conn_id)
 	{
 		std::unique_lock const lock(m_mutex);
-		connection_map_t::iterator const i = m_connections.find(conn_id);
+		auto const i = m_connections.find(conn_id);
 		return i != m_connections.end();
 	}
 
 	void rtmp_app_manager::delete_connection(std::uint32_t conn_id)
 	{
 		std::unique_lock lock(m_mutex);
-		connection_map_t::iterator const i = m_connections.find(conn_id);
+		auto const i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 		{
 			client_session_ptr const conn = i->second;
@@ -137,7 +137,7 @@ namespace fms
 	void rtmp_app_manager::destroy_connection(std::uint32_t conn_id)
 	{
 		std::unique_lock lock(m_mutex);
-		connection_map_t::iterator const i = m_connections.find(conn_id);
+		auto const i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 		{
 			client_session_ptr const conn = i->second;
@@ -149,7 +149,7 @@ namespace fms
 	void rtmp_app_manager::set_encoding_for_connection(std::uint32_t conn_id, bool is_amf3)
 	{
 		std::unique_lock const lock(m_mutex);
-		connection_map_t::iterator const i = m_connections.find(conn_id);
+		auto const i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			i->second->uses_amf3_encoding() = is_amf3;
 	}
@@ -157,7 +157,7 @@ namespace fms
 	bool rtmp_app_manager::is_amf3_encoding(std::uint32_t conn_id)
 	{
 		std::unique_lock const lock(m_mutex);
-		connection_map_t::iterator const i = m_connections.find(conn_id);
+		auto const i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return i->second->uses_amf3_encoding();
 		return false;
@@ -252,7 +252,7 @@ namespace fms
 
 	client_data_ptr rtmp_app_manager::get_client_data_impl(std::uint32_t connection_id)
 	{
-		connection_map_t::iterator const i = m_connections.find(connection_id);
+		auto const i = m_connections.find(connection_id);
 		if (i != m_connections.end())
 		{
 			client_data_ptr client(new client_data);
@@ -303,7 +303,7 @@ namespace fms
 	bool rtmp_app_manager::get_client_stats(std::uint32_t cid, client_stats &stats)
 	{
 		std::unique_lock const lock(m_mutex);
-		connection_map_t::iterator const i = m_connections.find(cid);
+		auto const i = m_connections.find(cid);
 		if (i != m_connections.end())
 		{
 			stats.m_bytes_read = i->second->get_bytes_read();
@@ -318,7 +318,7 @@ namespace fms
 
 	std::optional<app_stats> rtmp_app_manager::get_app_stats(const std::string &app)
 	{
-		app_map_t::iterator const i = m_apps.find(app);
+		auto const i = m_apps.find(app);
 		if (i != m_apps.end())
 			return std::optional<app_stats>(i->second->get_stats());
 		return std::optional<app_stats>();
@@ -347,7 +347,7 @@ namespace fms
 	void rtmp_app_manager::delete_netstream(const stream_client_id_t &id)
 	{
 		std::unique_lock lock(m_mutex);
-		netstream_stats_map_t::iterator const i = m_netstream_stats.find(id);
+		auto const i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 		{
 			netstream_stats_ptr const data = i->second;
@@ -362,7 +362,7 @@ namespace fms
 	{
 		std::unique_lock lock(m_mutex);
 		netstream_list_t list;
-		for (netstream_stats_map_t::iterator i = m_netstream_stats.begin(); i != m_netstream_stats.end(); )
+		for (auto i = m_netstream_stats.begin(); i != m_netstream_stats.end(); )
 		{
 			if (i->first.first == connection_id)
 			{
@@ -381,7 +381,7 @@ namespace fms
 	void rtmp_app_manager::update_netstream(const stream_client_id_t &id, const std::string &name, bool is_publish)
 	{
 		std::unique_lock lock(m_mutex);
-		netstream_stats_map_t::iterator const i = m_netstream_stats.find(id);
+		auto const i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 		{
 			i->second->m_name = name;
@@ -395,7 +395,7 @@ namespace fms
 	void rtmp_app_manager::update_netstream_stats(const stream_client_id_t &id, std::uint32_t bytes, std::uint32_t ts)
 	{
 		std::unique_lock const lock(m_mutex);
-		netstream_stats_map_t::iterator const i = m_netstream_stats.find(id);
+		auto const i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 		{
 			if (i->second->m_messages == 0)
@@ -425,7 +425,7 @@ namespace fms
 	void rtmp_app_manager::add_dropped_messages_for_netstream(const stream_client_id_t &id, std::size_t size)
 	{
 		std::unique_lock const lock(m_mutex);
-		netstream_stats_map_t::iterator const i = m_netstream_stats.find(id);
+		auto const i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 			i->second->m_messages_dropped += size;
 	}
@@ -433,7 +433,7 @@ namespace fms
 	std::optional<netstream_stats_ptr> rtmp_app_manager::get_stream_stats(const stream_client_id_t &id)
 	{
 		std::unique_lock const lock(m_mutex);
-		netstream_stats_map_t::iterator const i = m_netstream_stats.find(id);
+		auto const i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 			return std::optional<netstream_stats_ptr>(i->second);
 		return std::optional<netstream_stats_ptr>();

@@ -11,14 +11,14 @@ namespace fms
 	bool so_manager::handle_so(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		rtmp_message_shared_object::event_list_t &list = so->events();
-		rtmp_message_shared_object::event_list_t::iterator const j = list.end();
+		auto const j = list.end();
 
 		rtmp_message_shared_object_ptr ret(new rtmp_message_shared_object(so->name(), so->version(), so->flags()));
 
 		std::unique_lock const lock(m_mutex);
 		m_new_message = true;   // must be written under the lock (was racing)
 
-		for (rtmp_message_shared_object::event_list_t::iterator i = list.begin(); i != j; ++i)
+		for (auto i = list.begin(); i != j; ++i)
 		{
 			switch ((*i)->m_type)
 			{
@@ -49,7 +49,7 @@ namespace fms
 	void so_manager::handle_use_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
 	{
 		const std::string &so_name = so->name()->value();
-		so_map_t::iterator i = m_so_map.find(so_name);
+		auto i = m_so_map.find(so_name);
 		if (i == m_so_map.end())
 		{
 			so_data_ptr const data(new so_data);
@@ -81,7 +81,7 @@ namespace fms
 	void so_manager::handle_release_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id)
 	{
 		const std::string &so_name = so->name()->value();
-		so_map_t::iterator const i = m_so_map.find(so_name);
+		auto const i = m_so_map.find(so_name);
 		if (i != m_so_map.end())
 		{
 			if (i->second->m_clients.contains(connection_id))
@@ -147,7 +147,7 @@ namespace fms
 		if (so_d)
 		{
 			const so_manager::so_data_ptr& s = *so_d;
-			std::map<std::string, amf0_type_ptr>::iterator const j = s->m_values.find(e->m_name->value());
+			auto const j = s->m_values.find(e->m_name->value());
 			if (j != s->m_values.end())
 			{
 				s->m_values.erase(j);
@@ -174,7 +174,7 @@ namespace fms
 	std::optional<so_manager::so_data_ptr> so_manager::find_so(const rtmp_message_shared_object_ptr& so)
 	{
 		const std::string &so_name = so->name()->value();
-		so_map_t::iterator const i = m_so_map.find(so_name);
+		auto const i = m_so_map.find(so_name);
 		if (i != m_so_map.end())
 			return std::optional<so_manager::so_data_ptr>(i->second);
 		return std::optional<so_manager::so_data_ptr>();

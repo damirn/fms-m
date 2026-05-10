@@ -57,8 +57,8 @@ namespace fms
 		void *h = ::dlopen(plugin_name.c_str(), RTLD_LAZY);
 		if (h == nullptr)
 			throw std::runtime_error("Cannot load authentication plugin");
-		create c = reinterpret_cast<create>(::dlsym(h, "create_plugin"));
-		destroy d = reinterpret_cast<destroy>(::dlsym(h, "destroy_plugin"));
+		auto c = reinterpret_cast<create>(::dlsym(h, "create_plugin"));
+		auto d = reinterpret_cast<destroy>(::dlsym(h, "destroy_plugin"));
 #endif
 		// Fail loudly on a malformed plugin rather than leaving m_auth_plugin
 		// null (later deref) or silently defaulting to allow-all.

@@ -30,7 +30,7 @@ namespace fms
 		if (size == 0 || size != 640)
 			return nullptr;
 
-		std::uint8_t *enc_buff = new std::uint8_t[m_frame_size * sizeof(spx_int16_t) * 2 + m_reserved_for_header];
+		auto *enc_buff = new std::uint8_t[m_frame_size * sizeof(spx_int16_t) * 2 + m_reserved_for_header];
 
 		speex_bits_reset(&m_enc_bits);
 

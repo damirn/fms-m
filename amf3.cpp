@@ -209,7 +209,7 @@ namespace fms
 
 			if (is_class)
 			{
-				std::map<std::uint32_t, class_data_ptr>::iterator const i = m_stored_classes.find(obj_info);
+				auto const i = m_stored_classes.find(obj_info);
 				if (i != m_stored_classes.end())
 				{
 					encoding_type = i->second->m_encoding_type;
