@@ -10,7 +10,7 @@ namespace fms
 {
 	static const std::uint8_t end_of_object[] = { 0x00, 0x00, 0x09 };
 
-	bool amf0::read_short_string(stream_array &buffer, amf0_string_ptr value, bool skip_type /* = false */)
+	bool amf0::read_short_string(stream_array &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
 	{
 		std::uint8_t b;
 		if (!skip_type)
@@ -31,7 +31,7 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_short_string(stream_array &buffer, amf0_string_ptr value, bool skip_type /* = false */)
+	void amf0::write_short_string(stream_array &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
 	{
 		write_short_string(buffer, value->value().c_str(), static_cast<std::uint16_t >(value->value().size()), skip_type);
 	}
@@ -47,7 +47,7 @@ namespace fms
 		buffer.write(value, len);
 	}
 
-	bool amf0::read_boolean(stream_array &buffer, amf0_boolean_ptr value)
+	bool amf0::read_boolean(stream_array &buffer, const amf0_boolean_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -60,7 +60,7 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_boolean(stream_array &buffer, amf0_boolean_ptr value)
+	void amf0::write_boolean(stream_array &buffer, const amf0_boolean_ptr& value)
 	{
 		std::uint8_t b = amf0_type::eAMF0Boolean;
 		buffer << b;
@@ -69,7 +69,7 @@ namespace fms
 		buffer << b;
 	}
 
-	bool amf0::read_number(stream_array &buffer, amf0_number_ptr value)
+	bool amf0::read_number(stream_array &buffer, const amf0_number_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -88,7 +88,7 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_number(stream_array &buffer, amf0_number_ptr value)
+	void amf0::write_number(stream_array &buffer, const amf0_number_ptr& value)
 	{
 		std::uint8_t b = amf0_type::eAMF0Number;
 		buffer << b;
@@ -100,7 +100,7 @@ namespace fms
 			buffer << tmp[i];
 	}
 
-	bool amf0::read_object(stream_array &buffer, amf0_object_ptr value)
+	bool amf0::read_object(stream_array &buffer, const amf0_object_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -122,7 +122,7 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_object(stream_array &buffer, amf0_object_ptr value)
+	void amf0::write_object(stream_array &buffer, const amf0_object_ptr& value)
 	{
 		std::uint8_t b = amf0_type::eAMF0Object;
 		buffer << b;
@@ -162,7 +162,7 @@ namespace fms
 		buffer << b;
 	}
 
-	bool amf0::read_mixed_array(stream_array &buffer, amf0_ecma_array_ptr value)
+	bool amf0::read_mixed_array(stream_array &buffer, const amf0_ecma_array_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -186,7 +186,7 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_mixed_array(stream_array &buffer, amf0_ecma_array_ptr value)
+	void amf0::write_mixed_array(stream_array &buffer, const amf0_ecma_array_ptr& value)
 	{
 		std::uint8_t b = amf0_type::eAMF0EcmaArray;
 		buffer << b;
@@ -205,7 +205,7 @@ namespace fms
 		buffer.write(end_of_object, 3);
 	}
 
-	bool amf0::read_strict_array(stream_array &buffer, amf0_strict_array_ptr value)
+	bool amf0::read_strict_array(stream_array &buffer, const amf0_strict_array_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -228,7 +228,7 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_strict_array(stream_array &buffer, amf0_strict_array_ptr value)
+	void amf0::write_strict_array(stream_array &buffer, const amf0_strict_array_ptr& value)
 	{
 		std::uint8_t b = amf0_type::eAMF0StrictArray;
 		buffer << b;
@@ -242,7 +242,7 @@ namespace fms
 			write(buffer, i);
 	}
 
-	bool amf0::read_long_string(stream_array &buffer, amf0_long_string_ptr value)
+	bool amf0::read_long_string(stream_array &buffer, const amf0_long_string_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -264,7 +264,7 @@ namespace fms
 		return false;
 	}
 
-	void amf0::write_long_string(stream_array &buffer, amf0_long_string_ptr value)
+	void amf0::write_long_string(stream_array &buffer, const amf0_long_string_ptr& value)
 	{
 		std::uint8_t b = amf0_type::eAMF0LongString;
 		buffer << b;
@@ -276,7 +276,7 @@ namespace fms
 		buffer.write(value->data(), value->size());
 	}
 
-	bool amf0::read_amf3_container(stream_array &buffer, amf0_amf3_container_ptr value)
+	bool amf0::read_amf3_container(stream_array &buffer, const amf0_amf3_container_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -290,7 +290,7 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_amf3_container(stream_array &buffer, amf0_amf3_container_ptr value)
+	void amf0::write_amf3_container(stream_array &buffer, const amf0_amf3_container_ptr& value)
 	{
 		std::uint8_t b = amf0_type::eAMF0AMF3Container;
 		buffer << b;
@@ -376,7 +376,7 @@ namespace fms
 		}
 	}
 
-	void amf0::write(stream_array &buffer, amf0_type_ptr type)
+	void amf0::write(stream_array &buffer, const amf0_type_ptr& type)
 	{
 		switch (type->type())
 		{

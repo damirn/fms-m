@@ -22,21 +22,21 @@ namespace fms
 	{
 	public:
 		amf3_type_ptr read(stream_array &);
-		void write(stream_array &, amf3_type_ptr);
+		void write(stream_array &, const amf3_type_ptr&);
 
 	protected:
 		static amf3_empty_type_ptr read_empty_type(stream_array &, std::uint8_t);
-		static void write_empty_type(stream_array &, amf3_empty_type_ptr);
+		static void write_empty_type(stream_array &, const amf3_empty_type_ptr&);
 
 		static amf3_integer_type_ptr read_integer(stream_array &);
 		static void write_integer(stream_array &, std::uint32_t);
-		static void write_integer(stream_array &, amf3_integer_type_ptr);
+		static void write_integer(stream_array &, const amf3_integer_type_ptr&);
 
 		static amf3_string_type_ptr read_string(stream_array &);
-		static void write_string(stream_array &, amf3_string_type_ptr);
+		static void write_string(stream_array &, const amf3_string_type_ptr&);
 
 		amf3_object_type_ptr read_object(stream_array &);
-		void write_object(stream_array &, amf3_object_type_ptr);
+		void write_object(stream_array &, const amf3_object_type_ptr&);
 
 		static std::uint32_t read_u29(stream_array &);
 
