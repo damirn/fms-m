@@ -68,14 +68,14 @@ namespace fms
 		}
 
 		bool deserialize(stream_array &);
-		std::uint16_t serialize(stream_array &);
+		std::uint16_t serialize(stream_array &) const;
 
 		const bool is_marker() const
 		{
 			return (m_len == 0);
 		}
 
-		vlu_t value_as_vlu();
+		vlu_t value_as_vlu() const;
 
 		vlu_t m_len;
 		vlu_t m_type;

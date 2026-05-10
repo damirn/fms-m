@@ -53,7 +53,7 @@ namespace fms
 
 		void deserialize_chunk_size(stream_array &);
 
-		void chunk_buffer(stream_array &, stream_array &, rtmp_header &);
+		void chunk_buffer(stream_array &, stream_array &, rtmp_header &) const;
 
 		void deserialize_aggregate(stream_array &, std::uint32_t);
 

@@ -30,7 +30,7 @@ namespace fms
 		}
 	}
 
-	void header::serialize(stream_array &to)
+	void header::serialize(stream_array &to) const
 	{
 		std::uint8_t d = 0;
 		if (m_time_critical)
