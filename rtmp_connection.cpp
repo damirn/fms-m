@@ -115,7 +115,15 @@ namespace fms
 		if (!e)
 		{
 			if (m_key_in != nullptr)
-				rc4_crypt(m_key_in, bytes_transferred, m_buffer.write_pos(), m_buffer.write_pos());
+			{
+				// decrypt exactly the bytes async_read just appended — at the input
+				// cursor (m_write_high_mark), NOT write_pos()/m_write which is the
+				// output/serialization cursor. Using write_pos() decrypted stale
+				// bytes (e.g. the old C0/C1 handshake at offset 0), garbling the
+				// RC4 session for any packet that didn't arrive pipelined with C2.
+				std::uint8_t *in = m_buffer.input_pos();
+				rc4_crypt(m_key_in, bytes_transferred, in, in);
+			}
 			m_buffer.update(bytes_transferred);
 			handle_bytes_read(bytes_transferred);
 			parse_data(m_buffer);   // parses and dispatches messages internally
