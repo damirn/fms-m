@@ -43,17 +43,17 @@ namespace fms
 
 		virtual ~amf3_type() = default;
 
-		explicit operator bool()
+		virtual explicit operator bool() const
 		{
 			throw amf3_illegal_cast();
 		}
 
-		explicit operator double()
+		virtual explicit operator double() const
 		{
 			throw amf3_illegal_cast();
 		}
 
-		explicit operator std::string()
+		virtual explicit operator std::string() const
 		{
 			throw amf3_illegal_cast();
 		}
@@ -118,7 +118,7 @@ namespace fms
 			: amf3_type(amf3_type::eAMF3String), m_value(value)
 		{}
 
-		explicit operator std::string()
+		explicit operator std::string() const override
 		{
 			return m_value;
 		}
