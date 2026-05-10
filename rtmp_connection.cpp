@@ -44,18 +44,28 @@ namespace fms
 
 	void rtmp_connection::start()
 	{
-		// cache the peer endpoint now (on this connection's thread) so the admin
-		// thread never calls remote_endpoint() on our socket
-		boost::system::error_code ep_ec;
-		boost::asio::ip::tcp::endpoint const ep = m_socket.remote_endpoint(ep_ec);
-		if (!ep_ec)
-			set_remote_endpoint(ep.address().to_string() + ":" + std::to_string(ep.port()));
+		// start() runs on the acceptor's thread, but this connection's socket and
+		// m_hs_timer live on its own (round-robin) io_context. Arming the handshake
+		// timer here and cancelling it later from the connection thread
+		// (check_hand_shake_response) is concurrent access to one asio timer — its
+		// io-objects are NOT thread-safe. That corrupts the reactor's timer_queue
+		// and crashes in timer cancel (or silently breaks the RTMPE session).
+		// Hop onto our own context first so the timer is only ever touched there.
+		boost::asio::post(m_io_service, [self = shared_from_this()]()
+		{
+			// cache the peer endpoint on our own thread so the admin thread never
+			// calls remote_endpoint() on our socket
+			boost::system::error_code ep_ec;
+			boost::asio::ip::tcp::endpoint const ep = self->m_socket.remote_endpoint(ep_ec);
+			if (!ep_ec)
+				self->set_remote_endpoint(ep.address().to_string() + ":" + std::to_string(ep.port()));
 
-		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
-			boost::asio::transfer_at_least(eHandShakeSize + 1), // magic byte + handshake block
-			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
+			boost::asio::async_read(self->m_socket, self->m_buffer.write_buffer(),
+				boost::asio::transfer_at_least(eHandShakeSize + 1), // magic byte + handshake block
+				[self](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 
-		arm_hs_timer();
+			self->arm_hs_timer();
+		});
 	}
 
 	void rtmp_connection::handle_hand_shake(const boost::system::error_code &e, std::size_t bytes_transferred)
