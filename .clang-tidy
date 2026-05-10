@@ -36,6 +36,7 @@ Checks: >
   readability-redundant-smartptr-get,
   readability-convert-member-functions-to-static,
   readability-isolate-declaration,
+  readability-redundant-inline-specifier,
   performance-move-const-arg,
   performance-for-range-copy,
   performance-unnecessary-copy-initialization

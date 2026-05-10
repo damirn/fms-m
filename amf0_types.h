@@ -165,7 +165,7 @@ namespace fms
 
 	namespace amf0_util
 	{
-		template<typename T> inline T &get_ref(const amf0_type_ptr&)
+		template<typename T> T &get_ref(const amf0_type_ptr&)
 		{
 			throw amf0_illegal_cast();
 		}
@@ -194,7 +194,7 @@ namespace fms
 			throw amf0_illegal_cast();
 		}
 
-		template<typename T> inline T get(const amf0_type_ptr&)
+		template<typename T> T get(const amf0_type_ptr&)
 		{
 			throw amf0_illegal_cast();
 		}
