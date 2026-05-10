@@ -98,13 +98,13 @@ namespace fms
 	void rtmp_application::delete_connection(std::uint32_t conn_id, const std::string &)
 	{
 		std::unique_lock lock(m_async_messages_mutex);
-		async_messages_map_t::iterator const i = m_async_messages.find(conn_id);
+		auto const i = m_async_messages.find(conn_id);
 		if (i != m_async_messages.end())
 			m_async_messages.erase(i);
 		lock.unlock();
 	
 		std::unique_lock const lock2(m_delay_mutex);
-		delay_map_t::iterator const j = m_delays.find(conn_id);
+		auto const j = m_delays.find(conn_id);
 		if (j != m_delays.end())
 			m_delays.erase(j);
 	}
@@ -141,14 +141,14 @@ namespace fms
 	bool rtmp_application::has_async_messages(std::uint32_t connection_id)
 	{
 		std::unique_lock const lock(m_async_messages_mutex);
-		async_messages_map_t::iterator const i = m_async_messages.find(connection_id);
+		auto const i = m_async_messages.find(connection_id);
 		return !(i == m_async_messages.end() || i->second.second.empty());
 	}
 
 	bool rtmp_application::get_async_message(std::uint32_t connection_id, rtmp_message_ptr &msg)
 	{
 		std::unique_lock const lock(m_async_messages_mutex);
-		async_messages_map_t::iterator const i = m_async_messages.find(connection_id);
+		auto const i = m_async_messages.find(connection_id);
 		if (i == m_async_messages.end() || i->second.second.empty())
 			return false;
 		msg = i->second.second.front();
@@ -230,7 +230,7 @@ namespace fms
 	bool rtmp_application::handle_invoke_result(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		std::unique_lock lock(m_async_messages_mutex);
-		result_handlers_t::iterator const i = m_result_handlers.find(static_cast<std::uint32_t>(msg->invoke_id()->value()));
+		auto const i = m_result_handlers.find(static_cast<std::uint32_t>(msg->invoke_id()->value()));
 		if (i != m_result_handlers.end())
 		{
 			result_handler_ptr const res = i->second;
@@ -381,7 +381,7 @@ namespace fms
 			rtmp_message_invoke::parameters_list_t &params = info->parameters();
 			if (params.size() > 1)
 			{
-				rtmp_message_invoke::parameters_list_t::iterator i = params.begin();
+				auto i = params.begin();
 				++i;
 				while (i != params.end() && (*i)->type() == amf0_type::eAMF0String)
 				{
@@ -439,7 +439,7 @@ namespace fms
 		if (list.empty())
 			return false;
 
-		rtmp_message_invoke::parameters_list_t::const_iterator const i = list.begin();
+		auto const i = list.begin();
 		if ((*i)->type() == amf0_type::eAMF0Object)
 		{
 			amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(*i);
@@ -461,7 +461,7 @@ namespace fms
 
 	void rtmp_application::check_stream_name(rtmp_message_invoke::parameters_list_t &params)
 	{
-		rtmp_message_invoke::parameters_list_t::iterator i = params.begin();
+		auto i = params.begin();
 
 		if (params.size() < 2)
 			throw rtmp_illegal_parameter_exception("Missing parameters");

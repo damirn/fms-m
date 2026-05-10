@@ -33,7 +33,7 @@ namespace fms
 
 	void flow::remove_fragments_until_seq(const vlu_t &seq)
 	{
-		fragment_map_t::iterator const i = m_fragments.find(seq);
+		auto const i = m_fragments.find(seq);
 		m_fragments.erase(m_fragments.begin(), i);
 		m_fragments.erase(seq);
 		update_seqs(seq);
@@ -49,7 +49,7 @@ namespace fms
 	const std::uint8_t *flow::message_data(std::uint32_t &len)
 	{
 		vlu_t const csn = m_seq_manager.csn();
-		fragment_map_t::iterator i = m_fragments.begin();
+		auto i = m_fragments.begin();
 		while (i != m_fragments.end() && i->second->m_seq <= csn)
 		{
 			fragment_ptr const f = i->second;
@@ -67,7 +67,7 @@ namespace fms
 			else
 			{
 				m_msg_len = i->second->m_data_len;
-				fragment_map_t::iterator j = i;
+				auto j = i;
 				++j;
 				while (j != m_fragments.end() && j->second->m_seq <= csn)
 				{
@@ -175,7 +175,7 @@ namespace fms
 		}
 		else
 		{
-			std::uint16_t const cnt = static_cast<std::uint16_t>(std::ceil(static_cast<float>(len) / static_cast<float>(_eFragmentMaxSize)));
+			auto const cnt = static_cast<std::uint16_t>(std::ceil(static_cast<float>(len) / static_cast<float>(_eFragmentMaxSize)));
 			std::uint8_t ftype = fragment::eBegin;
 			std::uint32_t clen = _eFragmentMaxSize;
 			for (std::uint16_t i = 0; i < cnt; ++i)
@@ -199,7 +199,7 @@ namespace fms
 	std::optional<fragment_ptr> flow::get_fragment_for_sending(vlu_t &fsn)
 	{
 		// 3.6.2.3
-		fragment_map_t::iterator i = m_fragments.begin();
+		auto i = m_fragments.begin();
 		while (m_fragments.size() >= 2 && i != m_fragments.end())
 		{
 			if (!i->second->m_in_flight && i->second->m_abandoned)
@@ -242,7 +242,7 @@ namespace fms
 	vlu_t flow::ack_fragments_until(const vlu_t &seq)
 	{
 		vlu_t tsn = 0;
-		fragment_map_t::iterator i = m_fragments.begin();
+		auto i = m_fragments.begin();
 		while (i != m_fragments.end() && i->second->m_seq <= seq)
 		{
 			if (i->second->m_in_flight)
@@ -259,7 +259,7 @@ namespace fms
 	vlu_t flow::ack_fragments_for_range(const vlu_t &from, const vlu_t &to)
 	{
 		vlu_t tsn = 0;
-		fragment_map_t::iterator i = m_fragments.find(from);
+		auto i = m_fragments.find(from);
 		while (i != m_fragments.end() && i->first <= to)
 		{
 			tsn = i->second->m_tsn;

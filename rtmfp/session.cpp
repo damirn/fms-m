@@ -62,10 +62,10 @@ namespace fms
 	void session::unreserve_stream_id_impl(std::uint32_t stream_id)
 	{
 		client_session::unreserve_stream_id(stream_id);
-		stream_id_to_flow_id_map_t::iterator const i = m_stream_id_to_flow_id.find(stream_id);
+		auto const i = m_stream_id_to_flow_id.find(stream_id);
 		if (i != m_stream_id_to_flow_id.end())
 		{
-			for (std::set<flow_ptr>::iterator j = i->second.begin(); j != i->second.end(); ++j)
+			for (auto j = i->second.begin(); j != i->second.end(); ++j)
 			{
 				vlu_t const flow_id = (*j)->flow_id();
 				m_stream_id_to_flow_id.erase(i);
@@ -80,27 +80,27 @@ namespace fms
 	{
 		if (c->type() == chunk::eUserData)
 		{
-			user_data_chunk *udc = dynamic_cast<user_data_chunk *>(c);
+			auto *udc = dynamic_cast<user_data_chunk *>(c);
 			return handle_user_data(udc);
 		}
 		if (c->type() == chunk::eNextUserData)
 		{
-			next_user_data_chunk *ndc = dynamic_cast<next_user_data_chunk *>(c);
+			auto *ndc = dynamic_cast<next_user_data_chunk *>(c);
 			return handle_next_user_data(ndc);
 		}
 		if (c->type() == chunk::eDataAcknowledgementRanges)
 		{
-			range_ack_chunk *rac = dynamic_cast<range_ack_chunk *>(c);
+			auto *rac = dynamic_cast<range_ack_chunk *>(c);
 			return handle_range_ack(rac);
 		}
 		else if (c->type() == chunk::eFlowExceptionReportChunk)
 		{
-			flow_exception_report_chunk *fec = dynamic_cast<flow_exception_report_chunk *>(c);
+			auto *fec = dynamic_cast<flow_exception_report_chunk *>(c);
 			handle_flow_exception_report(fec);
 		}
 		else if (c->type() == chunk::ePing)
 		{
-			ping_chunk *pc = dynamic_cast<ping_chunk *>(c);
+			auto *pc = dynamic_cast<ping_chunk *>(c);
 			handle_ping(pc);
 		}
 		else if (c->type() == chunk::eSessionCloseAcknowledgement)
@@ -114,7 +114,7 @@ namespace fms
 	bool session::handle_user_data(user_data_chunk *udc)
 	{
 		flow_ptr f;
-		flow_map_t::iterator const i = m_receiving_flows.find(udc->flow_id());
+		auto const i = m_receiving_flows.find(udc->flow_id());
 		if (i == m_receiving_flows.end())
 			f = create_receiving_flow(udc);
 		else
@@ -164,7 +164,7 @@ namespace fms
 	bool session::handle_next_user_data(next_user_data_chunk *ndc)
 	{
 		flow_ptr f;
-		flow_map_t::iterator const i = m_receiving_flows.find(m_current_flow_id);
+		auto const i = m_receiving_flows.find(m_current_flow_id);
 		if (i != m_receiving_flows.end())
 		{
 			f = i->second;
@@ -188,7 +188,7 @@ namespace fms
 	bool session::handle_range_ack(range_ack_chunk *rac)
 	{
 		// 3.6.2.4
-		flow_map_t::iterator const i = m_sending_flows.find(rac->flow_id());
+		auto const i = m_sending_flows.find(rac->flow_id());
 		if (i == m_sending_flows.end())
 		{
 			return false; // fixme: rethink return
@@ -199,7 +199,7 @@ namespace fms
 		vlu_t max_tsn = i->second->ack_fragments_until(rac->cumulative_ack());
 		if (max_tsn > m_max_tsn_ack)
 			m_max_tsn_ack = max_tsn;
-		for (range_ack_chunk::range_list_t::const_iterator j = rac->ranges().begin(); j != rac->ranges().end(); ++j)
+		for (auto j = rac->ranges().begin(); j != rac->ranges().end(); ++j)
 		{
 			max_tsn = i->second->ack_fragments_for_range((*j).first, (*j).second);
 			if (max_tsn > m_max_tsn_ack)
@@ -219,7 +219,7 @@ namespace fms
 
 	void session::handle_ping(ping_chunk *pc)
 	{
-		ping_reply_chunk *prc = new ping_reply_chunk(pc->data(), pc->data_len());
+		auto *prc = new ping_reply_chunk(pc->data(), pc->data_len());
 		m_ready_chunk = prc;
 		m_has_data_ready = true;
 	}
@@ -236,7 +236,7 @@ namespace fms
 				if (f->has_associated_flow_id())
 				{
 					vlu_t const assoc_fid = f->associated_flow_id();
-					flow_map_t::iterator const i = m_sending_flows.find(assoc_fid);
+					auto const i = m_sending_flows.find(assoc_fid);
 					if (i == m_sending_flows.end() || i->second->state() != flow::eOpen)
 						f->state() = flow::eRejected;
 				}
@@ -385,7 +385,7 @@ namespace fms
 				s.update(len);
 				s >> h.message_type() >> h.timestamp();
 				h.timestamp() = boost::asio::detail::socket_ops::network_to_host_long(h.timestamp());
-				flow_id_to_stream_id_map_t::iterator const i = m_flow_id_to_stream_id.find(f->flow_id());
+				auto const i = m_flow_id_to_stream_id.find(f->flow_id());
 				if (i != m_flow_id_to_stream_id.end())
 				{
 					h.stream_id() = i->second;
@@ -429,7 +429,7 @@ namespace fms
 					temp.write(tmp->peer_id_data(), 0x20);
 				}
 
-				flow_map_t::iterator const j = m_sending_flows.find(sending);
+				auto const j = m_sending_flows.find(sending);
 				if (j != m_sending_flows.end())
 				{
 					j->second->add_and_fragment_data(temp.read_pos(), temp.wrote_size());
@@ -488,7 +488,7 @@ namespace fms
 		temp << ts;
 		result->serialize(temp);
 
-		stream_id_to_flow_id_map_t::iterator const i = m_stream_id_to_flow_id.find(result->stream_id());
+		auto const i = m_stream_id_to_flow_id.find(result->stream_id());
 		if (i != m_stream_id_to_flow_id.end())
 		{
 			flow::usage_t usage = flow::eData;
@@ -570,7 +570,7 @@ namespace fms
 				{
 					std::list<std::pair<vlu_t, vlu_t> > list;
 					vlu_t const high_seq = f->get_range_ack(list);
-					range_ack_chunk *rac = new range_ack_chunk(f->flow_id(), 0x7f, high_seq);
+					auto *rac = new range_ack_chunk(f->flow_id(), 0x7f, high_seq);
 					rac->ranges() = list;
 					rac->serialize(s->raw_packet());
 					delete rac;
@@ -593,7 +593,7 @@ namespace fms
 				fr->m_sent_abandoned = fr->m_abandoned;
 				fr->m_tsn = m_next_tsn++;
 
-				user_data_chunk *uc = new user_data_chunk(fr, f->flow_id(), fr->m_seq - fsn); // fixme: redo this
+				auto *uc = new user_data_chunk(fr, f->flow_id(), fr->m_seq - fsn); // fixme: redo this
 				if (!f->options().m_options.empty()) // set options if not empty
 				{
 					uc->options() = f->options();

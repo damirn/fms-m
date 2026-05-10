@@ -39,7 +39,7 @@ namespace fms
 				if (val == m_csn + 1)
 				{
 					++m_csn;
-					set_iterator i = m_sequences.begin();
+					auto i = m_sequences.begin();
 					while (i != m_sequences.end() && *i == (m_csn + 1))
 					{
 						++m_csn;
@@ -73,7 +73,7 @@ namespace fms
 				m_csn = val;
 				m_sum = m_csn * (m_csn + 1) / 2;
 
-				set_iterator i = m_sequences.begin();
+				auto i = m_sequences.begin();
 				while (i != m_sequences.end() && *i <= m_csn)
 				{
 					m_sequences.erase(i);
@@ -116,7 +116,7 @@ namespace fms
 			
 							if (!m_sequences.empty())
 				{
-					set_iterator i = m_missing.begin();
+					auto i = m_missing.begin();
 					T ret = *i - 1;
 					while (i != m_missing.end())
 					{

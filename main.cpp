@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 	if (!fms::init_crypto_providers())
 		std::cerr << "Warning: OpenSSL legacy provider not available; RTMPE (encrypted) handshakes will be refused." << std::endl;
 
-	fms::logging *log = new fms::logging;
+	auto *log = new fms::logging;
 	log->init_logging(fms::config::instance()->log_path());
 
 	// register main thread
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 	int ret = 0;
 	try
 	{
-		fms::server *s = new fms::server;
+		auto *s = new fms::server;
 		s->init(fms::config::instance()->bind_address());
 		s->run();
 		delete s;

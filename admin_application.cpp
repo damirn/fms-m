@@ -135,7 +135,7 @@ namespace fms
 		bool active_client = false;
 		if (params.size() == 4)
 		{
-			rtmp_message_invoke::parameters_list_t::const_iterator i = params.end();
+			auto i = params.end();
 			--i;
 			if ((*i)->type() != amf0_type::eAMF0Boolean && (*i)->type() != amf0_type::eAMF0Null)
 				return false;
@@ -158,7 +158,7 @@ namespace fms
 		if (!rtmp_application::check_connect_params(connection_id, params) || params.size() < 3)
 			return false;
 
-		rtmp_message_invoke::parameters_list_t::const_iterator i = params.begin();
+		auto i = params.begin();
 		++i;
 
 		if ((*i)->type() != amf0_type::eAMF0String)
@@ -180,7 +180,7 @@ namespace fms
 
 	bool admin_application::check_user_and_password(const std::string &user, const std::string &pass)
 	{
-		std::map<std::string, std::string>::const_iterator const i = m_password_map.find(user);
+		auto const i = m_password_map.find(user);
 		if (i == m_password_map.end())
 			return false;
 
@@ -275,7 +275,7 @@ namespace fms
 		if (invoke->parameters().size() != 2)
 			return;
 
-		rtmp_message_invoke::parameters_list_t::iterator i = invoke->parameters().begin();
+		auto i = invoke->parameters().begin();
 		++i;
 		if ((*i)->type() != amf0_type::eAMF0Number)
 			return;
@@ -310,7 +310,7 @@ namespace fms
 		if (invoke->parameters().size() != 2)
 			return;
 
-		rtmp_message_invoke::parameters_list_t::iterator i = invoke->parameters().begin();
+		auto i = invoke->parameters().begin();
 		++i;
 		if ((*i)->type() != amf0_type::eAMF0String)
 			return;
@@ -403,7 +403,7 @@ namespace fms
 		if (invoke->parameters().size() != 2)
 			return;
 
-		rtmp_message_invoke::parameters_list_t::iterator i = invoke->parameters().begin();
+		auto i = invoke->parameters().begin();
 		++i;
 		if ((*i)->type() != amf0_type::eAMF0Number)
 			return;

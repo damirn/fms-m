@@ -19,7 +19,7 @@ namespace fms
 	{
 		m_amf0.write_short_string(buffer, m_function);
 		parameters_list_t::iterator i;
-		parameters_list_t::iterator const end = m_params.end();
+		auto const end = m_params.end();
 
 		for(i = m_params.begin(); i != end; ++i)
 			m_amf0.write(buffer, *i);
@@ -101,7 +101,7 @@ namespace fms
 		m_amf0.write_short_string(buffer, m_function);
 		m_amf0.write_number(buffer, m_invoke_id);
 		parameters_list_t::iterator i;
-		parameters_list_t::iterator const end = m_params.end();
+		auto const end = m_params.end();
 
 		for(i = m_params.begin(); i != end; ++i)
 			m_amf0.write(buffer, *i);

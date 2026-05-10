@@ -27,7 +27,7 @@ namespace fms
 	void simple_mixer::remove_source_stream(std::uint32_t id)
 	{
 		std::unique_lock const lock(m_streams_mutex);
-		stream_map_t::iterator const i = m_streams.find(id);
+		auto const i = m_streams.find(id);
 		if (i != m_streams.end())
 		{
 			delete i->second;
@@ -62,7 +62,7 @@ namespace fms
 		if (m_active)
 		{
 			std::unique_lock const lock(m_streams_mutex);
-			stream_map_t::iterator const i = m_streams.find(id);
+			auto const i = m_streams.find(id);
 			if (i != m_streams.end())
 				i->second->m_queue.push(msg);
 		}
@@ -73,7 +73,7 @@ namespace fms
 		if (m_active && size > 0)
 		{
 			std::unique_lock const lock(m_streams_mutex);
-			stream_map_t::iterator const i = m_streams.find(id);
+			auto const i = m_streams.find(id);
 			if (i != m_streams.end())
 			{
 				rtmp_message_audio_data_ptr const audio(new rtmp_message_audio_data(size + 1));
@@ -160,13 +160,13 @@ namespace fms
 			for (auto & m_stream : m_streams)
 			{
 				m_stream.second->fill_frame();
-				const short *src = reinterpret_cast<const short *>(m_stream.second->m_buffer);
+				const auto *src = reinterpret_cast<const short *>(m_stream.second->m_buffer);
 				for (std::size_t s = 0; s < samples; ++s)
 					acc[s] += src[s];
 			}
 		}
 
-		short *mix = reinterpret_cast<short *>(m_rec_buffer);
+		auto *mix = reinterpret_cast<short *>(m_rec_buffer);
 		for (std::size_t s = 0; s < samples; ++s)
 		{
 			std::int32_t v = acc[s];

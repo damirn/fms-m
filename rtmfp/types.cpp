@@ -15,7 +15,7 @@ namespace fms
 			{
 				std::uint8_t  const*here = buff.read_pos();
 				m_type = buff.read_vlu();
-				std::size_t const consumed = static_cast<std::size_t>(buff.read_pos() - here);
+				auto const consumed = static_cast<std::size_t>(buff.read_pos() - here);
 				// the type VLU must fit inside m_len, and the remaining value must
 				// fit inside the datagram — otherwise the length is malformed
 				if (consumed > m_len || (m_len - consumed) > buff.available())
