@@ -246,6 +246,14 @@ namespace fms
 				return m_write;
 			}
 
+			// Where incoming data is appended (write_buffer()/async_read fill here,
+			// update() advances it). This is NOT write_pos()/m_write, which tracks
+			// the serialization/output cursor.
+			typename dynamic_array<T>::iterator input_pos()
+			{
+				return m_write_high_mark;
+			}
+
 			std::size_t available()
 			{
 				if (m_read_barrier != begin())
