@@ -141,7 +141,7 @@ namespace fms
 
 	namespace amf3_util
 	{
-		template<typename T> inline T get(const amf3_type_ptr&)
+		template<typename T> T get(const amf3_type_ptr&)
 		{
 			throw amf3_illegal_cast();
 		}
