@@ -56,17 +56,17 @@ namespace fms
 
 		virtual ~amf0_type() = default;
 
-		explicit operator bool()
+		virtual explicit operator bool() const
 		{
 			throw amf0_illegal_cast();
 		}
 
-		explicit operator double()
+		virtual explicit operator double() const
 		{
 			throw amf0_illegal_cast();
 		}
 
-		explicit operator std::string()
+		virtual explicit operator std::string() const
 		{
 			throw amf0_illegal_cast();
 		}
@@ -93,7 +93,7 @@ namespace fms
 			: amf0_type(eAMF0Boolean), m_value(value)
 		{}
 
-		explicit operator bool() const
+		explicit operator bool() const override
 		{
 			return m_value;
 		}
@@ -120,7 +120,7 @@ namespace fms
 			: amf0_type(eAMF0Number), m_value(value)
 		{}
 
-		explicit operator double() const
+		explicit operator double() const override
 		{
 			return m_value;
 		}
@@ -147,7 +147,7 @@ namespace fms
 			: amf0_type(eAMF0String), m_value(value)
 		{}
 
-		explicit operator std::string()
+		explicit operator std::string() const override
 		{
 			return m_value;
 		}
