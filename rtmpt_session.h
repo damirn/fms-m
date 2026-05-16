@@ -18,7 +18,7 @@ namespace fms
 	{
 	public:
 		// Construct a connection with the given io_service.
-		rtmpt_session(std::uint32_t, boost::asio::io_service &, rtmp_app_manager *);
+		rtmpt_session(std::uint32_t, boost::asio::io_context &, rtmp_app_manager *);
 
 		// Start the first asynchronous operation for the connection.
 		void start() override;

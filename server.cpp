@@ -36,8 +36,7 @@ namespace fms
 	void server::init_acceptors(const std::string &address)
 	{
 		boost::asio::ip::tcp::resolver resolver(m_io_service_pool.get_io_service());
-		boost::asio::ip::tcp::resolver::query const query(address, config::instance()->rtmp_port());
-		boost::asio::ip::tcp::endpoint endpoint = *resolver.resolve(query);
+		boost::asio::ip::tcp::endpoint endpoint = resolver.resolve(address, config::instance()->rtmp_port()).begin()->endpoint();
 
 		boost::system::error_code ec;
 		m_acceptor.open(endpoint.protocol(), ec);
@@ -59,8 +58,7 @@ namespace fms
 		m_acceptor.async_accept(m_connection->socket(),
 			[this](const boost::system::error_code &ec) { handle_accept(ec); });
 
-		boost::asio::ip::tcp::resolver::query const query2(address, config::instance()->rtmpt_port());
-		endpoint = *resolver.resolve(query2);
+		endpoint = resolver.resolve(address, config::instance()->rtmpt_port()).begin()->endpoint();
 		m_http_acceptor.open(endpoint.protocol(), ec);
 
 		if (ec)

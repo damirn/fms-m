@@ -215,7 +215,7 @@ namespace fms
 		boost::asio::ip::udp::endpoint m_endpoint;
 		boost::asio::steady_timer m_timer;
 		boost::asio::steady_timer m_alarm;
-		boost::asio::io_service::strand m_strand;
+		boost::asio::io_context::strand m_strand;
 		state_t m_state{eInitialState};
 
 		chunk *m_ready_chunk;

@@ -16,7 +16,7 @@ namespace fms
 	const std::uint8_t service::m_c1[] = {0x01, 0x0a, 0x41, 0x0e};
 	const std::uint8_t service::m_c2[] = {0x02, 0x15, 0x02, 0x02, 0x15, 0x05, 0x02, 0x15, 0x0e};
 
-	service::service(boost::asio::io_service &io_service, std::uint16_t port, rtmp_app_manager *app_manager)
+	service::service(boost::asio::io_context &io_service, std::uint16_t port, rtmp_app_manager *app_manager)
 		: m_app_manager(app_manager)
 		, m_io_service(io_service)
 		, m_socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port))
@@ -307,7 +307,7 @@ namespace fms
 
 			address a;
 			a.m_type = 0x02; // fixme: replace with enum
-			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(m_sender_endpoint.address().to_v4().to_ulong());
+			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(m_sender_endpoint.address().to_v4().to_uint());
 			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(m_sender_endpoint.port());
 
 			fihello_chunk fi(static_cast<std::uint16_t>(ic->epd_len()), ic->epd(), a, ic->tag_len(), ic->tag());
@@ -317,7 +317,7 @@ namespace fms
 			auto *rc = new redirect_chunk(ic->tag_len(), ic->tag());
 			boost::asio::ip::address_v4 const tmp = i->second->end_point().address().to_v4();
 			a.m_type = 0x02;
-			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(tmp.to_ulong());
+			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(tmp.to_uint());
 			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(i->second->end_point().port());
 
 			rc->addresses().push_back(a);
@@ -335,7 +335,7 @@ namespace fms
 
 		std::uint32_t addr;
 		std::memcpy(static_cast<void *>(&addr), const_cast<std::uint8_t *>(cookie), sizeof(addr));
-		if (addr != m_sender_endpoint.address().to_v4().to_ulong())
+		if (addr != m_sender_endpoint.address().to_v4().to_uint())
 			return false;
 
 		std::uint16_t port;
@@ -353,7 +353,7 @@ namespace fms
 	void service::create_cookie(std::uint8_t *cookie)
 	{
 		// address part
-		std::uint32_t addr = m_sender_endpoint.address().to_v4().to_ulong();
+		std::uint32_t addr = m_sender_endpoint.address().to_v4().to_uint();
 		std::memcpy(cookie, static_cast<void *>(&addr), sizeof(addr));
 
 		// port part

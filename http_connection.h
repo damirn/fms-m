@@ -19,7 +19,7 @@ namespace fms
 	class http_connection : public std::enable_shared_from_this<http_connection>, private boost::noncopyable
 	{
 	public:
-		http_connection(std::uint32_t, boost::asio::io_service &, rtmp_app_manager *, rtmpt_manager *);
+		http_connection(std::uint32_t, boost::asio::io_context &, rtmp_app_manager *, rtmpt_manager *);
 
 		void start();
 
@@ -75,7 +75,7 @@ namespace fms
 		boost::asio::steady_timer m_timer;
 
 		// IO service
-		boost::asio::io_service &m_io_service;
+		boost::asio::io_context &m_io_service;
 
 		// Connection id
 		std::uint32_t m_id;
