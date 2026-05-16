@@ -7,7 +7,7 @@ namespace fms
 {
 	rtmp_header::rtmp_header()
 		 
-	{}
+	= default;
 
 	void rtmp_header::deserialize(stream_array &buffer)
 	{
