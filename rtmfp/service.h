@@ -105,7 +105,7 @@ namespace fms
 
 		enum { ePacketMinLen = 13 };
 
-		enum { eCertRandomLen = 64, eCookieSize = 64, eCertLen = 77 };
+		enum { eCertRandomLen = 64, eCookieSize = 64, eCertLen = 71 };
 		std::uint8_t m_cert[eCertLen];
 		static const std::uint8_t m_c1[];
 		static const std::uint8_t m_c2[];
