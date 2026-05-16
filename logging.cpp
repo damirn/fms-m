@@ -25,7 +25,7 @@ namespace fms
 
 	void logging::init_logging(const std::string &path)
 	{
-		backend_ptr bp = boost::make_shared<backend_t>(keywords::file_name = "%Y%m%d_%H%M%S_%5N.log",
+		backend_ptr const bp = boost::make_shared<backend_t>(keywords::file_name = "%Y%m%d_%H%M%S_%5N.log",
 			keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0));
 		bp->auto_flush(true);
 

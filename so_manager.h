@@ -34,7 +34,7 @@ namespace fms
 		{
 			so_data()
 				 
-			{}
+			= default;
 			std::uint32_t m_version{1};
 			std::set<std::uint32_t> m_clients;
 			std::map<std::string, amf0_type_ptr> m_values;

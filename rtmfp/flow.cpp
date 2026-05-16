@@ -84,8 +84,7 @@ namespace fms
 						i = m_fragments.begin();
 						break;
 					}
-					else
-						++j;
+											++j;
 				}
 				break;
 			}

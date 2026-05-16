@@ -21,7 +21,7 @@ namespace fms
 	public:
 		logging()
 			 
-		{}
+		= default;
 
 		~logging()
 		{
