@@ -123,6 +123,11 @@ namespace fms
 			return m_value;
 		}
 
+		// keep the base's other (throwing) conversions visible so overriding one
+		// doesn't hide the rest (-Woverloaded-virtual on GCC)
+		using amf3_type::operator bool;
+		using amf3_type::operator double;
+
 		std::string &value()
 		{
 			return m_value;
