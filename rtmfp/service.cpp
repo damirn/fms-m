@@ -14,7 +14,13 @@
 namespace fms
 {
 	const std::uint8_t service::m_c1[] = {0x01, 0x0a, 0x41, 0x0e};
-	const std::uint8_t service::m_c2[] = {0x02, 0x15, 0x02, 0x02, 0x15, 0x05, 0x02, 0x15, 0x0e};
+	// One CERT_OPTION_SUPPORTED_DH_GROUP (0x15) advertisement for group 2. We only
+	// implement the 1024-bit MODP group (group 2 / m_dh_key), so we must advertise
+	// only that. The old value also claimed groups 5 and 0x0e(14), which our DH code
+	// does not implement, so a modern client (rtmfp-cpp/librtmfp) would negotiate
+	// group 14, send a 2048-bit key, and reject our group-2 RIKeying. Flash happened
+	// to prefer group 2, which is why only Flash interoperated.
+	const std::uint8_t service::m_c2[] = {0x02, 0x15, 0x02};
 
 	service::service(boost::asio::io_context &io_service, std::uint16_t port, rtmp_app_manager *app_manager)
 		: m_app_manager(app_manager)
@@ -62,7 +68,6 @@ namespace fms
 	void service::handle_receive_from(const boost::system::error_code &e, size_t bytes_received)
 	{
 		m_read_in_progress = false;
-//		std::cout << "got " << bytes_received << " bytes" << std::endl;
 		if (!e && bytes_received >= ePacketMinLen)
 		{
 			m_buffer.update(bytes_received);
@@ -252,6 +257,52 @@ namespace fms
 		write(m_serializer->packet(), m_sender_endpoint);
 	}
 
+	// Find the initiator's DH public key for `group` inside its FlashCrypto
+	// certificate, which is an RTMFP option list. The key is carried in a
+	// CERT_OPTION_DH_PUBLIC_KEY (0x1d) option whose value is <groupID VLU><key>.
+	// A static-mode client (rtmfp-cpp / librtmfp) carries one such option per
+	// supported group, so we must select the one matching the group we implement
+	// (group 2) instead of assuming a fixed offset. Returns nullptr if not found.
+	static const std::uint8_t *find_cert_dh_pubkey(const std::uint8_t *cert, std::uint32_t cert_len,
+		std::uint64_t group, std::uint16_t &out_len)
+	{
+		out_len = 0;
+		stream_array s(const_cast<std::uint8_t *>(cert));
+		s.update(cert_len);
+		try
+		{
+			while (s.available() > 0)
+			{
+				std::uint64_t const opt_len = s.read_vlu();
+				if (opt_len == 0)
+					break; // end-of-options marker
+				std::uint8_t *const type_start = s.read_pos();
+				std::uint64_t const type = s.read_vlu();
+				auto const type_bytes = static_cast<std::uint64_t>(s.read_pos() - type_start);
+				if (type_bytes > opt_len)
+					break;
+				std::uint64_t const val_len = opt_len - type_bytes;
+				std::uint8_t *const val = s.read_pos();
+				if (type == 0x1d) // CERT_OPTION_DH_PUBLIC_KEY
+				{
+					stream_array vs(val);
+					vs.update(static_cast<std::size_t>(val_len));
+					std::uint64_t const g = vs.read_vlu();
+					if (g == group)
+					{
+						out_len = static_cast<std::uint16_t>(vs.available());
+						return vs.read_pos();
+					}
+				}
+				s.skip(static_cast<std::size_t>(val_len));
+			}
+		}
+		catch (buffer_eof_exception &)
+		{
+		}
+		return nullptr;
+	}
+
 	void service::handle_iikeying(iikeying_chunk *iikc)
 	{
 		if (!echo_cookie_valid(iikc->cookie_echo(), iikc->cookie_len()))
@@ -269,7 +320,15 @@ namespace fms
 		dh2 *d = new dh2;
 		d->generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data());
 
-		d->generate_shared_secret(iikc->initator_cert() + 4, static_cast<std::uint16_t>(iikc->cert_len() - 4));
+		std::uint16_t ipk_len = 0;
+		const std::uint8_t *ipk = find_cert_dh_pubkey(iikc->initator_cert(), iikc->cert_len(), 2 /*group we implement*/, ipk_len);
+		if (ipk == nullptr)
+		{
+			// legacy Flash cert layout: DH public key at a fixed offset
+			ipk = iikc->initator_cert() + 4;
+			ipk_len = static_cast<std::uint16_t>(iikc->cert_len() - 4);
+		}
+		d->generate_shared_secret(ipk, ipk_len);
 
 		std::uint16_t size;
 		const std::uint8_t *rnonce = d->rnonce(size);

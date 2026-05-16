@@ -280,7 +280,20 @@ namespace fms
 		tmp.write(meta_data, sizeof(meta_data));
 		tmp.write_vlu(stream_id);
 		opts.create_option(option::eMetadata, tmp.read_pos(), tmp.available());
-		opts.create_option(option::eReturnFlowAssociation, 2 /*flow_id*/);
+		// The initiator (rtmfp-cpp/librtmfp) only accepts return flows opened on its
+		// *control* flow (the one carrying stream 0 / the connect) and demultiplexes
+		// streams by the metadata stream id above. So every data/response flow must
+		// return-associate with the initiator's control flow, not the per-stream
+		// command flow it happened to arrive on. (This was hardcoded to 2 — the flow
+		// id Flash uses for its control flow — which is why only Flash worked.)
+		vlu_t control_flow = flow_id;
+		for (auto const &p : m_flow_id_to_stream_id)
+			if (p.second == 0)
+			{
+				control_flow = p.first;
+				break;
+			}
+		opts.create_option(option::eReturnFlowAssociation, control_flow);
 		return create_sending_flow(opts);
 	}
 
@@ -507,6 +520,8 @@ namespace fms
 			flow_ptr flow;
 			if (k == i->second.end())
 			{
+				// create_associated_sending_flow return-associates with the control
+				// flow, so the per-command flow id here is only a fallback.
 				flow = create_associated_sending_flow(0, result->stream_id());
 				flow->usage() = flow::eAudioVideo;
 				i->second.insert(flow);
