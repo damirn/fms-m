@@ -93,7 +93,7 @@ namespace fms
 			auto *rac = dynamic_cast<range_ack_chunk *>(c);
 			return handle_range_ack(rac);
 		}
-		else if (c->type() == chunk::eFlowExceptionReportChunk)
+		if (c->type() == chunk::eFlowExceptionReportChunk)
 		{
 			auto *fec = dynamic_cast<flow_exception_report_chunk *>(c);
 			handle_flow_exception_report(fec);
@@ -199,9 +199,9 @@ namespace fms
 		vlu_t max_tsn = i->second->ack_fragments_until(rac->cumulative_ack());
 		if (max_tsn > m_max_tsn_ack)
 			m_max_tsn_ack = max_tsn;
-		for (auto j = rac->ranges().begin(); j != rac->ranges().end(); ++j)
+		for (auto & j : rac->ranges())
 		{
-			max_tsn = i->second->ack_fragments_for_range((*j).first, (*j).second);
+			max_tsn = i->second->ack_fragments_for_range(j.first, j.second);
 			if (max_tsn > m_max_tsn_ack)
 				m_max_tsn_ack = max_tsn;
 		}
@@ -652,9 +652,9 @@ namespace fms
 			std::string const ip = std::string(addr, 0, i);
 			std::string const port = std::string(addr, i + 1);
 			address a;
-			boost::asio::ip::address_v4 const ad = boost::asio::ip::address_v4::from_string(ip);
+			boost::asio::ip::address_v4 const ad = boost::asio::ip::make_address_v4(ip);
 			a.m_type = 0x01; // fixme: replace with enum
-			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(ad.to_ulong());
+			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(ad.to_uint());
 			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(static_cast<std::uint16_t>(std::stoul(port)));
 			m_addresses.push_back(a);
 		}

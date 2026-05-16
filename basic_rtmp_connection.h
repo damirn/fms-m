@@ -24,7 +24,7 @@ namespace fms
 	class basic_rtmp_connection : public client_session, public rtmp_raw_data, public std::enable_shared_from_this<basic_rtmp_connection>
 	{
 	public:
-		basic_rtmp_connection(std::uint32_t id, boost::asio::io_service &, rtmp_app_manager *);
+		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, rtmp_app_manager *);
 
 		~basic_rtmp_connection() override;
 
@@ -32,7 +32,7 @@ namespace fms
 		void close() override;
 		void post_close() override;
 
-		boost::asio::io_service &io_service()
+		boost::asio::io_context &io_service()
 		{
 			return m_io_service;
 		}
@@ -81,7 +81,7 @@ namespace fms
 		bool validate_client(std::uint8_t *);
 		static bool validate_client_scheme(std::uint8_t *, std::uint8_t);
 
-		boost::asio::io_service &m_io_service;
+		boost::asio::io_context &m_io_service;
 
 		// Timer for handshake
 		boost::asio::steady_timer m_hs_timer;

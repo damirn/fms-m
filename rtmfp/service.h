@@ -25,7 +25,7 @@ namespace fms
 	class service : private boost::noncopyable, public chunk_handler
 	{
 	public:
-		service(boost::asio::io_service &, std::uint16_t, rtmp_app_manager *);
+		service(boost::asio::io_context &, std::uint16_t, rtmp_app_manager *);
 		~service() override;
 
 		void notify()
@@ -35,7 +35,7 @@ namespace fms
 
 		void handle_net_group(group_ptr &, const session_ptr&);
 
-		boost::asio::io_service &io_service() const
+		boost::asio::io_context &io_service() const
 		{
 			return m_io_service;
 		}
@@ -75,7 +75,7 @@ namespace fms
 
 		rtmp_app_manager *m_app_manager;
 
-		boost::asio::io_service &m_io_service;
+		boost::asio::io_context &m_io_service;
 		boost::asio::ip::udp::socket m_socket;
 		boost::asio::ip::udp::endpoint m_sender_endpoint;
 		bool m_read_in_progress{false};

@@ -6,7 +6,11 @@
 
 #include <filesystem>
 #include <memory>
-#include <boost/process.hpp>
+#include <vector>
+#ifndef _WIN32
+#include <csignal>
+#include <unistd.h>
+#endif
 #include <utility>
 
 namespace fms
@@ -390,12 +394,21 @@ namespace fms
 			args.emplace_back("-s");
 			args.push_back(stream);
 
-#if defined(BOOST_POSIX_API)
+#ifndef _WIN32
+			// Launch the helper as a detached child (argv[0] is the executable).
+			// SIGCHLD is ignored so the kernel reaps it — no zombie, no wait().
 			::signal(SIGCHLD, SIG_IGN);
+			if (::fork() == 0)
+			{
+				std::vector<char *> argv;
+				argv.reserve(args.size() + 1);
+				for (const std::string &a : args)
+					argv.push_back(const_cast<char *>(a.c_str()));
+				argv.push_back(nullptr);
+				::execvp(argv[0], argv.data());
+				::_exit(127);   // exec failed
+			}
 #endif
-			// args[0] is the helper executable; the rest are its arguments.
-			std::vector<std::string> exec_args(args.begin() + 1, args.end());
-			boost::process::spawn(config::instance()->helper_app(), boost::process::args(exec_args));
 		}
 	}
 

@@ -6,12 +6,20 @@ if(POLICY CMP0167)
   cmake_policy(SET CMP0167 OLD)
 endif()
 
+# Have FindBoost do its own library/header search instead of delegating to Boost's
+# CMake config. Homebrew's boost@1.76 ships no config at all, and newer Boost's
+# config (e.g. 1.90 on Ubuntu 26.04 under CMake 4.x) fails the per-component
+# lookup; the direct search works consistently across all our toolchains.
+set(Boost_NO_BOOST_CMAKE ON)
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Code now uses std::chrono / std::filesystem; Boost.Log still needs date_time.
-set(BOOST_COMPONENTS date_time log log_setup program_options system thread)
+# Boost.System is header-only since 1.69, so it is not a linked component (newer
+# distros, e.g. Ubuntu 26.04 / Boost 1.90, no longer ship the stub library).
+set(BOOST_COMPONENTS date_time log log_setup program_options thread)
 
 if(APPLE)
   # Homebrew boost@1.76 is keg-only and ships no CMake config, so point the
