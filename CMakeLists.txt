@@ -168,3 +168,37 @@ if(BUILD_AMF_TESTS)
   endif()
   add_test(NAME amf_tests COMMAND amf_tests)
 endif()
+
+# ---------------------------------------------------------------------------
+# RTMP test/helper client (client/). Builds against the project's shared media
+# modules via a small static lib so the two pch.h files don't collide.
+# ---------------------------------------------------------------------------
+option(BUILD_CLIENT "Build the RTMP client tool" ON)
+if(BUILD_CLIENT)
+  add_library(fms_media_client STATIC
+    amf0.cpp amf3.cpp crypto.cpp flv_reader.cpp flv_writer.cpp rtmp_header.cpp
+    rtmp_message.cpp rtmp_protocol.cpp rtmp_raw_data.cpp rtmp_so_message.cpp util.cpp)
+  target_include_directories(fms_media_client PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp)
+  target_precompile_headers(fms_media_client PRIVATE pch.h)
+
+  # Reusable RTMP client library: everything under client/ except main.cpp.
+  add_library(rtmp_client_lib STATIC
+    client/config.cpp client/flv_sink.cpp client/nc_event_handler.cpp
+    client/net_client.cpp client/net_client_tunnel.cpp client/net_connection.cpp
+    client/net_stream.cpp client/ns_event_handler.cpp)
+  # client/ first so the client's own pch.h/headers win, then the project root.
+  # PUBLIC so consumers (the executable) inherit the include paths.
+  target_include_directories(rtmp_client_lib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/client ${CMAKE_CURRENT_SOURCE_DIR})
+  target_precompile_headers(rtmp_client_lib PRIVATE client/pch.h)
+  target_link_libraries(rtmp_client_lib PUBLIC fms_media_client ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(rtmp_client_lib PUBLIC Threads::Threads ${CMAKE_DL_LIBS})
+  endif()
+
+  # Thin command-line tool on top of the client library.
+  add_executable(rtmp_client client/main.cpp)
+  target_link_libraries(rtmp_client PRIVATE rtmp_client_lib)
+endif()
