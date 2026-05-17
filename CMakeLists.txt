@@ -149,3 +149,20 @@ else()
   find_package(Threads REQUIRED)
   target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS} Threads::Threads)
 endif()
+
+# ---------------------------------------------------------------------------
+# Unit tests (AMF): -DBUILD_AMF_TESTS=ON.  The AMF (de)serializers are the only
+# TUs pulled in, so tests build/run without the audio/RTMP/RTMFP stack.
+# ---------------------------------------------------------------------------
+option(BUILD_AMF_TESTS "Build AMF serialization unit tests" OFF)
+if(BUILD_AMF_TESTS)
+  enable_testing()
+  # The AMF serializers use Boost only for headers (via stream_array.h), so tests
+  # need Boost includes but link no Boost libs — avoids dragging in Boost.Log/ICU.
+  add_executable(amf_tests test/amf3_test.cpp amf3.cpp)
+  if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(amf_tests Threads::Threads)
+  endif()
+  add_test(NAME amf_tests COMMAND amf_tests)
+endif()
