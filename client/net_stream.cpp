@@ -1,5 +1,6 @@
 #include "pch.h"
 
+#include "amf0.h"
 #include "net_connection.h"
 #include "net_stream.h"
 
@@ -48,6 +49,38 @@ namespace fms::rtmp_client
 			}
 			create_stream(stream);
 		}
+	}
+
+	void net_stream::pause(bool paused, std::uint32_t ms)
+	{
+		net_connection_ptr const nc = m_connection.lock();
+		if (!nc)
+			return;
+		// ["pause", 0, null, pauseFlag, milliseconds]
+		rtmp_message_invoke_ptr const p(new rtmp_message_invoke("pause", 0.0f));
+		p->stream_id() = m_stream_id;
+		amf0_null_ptr const null(new amf0_null);
+		amf0_boolean_ptr const flag(new amf0_boolean(paused));
+		amf0_number_ptr const ts(new amf0_number(ms));
+		p->add_parameter(null);
+		p->add_parameter(flag);
+		p->add_parameter(ts);
+		nc->send_rtmp_message(p);
+	}
+
+	void net_stream::seek(std::uint32_t ms)
+	{
+		net_connection_ptr const nc = m_connection.lock();
+		if (!nc)
+			return;
+		// ["seek", 0, null, milliseconds]
+		rtmp_message_invoke_ptr const p(new rtmp_message_invoke("seek", 0.0f));
+		p->stream_id() = m_stream_id;
+		amf0_null_ptr const null(new amf0_null);
+		amf0_number_ptr const target(new amf0_number(ms));
+		p->add_parameter(null);
+		p->add_parameter(target);
+		nc->send_rtmp_message(p);
 	}
 
 	void net_stream::send_msg(const rtmp_message_ptr& msg)
