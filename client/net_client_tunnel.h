@@ -33,7 +33,7 @@ namespace fms::rtmp_client
 		void send_open();
 		void read_open();
 		boost::tribool handle_http_header(std::size_t);
-		bool get_content_lenght();
+		bool get_content_length();
 		void read_cid();
 		void handle_content();
 
