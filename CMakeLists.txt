@@ -209,4 +209,15 @@ if(BUILD_CLIENT)
   target_link_libraries(b2b_test PRIVATE rtmp_client_lib)
   target_compile_definitions(b2b_test PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
   add_dependencies(b2b_test ${PROJECT_NAME})
+
+  # Characterization tests for the RTMP chunk parser (rtmp_raw_data::parse_data),
+  # linked against the shared media lib. Bytes in, messages out.
+  add_executable(chunk_parser_test test/chunk_parser_test.cpp test/test_main.cpp)
+  target_include_directories(chunk_parser_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
+  target_link_libraries(chunk_parser_test PRIVATE fms_media_client ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(chunk_parser_test PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
+  endif()
 endif()
