@@ -48,8 +48,8 @@ namespace fms
 		// Initialize RTMFP service
 		void init_rtmfp_service();
 
-		// Handle completion of an asynchronous accept operation.
-		void handle_accept(const boost::system::error_code &);
+		// Arm the next RTMP accept (async_accept -> socket, then adopt).
+		void do_accept();
 
 		// Handle completion of an asynchronous accept operation.
 		void handle_http_accept(const boost::system::error_code &);
@@ -68,9 +68,6 @@ namespace fms
 
 		// Acceptor used to listen for incoming connections on HTTP port.
 		boost::asio::ip::tcp::acceptor m_http_acceptor;
-
-		// The next connection to be accepted.
-		rtmp_connection_ptr m_connection;
 
  		// The next HTTP connection to be accepted.
  		http_connection_ptr m_http_connection;

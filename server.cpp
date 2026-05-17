@@ -55,8 +55,7 @@ namespace fms
 			throw server_exception(err.c_str());
 		}
 		m_acceptor.listen();
-		m_acceptor.async_accept(m_connection->socket(),
-			[this](const boost::system::error_code &ec) { handle_accept(ec); });
+		do_accept();
 
 		endpoint = resolver.resolve(address, config::instance()->rtmpt_port()).begin()->endpoint();
 		m_http_acceptor.open(endpoint.protocol(), ec);
@@ -80,22 +79,24 @@ namespace fms
 			[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
 	}
 
-	void server::handle_accept(const boost::system::error_code& e)
+	void server::do_accept()
 	{
-		if (!e)
+		// Modern asio form: accept onto a specific io_context (round-robin) and
+		// receive the ready socket, rather than pre-creating a connection and
+		// accepting into its socket. The connection is built on the same context
+		// and adopts the socket, so the socket and its owner never straddle
+		// io_contexts.
+		boost::asio::io_context &io = m_io_service_pool.get_io_service();
+		m_acceptor.async_accept(io, [this, iop = &io](const boost::system::error_code &ec, boost::asio::ip::tcp::socket sock)
 		{
-			m_connection->start();
-			m_connection = m_app_manager->create_connection();
-			m_acceptor.async_accept(m_connection->socket(),
-				[this](const boost::system::error_code &ec) { handle_accept(ec); });
-		}
-#ifdef WIN32
-		else if (e.value() == ERROR_SEM_TIMEOUT)
-		{
-			m_acceptor.async_accept(m_connection->socket(),
-				[this](const boost::system::error_code &ec) { handle_accept(ec); });
-		}
-#endif
+			if (!ec)
+			{
+				rtmp_connection_ptr const conn = m_app_manager->create_connection(*iop);
+				conn->adopt_socket(std::move(sock));
+				conn->start();
+			}
+			do_accept();
+		});
 	}
 
 	void server::handle_http_accept(const boost::system::error_code& e)
@@ -128,7 +129,6 @@ namespace fms
 
 	void server::create_connections()
 	{
-		m_connection = m_app_manager->create_connection();
 		m_http_connection = m_app_manager->create_http_connection();
 	}
 

@@ -48,10 +48,10 @@ namespace fms
 		return nullptr;
 	}
 
-	rtmp_connection_ptr rtmp_app_manager::create_connection()
+	rtmp_connection_ptr rtmp_app_manager::create_connection(boost::asio::io_context &io)
 	{
 		std::unique_lock const lock(m_mutex);
-		rtmp_connection_ptr tmp(new rtmp_connection(m_connection_counter, m_io_service_pool.get_io_service(), this));
+		rtmp_connection_ptr tmp(new rtmp_connection(m_connection_counter, io, this));
 		m_connections[m_connection_counter++] = tmp;
 		return tmp;
 	}

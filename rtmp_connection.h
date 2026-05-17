@@ -32,6 +32,13 @@ namespace fms
 			return m_socket;
 		}
 
+		// Adopt a socket accepted by async_accept(executor). The moved-in socket
+		// must belong to the same io_context this connection was created on.
+		void adopt_socket(boost::asio::ip::tcp::socket &&s)
+		{
+			m_socket = std::move(s);
+		}
+
 	protected:
 		// Handle protocol hand shake
 		void handle_hand_shake(const boost::system::error_code &, std::size_t);
