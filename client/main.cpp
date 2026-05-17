@@ -1,0 +1,32 @@
+#include "pch.h"
+
+#include <iostream>
+
+#include "config.h"
+#include "nc_event_handler.h"
+
+int main(int argc, char *argv[])
+{
+	bool const cli_ok = config::instance()->parse_cli(argc, argv);
+	if (!cli_ok)
+		return -1;
+
+	try
+	{
+		boost::asio::io_context service;
+		fms::rtmp_client::nc_event_handler eh(service);
+		fms::rtmp_client::net_connection_ptr const client(new fms::rtmp_client::net_connection(service, eh, true));
+		eh.set_client(client);
+		client->connect(config::instance()->url());
+		service.run();
+	}
+	catch (std::runtime_error &e)
+	{
+		std::cout << "Fatal: " << e.what() << std::endl;
+	}
+	catch (...)
+	{
+		std::cout << "Unknown exception!" << std::endl;
+	}
+	return 0;
+}
