@@ -35,8 +35,17 @@ Legend: **[P1]** interop-breaking / high value · **[P2]** meaningful capability
 - **[P2] FMLE/OBS publish verbs ignored:** `releaseStream`, `FCPublish`,
   `FCUnpublish`, `FCSubscribe` (bare `publish` still works, but publishers that
   wait on `onFCPublish` can stall/warn).
-- **[P2] AMF0 gaps:** Date, Reference, TypedObject, XMLDocument throw
-  (`amf0.cpp:373`).
+- **[DONE — branch feat/amf3] AMF0 gaps.** Implemented Date (0x0B), XMLDocument
+  (0x0F), TypedObject (0x10), Unsupported (0x0D), and Reference (0x07) with an
+  AMF0 object reference table (anonymous/typed objects + arrays register; refs
+  resolve to the same instance); previously these threw. Tests in
+  `test/amf0_test.cpp` (shared doctest main): exact-byte serialization +
+  deserialization vectors for every handled type (number, boolean, string,
+  object, null, undefined, reference, ecma/strict array, date, long string,
+  unsupported, xml-document, typed object, amf3 container) + round-trips + the
+  reference-table regression + malformed-input throws. Fuzzer now covers both
+  AMF0 and AMF3 (3M iterations clean under ASan). Not implemented (reserved):
+  MovieClip (0x04), Recordset (0x0E) — still throw.
 - **[P3] Abort Message (0x02) not implemented** — hits `default: return false`
   (`rtmp_protocol.cpp:55`).
 - **[P3] Can't *require* SWF verification / SecureToken** (Adobe anti-leech).

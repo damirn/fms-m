@@ -271,6 +271,13 @@ namespace fms
 			: amf0_type(eAMF0Object)
 		{}
 
+	protected:
+		// for subtypes that reuse the object machinery (e.g. typed objects)
+		explicit amf0_object(etype t)
+			: amf0_type(t)
+		{}
+
+	public:
 		indexed_iterator begin_indexed()
 		{
 			return m_value.get<0>().begin();
@@ -510,6 +517,118 @@ namespace fms
 	};
 
 	using amf0_long_string_ptr = std::shared_ptr<amf0_long_string>;
+
+	// ms since the UNIX epoch (UTC); AMF0 also carries a timezone that is defined
+	// to always be 0 and is not preserved.
+	class amf0_date : public amf0_type
+	{
+	public:
+		amf0_date()
+			: amf0_type(eAMF0Date)
+		{}
+
+		explicit amf0_date(double ms)
+			: amf0_type(eAMF0Date), m_ms(ms)
+		{}
+
+		explicit operator double() const override
+		{
+			return m_ms;
+		}
+
+		using amf0_type::operator bool;
+		using amf0_type::operator std::string;
+
+		double &value()
+		{
+			return m_ms;
+		}
+
+		const double &value() const
+		{
+			return m_ms;
+		}
+
+	protected:
+		double m_ms{0.0};
+	};
+
+	using amf0_date_ptr = std::shared_ptr<amf0_date>;
+
+	// XML document flattened to a UTF-8 string (u32-length prefixed on the wire).
+	class amf0_xml_document : public amf0_type
+	{
+	public:
+		amf0_xml_document()
+			: amf0_type(eAMF0XMLDocument)
+		{}
+
+		explicit amf0_xml_document(std::string value)
+			: amf0_type(eAMF0XMLDocument), m_value(std::move(value))
+		{}
+
+		explicit operator std::string() const override
+		{
+			return m_value;
+		}
+
+		using amf0_type::operator bool;
+		using amf0_type::operator double;
+
+		std::string &value()
+		{
+			return m_value;
+		}
+
+		const std::string &value() const
+		{
+			return m_value;
+		}
+
+	protected:
+		std::string m_value;
+	};
+
+	using amf0_xml_document_ptr = std::shared_ptr<amf0_xml_document>;
+
+	// A typed object is an object body prefixed with a (u16-length) class name.
+	class amf0_typed_object : public amf0_object
+	{
+	public:
+		amf0_typed_object()
+			: amf0_object(eAMF0TypedObject)
+		{}
+
+		explicit amf0_typed_object(std::string class_name)
+			: amf0_object(eAMF0TypedObject), m_class_name(std::move(class_name))
+		{}
+
+		std::string &class_name()
+		{
+			return m_class_name;
+		}
+
+		const std::string &class_name() const
+		{
+			return m_class_name;
+		}
+
+	protected:
+		std::string m_class_name;
+	};
+
+	using amf0_typed_object_ptr = std::shared_ptr<amf0_typed_object>;
+
+	// The "unsupported" marker: a value the sender could not serialize. No payload.
+	class amf0_unsupported : public amf0_type
+	{
+	public:
+		amf0_unsupported()
+			: amf0_type(eAMF0Unsupported)
+		{}
+	};
+
+	using amf0_unsupported_ptr = std::shared_ptr<amf0_unsupported>;
 
 	class amf3_type;
 	using amf3_type_ptr = std::shared_ptr<amf3_type>;
