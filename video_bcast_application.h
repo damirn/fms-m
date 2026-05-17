@@ -13,6 +13,9 @@
 
 #include "rtmp_application.h"
 #include "stream_client.h"
+#include "vod_session.h"
+
+#include <map>
 
 namespace fms
 {
@@ -54,6 +57,23 @@ namespace fms
 
 		virtual void handle_invoke_play(rtmp_message_invoke_ptr, std::uint32_t);
 		virtual void handle_invoke_publish(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
+
+		void handle_invoke_pause(const rtmp_message_invoke_ptr&, std::uint32_t);
+		void handle_invoke_seek(const rtmp_message_invoke_ptr&, std::uint32_t);
+
+		// FMLE/OBS publish handshake verbs (releaseStream / FCPublish / FCUnpublish /
+		// FCSubscribe). We acknowledge them so those encoders don't stall/warn.
+		void handle_invoke_release_stream(const rtmp_message_invoke_ptr&, std::uint32_t);
+		void handle_invoke_fcpublish(const rtmp_message_invoke_ptr&, std::uint32_t);
+		void handle_invoke_fcunpublish(const rtmp_message_invoke_ptr&, std::uint32_t);
+		void handle_invoke_fcsubscribe(const rtmp_message_invoke_ptr&, std::uint32_t);
+
+		// VOD playback of a saved .flv (used when a play target has no live publisher).
+		bool start_vod(std::uint32_t connection_id, const rtmp_message_invoke_ptr&, const std::string &stream_name);
+		void vod_tick(const vod_session_ptr&);
+		void vod_pause(std::uint32_t connection_id, std::uint32_t stream_id, bool pause);
+		void vod_seek(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms);
+		void stop_vod(const stream_client_id_t &);
 
 		void handle_publish_record(const rtmp_message_invoke_ptr&, std::uint32_t, const std::string &);
 
@@ -167,6 +187,10 @@ namespace fms
 
 		using flv_writer_map_t = std::map<stream_client_id_t, flv_writer *>;
 		flv_writer_map_t m_flv_writers;
+
+		// active VOD playbacks, keyed by (connection_id, stream_id)
+		using vod_map_t = std::map<stream_client_id_t, vod_session_ptr>;
+		vod_map_t m_vod;
 
 		boost::asio::steady_timer m_timer;
 	};

@@ -160,7 +160,7 @@ if(BUILD_AMF_TESTS)
   # The AMF serializers use Boost only for headers (via stream_array.h), so tests
   # need Boost includes but link no Boost libs — avoids dragging in Boost.Log/ICU.
   add_executable(amf_tests
-    test/test_main.cpp test/amf0_test.cpp test/amf3_test.cpp
+    test/test_main.cpp test/amf0_test.cpp test/amf3_test.cpp test/media_path_test.cpp
     amf0.cpp amf3.cpp)
   if(NOT APPLE)
     find_package(Threads REQUIRED)
