@@ -253,7 +253,7 @@ namespace fms::rtmp_client
 			try
 			{
 				m_input_buffer_int.skip(7);
-				if (!get_content_lenght())
+				if (!get_content_length())
 					return false;
 				m_input_buffer_int.rewind();
 				m_input_buffer_int.skip((std::uint8_t *)pos - m_input_buffer_int.read_pos() + 4);
@@ -271,7 +271,7 @@ namespace fms::rtmp_client
 		return boost::indeterminate;
 	}
 
-	bool net_client_tunnel::get_content_lenght()
+	bool net_client_tunnel::get_content_length()
 	{
 		std::uint8_t  const*pos = reinterpret_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(m_input_buffer_int.read_pos()), m_input_buffer_int.available(), "\r\nContent-Length: ", 18));
 		if (pos != nullptr)
