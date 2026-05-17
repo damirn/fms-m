@@ -30,7 +30,7 @@ namespace fms
 		static void write_number(stream_array &, const amf0_number_ptr&);
 
 		bool read_object(stream_array &, const amf0_object_ptr&);
-		void write_object(stream_array &, const amf0_object_ptr&);
+		static void write_object(stream_array &, const amf0_object_ptr&);
 
 		static bool read_null(stream_array &);
 		static void write_null(stream_array &);
@@ -39,10 +39,10 @@ namespace fms
 		static void write_undefined(stream_array &);
 
 		bool read_mixed_array(stream_array &, const amf0_ecma_array_ptr&);
-		void write_mixed_array(stream_array &, const amf0_ecma_array_ptr&);
+		static void write_mixed_array(stream_array &, const amf0_ecma_array_ptr&);
 
 		bool read_strict_array(stream_array &, const amf0_strict_array_ptr&);
-		void write_strict_array(stream_array &, const amf0_strict_array_ptr&);
+		static void write_strict_array(stream_array &, const amf0_strict_array_ptr&);
 
 		static bool read_long_string(stream_array &, const amf0_long_string_ptr&);
 		static void write_long_string(stream_array &, const amf0_long_string_ptr&);
@@ -54,13 +54,13 @@ namespace fms
 		static void write_xml_document(stream_array &, const amf0_xml_document_ptr&);
 
 		bool read_typed_object(stream_array &, const amf0_typed_object_ptr&);
-		void write_typed_object(stream_array &, const amf0_typed_object_ptr&);
+		static void write_typed_object(stream_array &, const amf0_typed_object_ptr&);
 
 		static bool read_amf3_container(stream_array &, const amf0_amf3_container_ptr&);
 		static void write_amf3_container(stream_array &, const amf0_amf3_container_ptr&);
 
 		amf0_type_ptr read(stream_array &);
-		void write(stream_array &, const amf0_type_ptr&);
+		static void write(stream_array &, const amf0_type_ptr&);
 
 	private:
 		// AMF0 object reference table (spec: anonymous/typed objects and arrays can
