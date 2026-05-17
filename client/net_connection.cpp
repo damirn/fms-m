@@ -70,9 +70,12 @@ namespace fms::rtmp_client
 		m_input_buffer = m_client->input_buffer();
 		m_output_buffer = m_client->output_buffer();
 
-		m_client->set_connect_cb([self = shared_from_this()](bool ok, const std::string &s) { self->handle_connect(ok, s); });
-		m_client->set_read_cb([self = shared_from_this()](bool ok, std::size_t n) { self->handle_read_data(ok, n); });
-		m_client->set_write_cb([self = shared_from_this()](bool ok, std::size_t n) { self->handle_write_data(ok, n); });
+		// Capture weak refs: net_connection owns m_client, so a strong self-capture
+		// here would form a net_connection <-> net_client cycle that never frees
+		// (caught by ASan/LSan). Lock the weak ref inside each callback instead.
+		m_client->set_connect_cb([weak = weak_from_this()](bool ok, const std::string &s) { if (auto self = weak.lock()) self->handle_connect(ok, s); });
+		m_client->set_read_cb([weak = weak_from_this()](bool ok, std::size_t n) { if (auto self = weak.lock()) self->handle_read_data(ok, n); });
+		m_client->set_write_cb([weak = weak_from_this()](bool ok, std::size_t n) { if (auto self = weak.lock()) self->handle_write_data(ok, n); });
 		m_client->connect(u.m_host, u.m_port);
 	}
 
