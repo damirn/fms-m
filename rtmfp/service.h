@@ -30,14 +30,14 @@ namespace fms
 
 		void notify()
 		{
-			boost::asio::post(m_io_service, [this]() { handle_notify(); });
+			boost::asio::post(m_io_context, [this]() { handle_notify(); });
 		}
 
 		void handle_net_group(group_ptr &, const session_ptr&);
 
-		boost::asio::io_context &io_service() const
+		boost::asio::io_context &io_context() const
 		{
-			return m_io_service;
+			return m_io_context;
 		}
 
 		void remove(const session_ptr& s)
@@ -75,7 +75,7 @@ namespace fms
 
 		rtmp_app_manager *m_app_manager;
 
-		boost::asio::io_context &m_io_service;
+		boost::asio::io_context &m_io_context;
 		boost::asio::ip::udp::socket m_socket;
 		boost::asio::ip::udp::endpoint m_sender_endpoint;
 		bool m_read_in_progress{false};

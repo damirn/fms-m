@@ -6,10 +6,10 @@
 
 namespace fms
 {
-	http_connection::http_connection(std::uint32_t id, boost::asio::io_context &io_service, rtmp_app_manager *app_manager, rtmpt_manager *rtmpt_manager)
-		: m_socket(io_service)
-		, m_timer(io_service)
-		, m_io_service(io_service)
+	http_connection::http_connection(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager, rtmpt_manager *rtmpt_manager)
+		: m_socket(io_context)
+		, m_timer(io_context)
+		, m_io_context(io_context)
 		, m_id(id)
 		, m_app_manager(app_manager)
 		, m_rtmpt_manager(rtmpt_manager)

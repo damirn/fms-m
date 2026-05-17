@@ -21,7 +21,7 @@ namespace fms
 
 		void notify() override
 		{
-			boost::asio::post(m_io_service, [self = shared_from_this()]() { self->handle_notify(); });
+			boost::asio::post(m_io_context, [self = shared_from_this()]() { self->handle_notify(); });
 		}
 
 		void close() override;

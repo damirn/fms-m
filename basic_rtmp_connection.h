@@ -30,9 +30,9 @@ namespace fms
 		void close() override;
 		void post_close() override;
 
-		boost::asio::io_context &io_service()
+		boost::asio::io_context &io_context()
 		{
-			return m_io_service;
+			return m_io_context;
 		}
 
 		void handle_bytes_read(std::size_t) override;
@@ -79,7 +79,7 @@ namespace fms
 		bool validate_client(std::uint8_t *);
 		static bool validate_client_scheme(std::uint8_t *, std::uint8_t);
 
-		boost::asio::io_context &m_io_service;
+		boost::asio::io_context &m_io_context;
 
 		// Timer for handshake
 		boost::asio::steady_timer m_hs_timer;

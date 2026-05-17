@@ -15,8 +15,8 @@ namespace fms
 {
 	std::uint8_t rtmpt_session::m_poll_time[] = {0x01, 0x03, 0x05, 0x09, 0x11, 0x21};
 
-	rtmpt_session::rtmpt_session(std::uint32_t id, boost::asio::io_context &io_service, rtmp_app_manager *app_manager)
-		: basic_rtmp_connection(id, io_service, app_manager)
+	rtmpt_session::rtmpt_session(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager)
+		: basic_rtmp_connection(id, io_context, app_manager)
 		, m_rtmpt_manager(app_manager->get_rtmpt_manager())
 		 
 	{}

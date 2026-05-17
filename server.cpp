@@ -13,9 +13,9 @@ namespace fms
 		: server(config::instance()->threads()) {}
 
 	server::server(std::size_t io_pool_size)
-		: m_io_service_pool(io_pool_size)
-		, m_acceptor(m_io_service_pool.get_io_service())
-		, m_http_acceptor(m_io_service_pool.get_io_service()) {}
+		: m_io_context_pool(io_pool_size)
+		, m_acceptor(m_io_context_pool.get_io_context())
+		, m_http_acceptor(m_io_context_pool.get_io_context()) {}
 
 	server::~server()
 	{
@@ -25,17 +25,17 @@ namespace fms
 
 	void server::run()
 	{
-		m_io_service_pool.run();
+		m_io_context_pool.run();
 	}
 
 	void server::stop()
 	{
-		m_io_service_pool.stop();
+		m_io_context_pool.stop();
 	}
 
 	void server::init_acceptors(const std::string &address)
 	{
-		boost::asio::ip::tcp::resolver resolver(m_io_service_pool.get_io_service());
+		boost::asio::ip::tcp::resolver resolver(m_io_context_pool.get_io_context());
 		boost::asio::ip::tcp::endpoint endpoint = resolver.resolve(address, config::instance()->rtmp_port()).begin()->endpoint();
 
 		boost::system::error_code ec;
@@ -86,7 +86,7 @@ namespace fms
 		// accepting into its socket. The connection is built on the same context
 		// and adopts the socket, so the socket and its owner never straddle
 		// io_contexts.
-		boost::asio::io_context &io = m_io_service_pool.get_io_service();
+		boost::asio::io_context &io = m_io_context_pool.get_io_context();
 		m_acceptor.async_accept(io, [this, iop = &io](const boost::system::error_code &ec, boost::asio::ip::tcp::socket sock)
 		{
 			if (!ec)
@@ -119,7 +119,7 @@ namespace fms
 
 	void server::create_applications()
 	{
-		m_app_manager = new rtmp_app_manager(m_io_service_pool);
+		m_app_manager = new rtmp_app_manager(m_io_context_pool);
 
 		rtmp_application *bc = new video_bcast_application(m_app_manager);
 		m_app_manager->register_rtmp_app(bc);
@@ -142,6 +142,6 @@ namespace fms
 
 	void server::init_rtmfp_service()
 	{
-		m_rtmfp_service = new service(m_io_service_pool.get_io_service(), config::instance()->rtmpf_port(), m_app_manager);
+		m_rtmfp_service = new service(m_io_context_pool.get_io_context(), config::instance()->rtmpf_port(), m_app_manager);
 	}
 }

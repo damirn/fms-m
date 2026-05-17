@@ -31,9 +31,9 @@ namespace fms
 		, 
 		 m_outgoing_sid(reserved_sid)
 		, m_endpoint(ep)
-		, m_timer(srv->io_service())
-		, m_alarm(srv->io_service())
-		, m_strand(srv->io_service())
+		, m_timer(srv->io_context())
+		, m_alarm(srv->io_context())
+		, m_strand(srv->io_context())
 		 
 	{
 		m_parser = new parser(*this);

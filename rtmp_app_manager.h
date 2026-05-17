@@ -10,7 +10,7 @@
 #include <boost/logic/tribool.hpp>
 
 #include "http_connection.h"
-#include "io_service_pool.h"
+#include "io_context_pool.h"
 #include "rtmp_connection.h"
 #include "rtmpt_session.h"
 #include "stats.h"
@@ -35,7 +35,7 @@ namespace fms
 	class rtmp_app_manager : boost::noncopyable
 	{
 	public:
-		explicit rtmp_app_manager(io_service_pool &);
+		explicit rtmp_app_manager(io_context_pool &);
 		~rtmp_app_manager();
 
 		void register_rtmp_app(rtmp_application *);
@@ -61,9 +61,9 @@ namespace fms
 
 		boost::tribool handle_message(const rtmp_message_ptr&, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
 
-		io_service_pool &get_io_service_pool()
+		io_context_pool &get_io_context_pool()
 		{
-			return m_io_service_pool;
+			return m_io_context_pool;
 		}
 
 		rtmpt_manager *get_rtmpt_manager()
@@ -98,7 +98,7 @@ namespace fms
 		void start_timer();
 		void handle_timer(const boost::system::error_code &);
 
-		io_service_pool &m_io_service_pool;
+		io_context_pool &m_io_context_pool;
 		std::uint32_t m_connection_counter{0};
 
 		using app_map_t = std::map<std::string, rtmp_application *>;
@@ -118,7 +118,7 @@ namespace fms
 		std::mutex m_mutex;
 		netstream_stats_map_t m_netstream_stats;
 
-		boost::asio::io_context &m_io_service;
+		boost::asio::io_context &m_io_context;
 		boost::asio::steady_timer m_timer;
 		enum { _eTimeout = 5 };
 	};
