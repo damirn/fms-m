@@ -3,6 +3,7 @@
 #include <deque>
 
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/detail/socket_ops.hpp>   // host_to_network_long (write_uint32_3)
 
 #include "dynamic_array.h"
 

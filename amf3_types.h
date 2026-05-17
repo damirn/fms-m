@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
 #include <exception>
 #include <map>
 #include <string>
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace fms
 {
@@ -102,10 +104,46 @@ namespace fms
 		}
 
 	protected:
-		std::uint32_t m_value;
+		std::uint32_t m_value{0};
 	};
 
 	using amf3_integer_type_ptr = std::shared_ptr<amf3_integer_type>;
+
+	class amf3_double_type : public amf3_type
+	{
+	public:
+		amf3_double_type()
+			: amf3_type(eAMF3Double)
+		{}
+
+		explicit amf3_double_type(double value)
+			: amf3_type(eAMF3Double)
+			, m_value(value)
+		{}
+
+		explicit operator double() const override
+		{
+			return m_value;
+		}
+
+		using amf3_type::operator bool;
+		using amf3_type::operator std::string;
+
+		double &value()
+		{
+			return m_value;
+		}
+
+		const double &value() const
+		{
+			return m_value;
+		}
+
+	protected:
+		double m_value{0.0};
+	};
+
+	using amf3_double_type_ptr = std::shared_ptr<amf3_double_type>;
 
 	class amf3_string_type : public amf3_type
 	{
@@ -144,6 +182,106 @@ namespace fms
 
 	using amf3_string_type_ptr = std::shared_ptr<amf3_string_type>;
 
+	// XML (eAMF3XML) and legacy XMLDocument (eAMF3XMLDoc) are both flattened to a
+	// UTF-8 string on the wire; the marker distinguishes them.
+	class amf3_xml_type : public amf3_type
+	{
+	public:
+		explicit amf3_xml_type(etype t)
+			: amf3_type(t)
+		{}
+
+		amf3_xml_type(etype t, const std::string &value)
+			: amf3_type(t), m_value(value)
+		{}
+
+		explicit operator std::string() const override
+		{
+			return m_value;
+		}
+
+		using amf3_type::operator bool;
+		using amf3_type::operator double;
+
+		std::string &value()
+		{
+			return m_value;
+		}
+
+		const std::string &value() const
+		{
+			return m_value;
+		}
+
+	protected:
+		std::string m_value;
+	};
+
+	using amf3_xml_type_ptr = std::shared_ptr<amf3_xml_type>;
+
+	class amf3_date_type : public amf3_type
+	{
+	public:
+		amf3_date_type()
+			: amf3_type(eAMF3Date)
+		{}
+
+		explicit amf3_date_type(double ms)
+			: amf3_type(eAMF3Date), m_ms(ms)
+		{}
+
+		// value is milliseconds since the UNIX epoch (UTC)
+		explicit operator double() const override
+		{
+			return m_ms;
+		}
+
+		using amf3_type::operator bool;
+		using amf3_type::operator std::string;
+
+		double &value()
+		{
+			return m_ms;
+		}
+
+		const double &value() const
+		{
+			return m_ms;
+		}
+
+	protected:
+		double m_ms{0.0};
+	};
+
+	using amf3_date_type_ptr = std::shared_ptr<amf3_date_type>;
+
+	class amf3_bytearray_type : public amf3_type
+	{
+	public:
+		amf3_bytearray_type()
+			: amf3_type(eAMF3ByteArray)
+		{}
+
+		explicit amf3_bytearray_type(std::string bytes)
+			: amf3_type(eAMF3ByteArray), m_bytes(std::move(bytes))
+		{}
+
+		std::string &value()
+		{
+			return m_bytes;
+		}
+
+		const std::string &value() const
+		{
+			return m_bytes;
+		}
+
+	protected:
+		std::string m_bytes;  // raw bytes
+	};
+
+	using amf3_bytearray_type_ptr = std::shared_ptr<amf3_bytearray_type>;
+
 	namespace amf3_util
 	{
 		template<typename T> T get(const amf3_type_ptr&)
@@ -177,6 +315,15 @@ namespace fms
 				amf3_integer_type_ptr const num = std::dynamic_pointer_cast<amf3_integer_type>(v);
 				return num->value();
 			}
+			throw amf3_illegal_cast();
+		}
+
+		template<> inline double get<double>(const amf3_type_ptr& v)
+		{
+			if (v->type() == amf3_type::eAMF3Double)
+				return std::dynamic_pointer_cast<amf3_double_type>(v)->value();
+			if (v->type() == amf3_type::eAMF3Integer)
+				return std::dynamic_pointer_cast<amf3_integer_type>(v)->value();
 			throw amf3_illegal_cast();
 		}
 	}
@@ -236,4 +383,43 @@ namespace fms
 	};
 
 	using amf3_object_type_ptr = std::shared_ptr<amf3_object_type>;
+
+	// ActionScript Array: a dense (ordinal) portion plus an associative
+	// (string-keyed / ECMA) portion.
+	class amf3_array_type : public amf3_type
+	{
+	public:
+		amf3_array_type()
+			: amf3_type(eAMF3Array)
+		{}
+
+		using assoc_map_t = std::map<std::string, amf3_type_ptr>;
+		using dense_vec_t = std::vector<amf3_type_ptr>;
+
+		dense_vec_t &dense()
+		{
+			return m_dense;
+		}
+
+		const dense_vec_t &dense() const
+		{
+			return m_dense;
+		}
+
+		assoc_map_t &assoc()
+		{
+			return m_assoc;
+		}
+
+		const assoc_map_t &assoc() const
+		{
+			return m_assoc;
+		}
+
+	protected:
+		dense_vec_t m_dense;
+		assoc_map_t m_assoc;
+	};
+
+	using amf3_array_type_ptr = std::shared_ptr<amf3_array_type>;
 }

@@ -1,10 +1,15 @@
 #include "pch.h"
 #include "amf3.h"
 
+#include <cstring>
+
 namespace fms
 {
 	amf3_type_ptr amf3::read(stream_array &buffer)
 	{
+		if (m_depth == 0)          // top-level value: fresh reference context (spec 4.1)
+			reset_refs();
+
 		if (++m_depth > eMaxDepth)   // bound recursion on hostile nested input
 			throw amf3_read_exception();
 		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } guard{ m_depth };
@@ -20,14 +25,23 @@ namespace fms
 			return read_empty_type(buffer, type);
 		case amf3_type::eAMF3Integer:
 			return read_integer(buffer);
+		case amf3_type::eAMF3Double:
+			return read_double(buffer);
 		case amf3_type::eAMF3String:
 			return read_string(buffer);
+		case amf3_type::eAMF3XMLDoc:
+		case amf3_type::eAMF3XML:
+			return read_xml(buffer, type);
+		case amf3_type::eAMF3Date:
+			return read_date(buffer);
+		case amf3_type::eAMF3Array:
+			return read_array(buffer);
 		case amf3_type::eAMF3Object:
 			return read_object(buffer);
+		case amf3_type::eAMF3ByteArray:
+			return read_bytearray(buffer);
 		default:
-			{
-				throw amf3_read_exception();
-			}
+			throw amf3_read_exception();
 		}
 	}
 
@@ -41,83 +55,73 @@ namespace fms
 		case amf3_type::eAMF3Null:
 		case amf3_type::eAMF3False:
 		case amf3_type::eAMF3True:
-			{
-				amf3_empty_type_ptr const tmp = std::dynamic_pointer_cast<amf3_empty_type>(type);
-				write_empty_type(buffer, tmp);
-				break;
-			}
+			write_empty_type(buffer, std::dynamic_pointer_cast<amf3_empty_type>(type));
+			break;
 		case amf3_type::eAMF3Integer:
-			{
-				amf3_integer_type_ptr const tmp = std::dynamic_pointer_cast<amf3_integer_type>(type);
-				write_integer(buffer, tmp);
-				break;
-			}
+			write_integer(buffer, std::dynamic_pointer_cast<amf3_integer_type>(type));
+			break;
+		case amf3_type::eAMF3Double:
+			write_double(buffer, std::dynamic_pointer_cast<amf3_double_type>(type));
+			break;
 		case amf3_type::eAMF3String:
-			{
-				amf3_string_type_ptr const tmp = std::dynamic_pointer_cast<amf3_string_type>(type);
-				write_string(buffer, tmp);
-				break;
-			}
+			write_string(buffer, std::dynamic_pointer_cast<amf3_string_type>(type));
+			break;
+		case amf3_type::eAMF3XMLDoc:
+		case amf3_type::eAMF3XML:
+			write_xml(buffer, std::dynamic_pointer_cast<amf3_xml_type>(type));
+			break;
+		case amf3_type::eAMF3Date:
+			write_date(buffer, std::dynamic_pointer_cast<amf3_date_type>(type));
+			break;
+		case amf3_type::eAMF3Array:
+			write_array(buffer, std::dynamic_pointer_cast<amf3_array_type>(type));
+			break;
 		case amf3_type::eAMF3Object:
-			{
-				amf3_object_type_ptr const tmp = std::dynamic_pointer_cast<amf3_object_type>(type);
-				write_object(buffer, tmp);
-				break;
-			}
+			write_object(buffer, std::dynamic_pointer_cast<amf3_object_type>(type));
+			break;
+		case amf3_type::eAMF3ByteArray:
+			write_bytearray(buffer, std::dynamic_pointer_cast<amf3_bytearray_type>(type));
+			break;
 		default:
 			throw amf3_read_exception();
 		}
 	}
 
-	amf3_empty_type_ptr amf3::read_empty_type(stream_array &buffer, std::uint8_t type)
+	amf3_type_ptr amf3::object_ref(std::uint32_t idx) const
 	{
-		amf3_type::etype t = amf3_type::eAMF3Undefined;
-
-		switch (type)
-		{
-			case amf3_type::eAMF3Undefined:
-				t = amf3_type::eAMF3Undefined;
-				break;
-			case amf3_type::eAMF3Null:
-				t = amf3_type::eAMF3Null;
-				break;
-			case amf3_type::eAMF3False:
-				t = amf3_type::eAMF3False;
-				break;
-			case amf3_type::eAMF3True:
-				t = amf3_type::eAMF3True;
-				break;
-			default:
-				break;
-		}
-
-		amf3_empty_type_ptr ret(new amf3_empty_type(t));
-		return ret;
+		if (idx >= m_object_refs.size())
+			throw amf3_read_exception();
+		return m_object_refs[idx];
 	}
 
-	void amf3::write_empty_type(stream_array &buffer, const amf3_empty_type_ptr& empty_type)
+	amf3_empty_type_ptr amf3::read_empty_type(stream_array &, std::uint8_t type) const
 	{
-		std::uint8_t type = empty_type->type();
-		buffer << type;
+		return std::make_shared<amf3_empty_type>(static_cast<amf3_type::etype>(type));
+	}
+
+	void amf3::write_empty_type(stream_array &, const amf3_empty_type_ptr&)
+	{
+		// no payload; the marker written by write() is the whole encoding
 	}
 
 	amf3_integer_type_ptr amf3::read_integer(stream_array &buffer)
 	{
 		std::uint32_t tmp = read_u29(buffer);
-		if ((tmp & 0x18000000) != 0)
+		// AMF3 integers are 29-bit signed; bit 28 (0x10000000) is the sign bit.
+		// (The old mask 0x18000000 also caught bit 27, wrongly negating positive
+		// values in [2^27, 2^28).)
+		if ((tmp & 0x10000000) != 0)
 		{
 			tmp ^= 0x1fffffff;
 			tmp *= -1;
 			tmp -= 1;
 		}
-		amf3_integer_type_ptr ret(new amf3_integer_type(tmp));
-		return ret;
+		return std::make_shared<amf3_integer_type>(tmp);
 	}
 
 	void amf3::write_integer(stream_array &buffer, const amf3_integer_type_ptr& value)
 	{
-		std::uint32_t const tmp = value->value();
-		write_integer(buffer, tmp);
+		write_integer(buffer, value->value());
 	}
 
 	void amf3::write_integer(stream_array &buffer, std::uint32_t value)
@@ -160,147 +164,245 @@ namespace fms
 		buffer << b;
 	}
 
+	amf3_double_type_ptr amf3::read_double(stream_array &buffer)
+	{
+		if (buffer.available() < 8)
+			throw buffer_eof_exception();
+		std::uint64_t u = 0;
+		for (int i = 0; i < 8; ++i)   // 8-byte IEEE-754, network (big-endian) order
+		{
+			std::uint8_t b;
+			buffer >> b;
+			u = (u << 8) | b;
+		}
+		double d;
+		std::memcpy(&d, &u, sizeof(d));
+		return std::make_shared<amf3_double_type>(d);
+	}
+
+	void amf3::write_double(stream_array &buffer, const amf3_double_type_ptr& value)
+	{
+		double const d = value->value();
+		std::uint64_t u;
+		std::memcpy(&u, &d, sizeof(u));
+		for (int i = 7; i >= 0; --i)
+		{
+			std::uint8_t b = static_cast<std::uint8_t>((u >> (i * 8)) & 0xff);
+			buffer << b;
+		}
+	}
+
 	amf3_string_type_ptr amf3::read_string(stream_array &buffer)
 	{
-		amf3_string_type_ptr str(new amf3_string_type);
-		std::uint32_t reff = read_u29(buffer);
-		if ((reff & 0x01) == 0)
+		std::uint32_t const header = read_u29(buffer);
+		if ((header & 0x01) == 0)   // string reference
 		{
-			reff >>= 1;
-			// todo
+			std::uint32_t const idx = header >> 1;
+			if (idx >= m_string_refs.size())
+				throw amf3_read_exception();
+			return std::make_shared<amf3_string_type>(m_string_refs[idx]);
 		}
-		else
-		{
-			reff >>= 1;
-			if (buffer.available() < reff)        // wire length must not exceed the buffer
-				throw buffer_eof_exception();
-			str->value() = std::string(reinterpret_cast<char *>(buffer.read_pos()), reff);
-			buffer.skip(reff);
-		}
-		return str;
+
+		std::uint32_t const len = header >> 1;
+		if (buffer.available() < len)          // wire length must not exceed the buffer
+			throw buffer_eof_exception();
+		std::string s(reinterpret_cast<char *>(buffer.read_pos()), len);
+		buffer.skip(len);
+		if (!s.empty())                        // the empty string is never sent by reference
+			m_string_refs.push_back(s);
+		return std::make_shared<amf3_string_type>(std::move(s));
 	}
 
 	void amf3::write_string(stream_array &buffer, const amf3_string_type_ptr& value)
 	{
-		std::uint32_t len = value->value().length();
-		len = (len << 1) | 0x01;
-		write_integer(buffer, len);
+		write_string(buffer, value->value());
+	}
+
+	void amf3::write_string(stream_array &buffer, const std::string &value)
+	{
+		std::uint32_t const header = (static_cast<std::uint32_t>(value.length()) << 1) | 0x01;
+		write_integer(buffer, header);
+		buffer.write(value.c_str(), value.length());
+	}
+
+	amf3_type_ptr amf3::read_xml(stream_array &buffer, std::uint8_t marker)
+	{
+		std::uint32_t const header = read_u29(buffer);
+		if ((header & 0x01) == 0)   // object reference (XML uses the object table)
+			return object_ref(header >> 1);
+
+		std::uint32_t const len = header >> 1;
+		if (buffer.available() < len)
+			throw buffer_eof_exception();
+		std::string s(reinterpret_cast<char *>(buffer.read_pos()), len);
+		buffer.skip(len);
+		auto xml = std::make_shared<amf3_xml_type>(static_cast<amf3_type::etype>(marker), std::move(s));
+		m_object_refs.push_back(xml);
+		return xml;
+	}
+
+	void amf3::write_xml(stream_array &buffer, const amf3_xml_type_ptr& value)
+	{
+		std::uint32_t const header = (static_cast<std::uint32_t>(value->value().length()) << 1) | 0x01;
+		write_integer(buffer, header);
 		buffer.write(value->value().c_str(), value->value().length());
 	}
 
-	amf3_object_type_ptr amf3::read_object(stream_array &buffer)
+	amf3_type_ptr amf3::read_date(stream_array &buffer)
 	{
-		amf3_object_type_ptr obj(new amf3_object_type);
+		std::uint32_t const header = read_u29(buffer);
+		if ((header & 0x01) == 0)   // object reference
+			return object_ref(header >> 1);
+
+		amf3_double_type_ptr const ms = read_double(buffer);   // date-time is a DOUBLE
+		auto date = std::make_shared<amf3_date_type>(ms->value());
+		m_object_refs.push_back(date);
+		return date;
+	}
+
+	void amf3::write_date(stream_array &buffer, const amf3_date_type_ptr& value)
+	{
+		write_integer(buffer, 0x01);   // U29D-value: low bit 1, rest unused
+		auto const tmp = std::make_shared<amf3_double_type>(value->value());
+		write_double(buffer, tmp);
+	}
+
+	amf3_type_ptr amf3::read_bytearray(stream_array &buffer)
+	{
+		std::uint32_t const header = read_u29(buffer);
+		if ((header & 0x01) == 0)   // object reference
+			return object_ref(header >> 1);
+
+		std::uint32_t const len = header >> 1;
+		if (buffer.available() < len)
+			throw buffer_eof_exception();
+		std::string bytes(reinterpret_cast<char *>(buffer.read_pos()), len);
+		buffer.skip(len);
+		auto ba = std::make_shared<amf3_bytearray_type>(std::move(bytes));
+		m_object_refs.push_back(ba);
+		return ba;
+	}
+
+	void amf3::write_bytearray(stream_array &buffer, const amf3_bytearray_type_ptr& value)
+	{
+		std::uint32_t const header = (static_cast<std::uint32_t>(value->value().length()) << 1) | 0x01;
+		write_integer(buffer, header);
+		buffer.write(value->value().c_str(), value->value().length());
+	}
+
+	amf3_type_ptr amf3::read_array(stream_array &buffer)
+	{
+		std::uint32_t const header = read_u29(buffer);
+		if ((header & 0x01) == 0)   // object reference
+			return object_ref(header >> 1);
+
+		std::uint32_t const dense_count = header >> 1;
+		auto arr = std::make_shared<amf3_array_type>();
+		m_object_refs.push_back(arr);   // register before populating (may self-reference)
+
+		// associative portion: name/value pairs terminated by the empty string
+		for (;;)
+		{
+			std::string const key = read_string(buffer)->value();
+			if (key.empty())
+				break;
+			arr->assoc()[key] = read(buffer);
+		}
+
+		// dense portion: dense_count values
+		for (std::uint32_t i = 0; i < dense_count; ++i)
+			arr->dense().push_back(read(buffer));
+
+		return arr;
+	}
+
+	void amf3::write_array(stream_array &buffer, const amf3_array_type_ptr& arr)
+	{
+		std::uint32_t const header = (static_cast<std::uint32_t>(arr->dense().size()) << 1) | 0x01;
+		write_integer(buffer, header);
+
+		for (auto const &kv : arr->assoc())
+		{
+			write_string(buffer, kv.first);
+			write(buffer, kv.second);
+		}
+		write_string(buffer, std::string());   // terminate associative portion
+
+		for (auto const &v : arr->dense())
+			write(buffer, v);
+	}
+
+	amf3_type_ptr amf3::read_object(stream_array &buffer)
+	{
 		std::uint32_t obj_info = read_u29(buffer);
-		std::uint32_t encoding_type = 0;
-		bool const is_stored = (obj_info & 0x01) == 0;
+		if ((obj_info & 0x01) == 0)   // object reference
+			return object_ref(obj_info >> 1);
 		obj_info >>= 1;
 
-		if (is_stored)
+		class_data_ptr traits;
+		if ((obj_info & 0x01) == 0)   // traits reference
 		{
-			// todo
+			std::uint32_t const idx = obj_info >> 1;
+			if (idx >= m_traits_refs.size())
+				throw amf3_read_exception();
+			traits = m_traits_refs[idx];
 		}
 		else
 		{
-			string_list_t names;
-			std::string class_name;
-			bool const is_class = (obj_info & 0x01) == 0;
 			obj_info >>= 1;
+			bool const externalizable = (obj_info & 0x01) != 0;
+			obj_info >>= 1;
+			// Externalizable objects carry custom, class-specific serialization we
+			// can't decode without a class registry. Fail explicitly rather than
+			// silently misread the rest of the stream.
+			if (externalizable)
+				throw amf3_read_exception();
+			bool const dynamic = (obj_info & 0x01) != 0;
+			obj_info >>= 1;
+			std::uint32_t const sealed_count = obj_info;
 
-			if (is_class)
+			traits = std::make_shared<class_data>();
+			traits->m_dynamic = dynamic;
+			traits->m_class_name = read_string(buffer)->value();
+			for (std::uint32_t i = 0; i < sealed_count; ++i)
+				traits->m_properties.push_back(read_string(buffer)->value());
+			m_traits_refs.push_back(traits);
+		}
+
+		auto obj = std::make_shared<amf3_object_type>();
+		m_object_refs.push_back(obj);   // register before populating (may self-reference)
+
+		for (auto const &name : traits->m_properties)   // sealed members
+			obj->value()[name] = read(buffer);
+
+		if (traits->m_dynamic)                           // dynamic members
+		{
+			for (;;)
 			{
-				auto const i = m_stored_classes.find(obj_info);
-				if (i != m_stored_classes.end())
-				{
-					encoding_type = i->second->m_encoding_type;
-					class_name = i->second->m_class_name;
-					names = i->second->m_properties;
-				}
-				else
-					throw amf3_read_exception();
-			}
-			else
-			{
-				amf3_string_type_ptr const str = read_string(buffer);
-				class_name = str->value();
-				encoding_type = obj_info & 0x03;
-				obj_info >>= 2;
-			}
-			if (!class_name.empty())
-			{
-				// todo
-			}
-			if (encoding_type & 0x01)
-			{
-				// todo
-			}
-			else if (encoding_type & 0x02)
-			{
-				amf3_string_type_ptr property_name;
-				if (!is_class)
-				{
-					class_data_ptr const cdata(new class_data);
-					cdata->m_class_name = class_name;
-					cdata->m_encoding_type = encoding_type;
-					cdata->m_properties = names;
-					m_stored_classes[obj_info] = cdata;
-				}
-				do 
-				{
-					property_name = read_string(buffer);
-					if (!property_name->value().empty())
-					{
-						amf3_type_ptr const val = read(buffer);
-						obj->value()[(std::string) *property_name] = val;
-					}
-				} while (!property_name->value().empty());
-			}
-			else
-			{
-				if (!is_class)
-				{
-					for (std::uint32_t i = 0; i < obj_info; ++i)
-						names.push_back((std::string)*read_string(buffer));
-					class_data_ptr const cdata(new class_data);
-					cdata->m_class_name = class_name;
-					cdata->m_encoding_type = encoding_type;
-					cdata->m_properties = names;
-					m_stored_classes[obj_info] = cdata;
-				}
-				for (auto & name : names)
-				{
-					amf3_type_ptr const val = read(buffer);
-					obj->value()[name] = val;
-				}
+				std::string const key = read_string(buffer)->value();
+				if (key.empty())
+					break;
+				obj->value()[key] = read(buffer);
 			}
 		}
+
 		return obj;
 	}
 
 	void amf3::write_object(stream_array &buffer, const amf3_object_type_ptr& obj)
 	{
-		std::uint8_t const enc_type = 0;
-		amf3_string_type_ptr const class_name(new amf3_string_type(""));
+		// Encode as an anonymous, dynamic object with no sealed members: U29O bits
+		// low->high = instance(1), new-traits(1), not-externalizable(0), dynamic(1),
+		// sealed-count(0) -> 0b1011 = 0x0B.
+		write_integer(buffer, 0x0B);
+		write_string(buffer, std::string());   // empty class name (anonymous)
 
-		// todo: check other encodings
-
-		std::uint32_t obj_info = 0x03;
-		obj_info |= enc_type << 2;
-		if (enc_type == 0)
+		for (auto const &kv : obj->value())
 		{
-			amf3_object_type::value_map_t  const&val_map = obj->value();
-			std::uint32_t const cnt = val_map.size();
-			obj_info |= cnt << 4;
-			write_integer(buffer, obj_info);
-			write_string(buffer, class_name);
-			for (auto & i : val_map)
-			{
-				amf3_string_type_ptr const key(new amf3_string_type(i.first));
-				write_string(buffer, key);
-			}
-			for (auto & i : val_map)
-				write(buffer, i.second);
+			write_string(buffer, kv.first);
+			write(buffer, kv.second);
 		}
+		write_string(buffer, std::string());   // terminate dynamic members
 	}
 
 	std::uint32_t amf3::read_u29(stream_array &buffer)
