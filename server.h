@@ -27,7 +27,7 @@ namespace fms
 		{}
 	};
 
-	class server : private boost::noncopyable
+	class server : boost::noncopyable
 	{
 	public:
 		server();
@@ -60,7 +60,7 @@ namespace fms
 		// Create initial connections
 		void create_connections();
 
-		// The pool of io_service objects used to perform asynchronous operations.
+		// The pool of io_context objects used to perform asynchronous operations.
 		io_service_pool m_io_service_pool;
 
 		// Acceptor used to listen for incoming connections.

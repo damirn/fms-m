@@ -1,16 +1,14 @@
 #pragma once
 
-#include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <openssl/evp.h>
 
 namespace fms
 {
-	class dh : private boost::noncopyable
+	class dh : boost::noncopyable
 	{
 	public:
 		dh()
-			 
 		{
 			init();
 		}

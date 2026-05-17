@@ -5,10 +5,6 @@
 
 namespace fms
 {
-	rtmp_header::rtmp_header()
-		 
-	= default;
-
 	void rtmp_header::deserialize(stream_array &buffer)
 	{
 		std::uint32_t channel_bytes_count = 0;

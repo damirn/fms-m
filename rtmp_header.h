@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <boost/asio/detail/socket_ops.hpp>
 #include "stream_array.h"
 
 namespace fms
@@ -17,7 +15,7 @@ namespace fms
 			eHeaderContinue
 		};
 
-		rtmp_header();
+		rtmp_header()= default;
 
 		// De-serialize rtmp header from binary stream.
 		void deserialize(stream_array &);

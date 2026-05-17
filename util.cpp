@@ -5,7 +5,6 @@
 #include <cctype>
 #include <cstring>
 #include <ctime>
-#include <functional>
 #include <iomanip>
 #include <sstream>
 

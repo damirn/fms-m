@@ -1,15 +1,13 @@
 #pragma once
 
-#include <boost/asio.hpp>
-#include <cstdint>
-#include <boost/noncopyable.hpp>
+#include <map>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <unordered_map>
 
-#include <map>
-#include <list>
-#include <string>
+#include <boost/asio.hpp>
+#include <boost/noncopyable.hpp>
 
 #include "rtmpt_session.h"
 #include "random_string.h"
@@ -18,7 +16,7 @@ namespace fms
 {
 	class rtmp_app_manager;
 
-	class rtmpt_manager : private boost::noncopyable
+	class rtmpt_manager : boost::noncopyable
 	{
 	public:
 		explicit rtmpt_manager(rtmp_app_manager *);

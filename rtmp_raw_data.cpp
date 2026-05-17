@@ -9,9 +9,7 @@
 namespace fms
 {
 	rtmp_raw_data::rtmp_raw_data()
-		: 
-		 m_channel_manager(new channel_manager)
-		 
+		: m_channel_manager(new channel_manager)
 	{}
 
 	/**

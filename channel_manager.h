@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <memory>
 #include <unordered_map>
@@ -9,7 +8,7 @@
 
 namespace fms
 {
-	class channel_manager : private boost::noncopyable
+	class channel_manager : boost::noncopyable
 	{
 	public:
 		rtmp_channel_ptr get_channel(std::uint32_t id)

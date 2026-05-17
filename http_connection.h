@@ -1,10 +1,8 @@
 #pragma once
 
 #include <boost/asio.hpp>
-#include <cstdint>
 #include <memory>
 #include <boost/noncopyable.hpp>
-#include <memory>
 #include <boost/logic/tribool.hpp>
 
 #include <string>
@@ -74,7 +72,7 @@ namespace fms
 		// Timer for read timeout
 		boost::asio::steady_timer m_timer;
 
-		// IO service
+		// IO context
 		boost::asio::io_context &m_io_service;
 
 		// Connection id

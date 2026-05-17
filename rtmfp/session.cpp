@@ -178,7 +178,6 @@ namespace fms
 				if (!f->add_fragment(frag))
 					m_ack_now = true;
 			}
-			//if (f->has_whole_message())
 			handle_flow_message(f);
 			return true;
 		}

@@ -67,33 +67,6 @@ namespace fms
 
 		while(buffer.available() > 0)
 			m_params.push_back(m_amf0.read(buffer));
-
-		// debug
-		for (auto & m_param : m_params)
-		{
-			amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(m_param);
-			if (obj.get() != nullptr)
-			{
-				for (const auto & j : obj->value())
-				{
-					if (j.m_value->type() == amf0_type::eAMF0String)
-					{
-						amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(j.m_value);
-						continue;
-					}
-					if (j.m_value->type() == amf0_type::eAMF0Number)
-					{
-						amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(j.m_value);
-						continue;
-					}
-					if (j.m_value->type() == amf0_type::eAMF0Boolean)
-					{
-						amf0_boolean_ptr const num = std::dynamic_pointer_cast<amf0_boolean>(j.m_value);
-						continue;
-					}
-				}
-			}
-		}
 	}
 
 	void rtmp_message_invoke::serialize(stream_array &buffer)

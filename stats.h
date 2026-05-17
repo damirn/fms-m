@@ -4,7 +4,6 @@
 #include <list>
 #include <string>
 
-#include <cstdint>
 #include <memory>
 #include <chrono>
 
@@ -54,8 +53,7 @@ namespace fms
 	struct netstream_stats
 	{
 		explicit netstream_stats(std::uint32_t client)
-			: m_client(client)
-			, 
+			: m_client(client),
 			 m_time(std::chrono::system_clock::now())
 		{}
 		std::uint32_t m_client;

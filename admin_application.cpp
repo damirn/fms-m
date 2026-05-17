@@ -8,13 +8,11 @@
 
 #include <openssl/crypto.h>
 
+#include <chrono>
 #include <fstream>
 #include <list>
 #include <string>
 #include <utility>
-#include <vector>
-
-#include <chrono>
 
 namespace fms
 {
@@ -26,7 +24,6 @@ namespace fms
 		static const char get_app_stats[] = "getAppStats";
 		static const char get_streams[] = "getStreams";
 		static const char get_queue_stats[] = "getQueueStats";
-		static const char dump_pools[] = "dumpPJPools";
 		static const char kill_client[] = "killClient";
 
 		// client side
@@ -113,12 +110,6 @@ namespace fms
 		{
 			handle_invoke_get_queue_stats(invoke, connection_id, result);
 			return true;
-		}
-
-		if (invoke->function()->value() == invoke_functions::dump_pools)
-		{
-			// pool dumping was pjsip-specific; no-op now that pjsip is removed
-			return false;
 		}
 
 		if (invoke->function()->value() == invoke_functions::kill_client)

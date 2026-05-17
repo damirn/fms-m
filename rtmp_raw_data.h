@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cstdint>
-#include <boost/logic/tribool.hpp>
 #include <memory>
+#include <boost/logic/tribool.hpp>
 
 namespace fms
 {

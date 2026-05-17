@@ -2,12 +2,11 @@
 
 #include <atomic>
 #include <map>
-
-#include <cstdint>
-#include <boost/noncopyable.hpp>
 #include <memory>
 #include <mutex>
 #include <thread>
+
+#include <boost/noncopyable.hpp>
 
 #include "queue.h"
 #include "rtmp_message.h"
@@ -15,7 +14,7 @@
 
 namespace fms
 {
-	class simple_mixer : private boost::noncopyable
+	class simple_mixer : boost::noncopyable
 	{
 	public:
 		simple_mixer();

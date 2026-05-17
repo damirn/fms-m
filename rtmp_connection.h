@@ -1,9 +1,9 @@
 #pragma once
 
 #include <boost/noncopyable.hpp>
-#include <boost/logic/tribool.hpp>
 
 #include "basic_rtmp_connection.h"
+#include "stream_array.h"
 
 namespace fms
 {
@@ -11,7 +11,7 @@ namespace fms
 	class rtmp_connection : public basic_rtmp_connection, private boost::noncopyable
 	{
 	public:
-		// Construct a connection with the given io_service.
+		// Construct a connection with the given io_context.
 		rtmp_connection(std::uint32_t, boost::asio::io_context &, rtmp_app_manager *);
 
 		~rtmp_connection() override;

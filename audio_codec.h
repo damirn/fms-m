@@ -1,12 +1,11 @@
 #pragma once
 
-#include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <memory>
 
 namespace fms
 {
-	class audio_codec : private boost::noncopyable
+	class audio_codec : boost::noncopyable
 	{
 	public:
 		explicit audio_codec(std::uint16_t reserved = 1)

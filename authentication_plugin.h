@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <cstdint>
 #include <memory>
 #include <boost/logic/tribool.hpp>
 

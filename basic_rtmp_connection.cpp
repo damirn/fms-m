@@ -6,11 +6,9 @@
 #include "rtmp_application.h"
 #include "rtmp_channel.h"
 #include "rtmp_message.h"
-#include "rtmp_protocol.h"
 
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-#include <openssl/hmac.h>
 
 namespace fms
 {
@@ -97,7 +95,7 @@ namespace fms
 		rtmp_message_ptr result;
 		boost::tribool ret;
 
-		m_messages_read++;
+		++m_messages_read;
 		if (m_app != nullptr) // do we have an rtmp app assigned to us?
 		{
 			ret = m_app->handle_message(msg, m_id, channel->received_header(), result);
@@ -169,7 +167,7 @@ namespace fms
 	{
 		if (!m_is_fp9)
 		{
-			std::memset(reinterpret_cast<void *>(m_tmp_buff.data()), 0x00, eHandShakeSize + 1);
+			std::memset(m_tmp_buff.data(), 0x00, eHandShakeSize + 1);
 			m_tmp_buff[0] = magic;
 			m_tmp_buff[1] = 0x01;
 		}
@@ -181,7 +179,7 @@ namespace fms
 			std::uint8_t *server_sig = m_tmp_buff.data() + 1;
 
 			server_sig[-1] = magic;
-			*(std::uint32_t *)(server_sig) = 0x00; // timestamp
+			*reinterpret_cast<std::uint32_t *>(server_sig) = 0x00; // timestamp
 
 			server_sig[4] = 0x03; // server version
 			server_sig[5] = 0x05;

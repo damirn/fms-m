@@ -3,7 +3,6 @@
 #include <fstream>
 #include <string>
 
-#include <cstdint>
 #include <boost/noncopyable.hpp>
 
 #include "audio_sink.h"
@@ -11,7 +10,7 @@
 
 namespace fms
 {
-	class flv_writer : public audio_sink, public video_sink, private boost::noncopyable
+	class flv_writer : public audio_sink, public video_sink, boost::noncopyable
 	{
 	public:
 		explicit flv_writer(const std::string &);

@@ -4,7 +4,6 @@
 #include "rtmpt_manager.h"
 #include "util.h"
 
-
 namespace fms
 {
 	http_connection::http_connection(std::uint32_t id, boost::asio::io_context &io_service, rtmp_app_manager *app_manager, rtmpt_manager *rtmpt_manager)
@@ -215,8 +214,6 @@ namespace fms
 			if (!get_sequence())
 				return false;
 
-			//		std::cout << "id: " << cid << " seq: " << m_sequence << std::endl;
-
 			// validate cid and seq
 			if (!m_rtmpt_manager->validate(m_socket.remote_endpoint(), cid, m_sequence))
 				return false;
@@ -312,7 +309,7 @@ namespace fms
 
 	bool http_connection::get_content_lenght()
 	{
-		std::uint8_t  const*pos = reinterpret_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\nContent-Length: ", 18));
+		std::uint8_t const *pos = static_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\nContent-Length: ", 18));
 		if (pos != nullptr)
 		{
 			m_buffer.skip(pos - m_buffer.read_pos() + 18);

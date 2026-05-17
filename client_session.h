@@ -3,7 +3,6 @@
 #include <atomic>
 #include <set>
 #include <string>
-#include <cstdint>
 #include <chrono>
 #include <memory>
 
@@ -134,7 +133,7 @@ namespace fms
 
 		std::string m_sid;
 
-		// optional user name (if the application sets it)
+		// optional username (if the application sets it)
 		std::string m_username;
 
 		rtmp_app_manager *m_app_manager;

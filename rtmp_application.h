@@ -1,20 +1,17 @@
 #pragma once
 
-#include <string>
-#include <cstdint>
 #include <atomic>
-#include <boost/functional/hash.hpp>
-#include <boost/noncopyable.hpp>
 #include <memory>
-#include <boost/logic/tribool.hpp>
-#include <unordered_map>
 #include <mutex>
+#include <string>
+#include <unordered_map>
 #include <utility>
 
-#include "io_service_pool.h"
+#include <boost/noncopyable.hpp>
+#include <boost/logic/tribool.hpp>
+
 #include "random_string.h"
 #include "rtmp_app_manager.h"
-#include "rtmp_connection.h"
 #include "rtmp_message.h"
 #include "stats.h"
 
@@ -43,7 +40,7 @@ namespace fms
 		extern const char setPeerInfo[];
 	}
 
-	class rtmp_application : private boost::noncopyable
+	class rtmp_application : boost::noncopyable
 	{
 	public:
 		rtmp_application(rtmp_app_manager *, const std::string &);
@@ -79,7 +76,6 @@ namespace fms
 
 		void gracefully_close_connection(std::uint32_t, bool = true);
 		void gracefully_close_connection_with_reason(std::uint32_t, std::uint32_t);
-
 
 		using amf0_parameter_list_t = std::list<std::pair<std::string, amf0_type_ptr> >;
 		using optional_param_list_t = std::optional<amf0_parameter_list_t>;

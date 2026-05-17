@@ -1,10 +1,9 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
-
-#include <memory>
 
 #include "video_bcast_application.h"
 
