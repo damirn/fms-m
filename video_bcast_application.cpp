@@ -806,6 +806,9 @@ namespace fms
 				if (cli != m_subscribers.end())
 				{
 					stream_client_ptr const client = cli->second;
+					// tell the subscriber the source ended before the status message
+					rtmp_message_ping_ptr const eof(new rtmp_message_ping(rtmp_message_ping::ePingStreamEOF, ssid.second));
+					enqueue_async_message(ssid.first, eof);
 					notify_client(ssid.first, ssid.second, stream_name);
 					m_subscribers.erase(cli);
 				}
@@ -1114,7 +1117,7 @@ namespace fms
 		m_app_manager->update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, false);
 
 		BOOST_LOG(lg::get()) << "cid: " << connection_id << " VOD playback of '" << stream_name << "'";
-		send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
+		send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name, true /* recorded */);
 
 		session->m_timer.expires_after(std::chrono::milliseconds(0));
 		session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) vod_tick(session); });
@@ -1131,6 +1134,9 @@ namespace fms
 
 		if (!session->m_next)   // end of file reached on the previous tick
 		{
+			// StreamEOF user-control, then the Play.Stop status.
+			rtmp_message_ping_ptr const eof(new rtmp_message_ping(rtmp_message_ping::ePingStreamEOF, session->m_stream_id));
+			enqueue_async_message(session->m_connection_id, eof);
 			send_stream_notify(session->m_connection_id, session->m_stream_id,
 				"NetStream.Play.Stop", "Stopped playing " + session->m_stream_name, true);
 			session->m_state = vod_session::eStopped;

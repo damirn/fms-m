@@ -169,7 +169,9 @@ namespace fms
 			ePingStreamIsRecorded,
 			ePingUnknown,
 			ePingRequest,
-			ePingResponse
+			ePingResponse,
+			ePingBufferEmpty = 31,   // FMS: server-side buffer drained
+			ePingBufferReady = 32    // FMS: buffer ready to resume
 		};
 
 		explicit rtmp_message_ping(std::uint8_t elements)

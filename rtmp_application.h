@@ -102,7 +102,7 @@ namespace fms
 
 		void create_connect_messages(std::uint32_t, optional_param_list_t = optional_param_list_t());
 		static rtmp_message_invoke_ptr create_connect_failure_message(const std::string &);
-		void send_play_start_messages(std::uint32_t, std::uint32_t, std::uint32_t, const std::string &);
+		void send_play_start_messages(std::uint32_t, std::uint32_t, std::uint32_t, const std::string &, bool is_recorded = false);
 		void send_close(std::uint32_t);
 
 		client_session_ptr get_connection(std::uint32_t connection_id)

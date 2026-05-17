@@ -410,6 +410,16 @@ namespace fms
 	void rtmp_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
 	{
 		rtmp_message_ping_ptr const ping = std::dynamic_pointer_cast<rtmp_message_ping>(msg);
+
+		// A client PingRequest must be answered with a PingResponse echoing its value.
+		if (ping->get_type() == rtmp_message_ping::ePingRequest)
+		{
+			rtmp_message_ping_ptr const pong(new rtmp_message_ping(rtmp_message_ping::ePingResponse, ping->get_value()));
+			enqueue_async_message(connection_id, pong);
+			notify(connection_id);
+			return;
+		}
+
 //		std::cout << "ping type: " << ping->get_type();
 		if (ping->get_type() == rtmp_message_ping::ePingResponse)
 		{
@@ -560,10 +570,18 @@ namespace fms
 		return result;
 	}
 
-	void rtmp_application::send_play_start_messages(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t channel_id, const std::string &stream_name)
+	void rtmp_application::send_play_start_messages(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t channel_id, const std::string &stream_name, bool is_recorded /* = false */)
 	{
 		rtmp_message_chunk_size_ptr const cs(new rtmp_message_chunk_size(4096));
 		enqueue_async_message(connection_id, cs);
+
+		// For a recorded (VOD) stream, announce it before StreamBegin so the client
+		// treats it as seekable VOD rather than live (matches FMS ordering).
+		if (is_recorded)
+		{
+			rtmp_message_ping_ptr const rec(new rtmp_message_ping(rtmp_message_ping::ePingStreamIsRecorded, stream_id));
+			enqueue_async_message(connection_id, rec);
+		}
 
 		rtmp_message_ping_ptr const ping(new rtmp_message_ping(rtmp_message_ping::ePingStreamBegin, stream_id));
 		enqueue_async_message(connection_id, ping);
