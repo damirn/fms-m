@@ -201,4 +201,12 @@ if(BUILD_CLIENT)
   # Thin command-line tool on top of the client library.
   add_executable(rtmp_client client/main.cpp)
   target_link_libraries(rtmp_client PRIVATE rtmp_client_lib)
+
+  # Back-to-back test: drives the fms-m server (spawned as a subprocess) with the
+  # client library and asserts on the protocol events + frames it receives.
+  add_executable(b2b_test test/b2b_test.cpp test/test_main.cpp)
+  target_include_directories(b2b_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
+  target_link_libraries(b2b_test PRIVATE rtmp_client_lib)
+  target_compile_definitions(b2b_test PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
+  add_dependencies(b2b_test ${PROJECT_NAME})
 endif()
