@@ -72,7 +72,7 @@ namespace fms
 	class amf3_empty_type : public amf3_type
 	{
 	public:
-		explicit amf3_empty_type(amf3_type::etype t)
+		explicit amf3_empty_type(etype t)
 			: amf3_type(t)
 		{}
 	};
@@ -83,11 +83,11 @@ namespace fms
 	{
 	public:
 		amf3_integer_type()
-			: amf3_type(amf3_type::eAMF3Integer)
+			: amf3_type(eAMF3Integer)
 		{}
 
 		explicit amf3_integer_type(std::uint32_t value)
-			: amf3_type(amf3_type::eAMF3Integer)
+			: amf3_type(eAMF3Integer)
 			, m_value(value)
 		{}
 
@@ -111,11 +111,11 @@ namespace fms
 	{
 	public:
 		amf3_string_type()
-			: amf3_type(amf3_type::eAMF3String)
+			: amf3_type(eAMF3String)
 		{}
 
 		explicit amf3_string_type(const std::string &value)
-			: amf3_type(amf3_type::eAMF3String), m_value(value)
+			: amf3_type(eAMF3String), m_value(value)
 		{}
 
 		explicit operator std::string() const override
@@ -185,7 +185,7 @@ namespace fms
 	{
 	public:
 		amf3_object_type()
-			: amf3_type(amf3_type::eAMF3Object)
+			: amf3_type(eAMF3Object)
 		{}
 
 		using value_map_t = std::map<std::string, amf3_type_ptr>;

@@ -4,14 +4,12 @@
 
 #include <array>
 #include <boost/asio.hpp>
-#include <cstdint>
 #include <memory>
 #include <chrono>
 #include <openssl/evp.h>
 
 #include "client_session.h"
 #include "rtmp_raw_data.h"
-#include "stream_array.h"
 
 namespace fms
 {

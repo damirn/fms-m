@@ -9,10 +9,6 @@
 #include "stream_array.h"
 #include "crypto.h"
 
-#include <openssl/hmac.h>
-
-#include <iostream>
-
 namespace fms
 {
 	rtmp_connection::rtmp_connection(std::uint32_t id, boost::asio::io_context &io_service, rtmp_app_manager *app_manager)

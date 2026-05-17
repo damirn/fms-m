@@ -1,7 +1,6 @@
 #pragma once
 
 #include "rtmp_message.h"
-#include "amf0_types.h"
 
 namespace fms
 {

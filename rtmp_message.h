@@ -1,10 +1,8 @@
 #pragma once
 
 #include <list>
+#include <memory>
 #include <string>
-#include <memory>
-#include <memory>
-#include <memory>
 #include <utility>
 
 #include "amf0_types.h"
@@ -37,7 +35,6 @@ namespace fms
 
 		explicit rtmp_message(message_type t)
 			: m_type(t)
-			 
 		{}
 
 		rtmp_message(const rtmp_message &msg)

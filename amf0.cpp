@@ -4,7 +4,6 @@
 
 #include <string>
 #include <boost/asio/detail/socket_ops.hpp>
-#include <cstdint>
 
 namespace fms
 {
@@ -115,7 +114,7 @@ namespace fms
 			amf0_string_ptr const key(new amf0_string);
 			read_short_string(buffer, key, true);
 			amf0_type_ptr const val(read(buffer));
-			value->add_entry((std::string) *key, val);
+			value->add_entry(static_cast<std::string>(*key), val);
 		}
 		buffer.skip(3);
 
@@ -269,7 +268,7 @@ namespace fms
 		std::uint8_t b = amf0_type::eAMF0LongString;
 		buffer << b;
 
-		auto size = static_cast<std::uint32_t>(value->size());
+		auto size = value->size();
 		size = boost::asio::detail::socket_ops::host_to_network_long(size);
 		buffer << size;
 

@@ -1,13 +1,12 @@
 #pragma once
 
 #include <string>
-#include <cstdint>
 #include <boost/noncopyable.hpp>
 #include <boost/program_options.hpp>
 
 namespace fms
 {
-	class config : private boost::noncopyable
+	class config : boost::noncopyable
 	{
 	public:
 		static config *instance();

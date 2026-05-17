@@ -2,7 +2,6 @@
 
 #include <deque>
 
-#include <cstdint>
 #include <boost/asio/buffer.hpp>
 
 #include "dynamic_array.h"

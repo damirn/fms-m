@@ -3,9 +3,6 @@
 #include "config.h"
 #include "rtmp_app_manager.h"
 
-#include <ctime>
-#include <cstring>
-
 namespace fms
 {
 	rtmpt_manager::rtmpt_manager(rtmp_app_manager *app_manager)

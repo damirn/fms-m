@@ -1,12 +1,13 @@
 #pragma once
 
 #include <map>
-#include <set>
-#include <string>
-#include <boost/noncopyable.hpp>
-#include <optional>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <set>
+#include <string>
+
+#include <boost/noncopyable.hpp>
 
 #include "rtmp_so_message.h"
 
@@ -14,7 +15,7 @@ namespace fms
 {
 	class rtmp_application;
 
-	class so_manager : private boost::noncopyable
+	class so_manager : boost::noncopyable
 	{
 	public:
 		explicit so_manager(rtmp_application *);
@@ -32,9 +33,7 @@ namespace fms
 
 		struct so_data
 		{
-			so_data()
-				 
-			= default;
+			so_data()= default;
 			std::uint32_t m_version{1};
 			std::set<std::uint32_t> m_clients;
 			std::map<std::string, amf0_type_ptr> m_values;

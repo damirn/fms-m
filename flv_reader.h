@@ -2,14 +2,13 @@
 
 #include <fstream>
 #include <string>
-#include <cstdint>
 #include <boost/noncopyable.hpp>
 
 #include "rtmp_message.h"
 
 namespace fms
 {
-	class flv_reader : private boost::noncopyable
+	class flv_reader : boost::noncopyable
 	{
 	public:
 		flv_reader()= default;
@@ -17,7 +16,7 @@ namespace fms
 
 		void open(const std::string &);
 
-		bool is_open()
+		bool is_open() const
 		{
 			return m_f.is_open();
 		}

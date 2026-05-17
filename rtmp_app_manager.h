@@ -1,15 +1,13 @@
 #pragma once
 
-#include <list>
 #include <map>
+#include <mutex>
 #include <string>
+#include <optional>
 
 #include <boost/asio.hpp>
-#include <cstdint>
 #include <boost/noncopyable.hpp>
-#include <optional>
 #include <boost/logic/tribool.hpp>
-#include <mutex>
 
 #include "http_connection.h"
 #include "io_service_pool.h"
@@ -34,7 +32,7 @@ namespace fms
 	class amf0_type;
 	using amf0_type_ptr = std::shared_ptr<amf0_type>;
 
-	class rtmp_app_manager : private boost::noncopyable
+	class rtmp_app_manager : boost::noncopyable
 	{
 	public:
 		explicit rtmp_app_manager(io_service_pool &);

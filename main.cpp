@@ -26,7 +26,6 @@ int main(int argc, char **argv)
 
 	BOOST_LOG(fms::lg::get()) << "FMS " << fms::config::instance()->version_string() << " starting.";
 
-
 	int ret = 0;
 	try
 	{

@@ -4,7 +4,7 @@
 //
 // Self-contained G.711 (A-law / u-law) conversion routines.
 // Based on the public-domain reference implementation by Sun Microsystems
-// (CCITT G.711), replacing the previous pjmedia dependency.
+// (CCITT G.711)
 //
 
 namespace

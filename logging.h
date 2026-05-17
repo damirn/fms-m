@@ -19,9 +19,7 @@ namespace fms
 	class logging : private boost::noncopyable
 	{
 	public:
-		logging()
-			 
-		= default;
+		logging()= default;
 
 		~logging()
 		{

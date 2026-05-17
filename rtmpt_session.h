@@ -17,7 +17,7 @@ namespace fms
 	class rtmpt_session : public basic_rtmp_connection, private boost::noncopyable
 	{
 	public:
-		// Construct a connection with the given io_service.
+		// Construct a connection with the given io_context.
 		rtmpt_session(std::uint32_t, boost::asio::io_context &, rtmp_app_manager *);
 
 		// Start the first asynchronous operation for the connection.

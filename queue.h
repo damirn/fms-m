@@ -8,7 +8,7 @@
 namespace fms
 {
 	template<typename T>
-	class queue : private boost::noncopyable
+	class queue : boost::noncopyable
 	{
 	public:
 		void push(const T &value)
