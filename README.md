@@ -100,6 +100,28 @@ The resulting binary is `build/fms-m`.
 
 ---
 
+## Verified build environments
+
+The server has been built **warning-free** and its full RTMP / RTMPE / RTMPT /
+RTMFP functional suite run successfully on the following combinations, spanning
+Boost 1.76 → 1.91, OpenSSL 3.0 → 3.6, GCC 12 → 16 and Clang 16 → 22:
+
+| OS                    | Compiler(s)             | Boost | OpenSSL | Build file          |
+|-----------------------|-------------------------|-------|---------|---------------------|
+| macOS 15              | Apple Clang 16          | 1.76  | 3.6     | *(Homebrew)*        |
+| Debian 12 (bookworm)  | GCC 12.2                | 1.81  | 3.0     | *(host / apt)*      |
+| Debian 13 (trixie)    | GCC 14.2                | 1.83  | 3.5     | `Dockerfile`        |
+| Ubuntu 26.04          | GCC 15.2 · Clang 21     | 1.90  | 3.5     | `Dockerfile.ubuntu` |
+| Arch Linux (rolling)  | GCC 16.1 · Clang 22     | 1.91  | 3.6     | `Dockerfile.arch`   |
+
+Where two compilers are listed, both produce a clean build. The Ubuntu 26.04 and
+Arch Linux images are additionally validated clean under **AddressSanitizer**
+(including 24 concurrent RTMFP clients). The `Dockerfile*` build files accept
+`--build-arg CXX=clang++` and sanitizer flags via `--build-arg CXXFLAGS_EXTRA` /
+`LDFLAGS_EXTRA`.
+
+---
+
 ## Running
 
 Quick start — listen for RTMP on 1935, write recordings and logs to the current
@@ -191,6 +213,27 @@ scheme. The server negotiates the RC4/Diffie-Hellman handshake automatically.
 ```sh
 ffmpeg -i rtmpt://127.0.0.1:8080/bcast/mystream -c copy out.flv
 ```
+
+### Play / publish over RTMFP (UDP)
+
+RTMFP is Adobe's UDP real-time media protocol. Its original client was Flash
+Player, but the server also interoperates with the open-source
+[`rtmfp-cpp`](https://github.com/zenomt/rtmfp-cpp) client suite (the RFC 7016
+author's implementation). Using its test tools, built from that repository:
+
+```sh
+# play a live stream over RTMFP
+tcconn -4 -H -S 'rtmfp://127.0.0.1:1935/bcast#mystream'
+
+# publish an FLV over RTMFP
+tcpublish -4 -H -S 'rtmfp://127.0.0.1:1935/bcast#mystream' input.flv
+```
+
+The stream name is passed as the URL fragment (`#mystream`), and RTMFP listens on
+UDP `--rtmfp-port` (default `1935/udp`). The server implements the 1024-bit MODP
+Diffie-Hellman group (RFC 2409 group 2); modern clients negotiate down to it
+automatically. Both directions work — publish over RTMFP and play over RTMP (or
+RTMPE/RTMPT), and vice versa — since all transports share the same applications.
 
 ---
 
