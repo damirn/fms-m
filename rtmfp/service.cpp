@@ -22,10 +22,10 @@ namespace fms
 	// to prefer group 2, which is why only Flash interoperated.
 	const std::uint8_t service::m_c2[] = {0x02, 0x15, 0x02};
 
-	service::service(boost::asio::io_context &io_service, std::uint16_t port, rtmp_app_manager *app_manager)
+	service::service(boost::asio::io_context &io_context, std::uint16_t port, rtmp_app_manager *app_manager)
 		: m_app_manager(app_manager)
-		, m_io_service(io_service)
-		, m_socket(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port))
+		, m_io_context(io_context)
+		, m_socket(io_context, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port))
 		, 
 		 m_start(std::chrono::system_clock::now())
 		, m_sessions_iterator(m_sessions.begin())

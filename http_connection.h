@@ -73,7 +73,7 @@ namespace fms
 		boost::asio::steady_timer m_timer;
 
 		// IO context
-		boost::asio::io_context &m_io_service;
+		boost::asio::io_context &m_io_context;
 
 		// Connection id
 		std::uint32_t m_id;

@@ -5,7 +5,7 @@
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
 
-#include "io_service_pool.h"
+#include "io_context_pool.h"
 
 namespace fms
 {
@@ -61,7 +61,7 @@ namespace fms
 		void create_connections();
 
 		// The pool of io_context objects used to perform asynchronous operations.
-		io_service_pool m_io_service_pool;
+		io_context_pool m_io_context_pool;
 
 		// Acceptor used to listen for incoming connections.
 		boost::asio::ip::tcp::acceptor m_acceptor;

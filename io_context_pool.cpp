@@ -1,16 +1,16 @@
 #include "pch.h"
-#include "io_service_pool.h"
+#include "io_context_pool.h"
 
 #include <stdexcept>
 #include <thread>
 
 namespace fms
 {
-	io_service_pool::io_service_pool(std::size_t pool_size)
+	io_context_pool::io_context_pool(std::size_t pool_size)
 		 
 	{
 		if (pool_size == 0)
-			throw std::runtime_error("io_service_pool size is 0");
+			throw std::runtime_error("io_context_pool size is 0");
 
 		// Give all the io_contexts work to do so that their run() functions will
 		// not exit until they are explicitly stopped.
@@ -22,7 +22,7 @@ namespace fms
 		}
 	}
 
-	void io_service_pool::run()
+	void io_context_pool::run()
 	{
 		// Create a pool of threads to run all of the io_contexts.
 		std::vector<std::thread> threads;
@@ -34,14 +34,14 @@ namespace fms
 			t.join();
 	}
 
-	void io_service_pool::stop()
+	void io_context_pool::stop()
 	{
 		// Explicitly stop all io_contexts.
 		for (auto &ctx : m_io_contexts)
 			ctx->stop();
 	}
 
-	boost::asio::io_context &io_service_pool::get_io_service()
+	boost::asio::io_context &io_context_pool::get_io_context()
 	{
 		// Use a round-robin scheme to choose the next io_context to use.
 		boost::asio::io_context &ctx = *m_io_contexts[m_next_io_context];

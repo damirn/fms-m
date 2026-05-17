@@ -12,11 +12,11 @@
 
 namespace fms
 {
-	basic_rtmp_connection::basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &io_service, rtmp_app_manager *app_manager)
+	basic_rtmp_connection::basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager)
 		: client_session(id, app_manager)
-		, m_io_service(io_service)
-		, m_hs_timer(io_service)
-		, m_timer(io_service)
+		, m_io_context(io_context)
+		, m_hs_timer(io_context)
+		, m_timer(io_context)
 		 
 	{}
 
@@ -36,7 +36,7 @@ namespace fms
 	{
 		// run close() on this connection's own io_context — its socket/timers are
 		// not safe to touch from another thread (e.g. the admin thread).
-		boost::asio::post(m_io_service, [self = shared_from_this()]() { self->close(); });
+		boost::asio::post(m_io_context, [self = shared_from_this()]() { self->close(); });
 	}
 
 	void basic_rtmp_connection::handle_bytes_read(std::size_t bytes_transferred)

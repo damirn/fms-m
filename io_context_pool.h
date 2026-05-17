@@ -8,11 +8,11 @@
 namespace fms
 {
 	/// A pool of io_context objects.
-	class io_service_pool : private boost::noncopyable
+	class io_context_pool : private boost::noncopyable
 	{
 	public:
 		/// Construct the io_context pool.
-		explicit io_service_pool(std::size_t pool_size);
+		explicit io_context_pool(std::size_t pool_size);
 
 		/// Run all io_context objects in the pool.
 		void run();
@@ -21,7 +21,7 @@ namespace fms
 		void stop();
 
 		/// Get an io_context to use.
-		boost::asio::io_context &get_io_service();
+		boost::asio::io_context &get_io_context();
 
 	private:
 		using work_guard = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;

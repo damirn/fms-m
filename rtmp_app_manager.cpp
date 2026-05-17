@@ -15,11 +15,11 @@
 
 namespace fms
 {
-	rtmp_app_manager::rtmp_app_manager(io_service_pool &io_pool)
-		: m_io_service_pool(io_pool)
+	rtmp_app_manager::rtmp_app_manager(io_context_pool &io_pool)
+		: m_io_context_pool(io_pool)
 		, 
-		 m_io_service(io_pool.get_io_service())
-		, m_timer(m_io_service)
+		 m_io_context(io_pool.get_io_context())
+		, m_timer(m_io_context)
 	{
 		m_rtmpt_manager = new rtmpt_manager(this);
 		m_fake_app = new fake_application(this);
@@ -59,7 +59,7 @@ namespace fms
 	rtmpt_session_ptr rtmp_app_manager::create_rtmpt_session()
 	{
 		std::unique_lock const lock(m_mutex);
-		rtmpt_session_ptr tmp(new rtmpt_session(m_connection_counter, m_io_service_pool.get_io_service(), this));
+		rtmpt_session_ptr tmp(new rtmpt_session(m_connection_counter, m_io_context_pool.get_io_context(), this));
 		m_connections[m_connection_counter++] = tmp;
 		return tmp;
 	}
@@ -79,7 +79,7 @@ namespace fms
 	http_connection_ptr rtmp_app_manager::create_http_connection()
 	{
 		std::unique_lock const lock(m_mutex);
-		http_connection_ptr tmp(new http_connection(m_connection_counter, m_io_service_pool.get_io_service(), this, m_rtmpt_manager));
+		http_connection_ptr tmp(new http_connection(m_connection_counter, m_io_context_pool.get_io_context(), this, m_rtmpt_manager));
 		m_http_conns[m_connection_counter++] = tmp;
 		return tmp;
 	}

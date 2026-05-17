@@ -37,7 +37,7 @@ namespace fms
 
 	video_bcast_application::video_bcast_application(rtmp_app_manager *app_manager, const char *app_name /* = "bcast" */)
 		: rtmp_application(app_manager, app_name)
-		, m_timer(app_manager->get_io_service_pool().get_io_service())
+		, m_timer(app_manager->get_io_context_pool().get_io_context())
 	{
 		start_timer();
 	}
@@ -1089,7 +1089,7 @@ namespace fms
 			return false;   // no such saved file -> fall back to live/waiting
 
 		auto session = std::make_shared<vod_session>(
-			m_app_manager->get_io_service_pool().get_io_service(),
+			m_app_manager->get_io_context_pool().get_io_context(),
 			connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
 		session->m_reader.open(*path);
 		if (!session->m_reader.is_open())

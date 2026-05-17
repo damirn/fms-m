@@ -11,11 +11,11 @@
 
 namespace fms
 {
-	rtmp_connection::rtmp_connection(std::uint32_t id, boost::asio::io_context &io_service, rtmp_app_manager *app_manager)
-		: basic_rtmp_connection(id, io_service, app_manager)
-		, m_socket(io_service)
-		, m_rto_timer(io_service)
-		, m_wto_timer(io_service)
+	rtmp_connection::rtmp_connection(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager)
+		: basic_rtmp_connection(id, io_context, app_manager)
+		, m_socket(io_context)
+		, m_rto_timer(io_context)
+		, m_wto_timer(io_context)
 		 
 	{}
 
@@ -47,7 +47,7 @@ namespace fms
 		// io-objects are NOT thread-safe. That corrupts the reactor's timer_queue
 		// and crashes in timer cancel (or silently breaks the RTMPE session).
 		// Hop onto our own context first so the timer is only ever touched there.
-		boost::asio::post(m_io_service, [self = shared_from_this()]()
+		boost::asio::post(m_io_context, [self = shared_from_this()]()
 		{
 			// cache the peer endpoint on our own thread so the admin thread never
 			// calls remote_endpoint() on our socket
