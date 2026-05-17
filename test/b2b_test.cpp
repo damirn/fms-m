@@ -260,7 +260,8 @@ TEST_CASE("b2b: publish -> play round-trip (live relay)")
 
 	// Only start streaming once the player is subscribed AND the publisher is live,
 	// so no frames are missed (live has no backlog).
-	bool play_ready = false, pub_ready = false;
+	bool play_ready = false;
+	bool pub_ready = false;
 	auto go = [&] { if (play_ready && pub_ready) pub.nseh.send_all(); };
 	player.nseh.on_play_start = [&] { play_ready = true; go(); };
 	pub.nseh.on_publish_start = [&] { pub_ready = true; go(); };
@@ -305,4 +306,36 @@ TEST_CASE("b2b: path traversal is rejected (secret file outside the media dir is
 	CHECK(got == 0);                                 // the secret file was never streamed
 
 	std::error_code ec; fs::remove_all(root, ec);
+}
+
+TEST_CASE("b2b: seek / pause / unpause on a VOD stream are acknowledged")
+{
+	int const port = 25965;
+	fs::path const dir = fs::temp_directory_path() / "fms_b2b_ps";
+	fs::create_directories(dir);
+	write_test_flv(dir / "movie.flv", 100);          // ~4s of content, still playing when we act
+
+	server_process server(dir.string(), port);
+
+	boost::asio::io_context io;
+	player_nc nc(io);
+	nc.stream_name = "movie";
+	nc.conn = std::make_shared<net_connection>(io, nc, true);
+	// Once playback starts, exercise the verbs. Each is answered with its own
+	// onStatus Notify by the server, so this is race-free regardless of pacing.
+	nc.nseh.on_play_start = [&]
+	{
+		nc.nseh.ns->seek(1000);
+		nc.nseh.ns->pause(true, 1000);
+		nc.nseh.ns->pause(false, 1000);
+	};
+	nc.conn->connect(url_for(port));
+	io.run_for(std::chrono::seconds(10));
+
+	CHECK(saw(nc.nseh.status, "NetStream.Play.Start"));
+	CHECK(saw(nc.nseh.status, "NetStream.Seek.Notify"));
+	CHECK(saw(nc.nseh.status, "NetStream.Pause.Notify"));
+	CHECK(saw(nc.nseh.status, "NetStream.Unpause.Notify"));
+
+	std::error_code ec; fs::remove_all(dir, ec);
 }

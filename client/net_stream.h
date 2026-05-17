@@ -48,6 +48,8 @@ namespace fms::rtmp_client
 		void close();
 		void play(const std::string &);
 		void publish(const std::string &);
+		void pause(bool paused, std::uint32_t ms = 0);
+		void seek(std::uint32_t ms);
 
 		void send_msg(const rtmp_message_ptr&);
 
