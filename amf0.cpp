@@ -275,6 +275,116 @@ namespace fms
 		buffer.write(value->data(), value->size());
 	}
 
+	bool amf0::read_date(stream_array &buffer, const amf0_date_ptr& value)
+	{
+		std::uint8_t b;
+		buffer >> b;
+		if (b != amf0_type::eAMF0Date)
+			return false;
+
+		if (buffer.available() < 10)          // 8-byte double + 2-byte timezone
+			throw buffer_eof_exception();
+
+		double d = 0;
+		std::uint8_t tmp[8];
+		for (int i = 7; i >= 0; --i)          // 8-byte IEEE-754, network byte order
+			buffer >> tmp[i];
+		std::memcpy(&d, tmp, sizeof(d));
+		value->value() = d;
+
+		std::uint16_t tz;                     // timezone: defined to always be 0
+		buffer >> tz;
+
+		return true;
+	}
+
+	void amf0::write_date(stream_array &buffer, const amf0_date_ptr& value)
+	{
+		std::uint8_t b = amf0_type::eAMF0Date;
+		buffer << b;
+
+		double d = value->value();
+		auto *tmp = reinterpret_cast<std::uint8_t *>(&d);
+		for (int i = 7; i >= 0; --i)
+			buffer << tmp[i];
+
+		std::uint16_t tz = 0;
+		buffer << tz;
+	}
+
+	bool amf0::read_xml_document(stream_array &buffer, const amf0_xml_document_ptr& value)
+	{
+		std::uint8_t b;
+		buffer >> b;
+		if (b != amf0_type::eAMF0XMLDocument)
+			return false;
+
+		if (buffer.available() < 4)
+			throw buffer_eof_exception();
+		std::uint32_t len;
+		buffer >> len;
+		len = boost::asio::detail::socket_ops::network_to_host_long(len);
+		if (buffer.available() < len)
+			throw buffer_eof_exception();
+		value->value() = std::string(reinterpret_cast<char *>(buffer.read_pos()), len);
+		buffer.skip(len);
+
+		return true;
+	}
+
+	void amf0::write_xml_document(stream_array &buffer, const amf0_xml_document_ptr& value)
+	{
+		std::uint8_t b = amf0_type::eAMF0XMLDocument;
+		buffer << b;
+
+		std::uint32_t len = boost::asio::detail::socket_ops::host_to_network_long(
+			static_cast<std::uint32_t>(value->value().size()));
+		buffer << len;
+		buffer.write(value->value().c_str(), value->value().size());
+	}
+
+	bool amf0::read_typed_object(stream_array &buffer, const amf0_typed_object_ptr& value)
+	{
+		std::uint8_t b;
+		buffer >> b;
+		if (b != amf0_type::eAMF0TypedObject)
+			return false;
+
+		amf0_string_ptr const cn(new amf0_string);
+		read_short_string(buffer, cn, true);   // class name (u16 string, no marker)
+		value->class_name() = cn->value();
+
+		while (buffer.available() >= 3 && (*(buffer.read_pos()) != 0 || *(buffer.read_pos() + 1) != 0 || *(buffer.read_pos() + 2) != 9))
+		{
+			amf0_string_ptr const key(new amf0_string);
+			read_short_string(buffer, key, true);
+			amf0_type_ptr const val(read(buffer));
+			value->add_entry(static_cast<std::string>(*key), val);
+		}
+		if (buffer.available() < 3)
+			throw buffer_eof_exception();
+		buffer.skip(3);
+
+		return true;
+	}
+
+	void amf0::write_typed_object(stream_array &buffer, const amf0_typed_object_ptr& value)
+	{
+		std::uint8_t b = amf0_type::eAMF0TypedObject;
+		buffer << b;
+
+		write_short_string(buffer, value->class_name().c_str(),
+			static_cast<std::uint16_t>(value->class_name().size()), true);
+
+		for (amf0_object::indexed_iterator i = value->begin_indexed(); i != value->end_indexed(); ++i)
+		{
+			write_short_string(buffer, i->m_name.c_str(), i->m_name.size(), true);
+			write(buffer, i->m_value);
+		}
+
+		buffer.write(end_of_object, 3);
+	}
+
 	bool amf0::read_amf3_container(stream_array &buffer, const amf0_amf3_container_ptr& value)
 	{
 		std::uint8_t b;
@@ -299,6 +409,9 @@ namespace fms
 
 	amf0_type_ptr amf0::read(stream_array &buffer)
 	{
+		if (m_depth == 0)            // top-level value: fresh reference context
+			m_ref_table.clear();
+
 		if (++m_depth > eMaxDepth)   // bound recursion on hostile nested input
 			throw amf0_read_exception();
 		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } guard{ m_depth };
@@ -329,6 +442,7 @@ namespace fms
 		case amf0_type::eAMF0Object:
 			{
 				amf0_object_ptr tmp(new amf0_object);
+				m_ref_table.push_back(tmp);   // referenceable; register before populating
 				read_object(buffer, tmp);
 				return tmp;
 			}
@@ -344,22 +458,62 @@ namespace fms
 				read_undefined(buffer);
 				return tmp;
 			}
+		case amf0_type::eAMF0Reference:
+			{
+				std::uint8_t b;
+				buffer >> b;   // marker
+				if (buffer.available() < 2)
+					throw buffer_eof_exception();
+				std::uint16_t idx;
+				buffer >> idx;
+				idx = boost::asio::detail::socket_ops::network_to_host_short(idx);
+				if (idx >= m_ref_table.size())
+					throw amf0_read_exception();
+				return m_ref_table[idx];
+			}
 		case amf0_type::eAMF0EcmaArray:
 			{
 				amf0_ecma_array_ptr tmp(new amf0_ecma_array);
+				m_ref_table.push_back(tmp);
 				read_mixed_array(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0StrictArray:
 			{
 				amf0_strict_array_ptr tmp(new amf0_strict_array);
+				m_ref_table.push_back(tmp);
 				read_strict_array(buffer, tmp);
+				return tmp;
+			}
+		case amf0_type::eAMF0Date:
+			{
+				amf0_date_ptr tmp(new amf0_date);
+				read_date(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0LongString:
 			{
 				amf0_long_string_ptr tmp(new amf0_long_string);
 				read_long_string(buffer, tmp);
+				return tmp;
+			}
+		case amf0_type::eAMF0Unsupported:
+			{
+				std::uint8_t b;
+				buffer >> b;   // marker; no payload
+				return std::make_shared<amf0_unsupported>();
+			}
+		case amf0_type::eAMF0XMLDocument:
+			{
+				amf0_xml_document_ptr tmp(new amf0_xml_document);
+				read_xml_document(buffer, tmp);
+				return tmp;
+			}
+		case amf0_type::eAMF0TypedObject:
+			{
+				amf0_typed_object_ptr tmp(new amf0_typed_object);
+				m_ref_table.push_back(tmp);
+				read_typed_object(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0AMF3Container:
@@ -425,10 +579,34 @@ namespace fms
 				write_strict_array(buffer, tmp);
 				break;
 			}
+		case amf0_type::eAMF0Date:
+			{
+				amf0_date_ptr const tmp = std::dynamic_pointer_cast<amf0_date>(type);
+				write_date(buffer, tmp);
+				break;
+			}
 		case amf0_type::eAMF0LongString:
 			{
 				amf0_long_string_ptr const tmp = std::dynamic_pointer_cast<amf0_long_string>(type);
 				write_long_string(buffer, tmp);
+				break;
+			}
+		case amf0_type::eAMF0Unsupported:
+			{
+				std::uint8_t b = amf0_type::eAMF0Unsupported;
+				buffer << b;
+				break;
+			}
+		case amf0_type::eAMF0XMLDocument:
+			{
+				amf0_xml_document_ptr const tmp = std::dynamic_pointer_cast<amf0_xml_document>(type);
+				write_xml_document(buffer, tmp);
+				break;
+			}
+		case amf0_type::eAMF0TypedObject:
+			{
+				amf0_typed_object_ptr const tmp = std::dynamic_pointer_cast<amf0_typed_object>(type);
+				write_typed_object(buffer, tmp);
 				break;
 			}
 		case amf0_type::eAMF0AMF3Container:

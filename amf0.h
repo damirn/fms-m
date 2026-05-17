@@ -4,6 +4,7 @@
 #include "amf0_types.h"
 
 #include <stdexcept>
+#include <vector>
 
 namespace fms
 {
@@ -46,6 +47,15 @@ namespace fms
 		static bool read_long_string(stream_array &, const amf0_long_string_ptr&);
 		static void write_long_string(stream_array &, const amf0_long_string_ptr&);
 
+		static bool read_date(stream_array &, const amf0_date_ptr&);
+		static void write_date(stream_array &, const amf0_date_ptr&);
+
+		static bool read_xml_document(stream_array &, const amf0_xml_document_ptr&);
+		static void write_xml_document(stream_array &, const amf0_xml_document_ptr&);
+
+		bool read_typed_object(stream_array &, const amf0_typed_object_ptr&);
+		void write_typed_object(stream_array &, const amf0_typed_object_ptr&);
+
 		static bool read_amf3_container(stream_array &, const amf0_amf3_container_ptr&);
 		static void write_amf3_container(stream_array &, const amf0_amf3_container_ptr&);
 
@@ -53,6 +63,10 @@ namespace fms
 		void write(stream_array &, const amf0_type_ptr&);
 
 	private:
+		// AMF0 object reference table (spec: anonymous/typed objects and arrays can
+		// be sent by reference). 0-based by occurrence, reset at top-level read.
+		std::vector<amf0_type_ptr> m_ref_table;
+
 		enum { eMaxDepth = 32 };   // cap nested objects/arrays (untrusted input)
 		unsigned m_depth = 0;
 	};

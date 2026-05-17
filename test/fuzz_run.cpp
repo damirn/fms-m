@@ -6,6 +6,7 @@
 //   g++ -std=c++23 -g -O1 -fsanitize=address -fno-omit-frame-pointer \
 //       -I. -I<boost-include> test/fuzz_run.cpp amf3.cpp -o fuzz_run && ./fuzz_run
 //
+#include "amf0.h"
 #include "amf3.h"
 
 #include <cstdint>
@@ -17,20 +18,27 @@
 
 namespace
 {
-	void feed(const std::uint8_t *d, std::size_t n)
+	template <typename Codec>
+	void drain(const std::uint8_t *d, std::size_t n)
 	{
 		fms::stream_array buf;
 		if (n)
 			buf.write(d, n);
 		try
 		{
-			fms::amf3 a;
+			Codec c;
 			while (buf.available() > 0)
-				a.read(buf);   // drains all top-level values; exercises the ref reset
+				c.read(buf);   // drains all top-level values; exercises the ref reset
 		}
 		catch (...)
 		{
 		}
+	}
+
+	void feed(const std::uint8_t *d, std::size_t n)
+	{
+		drain<fms::amf3>(d, n);
+		drain<fms::amf0>(d, n);
 	}
 
 	// Seed corpus: valid encodings of every type + the reference-table vectors,
@@ -53,6 +61,15 @@ namespace
 			h({0x09, 0x05, 0x01, 0x0a, 0x0b, 0x01, 0x01, 0x0a, 0x02}),      // array + object ref
 			h({0x0a, 0x0b, 0x01, 0x06, 0x03, 'k', 0x04, 0x2a, 0x01}),       // dynamic object
 			h({0x0b, 0x07, '<', 'x', '/', '>'}),                    // xml
+			// AMF0 seeds
+			h({0x00, 0x3f, 0xf8, 0, 0, 0, 0, 0, 0}),                // amf0 number
+			h({0x02, 0x00, 0x03, 'f', 'o', 'o'}),                   // amf0 string
+			h({0x03, 0x00, 0x01, 'k', 0x05, 0x00, 0x00, 0x09}),     // amf0 object {k:null}
+			h({0x0a, 0x00, 0x00, 0x00, 0x02, 0x05, 0x06}),          // amf0 strict array [null, undefined]
+			h({0x0b, 0x40, 0x8f, 0x40, 0, 0, 0, 0, 0, 0, 0}),       // amf0 date
+			h({0x10, 0x00, 0x01, 'F', 0x00, 0x00, 0x09}),           // amf0 typed object
+			h({0x07, 0x00, 0x00}),                                  // amf0 reference
+			h({0x11, 0x04, 0x05}),                                  // amf0 -> amf3 container
 		};
 	}
 }
