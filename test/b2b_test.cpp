@@ -108,8 +108,10 @@ namespace
 	struct rec_sink : av_sink
 	{
 		int audio = 0, video = 0;
-		void on_audio_frame(fms::rtmp_message_audio_data_ptr) override { ++audio; }
-		void on_video_frame(fms::rtmp_message_video_data_ptr) override { ++video; }
+		std::uint32_t max_ts = 0;
+		int total() const { return audio + video; }
+		void on_audio_frame(fms::rtmp_message_audio_data_ptr a) override { ++audio; if (a->timestamp() > max_ts) max_ts = a->timestamp(); }
+		void on_video_frame(fms::rtmp_message_video_data_ptr v) override { ++video; if (v->timestamp() > max_ts) max_ts = v->timestamp(); }
 		void close() override {}
 	};
 
@@ -308,12 +310,12 @@ TEST_CASE("b2b: path traversal is rejected (secret file outside the media dir is
 	std::error_code ec; fs::remove_all(root, ec);
 }
 
-TEST_CASE("b2b: seek / pause / unpause on a VOD stream are acknowledged")
+TEST_CASE("b2b: seek actually repositions the VOD (only the tail is streamed)")
 {
 	int const port = 25965;
-	fs::path const dir = fs::temp_directory_path() / "fms_b2b_ps";
+	fs::path const dir = fs::temp_directory_path() / "fms_b2b_seek";
 	fs::create_directories(dir);
-	write_test_flv(dir / "movie.flv", 100);          // ~4s of content, still playing when we act
+	write_test_flv(dir / "movie.flv", 100);          // ts 0..3960 (~4s), 200 frames if played whole
 
 	server_process server(dir.string(), port);
 
@@ -321,21 +323,72 @@ TEST_CASE("b2b: seek / pause / unpause on a VOD stream are acknowledged")
 	player_nc nc(io);
 	nc.stream_name = "movie";
 	nc.conn = std::make_shared<net_connection>(io, nc, true);
-	// Once playback starts, exercise the verbs. Each is answered with its own
-	// onStatus Notify by the server, so this is race-free regardless of pacing.
-	nc.nseh.on_play_start = [&]
-	{
-		nc.nseh.ns->seek(1000);
-		nc.nseh.ns->pause(true, 1000);
-		nc.nseh.ns->pause(false, 1000);
-	};
+	nc.nseh.on_play_start = [&] { nc.nseh.ns->seek(3600); };   // jump near the end
 	nc.conn->connect(url_for(port));
 	io.run_for(std::chrono::seconds(10));
 
-	CHECK(saw(nc.nseh.status, "NetStream.Play.Start"));
+	int const got = nc.nseh.sink.total();
+	MESSAGE("seek(3600): frames=" << got << " max_ts=" << nc.nseh.sink.max_ts
+	        << " (whole file would be 200)");
 	CHECK(saw(nc.nseh.status, "NetStream.Seek.Notify"));
+	CHECK(saw(nc.nseh.status, "NetStream.Play.Stop"));
+	// Playing the whole file yields ~200 frames; a working seek to 3600ms leaves
+	// only the tail (3600..3960 ~= 10 frames) plus maybe 1-2 that raced ahead.
+	CHECK(got < 40);
+	CHECK(nc.nseh.sink.max_ts >= 3600);              // we did reach the sought region
+
+	std::error_code ec; fs::remove_all(dir, ec);
+}
+
+TEST_CASE("b2b: pause actually halts the VOD, unpause resumes it")
+{
+	int const port = 25975;
+	fs::path const dir = fs::temp_directory_path() / "fms_b2b_pause";
+	fs::create_directories(dir);
+	write_test_flv(dir / "movie.flv", 200);          // ~8s, so it streams across the pause window
+
+	server_process server(dir.string(), port);
+
+	boost::asio::io_context io;
+	player_nc nc(io);
+	nc.stream_name = "movie";
+	nc.conn = std::make_shared<net_connection>(io, nc, true);
+
+	auto timer = std::make_shared<boost::asio::steady_timer>(io);
+	int at_pause = 0;
+	int during_pause = 0;
+	int after_resume = 0;
+	nc.nseh.on_play_start = [&, timer]
+	{
+		timer->expires_after(std::chrono::milliseconds(600));
+		timer->async_wait([&, timer](const boost::system::error_code &)
+		{
+			at_pause = nc.nseh.sink.total();
+			nc.nseh.ns->pause(true, 0);
+			timer->expires_after(std::chrono::milliseconds(900));
+			timer->async_wait([&, timer](const boost::system::error_code &)
+			{
+				during_pause = nc.nseh.sink.total();      // should have barely moved
+				nc.nseh.ns->pause(false, 0);
+				timer->expires_after(std::chrono::milliseconds(900));
+				timer->async_wait([&, timer](const boost::system::error_code &)
+				{
+					after_resume = nc.nseh.sink.total();  // should climb again
+					io.stop();
+				});
+			});
+		});
+	};
+	nc.conn->connect(url_for(port));
+	io.run_for(std::chrono::seconds(12));
+
+	MESSAGE("pause: at_pause=" << at_pause << " during_pause=" << during_pause
+	        << " after_resume=" << after_resume);
 	CHECK(saw(nc.nseh.status, "NetStream.Pause.Notify"));
 	CHECK(saw(nc.nseh.status, "NetStream.Unpause.Notify"));
+	CHECK(at_pause > 0);                              // was streaming before we paused
+	CHECK(during_pause - at_pause <= 2);             // paused -> frames stopped (allow 1-2 in flight)
+	CHECK(after_resume > during_pause + 5);          // unpaused -> frames resumed
 
 	std::error_code ec; fs::remove_all(dir, ec);
 }
