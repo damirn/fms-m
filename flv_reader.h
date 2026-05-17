@@ -30,6 +30,10 @@ namespace fms
 
 		void rewind();
 
+		// Position so the next read_frame() returns the first audio/video tag whose
+		// timestamp is >= ms (or leaves the reader at EOF if none).
+		void seek(std::uint32_t ms);
+
 	protected:
 		std::uint32_t read_uint32_3();
 		std::uint32_t read_uint32();

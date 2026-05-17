@@ -30,11 +30,13 @@ Legend: **[P1]** interop-breaking / high value · **[P2]** meaningful capability
 - **[P1] No RTMPS / RTMPTS (TLS).** Plain TCP only; no `asio::ssl`. The only
   transport encryption is Adobe RTMPE (RC4), which is weak/legacy. Table-stakes
   gap. (`server.cpp:36-79`, `config.cpp:48-50`)
-- **[P2] `pause` / `pauseRaw` / `seek` not handled.** Only `receiveAudio`/
-  `receiveVideo` toggles exist; a client pause is silently ignored.
-- **[P2] FMLE/OBS publish verbs ignored:** `releaseStream`, `FCPublish`,
-  `FCUnpublish`, `FCSubscribe` (bare `publish` still works, but publishers that
-  wait on `onFCPublish` can stall/warn).
+- **[DONE — branch feat/vod] `pause` / `pauseRaw` / `seek`.** Wired to the VOD
+  engine: pause stops/resumes the pacing timer (Pause/Unpause.Notify), seek
+  repositions via `flv_reader::seek` (Seek.Notify). The play command's start
+  offset is honoured too.
+- **[DONE — branch feat/vod] FMLE/OBS publish verbs.** `releaseStream`,
+  `FCUnpublish`, `FCSubscribe` are acknowledged with `_result`; `FCPublish`
+  replies `onFCPublish(NetStream.Publish.Start)` so FMLE-style encoders proceed.
 - **[DONE — branch feat/amf3] AMF0 gaps.** Implemented Date (0x0B), XMLDocument
   (0x0F), TypedObject (0x10), Unsupported (0x0D), and Reference (0x07) with an
   AMF0 object reference table (anonymous/typed objects + arrays register; refs
@@ -91,8 +93,13 @@ bw, user-control, extended timestamps), server-side bandwidth check.
 
 ## Media / server features (vs modern servers — nginx-rtmp / SRS context)
 
-- **[P2] Live-only, no VOD.** `flv_reader` fully parses FLV→frames but is
-  **never instantiated**; `play` only resolves live publishers.
+- **[DONE — branch feat/vod] VOD playback of saved files.** When a `play` target
+  has no live publisher, the server serves a saved `.flv` from the output folder
+  via a timer-paced "virtual publisher" (`vod_session` + `flv_reader`). Stream
+  names are resolved through `resolve_media_file` (`media_path.h`), which blocks
+  path traversal / absolute paths / escapes (unit-tested); `flv_reader::seek`
+  supports seeking. Verified end-to-end (ffmpeg plays a saved file; traversal
+  attempts serve nothing).
 - **[P2] No HLS / DASH / fMP4** — FLV recording is the only output container.
 - **[P2] No native relay** (push-to-remote / pull-from-origin). "Pull" is an
   external `execvp`'d helper (`spawn_helper`). No edge/origin clustering.
@@ -102,7 +109,7 @@ bw, user-control, extended timestamps), server-side bandwidth check.
 
 ## Dead / unwired code to prune or finish
 
-- **[dead]** `flv_reader.*` — no VOD, never referenced.
+- ~~**[dead]** `flv_reader.*` — no VOD, never referenced.~~ Now wired for VOD.
 - **[dead]** `g711_codec.*` — never instantiated; only Speex is wired to the mixer.
 - **[dead]** `authentication_manager.*` / `authentication_plugin.*` — scaffold
   never called.

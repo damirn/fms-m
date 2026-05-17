@@ -76,6 +76,34 @@ namespace fms
 		}
 	}
 
+	void flv_reader::seek(std::uint32_t ms)
+	{
+		if (!m_f.is_open())
+			return;
+		m_f.clear();
+		m_f.seekg(13, std::ios_base::beg);   // past the FLV header
+
+		for (;;)
+		{
+			std::streampos const tag_start = m_f.tellg();
+			std::uint8_t type;
+			m_f.read(reinterpret_cast<char *>(&type), 1);
+			if (m_f.eof() || !m_f)
+				break;
+			std::uint32_t const size = read_uint32_3();
+			std::uint32_t const ts = read_uint32_3();
+			m_f.seekg(4, std::ios_base::cur);   // ts-extended + stream id
+
+			if ((type == 0x08 || type == 0x09) && ts >= ms)
+			{
+				m_f.clear();
+				m_f.seekg(tag_start);            // read_frame() will re-read this tag
+				return;
+			}
+			m_f.seekg(static_cast<std::streamoff>(size) + 4, std::ios_base::cur);  // data + prev tag size
+		}
+	}
+
 	std::uint32_t flv_reader::read_uint32_3()
 	{
 		std::uint32_t tmp = 0;
