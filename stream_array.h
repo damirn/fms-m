@@ -5,18 +5,13 @@
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/detail/socket_ops.hpp>   // host_to_network_long (write_uint32_3)
 
+#include "buffer_eof.h"
 #include "dynamic_array.h"
 
 namespace fms
 {
 	namespace detail
 	{
-		class buffer_eof_exception : public std::exception
-		{
-		public:
-			buffer_eof_exception()  = default;
-		};
-
 		template<typename T, std::size_t N>
 		class stream_array : public dynamic_array<T>
 		{
@@ -360,8 +355,6 @@ namespace fms
 	{
 		enum { eMaxStreamSize = 65536 };
 	}
-
-	using detail::buffer_eof_exception;
 
 	class stream_array : public detail::stream_array<std::uint8_t, detail::eMaxStreamSize>
 	{

@@ -20,47 +20,47 @@ namespace fms
 	class amf0
 	{
 	public:
-		static bool read_short_string(stream_array &, const amf0_string_ptr&, bool = false);
+		template<typename R> static bool read_short_string(R &, const amf0_string_ptr&, bool = false);
 		template<typename W> static void write_short_string(W &, const amf0_string_ptr&, bool = false);
 		template<typename W> static void write_short_string(W &, const char *, std::uint16_t, bool = false);
 
-		static bool read_boolean(stream_array &, const amf0_boolean_ptr&);
+		template<typename R> static bool read_boolean(R &, const amf0_boolean_ptr&);
 		template<typename W> static void write_boolean(W &, const amf0_boolean_ptr&);
 
-		static bool read_number(stream_array &, const amf0_number_ptr&);
+		template<typename R> static bool read_number(R &, const amf0_number_ptr&);
 		template<typename W> static void write_number(W &, const amf0_number_ptr&);
 
-		bool read_object(stream_array &, const amf0_object_ptr&);
+		template<typename R> bool read_object(R &, const amf0_object_ptr&);
 		template<typename W> static void write_object(W &, const amf0_object_ptr&);
 
-		static bool read_null(stream_array &);
+		template<typename R> static bool read_null(R &);
 		template<typename W> static void write_null(W &);
 
-		static bool read_undefined(stream_array &);
+		template<typename R> static bool read_undefined(R &);
 		template<typename W> static void write_undefined(W &);
 
-		bool read_mixed_array(stream_array &, const amf0_ecma_array_ptr&);
+		template<typename R> bool read_mixed_array(R &, const amf0_ecma_array_ptr&);
 		template<typename W> static void write_mixed_array(W &, const amf0_ecma_array_ptr&);
 
-		bool read_strict_array(stream_array &, const amf0_strict_array_ptr&);
+		template<typename R> bool read_strict_array(R &, const amf0_strict_array_ptr&);
 		template<typename W> static void write_strict_array(W &, const amf0_strict_array_ptr&);
 
-		static bool read_long_string(stream_array &, const amf0_long_string_ptr&);
+		template<typename R> static bool read_long_string(R &, const amf0_long_string_ptr&);
 		template<typename W> static void write_long_string(W &, const amf0_long_string_ptr&);
 
-		static bool read_date(stream_array &, const amf0_date_ptr&);
+		template<typename R> static bool read_date(R &, const amf0_date_ptr&);
 		template<typename W> static void write_date(W &, const amf0_date_ptr&);
 
-		static bool read_xml_document(stream_array &, const amf0_xml_document_ptr&);
+		template<typename R> static bool read_xml_document(R &, const amf0_xml_document_ptr&);
 		template<typename W> static void write_xml_document(W &, const amf0_xml_document_ptr&);
 
-		bool read_typed_object(stream_array &, const amf0_typed_object_ptr&);
+		template<typename R> bool read_typed_object(R &, const amf0_typed_object_ptr&);
 		template<typename W> static void write_typed_object(W &, const amf0_typed_object_ptr&);
 
-		static bool read_amf3_container(stream_array &, const amf0_amf3_container_ptr&);
+		template<typename R> static bool read_amf3_container(R &, const amf0_amf3_container_ptr&);
 		template<typename W> static void write_amf3_container(W &, const amf0_amf3_container_ptr&);
 
-		amf0_type_ptr read(stream_array &);
+		template<typename R> amf0_type_ptr read(R &);
 		template<typename W> static void write(W &, const amf0_type_ptr&);
 
 	private:
