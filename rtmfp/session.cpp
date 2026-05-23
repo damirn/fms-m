@@ -47,7 +47,7 @@ namespace fms
 		delete m_parser;
 	};
 
-	bool session::parse(stream_array &data)
+	bool session::parse(byte_reader &data)
 	{
 		m_has_data_ready = false;
 		m_did_receive_data = true;

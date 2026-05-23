@@ -5,7 +5,7 @@
 
 namespace fms
 {
-	void header::deserialize(stream_array &data)
+	void header::deserialize(byte_reader &data)
 	{
 		std::uint8_t d;
 		data >> d;

@@ -81,7 +81,10 @@ namespace fms
 			if (ss)
 			{
 				const session_ptr& s = *ss;
-				if (s->parse(m_buffer))
+				// get_sid() left m_buffer's read cursor at the ciphertext (past the
+				// 4-byte session id); parse over that as a non-owning byte_reader.
+				byte_reader packet(m_buffer.read_pos(), m_buffer.available());
+				if (s->parse(packet))
 				{
 					// don't start a second async_send_to while one is in flight (it
 					// would overwrite the shared serializer buffer mid-send); pending
@@ -130,7 +133,8 @@ namespace fms
 
 	void service::handle_startup_session()
 	{
-		m_parser->parse(m_buffer);
+		byte_reader packet(m_buffer.read_pos(), m_buffer.available());
+		m_parser->parse(packet);
 		read();
 	}
 
@@ -234,8 +238,7 @@ namespace fms
 
 	void service::handle_ihello(ihello_chunk *ic)
 	{
-		stream_array s(const_cast<std::uint8_t *>(ic->epd()));
-		s.update(static_cast<std::size_t>(ic->epd_len()));
+		byte_reader s(ic->epd(), static_cast<std::size_t>(ic->epd_len()));
 		s.read_vlu();
 		std::uint8_t ihellotype;
 		s >> ihellotype;
@@ -267,8 +270,7 @@ namespace fms
 		std::uint64_t group, std::uint16_t &out_len)
 	{
 		out_len = 0;
-		stream_array s(const_cast<std::uint8_t *>(cert));
-		s.update(cert_len);
+		byte_reader s(cert, cert_len);
 		try
 		{
 			while (s.available() > 0)
@@ -276,17 +278,16 @@ namespace fms
 				std::uint64_t const opt_len = s.read_vlu();
 				if (opt_len == 0)
 					break; // end-of-options marker
-				std::uint8_t *const type_start = s.read_pos();
+				const std::uint8_t *const type_start = s.read_pos();
 				std::uint64_t const type = s.read_vlu();
 				auto const type_bytes = static_cast<std::uint64_t>(s.read_pos() - type_start);
 				if (type_bytes > opt_len)
 					break;
 				std::uint64_t const val_len = opt_len - type_bytes;
-				std::uint8_t *const val = s.read_pos();
+				const std::uint8_t *const val = s.read_pos();
 				if (type == 0x1d) // CERT_OPTION_DH_PUBLIC_KEY
 				{
-					stream_array vs(val);
-					vs.update(static_cast<std::size_t>(val_len));
+					byte_reader vs(val, static_cast<std::size_t>(val_len));
 					std::uint64_t const g = vs.read_vlu();
 					if (g == group)
 					{

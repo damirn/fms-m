@@ -4,6 +4,7 @@
 #include "parser.h"
 #include "types.h"
 #include "stream_array.h"
+#include "byte_reader.h"
 
 #include <list>
 #include <map>
@@ -67,7 +68,7 @@ namespace fms
 			return m_state;
 		}
 
-		bool parse(stream_array &);
+		bool parse(byte_reader &);
 
 		const std::uint32_t &sid() const
 		{

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stream_array.h"
+#include "byte_reader.h"
 #include "byte_writer.h"
 
 #include <cstring>
@@ -56,11 +56,12 @@ namespace fms
 		option(std::uint8_t type, const vlu_t &value)
 			: m_type(type)
 		{
-			m_value_len = stream_array::get_vlu_size(value);
+			m_value_len = byte_writer::vlu_size(value);
 			m_value = new std::uint8_t[m_value_len];
 			m_len = m_value_len;
-			stream_array s(m_value);
+			byte_writer s;
 			s.write_vlu(value);
+			std::memcpy(m_value, s.data(), m_value_len);
 		}
 
 		~option()
@@ -68,7 +69,7 @@ namespace fms
 			delete[] m_value;
 		}
 
-		bool deserialize(stream_array &);
+		bool deserialize(byte_reader &);
 		std::uint16_t serialize(byte_writer &) const;
 
 		const bool is_marker() const
@@ -90,7 +91,7 @@ namespace fms
 
 	struct option_list
 	{
-		bool deserialize(stream_array &);
+		bool deserialize(byte_reader &);
 		std::uint16_t serialize(byte_writer &);
 
 		option_ptr create_option(std::uint8_t type, const std::uint8_t *value, const std::uint16_t &value_len);

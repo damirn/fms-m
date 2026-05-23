@@ -3,7 +3,8 @@
 #include "aes.h"
 #include "chunk.h"
 #include "header.h"
-#include "stream_array.h"
+#include "byte_reader.h"
+#include "byte_writer.h"
 #include "util.h"
 
 #include <iostream>
@@ -21,12 +22,11 @@ namespace fms
 		delete m_aes;
 	}
 
-	bool parser::parse(stream_array &data)
+	bool parser::parse(byte_reader &data)
 	{
-		stream_array raw;
-		m_aes->decrypt(data, raw);
-
-//		hexdump(std::cout, (void *)raw.read_pos(), raw.available());
+		byte_writer raw_buf;
+		m_aes->decrypt(data, raw_buf);
+		byte_reader raw(raw_buf.data(), raw_buf.size());
 
 		if (!check_checksum(raw))
 			return false;
@@ -37,7 +37,7 @@ namespace fms
 		return parse_chunks(raw);
 	}
 
-	bool parser::parse_chunks(stream_array &raw)
+	bool parser::parse_chunks(byte_reader &raw)
 	{
 		std::uint16_t len = 0;
 		std::uint8_t type;
@@ -65,7 +65,7 @@ namespace fms
 		return true;
 	}
 
-	bool parser::deserialize_chunk(std::uint8_t type, std::uint16_t len, stream_array &raw)
+	bool parser::deserialize_chunk(std::uint8_t type, std::uint16_t len, byte_reader &raw)
 	{
 		chunk *c = nullptr;
 
@@ -111,14 +111,14 @@ namespace fms
 		return false;
 	}
 
-	bool parser::check_checksum(stream_array &raw)
+	bool parser::check_checksum(byte_reader &raw)
 	{
 		std::uint16_t c;
 		raw >> c;
 		return c == calculate_checksum(raw.read_pos(), raw.available());
 	}
 
-	std::uint16_t parser::calculate_checksum(std::uint8_t *data, size_t size)
+	std::uint16_t parser::calculate_checksum(const std::uint8_t *data, size_t size)
 	{
 		int sum = 0;
 		std::uint8_t  const*end = data + size;

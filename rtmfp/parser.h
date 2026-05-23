@@ -7,7 +7,8 @@ namespace fms
 	class aes;
 	class chunk;
 	class header;
-	class stream_array;
+	class byte_reader;
+	class byte_writer;
 
 	class chunk_handler
 	{
@@ -23,19 +24,19 @@ namespace fms
 		explicit parser(chunk_handler &);
 		~parser();
 
-		bool parse(stream_array &);
+		bool parse(byte_reader &);
 
 		aes *get_aes()
 		{
 			return m_aes;
 		}
 
-		static std::uint16_t calculate_checksum(std::uint8_t *, size_t);
+		static std::uint16_t calculate_checksum(const std::uint8_t *, size_t);
 
 	protected:
-		bool parse_chunks(stream_array &);
-		static bool check_checksum(stream_array &);
-		bool deserialize_chunk(std::uint8_t, std::uint16_t, stream_array &);
+		bool parse_chunks(byte_reader &);
+		static bool check_checksum(byte_reader &);
+		bool deserialize_chunk(std::uint8_t, std::uint16_t, byte_reader &);
 
 		chunk_handler &m_chunk_handler;
 		aes *m_aes;

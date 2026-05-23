@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "chunk.h"
 #include "flow.h"
-#include "stream_array.h"
+#include "byte_reader.h"
 
 #include <boost/asio.hpp>
 
@@ -11,7 +11,7 @@ namespace fms
 	// variable-length fields overran the declared chunk length, which is only
 	// bounded by the datagram) and overrun (the chunk exceeds what remains in the
 	// datagram). Prevents oversized new[] / out-of-bounds memcpy on hostile input.
-	static bool trailing_len(std::uint8_t *here, std::uint16_t len, stream_array &buff, std::uint16_t &out)
+	static bool trailing_len(const std::uint8_t *here, std::uint16_t len, byte_reader &buff, std::uint16_t &out)
 	{
 		std::uint8_t  const*end = here + len;
 		if (buff.read_pos() > end)
@@ -52,13 +52,13 @@ namespace fms
 		return serialize_chunk_header(to, hdr);
 	}
 
-	bool ihello_chunk::deserialize(stream_array &buff, std::uint16_t len)
+	bool ihello_chunk::deserialize(byte_reader &buff, std::uint16_t len)
 	{
 		try
 		{
-			std::uint8_t *here = buff.read_pos();
+			const std::uint8_t *here = buff.read_pos();
 			m_epd_len = buff.read_vlu();
-			m_epd = buff.read_pos();
+			m_epd = const_cast<std::uint8_t *>(buff.read_pos());
 			buff.skip(static_cast<size_t>(m_epd_len));
 
 			// make a copy of the tag, since it will be needed later
@@ -105,27 +105,27 @@ namespace fms
 		return serialize_chunk_header(to, hdr);
 	}
 
-	bool iikeying_chunk::deserialize(stream_array &buff, std::uint16_t len)
+	bool iikeying_chunk::deserialize(byte_reader &buff, std::uint16_t len)
 	{
 		try
 		{
-			std::uint8_t *here = buff.read_pos();
+			const std::uint8_t *here = buff.read_pos();
 			buff >> m_isid;
 			m_cookie_len = buff.read_vlu();
-			m_cookie_echo = buff.read_pos();
+			m_cookie_echo = const_cast<std::uint8_t *>(buff.read_pos());
 			buff.skip(static_cast<size_t>(m_cookie_len));
 
 			m_cert_len = buff.read_vlu();
-			m_initiator_cert = buff.read_pos();
+			m_initiator_cert = const_cast<std::uint8_t *>(buff.read_pos());
 			buff.skip(static_cast<size_t>(m_cert_len));
 
 			m_skic_len = buff.read_vlu();
-			m_skic = buff.read_pos();
+			m_skic = const_cast<std::uint8_t *>(buff.read_pos());
 			buff.skip(static_cast<size_t>(m_skic_len));
 
 			if (!trailing_len(here, len, buff, m_signature_len))
 				return false;
-			m_signature = buff.read_pos();
+			m_signature = const_cast<std::uint8_t *>(buff.read_pos());
 			buff.skip(m_signature_len);
 
 			return true;
@@ -195,11 +195,11 @@ namespace fms
 		m_frag_ctl = frag->m_frag_ctrl;
 	}
 
-	bool user_data_chunk::deserialize(stream_array &buff, std::uint16_t len)
+	bool user_data_chunk::deserialize(byte_reader &buff, std::uint16_t len)
 	{
 		try
 		{
-			std::uint8_t *here = buff.read_pos();
+			const std::uint8_t *here = buff.read_pos();
 			buff >> m_flags;
 			parse_flags();
 			m_flow_id = buff.read_vlu();
@@ -212,7 +212,7 @@ namespace fms
 			}
 			if (!trailing_len(here, len, buff, m_user_data_len))
 				return false;
-			m_user_data = buff.read_pos();
+			m_user_data = const_cast<std::uint8_t *>(buff.read_pos());
 			buff.skip(m_user_data_len);
 			return true;
 		}
@@ -241,11 +241,11 @@ namespace fms
 		return serialize_chunk_header(to, hdr);
 	}
 
-	bool next_user_data_chunk::deserialize(stream_array &buff, std::uint16_t len)
+	bool next_user_data_chunk::deserialize(byte_reader &buff, std::uint16_t len)
 	{
 		try
 		{
-			std::uint8_t *here = buff.read_pos();
+			const std::uint8_t *here = buff.read_pos();
 			buff >> m_flags;
 			parse_flags();
 			if (m_options_present)
@@ -255,7 +255,7 @@ namespace fms
 			}
 			if (!trailing_len(here, len, buff, m_user_data_len))
 				return false;
-			m_user_data = buff.read_pos();
+			m_user_data = const_cast<std::uint8_t *>(buff.read_pos());
 			buff.skip(m_user_data_len);
 			return true;
 		}
@@ -265,7 +265,7 @@ namespace fms
 		}
 	}
 
-	bool range_ack_chunk::deserialize(stream_array &buff, std::uint16_t len)
+	bool range_ack_chunk::deserialize(byte_reader &buff, std::uint16_t len)
 	{
 		try
 		{
@@ -312,7 +312,7 @@ namespace fms
 		return serialize_chunk_header(to, hdr);
 	}
 
-	bool flow_exception_report_chunk::deserialize(stream_array &buff, std::uint16_t len)
+	bool flow_exception_report_chunk::deserialize(byte_reader &buff, std::uint16_t len)
 	{
 		try
 		{
@@ -326,12 +326,12 @@ namespace fms
 		}
 	}
 
-	bool ping_chunk::deserialize(stream_array &buff, std::uint16_t len)
+	bool ping_chunk::deserialize(byte_reader &buff, std::uint16_t len)
 	{
 		try
 		{
 			m_data_len = len;
-			m_data = buff.read_pos();
+			m_data = const_cast<std::uint8_t *>(buff.read_pos());
 			buff.skip(len);
 			return true;
 		}
@@ -351,7 +351,7 @@ namespace fms
 		return serialize_chunk_header(to, hdr);
 	}
 
-	bool close_ack_chunk::deserialize(stream_array &, std::uint16_t)
+	bool close_ack_chunk::deserialize(byte_reader &, std::uint16_t)
 	{
 		return true; // no payload
 	}
