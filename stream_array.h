@@ -32,7 +32,6 @@ namespace fms
 				, m_mark(begin())
 				, m_read(begin())
 				, m_write(begin())
-				, m_read_barrier(begin())
 				, m_write_high_mark(begin())
 			{}
 
@@ -42,13 +41,12 @@ namespace fms
 				, m_mark(begin())
 				, m_read(begin())
 				, m_write(begin())
-				, m_read_barrier(begin())
 				, m_write_high_mark(begin())
 			{}
 
 			void clear()
 			{
-				m_read = m_write = m_mark = m_read_barrier = m_write_high_mark = begin();
+				m_read = m_write = m_mark = m_write_high_mark = begin();
 				m_write_dequeue.clear();
 			}
 
@@ -65,7 +63,7 @@ namespace fms
 					return;
 				}
 				std::memmove(begin(), reinterpret_cast<void *>(tail), remaining);
-				m_read = m_mark = m_read_barrier = m_write = begin();
+				m_read = m_mark = m_write = begin();
 				m_write_high_mark = begin() + remaining;
 				m_write_dequeue.clear();
 			}
@@ -81,7 +79,7 @@ namespace fms
 					std::memmove(begin(), reinterpret_cast<void *>(m_read), len);
 					m_write -= shift;
 					m_write_high_mark = begin() + len;
-					m_read = m_mark = m_read_barrier = begin();
+					m_read = m_mark = begin();
 					for (auto &saved : m_write_dequeue)
 						saved = saved > shift ? saved - shift : 0;
 				}
@@ -127,7 +125,6 @@ namespace fms
 				{
 					std::size_t const s1 = m_mark - begin();
 					std::size_t const s2 = m_read - begin();
-					std::size_t const s3 = m_read_barrier - begin();
 					std::size_t const s4 = m_write - begin();
 					std::size_t const s5 = m_write_high_mark - begin();
 
@@ -138,7 +135,6 @@ namespace fms
 
 					m_mark = begin() + s1;
 					m_read = begin() + s2;
-					m_read_barrier = begin() + s3;
 					m_write = begin() + s4;
 					m_write_high_mark = begin() + s5;
 				}
@@ -274,8 +270,6 @@ namespace fms
 
 			std::size_t available()
 			{
-				if (m_read_barrier != begin())
-					return m_read_barrier - m_read;
 				return m_write_high_mark - m_read;
 			}
 
@@ -317,18 +311,6 @@ namespace fms
 				m_write = m_write_high_mark;
 			}
 
-			void set_read_barrier(std::size_t relative_pos)
-			{
-				if (available() < relative_pos)
-					throw buffer_eof_exception();
-				m_read_barrier = m_read + relative_pos;
-			}
-
-			void clear_read_barrier()
-			{
-				m_read_barrier = m_write;
-			}
-
 			std::size_t size()
 			{
 				return m_write - begin();
@@ -368,7 +350,6 @@ namespace fms
 			iterator m_mark;
 			iterator m_read;
 			iterator m_write;
-			iterator m_read_barrier;
 			iterator m_write_high_mark;
 			using position_deque = std::deque<std::size_t>;
 			position_deque m_write_dequeue;
