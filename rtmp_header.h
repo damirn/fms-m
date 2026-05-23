@@ -1,5 +1,6 @@
 #pragma once
 
+#include "byte_reader.h"
 #include "stream_array.h"
 
 namespace fms
@@ -19,6 +20,11 @@ namespace fms
 
 		// De-serialize rtmp header from binary stream.
 		void deserialize(stream_array &);
+
+		// Non-throwing, peek-then-commit variant over a byte_reader: returns false
+		// (and leaves *this and the reader untouched) if the whole header isn't
+		// present yet. Behaviour-equivalent to deserialize() for complete headers.
+		bool try_deserialize(byte_reader &);
 
 		// Serialize rtmp header to binary stream.
 		void serialize(stream_array &, rtmp_header &);
@@ -105,6 +111,11 @@ namespace fms
 		void deserialize_header_same_source(stream_array &);
 		void deserialize_header_timer_change(stream_array &);
 		void deserialize_extended_ts(stream_array &);
+
+		bool try_header_new(byte_reader &);
+		bool try_header_same_source(byte_reader &);
+		bool try_header_timer_change(byte_reader &);
+		bool try_extended_ts(byte_reader &);
 		void serialize(stream_array &, std::uint32_t);
 		void serialize_header_new(stream_array &);
 		void serialize_header_same_source(stream_array &);
