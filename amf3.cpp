@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "byte_writer.h"
 #include "amf3.h"
 
 #include <cstring>
@@ -12,7 +13,7 @@ namespace fms
 
 		if (++m_depth > eMaxDepth)   // bound recursion on hostile nested input
 			throw amf3_read_exception();
-		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } guard{ m_depth };
+		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ m_depth };
 
 		std::uint8_t type;
 		buffer >> type;
@@ -45,9 +46,10 @@ namespace fms
 		}
 	}
 
-	void amf3::write(stream_array &buffer, const amf3_type_ptr& type)
+	template<typename W>
+	void amf3::write(W &buffer, const amf3_type_ptr& type)
 	{
-		std::uint8_t marker = type->type();
+		std::uint8_t const marker = type->type();
 		buffer << marker;
 		switch (marker)
 		{
@@ -94,12 +96,13 @@ namespace fms
 		return m_object_refs[idx];
 	}
 
-	amf3_empty_type_ptr amf3::read_empty_type(stream_array &, std::uint8_t type) const
+	amf3_empty_type_ptr amf3::read_empty_type(stream_array &, std::uint8_t type)
 	{
 		return std::make_shared<amf3_empty_type>(static_cast<amf3_type::etype>(type));
 	}
 
-	void amf3::write_empty_type(stream_array &, const amf3_empty_type_ptr&)
+	template<typename W>
+	void amf3::write_empty_type(W &, const amf3_empty_type_ptr&)
 	{
 		// no payload; the marker written by write() is the whole encoding
 	}
@@ -119,12 +122,14 @@ namespace fms
 		return std::make_shared<amf3_integer_type>(tmp);
 	}
 
-	void amf3::write_integer(stream_array &buffer, const amf3_integer_type_ptr& value)
+	template<typename W>
+	void amf3::write_integer(W &buffer, const amf3_integer_type_ptr& value)
 	{
 		write_integer(buffer, value->value());
 	}
 
-	void amf3::write_integer(stream_array &buffer, std::uint32_t value)
+	template<typename W>
+	void amf3::write_integer(W &buffer, std::uint32_t value)
 	{
 		std::uint8_t b;
 		if ((value & 0xffffff80) == 0)
@@ -180,14 +185,15 @@ namespace fms
 		return std::make_shared<amf3_double_type>(d);
 	}
 
-	void amf3::write_double(stream_array &buffer, const amf3_double_type_ptr& value)
+	template<typename W>
+	void amf3::write_double(W &buffer, const amf3_double_type_ptr& value)
 	{
 		double const d = value->value();
 		std::uint64_t u;
 		std::memcpy(&u, &d, sizeof(u));
 		for (int i = 7; i >= 0; --i)
 		{
-			std::uint8_t b = static_cast<std::uint8_t>((u >> (i * 8)) & 0xff);
+			std::uint8_t const b = static_cast<std::uint8_t>((u >> (i * 8)) & 0xff);
 			buffer << b;
 		}
 	}
@@ -206,19 +212,21 @@ namespace fms
 		std::uint32_t const len = header >> 1;
 		if (buffer.available() < len)          // wire length must not exceed the buffer
 			throw buffer_eof_exception();
-		std::string s(reinterpret_cast<char *>(buffer.read_pos()), len);
+		std::string s(reinterpret_cast<char *>(buffer.read_pos()), len);   // NOLINT(misc-const-correctness) moved below
 		buffer.skip(len);
 		if (!s.empty())                        // the empty string is never sent by reference
 			m_string_refs.push_back(s);
 		return std::make_shared<amf3_string_type>(std::move(s));
 	}
 
-	void amf3::write_string(stream_array &buffer, const amf3_string_type_ptr& value)
+	template<typename W>
+	void amf3::write_string(W &buffer, const amf3_string_type_ptr& value)
 	{
 		write_string(buffer, value->value());
 	}
 
-	void amf3::write_string(stream_array &buffer, const std::string &value)
+	template<typename W>
+	void amf3::write_string(W &buffer, const std::string &value)
 	{
 		std::uint32_t const header = (static_cast<std::uint32_t>(value.length()) << 1) | 0x01;
 		write_integer(buffer, header);
@@ -234,14 +242,15 @@ namespace fms
 		std::uint32_t const len = header >> 1;
 		if (buffer.available() < len)
 			throw buffer_eof_exception();
-		std::string s(reinterpret_cast<char *>(buffer.read_pos()), len);
+		std::string s(reinterpret_cast<char *>(buffer.read_pos()), len);   // NOLINT(misc-const-correctness) moved below
 		buffer.skip(len);
 		auto xml = std::make_shared<amf3_xml_type>(static_cast<amf3_type::etype>(marker), std::move(s));
 		m_object_refs.push_back(xml);
 		return xml;
 	}
 
-	void amf3::write_xml(stream_array &buffer, const amf3_xml_type_ptr& value)
+	template<typename W>
+	void amf3::write_xml(W &buffer, const amf3_xml_type_ptr& value)
 	{
 		std::uint32_t const header = (static_cast<std::uint32_t>(value->value().length()) << 1) | 0x01;
 		write_integer(buffer, header);
@@ -260,7 +269,8 @@ namespace fms
 		return date;
 	}
 
-	void amf3::write_date(stream_array &buffer, const amf3_date_type_ptr& value)
+	template<typename W>
+	void amf3::write_date(W &buffer, const amf3_date_type_ptr& value)
 	{
 		write_integer(buffer, 0x01);   // U29D-value: low bit 1, rest unused
 		auto const tmp = std::make_shared<amf3_double_type>(value->value());
@@ -283,7 +293,8 @@ namespace fms
 		return ba;
 	}
 
-	void amf3::write_bytearray(stream_array &buffer, const amf3_bytearray_type_ptr& value)
+	template<typename W>
+	void amf3::write_bytearray(W &buffer, const amf3_bytearray_type_ptr& value)
 	{
 		std::uint32_t const header = (static_cast<std::uint32_t>(value->value().length()) << 1) | 0x01;
 		write_integer(buffer, header);
@@ -316,7 +327,8 @@ namespace fms
 		return arr;
 	}
 
-	void amf3::write_array(stream_array &buffer, const amf3_array_type_ptr& arr)
+	template<typename W>
+	void amf3::write_array(W &buffer, const amf3_array_type_ptr& arr)
 	{
 		std::uint32_t const header = (static_cast<std::uint32_t>(arr->dense().size()) << 1) | 0x01;
 		write_integer(buffer, header);
@@ -389,7 +401,8 @@ namespace fms
 		return obj;
 	}
 
-	void amf3::write_object(stream_array &buffer, const amf3_object_type_ptr& obj)
+	template<typename W>
+	void amf3::write_object(W &buffer, const amf3_object_type_ptr& obj)
 	{
 		// Encode as an anonymous, dynamic object with no sealed members: U29O bits
 		// low->high = instance(1), new-traits(1), not-externalizable(0), dynamic(1),
@@ -428,4 +441,22 @@ namespace fms
 
 		return ret;
 	}
+
+	// Explicit instantiations for both writers (GCC needs each — no cascade).
+#define AMF3_WRITE_INSTANCES(W) \
+	template void amf3::write<W>(W &, const amf3_type_ptr &); \
+	template void amf3::write_empty_type<W>(W &, const amf3_empty_type_ptr &); \
+	template void amf3::write_integer<W>(W &, std::uint32_t); \
+	template void amf3::write_integer<W>(W &, const amf3_integer_type_ptr &); \
+	template void amf3::write_double<W>(W &, const amf3_double_type_ptr &); \
+	template void amf3::write_string<W>(W &, const amf3_string_type_ptr &); \
+	template void amf3::write_string<W>(W &, const std::string &); \
+	template void amf3::write_xml<W>(W &, const amf3_xml_type_ptr &); \
+	template void amf3::write_date<W>(W &, const amf3_date_type_ptr &); \
+	template void amf3::write_bytearray<W>(W &, const amf3_bytearray_type_ptr &); \
+	template void amf3::write_array<W>(W &, const amf3_array_type_ptr &); \
+	template void amf3::write_object<W>(W &, const amf3_object_type_ptr &);
+	AMF3_WRITE_INSTANCES(stream_array)
+	AMF3_WRITE_INSTANCES(byte_writer)
+#undef AMF3_WRITE_INSTANCES
 }

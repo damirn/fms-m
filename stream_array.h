@@ -111,10 +111,10 @@ namespace fms
 				return *this;
 			}
 
-			template<typename V> stream_array &operator<< (V &value)
+			template<typename V> stream_array &operator<< (const V &value)
 			{
 				check_size(sizeof(V));
-				std::memcpy(reinterpret_cast<void *>(write_pos()), reinterpret_cast<void *>(&value), sizeof(V));
+				std::memcpy(reinterpret_cast<void *>(write_pos()), reinterpret_cast<const void *>(&value), sizeof(V));
 				update_write_iterator(sizeof(V));
 				return *this;
 			}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "byte_writer.h"
 #include "stream_array.h"
 #include "amf0_types.h"
 
@@ -20,47 +21,47 @@ namespace fms
 	{
 	public:
 		static bool read_short_string(stream_array &, const amf0_string_ptr&, bool = false);
-		static void write_short_string(stream_array &, const amf0_string_ptr&, bool = false);
-		static void write_short_string(stream_array &, const char *, std::uint16_t, bool = false);
+		template<typename W> static void write_short_string(W &, const amf0_string_ptr&, bool = false);
+		template<typename W> static void write_short_string(W &, const char *, std::uint16_t, bool = false);
 
 		static bool read_boolean(stream_array &, const amf0_boolean_ptr&);
-		static void write_boolean(stream_array &, const amf0_boolean_ptr&);
+		template<typename W> static void write_boolean(W &, const amf0_boolean_ptr&);
 
 		static bool read_number(stream_array &, const amf0_number_ptr&);
-		static void write_number(stream_array &, const amf0_number_ptr&);
+		template<typename W> static void write_number(W &, const amf0_number_ptr&);
 
 		bool read_object(stream_array &, const amf0_object_ptr&);
-		static void write_object(stream_array &, const amf0_object_ptr&);
+		template<typename W> static void write_object(W &, const amf0_object_ptr&);
 
 		static bool read_null(stream_array &);
-		static void write_null(stream_array &);
+		template<typename W> static void write_null(W &);
 
 		static bool read_undefined(stream_array &);
-		static void write_undefined(stream_array &);
+		template<typename W> static void write_undefined(W &);
 
 		bool read_mixed_array(stream_array &, const amf0_ecma_array_ptr&);
-		static void write_mixed_array(stream_array &, const amf0_ecma_array_ptr&);
+		template<typename W> static void write_mixed_array(W &, const amf0_ecma_array_ptr&);
 
 		bool read_strict_array(stream_array &, const amf0_strict_array_ptr&);
-		static void write_strict_array(stream_array &, const amf0_strict_array_ptr&);
+		template<typename W> static void write_strict_array(W &, const amf0_strict_array_ptr&);
 
 		static bool read_long_string(stream_array &, const amf0_long_string_ptr&);
-		static void write_long_string(stream_array &, const amf0_long_string_ptr&);
+		template<typename W> static void write_long_string(W &, const amf0_long_string_ptr&);
 
 		static bool read_date(stream_array &, const amf0_date_ptr&);
-		static void write_date(stream_array &, const amf0_date_ptr&);
+		template<typename W> static void write_date(W &, const amf0_date_ptr&);
 
 		static bool read_xml_document(stream_array &, const amf0_xml_document_ptr&);
-		static void write_xml_document(stream_array &, const amf0_xml_document_ptr&);
+		template<typename W> static void write_xml_document(W &, const amf0_xml_document_ptr&);
 
 		bool read_typed_object(stream_array &, const amf0_typed_object_ptr&);
-		static void write_typed_object(stream_array &, const amf0_typed_object_ptr&);
+		template<typename W> static void write_typed_object(W &, const amf0_typed_object_ptr&);
 
 		static bool read_amf3_container(stream_array &, const amf0_amf3_container_ptr&);
-		static void write_amf3_container(stream_array &, const amf0_amf3_container_ptr&);
+		template<typename W> static void write_amf3_container(W &, const amf0_amf3_container_ptr&);
 
 		amf0_type_ptr read(stream_array &);
-		static void write(stream_array &, const amf0_type_ptr&);
+		template<typename W> static void write(W &, const amf0_type_ptr&);
 
 	private:
 		// AMF0 object reference table (spec: anonymous/typed objects and arrays can

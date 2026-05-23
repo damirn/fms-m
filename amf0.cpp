@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "byte_writer.h"
 #include "amf0.h"
 #include "amf3.h"
 
@@ -30,18 +31,20 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_short_string(stream_array &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
+	template<typename W>
+	void amf0::write_short_string(W &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
 	{
 		write_short_string(buffer, value->value().c_str(), static_cast<std::uint16_t >(value->value().size()), skip_type);
 	}
 
-	void amf0::write_short_string(stream_array &buffer, const char *value, std::uint16_t len, bool skip_type /* = false */)
+	template<typename W>
+	void amf0::write_short_string(W &buffer, const char *value, std::uint16_t len, bool skip_type /* = false */)
 	{
-		std::uint8_t b = amf0_type::eAMF0String;
+		std::uint8_t const b = amf0_type::eAMF0String;
 		if (!skip_type)
 			buffer << b;
 
-		std::uint16_t nlen = boost::asio::detail::socket_ops::host_to_network_short(len);
+		std::uint16_t const nlen = boost::asio::detail::socket_ops::host_to_network_short(len);
 		buffer << nlen;
 		buffer.write(value, len);
 	}
@@ -59,7 +62,8 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_boolean(stream_array &buffer, const amf0_boolean_ptr& value)
+	template<typename W>
+	void amf0::write_boolean(W &buffer, const amf0_boolean_ptr& value)
 	{
 		std::uint8_t b = amf0_type::eAMF0Boolean;
 		buffer << b;
@@ -87,9 +91,10 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_number(stream_array &buffer, const amf0_number_ptr& value)
+	template<typename W>
+	void amf0::write_number(W &buffer, const amf0_number_ptr& value)
 	{
-		std::uint8_t b = amf0_type::eAMF0Number;
+		std::uint8_t const b = amf0_type::eAMF0Number;
 		buffer << b;
 
 		double d = value->value();
@@ -121,9 +126,10 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_object(stream_array &buffer, const amf0_object_ptr& value)
+	template<typename W>
+	void amf0::write_object(W &buffer, const amf0_object_ptr& value)
 	{
-		std::uint8_t b = amf0_type::eAMF0Object;
+		std::uint8_t const b = amf0_type::eAMF0Object;
 		buffer << b;
 
 		for (amf0_object::indexed_iterator i = value->begin_indexed(); i != value->end_indexed(); ++i)
@@ -142,9 +148,10 @@ namespace fms
 		return b == amf0_type::eAMF0Null;
 	}
 
-	void amf0::write_null(stream_array &buffer)
+	template<typename W>
+	void amf0::write_null(W &buffer)
 	{
-		std::uint8_t b = amf0_type::eAMF0Null;
+		std::uint8_t const b = amf0_type::eAMF0Null;
 		buffer << b;
 	}
 
@@ -155,9 +162,10 @@ namespace fms
 		return b == amf0_type::eAMF0Undefined;
 	}
 
-	void amf0::write_undefined(stream_array &buffer)
+	template<typename W>
+	void amf0::write_undefined(W &buffer)
 	{
-		std::uint8_t b = amf0_type::eAMF0Undefined;
+		std::uint8_t const b = amf0_type::eAMF0Undefined;
 		buffer << b;
 	}
 
@@ -185,9 +193,10 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_mixed_array(stream_array &buffer, const amf0_ecma_array_ptr& value)
+	template<typename W>
+	void amf0::write_mixed_array(W &buffer, const amf0_ecma_array_ptr& value)
 	{
-		std::uint8_t b = amf0_type::eAMF0EcmaArray;
+		std::uint8_t const b = amf0_type::eAMF0EcmaArray;
 		buffer << b;
 
 		auto size = static_cast<std::uint32_t>(value->value().size());
@@ -227,9 +236,10 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_strict_array(stream_array &buffer, const amf0_strict_array_ptr& value)
+	template<typename W>
+	void amf0::write_strict_array(W &buffer, const amf0_strict_array_ptr& value)
 	{
-		std::uint8_t b = amf0_type::eAMF0StrictArray;
+		std::uint8_t const b = amf0_type::eAMF0StrictArray;
 		buffer << b;
 
 		auto size = static_cast<std::uint32_t>(value->value().size());
@@ -263,9 +273,10 @@ namespace fms
 		return false;
 	}
 
-	void amf0::write_long_string(stream_array &buffer, const amf0_long_string_ptr& value)
+	template<typename W>
+	void amf0::write_long_string(W &buffer, const amf0_long_string_ptr& value)
 	{
-		std::uint8_t b = amf0_type::eAMF0LongString;
+		std::uint8_t const b = amf0_type::eAMF0LongString;
 		buffer << b;
 
 		auto size = value->size();
@@ -298,9 +309,10 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_date(stream_array &buffer, const amf0_date_ptr& value)
+	template<typename W>
+	void amf0::write_date(W &buffer, const amf0_date_ptr& value)
 	{
-		std::uint8_t b = amf0_type::eAMF0Date;
+		std::uint8_t const b = amf0_type::eAMF0Date;
 		buffer << b;
 
 		double d = value->value();
@@ -308,7 +320,7 @@ namespace fms
 		for (int i = 7; i >= 0; --i)
 			buffer << tmp[i];
 
-		std::uint16_t tz = 0;
+		std::uint16_t const tz = 0;
 		buffer << tz;
 	}
 
@@ -332,12 +344,13 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_xml_document(stream_array &buffer, const amf0_xml_document_ptr& value)
+	template<typename W>
+	void amf0::write_xml_document(W &buffer, const amf0_xml_document_ptr& value)
 	{
-		std::uint8_t b = amf0_type::eAMF0XMLDocument;
+		std::uint8_t const b = amf0_type::eAMF0XMLDocument;
 		buffer << b;
 
-		std::uint32_t len = boost::asio::detail::socket_ops::host_to_network_long(
+		std::uint32_t const len = boost::asio::detail::socket_ops::host_to_network_long(
 			static_cast<std::uint32_t>(value->value().size()));
 		buffer << len;
 		buffer.write(value->value().c_str(), value->value().size());
@@ -368,9 +381,10 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_typed_object(stream_array &buffer, const amf0_typed_object_ptr& value)
+	template<typename W>
+	void amf0::write_typed_object(W &buffer, const amf0_typed_object_ptr& value)
 	{
-		std::uint8_t b = amf0_type::eAMF0TypedObject;
+		std::uint8_t const b = amf0_type::eAMF0TypedObject;
 		buffer << b;
 
 		write_short_string(buffer, value->class_name().c_str(),
@@ -399,9 +413,10 @@ namespace fms
 		return true;
 	}
 
-	void amf0::write_amf3_container(stream_array &buffer, const amf0_amf3_container_ptr& value)
+	template<typename W>
+	void amf0::write_amf3_container(W &buffer, const amf0_amf3_container_ptr& value)
 	{
-		std::uint8_t b = amf0_type::eAMF0AMF3Container;
+		std::uint8_t const b = amf0_type::eAMF0AMF3Container;
 		buffer << b;
 		amf3 m3;
 		m3.write(buffer, value->data());
@@ -414,7 +429,7 @@ namespace fms
 
 		if (++m_depth > eMaxDepth)   // bound recursion on hostile nested input
 			throw amf0_read_exception();
-		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } guard{ m_depth };
+		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ m_depth };
 
 		if (buffer.available() < 1)
 			throw buffer_eof_exception();
@@ -529,7 +544,8 @@ namespace fms
 		}
 	}
 
-	void amf0::write(stream_array &buffer, const amf0_type_ptr& type)
+	template<typename W>
+	void amf0::write(W &buffer, const amf0_type_ptr& type)
 	{
 		switch (type->type())
 		{
@@ -593,7 +609,7 @@ namespace fms
 			}
 		case amf0_type::eAMF0Unsupported:
 			{
-				std::uint8_t b = amf0_type::eAMF0Unsupported;
+				std::uint8_t const b = amf0_type::eAMF0Unsupported;
 				buffer << b;
 				break;
 			}
@@ -619,4 +635,25 @@ namespace fms
 			break;
 		}
 	}
+
+	// Explicit instantiations for both writers (GCC needs each — no cascade).
+#define AMF0_WRITE_INSTANCES(W) \
+	template void amf0::write_short_string<W>(W &, const amf0_string_ptr &, bool); \
+	template void amf0::write_short_string<W>(W &, const char *, std::uint16_t, bool); \
+	template void amf0::write_boolean<W>(W &, const amf0_boolean_ptr &); \
+	template void amf0::write_number<W>(W &, const amf0_number_ptr &); \
+	template void amf0::write_object<W>(W &, const amf0_object_ptr &); \
+	template void amf0::write_null<W>(W &); \
+	template void amf0::write_undefined<W>(W &); \
+	template void amf0::write_mixed_array<W>(W &, const amf0_ecma_array_ptr &); \
+	template void amf0::write_strict_array<W>(W &, const amf0_strict_array_ptr &); \
+	template void amf0::write_long_string<W>(W &, const amf0_long_string_ptr &); \
+	template void amf0::write_date<W>(W &, const amf0_date_ptr &); \
+	template void amf0::write_xml_document<W>(W &, const amf0_xml_document_ptr &); \
+	template void amf0::write_typed_object<W>(W &, const amf0_typed_object_ptr &); \
+	template void amf0::write_amf3_container<W>(W &, const amf0_amf3_container_ptr &); \
+	template void amf0::write<W>(W &, const amf0_type_ptr &);
+	AMF0_WRITE_INSTANCES(stream_array)
+	AMF0_WRITE_INSTANCES(byte_writer)
+#undef AMF0_WRITE_INSTANCES
 }

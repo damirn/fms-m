@@ -1,5 +1,6 @@
 #pragma once
 
+#include "byte_writer.h"
 #include "stream_array.h"
 #include "amf3_types.h"
 
@@ -26,40 +27,40 @@ namespace fms
 	{
 	public:
 		amf3_type_ptr read(stream_array &);
-		void write(stream_array &, const amf3_type_ptr&);
+		template<typename W> void write(W &, const amf3_type_ptr&);
 
 	protected:
-		amf3_empty_type_ptr read_empty_type(stream_array &, std::uint8_t) const;
-		static void write_empty_type(stream_array &, const amf3_empty_type_ptr&);
+		static amf3_empty_type_ptr read_empty_type(stream_array &, std::uint8_t);
+		template<typename W> static void write_empty_type(W &, const amf3_empty_type_ptr&);
 
 		static amf3_integer_type_ptr read_integer(stream_array &);
-		static void write_integer(stream_array &, std::uint32_t);
-		static void write_integer(stream_array &, const amf3_integer_type_ptr&);
+		template<typename W> static void write_integer(W &, std::uint32_t);
+		template<typename W> static void write_integer(W &, const amf3_integer_type_ptr&);
 
 		static amf3_double_type_ptr read_double(stream_array &);
-		static void write_double(stream_array &, const amf3_double_type_ptr&);
+		template<typename W> static void write_double(W &, const amf3_double_type_ptr&);
 
 		// read_string handles the string reference table, so it is per-instance.
 		amf3_string_type_ptr read_string(stream_array &);
-		static void write_string(stream_array &, const amf3_string_type_ptr&);
-		static void write_string(stream_array &, const std::string &);
+		template<typename W> static void write_string(W &, const amf3_string_type_ptr&);
+		template<typename W> static void write_string(W &, const std::string &);
 
 		// The referenceable complex types can decode to a reference pointing at an
 		// earlier complex value of any type, so they return the generic base ptr.
 		amf3_type_ptr read_xml(stream_array &, std::uint8_t marker);
-		void write_xml(stream_array &, const amf3_xml_type_ptr&);
+		template<typename W> void write_xml(W &, const amf3_xml_type_ptr&);
 
 		amf3_type_ptr read_date(stream_array &);
-		void write_date(stream_array &, const amf3_date_type_ptr&);
+		template<typename W> void write_date(W &, const amf3_date_type_ptr&);
 
 		amf3_type_ptr read_bytearray(stream_array &);
-		void write_bytearray(stream_array &, const amf3_bytearray_type_ptr&);
+		template<typename W> void write_bytearray(W &, const amf3_bytearray_type_ptr&);
 
 		amf3_type_ptr read_array(stream_array &);
-		void write_array(stream_array &, const amf3_array_type_ptr&);
+		template<typename W> void write_array(W &, const amf3_array_type_ptr&);
 
 		amf3_type_ptr read_object(stream_array &);
-		void write_object(stream_array &, const amf3_object_type_ptr&);
+		template<typename W> void write_object(W &, const amf3_object_type_ptr&);
 
 		static std::uint32_t read_u29(stream_array &);
 
