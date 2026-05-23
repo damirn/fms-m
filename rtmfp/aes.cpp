@@ -22,14 +22,15 @@ namespace fms
 		EVP_CIPHER_CTX_free(m_encrypt_ctx);
 	}
 
-	void aes::decrypt(stream_array &from, stream_array &to)
+	void aes::decrypt(byte_reader &from, byte_writer &to)
 	{
 		to.clear();
-		int outlen1;
+		int outlen1 = 0;
 		EVP_CipherInit_ex(m_decrypt_ctx, EVP_aes_128_cbc(), nullptr, m_dec_key_data, m_iv, 0);
 		EVP_CIPHER_CTX_set_padding(m_decrypt_ctx, 0);
-		EVP_CipherUpdate(m_decrypt_ctx, to.write_pos(), &outlen1, from.read_pos(), from.available());
-		to.update(outlen1);
+		// ciphertext is block-aligned and padding is off, so plaintext == its size
+		std::uint8_t *dst = to.extend(from.available());
+		EVP_CipherUpdate(m_decrypt_ctx, dst, &outlen1, from.read_pos(), static_cast<int>(from.available()));
 	}
 
 	void aes::encrypt(byte_writer &from, byte_writer &to)

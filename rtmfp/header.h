@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stream_array.h"
+#include "byte_reader.h"
 #include "byte_writer.h"
 
 #include <cstdint>
@@ -37,7 +37,7 @@ namespace fms
 			, m_timestamp_echo(ts_echo)
 		{}
 
-		void deserialize(stream_array &);
+		void deserialize(byte_reader &);
 		void serialize(byte_writer &) const;
 
 		// mode

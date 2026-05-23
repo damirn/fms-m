@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "flow.h"
+#include "byte_reader.h"
 
 #include <cmath>
 #include <iterator>
@@ -135,12 +136,9 @@ namespace fms
 
 	vlu_t flow::get_stream_id_from_option(const option_ptr& opt)
 	{
-		stream_array tmp(opt->m_value);
-		tmp.update(opt->m_value_len);
+		byte_reader tmp(opt->m_value, opt->m_value_len);
 		tmp.skip(3);
-		vlu_t stream_id;
-		stream_id = tmp.read_vlu();
-		return stream_id;
+		return tmp.read_vlu();
 	}
 
 	const std::uint8_t *flow::create_message(const fragment_map_t::iterator &from, const fragment_map_t::iterator &to)

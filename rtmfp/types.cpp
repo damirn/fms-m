@@ -1,12 +1,13 @@
 #include "pch.h"
 #include "types.h"
-#include "stream_array.h"
+#include "byte_reader.h"
+#include "byte_writer.h"
 
 #include <memory>
 
 namespace fms
 {
-	bool option::deserialize(stream_array &buff)
+	bool option::deserialize(byte_reader &buff)
 	{
 		try
 		{
@@ -52,12 +53,11 @@ namespace fms
 
 	vlu_t option::value_as_vlu() const
 	{
-		stream_array t(m_value);
-		t.update(m_value_len);
+		byte_reader t(m_value, m_value_len);
 		return t.read_vlu();
 	}
 
-	bool option_list::deserialize(stream_array &buffer)
+	bool option_list::deserialize(byte_reader &buffer)
 	{
 		option_ptr opt = std::make_shared<option>();
 		bool ret = opt->deserialize(buffer);
