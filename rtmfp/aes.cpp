@@ -32,12 +32,14 @@ namespace fms
 		to.update(outlen1);
 	}
 
-	void aes::encrypt(stream_array &from, stream_array &to)
+	void aes::encrypt(byte_writer &from, byte_writer &to)
 	{
-		int outlen1;
+		int outlen1 = 0;
 		EVP_CipherInit_ex(m_encrypt_ctx, EVP_aes_128_cbc(), nullptr, m_enc_key_data, m_iv, 1);
 
-		EVP_CipherUpdate(m_encrypt_ctx, to.write_pos(), &outlen1, from.read_pos(), from.wrote_size());
-		to.update(outlen1);
+		// The plaintext is block-aligned (add_padding) and padding is disabled, so
+		// CBC emits exactly from.size() bytes; reserve that and encrypt in place.
+		std::uint8_t *dst = to.extend(from.size());
+		EVP_CipherUpdate(m_encrypt_ctx, dst, &outlen1, from.data(), static_cast<int>(from.size()));
 	}
 }

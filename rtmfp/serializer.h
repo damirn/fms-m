@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stream_array.h"
+#include "byte_writer.h"
 
 #include <cstdint>
 #include <boost/noncopyable.hpp>
@@ -17,12 +17,12 @@ namespace fms
 		void prepare_raw_packet(header &);
 		void finish_raw_packet(std::uint32_t, aes *);
 
-		stream_array &raw_packet()
+		byte_writer &raw_packet()
 		{
 			return m_raw_packet;
 		}
 
-		stream_array &packet()
+		byte_writer &packet()
 		{
 			return m_packet;
 		}
@@ -31,7 +31,7 @@ namespace fms
 		void add_padding();
 		void prepare_packet(std::uint32_t, aes *);
 
-		stream_array m_raw_packet;
-		stream_array m_packet;
+		byte_writer m_raw_packet;
+		byte_writer m_packet;
 	};
 }

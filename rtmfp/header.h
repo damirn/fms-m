@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stream_array.h"
+#include "byte_writer.h"
 
 #include <cstdint>
 
@@ -37,7 +38,7 @@ namespace fms
 		{}
 
 		void deserialize(stream_array &);
-		void serialize(stream_array &) const;
+		void serialize(byte_writer &) const;
 
 		// mode
 		enum { eForbidden = 0, eInitiator, eResponder, eStartup };
