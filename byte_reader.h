@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <cstring>
 
+#include "buffer_eof.h"
+
 namespace fms
 {
 	// A non-owning, non-throwing cursor over a byte range. Every try_* returns
@@ -76,6 +78,32 @@ namespace fms
 			if (remaining() < n) return false;
 			m_pos += n;
 			return true;
+		}
+
+		// ---- throwing façade (mirrors stream_array; used by codecs that treat an
+		// underrun on a complete message buffer as corruption) --------------------
+		std::size_t available() const { return remaining(); }
+		const std::uint8_t *read_pos() const { return current(); }
+
+		template<typename V> byte_reader &operator>>(V &value)
+		{
+			if (remaining() < sizeof(V)) throw buffer_eof_exception();
+			std::memcpy(&value, m_data + m_pos, sizeof(V));
+			m_pos += sizeof(V);
+			return *this;
+		}
+
+		template<typename V> void read(V *out, std::size_t n)
+		{
+			if (remaining() < n) throw buffer_eof_exception();
+			std::memcpy(out, m_data + m_pos, n);
+			m_pos += n;
+		}
+
+		void skip(std::size_t n)
+		{
+			if (remaining() < n) throw buffer_eof_exception();
+			m_pos += n;
 		}
 
 	private:

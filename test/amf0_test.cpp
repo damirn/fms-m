@@ -2,6 +2,7 @@
 
 #include "amf0.h"
 #include "amf3.h"
+#include "byte_reader.h"
 
 #include <cstdint>
 #include <string>
@@ -37,6 +38,14 @@ namespace
 		byte_writer bw;
 		a.write(bw, v);
 		return bytes(bw.data(), bw.data() + bw.size());
+	}
+
+	// same bytes, deserialized through byte_reader instead of stream_array
+	amf0_type_ptr decode_br(const bytes &b)
+	{
+		amf0 a;
+		byte_reader br(b.data(), b.size());
+		return a.read(br);
 	}
 
 	bytes hx(const std::string &s)
@@ -304,4 +313,31 @@ TEST_CASE("amf0 write: byte_writer output is byte-identical to stream_array")
 
 	for (const auto &v : vals)
 		CHECK(encode(v) == encode_bw(v));
+}
+
+TEST_CASE("amf0 read: byte_reader decodes identically to stream_array")
+{
+	std::vector<bytes> vecs;
+	vecs.push_back(hx("00 3f f8 00 00 00 00 00 00"));                 // number
+	vecs.push_back(hx("01 01"));                                      // boolean true
+	vecs.push_back(hx("01 00"));                                      // boolean false
+	vecs.push_back(hx("02 00 03 66 6f 6f"));                          // short string
+	vecs.push_back(hx("05"));                                         // null
+	vecs.push_back(hx("06"));                                         // undefined
+	vecs.push_back(hx("0c 00 00 00 02 68 69"));                       // long string
+	vecs.push_back(hx("0b 40 8f 40 00 00 00 00 00 00 00"));           // date
+	vecs.push_back(hx("0f 00 00 00 04 3c 78 2f 3e"));                 // xml document
+	vecs.push_back(hx("08 00 00 00 01 00 01 61 01 01 00 00 09"));     // ecma array
+	vecs.push_back(hx("0a 00 00 00 02 03 00 00 09 07 00 01"));        // strict array + reference
+	vecs.push_back(hx("11 04 05"));                                   // amf3 container
+
+	for (const auto &b : vecs)
+	{
+		// both readers must produce a value that re-encodes to the same bytes
+		amf0_type_ptr const via_sa = decode(b);
+		amf0_type_ptr const via_br = decode_br(b);
+		REQUIRE(via_sa);
+		REQUIRE(via_br);
+		CHECK(encode(via_sa) == encode(via_br));
+	}
 }

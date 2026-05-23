@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "byte_reader.h"
 #include "byte_writer.h"
 #include "amf0.h"
 #include "amf3.h"
@@ -10,7 +11,8 @@ namespace fms
 {
 	static const std::uint8_t end_of_object[] = { 0x00, 0x00, 0x09 };
 
-	bool amf0::read_short_string(stream_array &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
+	template<typename R>
+	bool amf0::read_short_string(R &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
 	{
 		std::uint8_t b;
 		if (!skip_type)
@@ -25,7 +27,7 @@ namespace fms
 		len = boost::asio::detail::socket_ops::network_to_host_short(len);
 		if (buffer.available() < len)         // wire length must not exceed the buffer
 			throw buffer_eof_exception();
-		value->value() = std::string(reinterpret_cast<char *>(buffer.read_pos()), len);
+		value->value() = std::string(reinterpret_cast<const char *>(buffer.read_pos()), len);
 		buffer.skip(len);
 
 		return true;
@@ -49,7 +51,8 @@ namespace fms
 		buffer.write(value, len);
 	}
 
-	bool amf0::read_boolean(stream_array &buffer, const amf0_boolean_ptr& value)
+	template<typename R>
+	bool amf0::read_boolean(R &buffer, const amf0_boolean_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -72,7 +75,8 @@ namespace fms
 		buffer << b;
 	}
 
-	bool amf0::read_number(stream_array &buffer, const amf0_number_ptr& value)
+	template<typename R>
+	bool amf0::read_number(R &buffer, const amf0_number_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -104,7 +108,8 @@ namespace fms
 			buffer << tmp[i];
 	}
 
-	bool amf0::read_object(stream_array &buffer, const amf0_object_ptr& value)
+	template<typename R>
+	bool amf0::read_object(R &buffer, const amf0_object_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -141,7 +146,8 @@ namespace fms
 		buffer.write(end_of_object, 3);
 	}
 
-	bool amf0::read_null(stream_array &buffer)
+	template<typename R>
+	bool amf0::read_null(R &buffer)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -155,7 +161,8 @@ namespace fms
 		buffer << b;
 	}
 
-	bool amf0::read_undefined(stream_array &buffer)
+	template<typename R>
+	bool amf0::read_undefined(R &buffer)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -169,7 +176,8 @@ namespace fms
 		buffer << b;
 	}
 
-	bool amf0::read_mixed_array(stream_array &buffer, const amf0_ecma_array_ptr& value)
+	template<typename R>
+	bool amf0::read_mixed_array(R &buffer, const amf0_ecma_array_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -213,7 +221,8 @@ namespace fms
 		buffer.write(end_of_object, 3);
 	}
 
-	bool amf0::read_strict_array(stream_array &buffer, const amf0_strict_array_ptr& value)
+	template<typename R>
+	bool amf0::read_strict_array(R &buffer, const amf0_strict_array_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -251,7 +260,8 @@ namespace fms
 			write(buffer, i);
 	}
 
-	bool amf0::read_long_string(stream_array &buffer, const amf0_long_string_ptr& value)
+	template<typename R>
+	bool amf0::read_long_string(R &buffer, const amf0_long_string_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -286,7 +296,8 @@ namespace fms
 		buffer.write(value->data(), value->size());
 	}
 
-	bool amf0::read_date(stream_array &buffer, const amf0_date_ptr& value)
+	template<typename R>
+	bool amf0::read_date(R &buffer, const amf0_date_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -324,7 +335,8 @@ namespace fms
 		buffer << tz;
 	}
 
-	bool amf0::read_xml_document(stream_array &buffer, const amf0_xml_document_ptr& value)
+	template<typename R>
+	bool amf0::read_xml_document(R &buffer, const amf0_xml_document_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -338,7 +350,7 @@ namespace fms
 		len = boost::asio::detail::socket_ops::network_to_host_long(len);
 		if (buffer.available() < len)
 			throw buffer_eof_exception();
-		value->value() = std::string(reinterpret_cast<char *>(buffer.read_pos()), len);
+		value->value() = std::string(reinterpret_cast<const char *>(buffer.read_pos()), len);
 		buffer.skip(len);
 
 		return true;
@@ -356,7 +368,8 @@ namespace fms
 		buffer.write(value->value().c_str(), value->value().size());
 	}
 
-	bool amf0::read_typed_object(stream_array &buffer, const amf0_typed_object_ptr& value)
+	template<typename R>
+	bool amf0::read_typed_object(R &buffer, const amf0_typed_object_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -399,7 +412,8 @@ namespace fms
 		buffer.write(end_of_object, 3);
 	}
 
-	bool amf0::read_amf3_container(stream_array &buffer, const amf0_amf3_container_ptr& value)
+	template<typename R>
+	bool amf0::read_amf3_container(R &buffer, const amf0_amf3_container_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -422,7 +436,8 @@ namespace fms
 		m3.write(buffer, value->data());
 	}
 
-	amf0_type_ptr amf0::read(stream_array &buffer)
+	template<typename R>
+	amf0_type_ptr amf0::read(R &buffer)
 	{
 		if (m_depth == 0)            // top-level value: fresh reference context
 			m_ref_table.clear();
@@ -656,4 +671,24 @@ namespace fms
 	AMF0_WRITE_INSTANCES(stream_array)
 	AMF0_WRITE_INSTANCES(byte_writer)
 #undef AMF0_WRITE_INSTANCES
+
+	// Explicit read instantiations for both readers.
+#define AMF0_READ_INSTANCES(R) \
+	template bool amf0::read_short_string<R>(R &, const amf0_string_ptr &, bool); \
+	template bool amf0::read_boolean<R>(R &, const amf0_boolean_ptr &); \
+	template bool amf0::read_number<R>(R &, const amf0_number_ptr &); \
+	template bool amf0::read_object<R>(R &, const amf0_object_ptr &); \
+	template bool amf0::read_null<R>(R &); \
+	template bool amf0::read_undefined<R>(R &); \
+	template bool amf0::read_mixed_array<R>(R &, const amf0_ecma_array_ptr &); \
+	template bool amf0::read_strict_array<R>(R &, const amf0_strict_array_ptr &); \
+	template bool amf0::read_long_string<R>(R &, const amf0_long_string_ptr &); \
+	template bool amf0::read_date<R>(R &, const amf0_date_ptr &); \
+	template bool amf0::read_xml_document<R>(R &, const amf0_xml_document_ptr &); \
+	template bool amf0::read_typed_object<R>(R &, const amf0_typed_object_ptr &); \
+	template bool amf0::read_amf3_container<R>(R &, const amf0_amf3_container_ptr &); \
+	template amf0_type_ptr amf0::read<R>(R &);
+	AMF0_READ_INSTANCES(stream_array)
+	AMF0_READ_INSTANCES(byte_reader)
+#undef AMF0_READ_INSTANCES
 }
