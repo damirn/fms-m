@@ -52,6 +52,24 @@ namespace fms
 				m_write_dequeue.clear();
 			}
 
+			// Drop the first n (already-parsed) bytes of the readable region and
+			// move any unparsed tail to the front. This is the resumable parser's
+			// "consume" primitive — no marks, no rewind, no throw.
+			void consume_parsed(std::size_t n)
+			{
+				iterator const tail = m_read + n;
+				auto const remaining = static_cast<std::size_t>(m_write_high_mark - tail);
+				if (remaining == 0)
+				{
+					clear();
+					return;
+				}
+				std::memmove(begin(), reinterpret_cast<void *>(tail), remaining);
+				m_read = m_mark = m_read_barrier = m_write = begin();
+				m_write_high_mark = begin() + remaining;
+				m_write_dequeue.clear();
+			}
+
 			void compact()
 			{
 				if (m_mark < m_read)

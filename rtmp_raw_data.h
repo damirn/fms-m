@@ -3,6 +3,8 @@
 #include <memory>
 #include <boost/logic/tribool.hpp>
 
+#include "byte_reader.h"
+
 namespace fms
 {
 	// Forward declarations
@@ -30,7 +32,7 @@ namespace fms
 	protected:
 		boost::tribool parse_data(stream_array &);
 		void handle_message(const rtmp_channel_ptr&);
-		static std::uint32_t peek_channel_id(stream_array &);
+		static bool peek_channel_id(byte_reader, std::uint32_t &);   // reader by value: peek without consuming
 
 		virtual void handle_message(rtmp_channel_ptr, rtmp_message_ptr) = 0;
 		virtual void handle_internal_message(rtmp_message_ptr) = 0;
