@@ -12,6 +12,7 @@
 namespace fms
 {
 	class rtmpt_manager;
+	class byte_writer;
 
 	// Represents a single connection from a client.
 	class rtmpt_session : public basic_rtmp_connection, private boost::noncopyable
@@ -47,11 +48,11 @@ namespace fms
 
 		void close() override;
 
-		boost::tribool handle_data(stream_array &, stream_array &);
-		void serialize_result(stream_array &);
+		boost::tribool handle_data(stream_array &, byte_writer &);
+		void serialize_result(byte_writer &);
 
 		// Only used when result is not needed
-		void serialize_poll_time(stream_array &);
+		void serialize_poll_time(byte_writer &);
 
 	protected:
 		// Handle application's result
@@ -61,9 +62,9 @@ namespace fms
 		enum session_state { eCSIdle, eCSReadHS, eCSReadCommands, eCSInvalid = 0xffff };
 		enum commands { eCmdInvalid, eCmdFcs, eCmdOpen, eCmdIdle, eCmdSend, eCmdClose };
 
-		boost::tribool handle_handshake(stream_array &, stream_array &);
-		void handle_results(stream_array &);
-		void serialize_message(const rtmp_message_ptr&, stream_array &);
+		boost::tribool handle_handshake(stream_array &, byte_writer &);
+		void handle_results(byte_writer &);
+		void serialize_message(const rtmp_message_ptr&, byte_writer &);
 
 		std::uint8_t get_poll_time(bool);
 

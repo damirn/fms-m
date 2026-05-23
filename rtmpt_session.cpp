@@ -8,6 +8,7 @@
 #include "rtmp_protocol.h"
 #include "util.h"
 #include "crypto.h"
+#include "byte_writer.h"
 
 #include <iostream>
 
@@ -33,16 +34,16 @@ namespace fms
 		basic_rtmp_connection::close();
 	}
 
-	void rtmpt_session::handle_results(stream_array &buffer)
+	void rtmpt_session::handle_results(byte_writer &buffer)
 	{
 		if (!m_app || (m_results.empty() && !m_app->has_async_messages(m_id)))
 		{
-			std::uint8_t poll_time = get_poll_time(false);
+			std::uint8_t const poll_time = get_poll_time(false);
 			buffer << poll_time;
 		}
 		else
 		{
-			std::uint8_t i = get_poll_time(true);
+			std::uint8_t const i = get_poll_time(true);
 			buffer << i;
 
 			rtmp_message_ptr msg;
@@ -57,7 +58,7 @@ namespace fms
 		}
 	}
 
-	void rtmpt_session::serialize_message(const rtmp_message_ptr& msg, stream_array &buffer)
+	void rtmpt_session::serialize_message(const rtmp_message_ptr& msg, byte_writer &buffer)
 	{
 		rtmp_channel_ptr const channel = m_channel_manager->get_channel(msg->channel_id());
 
@@ -72,22 +73,22 @@ namespace fms
 
 		rtmp_header h;
 		rtmp_protocol p(m_outgoing_chunk_size);
-		std::uint8_t *start = buffer.write_pos();
+		std::size_t const start = buffer.mark();
 		p.serialize(buffer, msg, h, channel->sent_header());
 		channel->sent_header() = h;
 
-		std::uint8_t  const*end = buffer.write_pos();
-		if (m_key_out != nullptr && (end - start) > 0)
-			rc4_crypt(m_key_out, end - start, start, start);
+		// encrypt just the region this message serialized into
+		if (m_key_out != nullptr && buffer.size() > start)
+			rc4_crypt(m_key_out, buffer.size() - start, buffer.data() + start, buffer.data() + start);
 	}
 
-	void rtmpt_session::serialize_result(stream_array &buffer)
+	void rtmpt_session::serialize_result(byte_writer &buffer)
 	{
 		if (m_app != nullptr && m_app->has_async_messages(m_id))
 		{
 			rtmp_message_ptr result;
 
-			std::uint8_t i = get_poll_time(true);
+			std::uint8_t const i = get_poll_time(true);
 			buffer << i;
 
 			while (m_app->get_async_message(m_id, result))
@@ -97,17 +98,17 @@ namespace fms
 			return;
 		}
 
-		std::uint8_t idle_time = get_poll_time(false);
+		std::uint8_t const idle_time = get_poll_time(false);
 		buffer << idle_time;
 	}
 
-	void rtmpt_session::serialize_poll_time(stream_array &buffer)
+	void rtmpt_session::serialize_poll_time(byte_writer &buffer)
 	{
-		std::uint8_t i = get_poll_time(false);
+		std::uint8_t const i = get_poll_time(false);
 		buffer << i;
 	}
 
-	boost::tribool rtmpt_session::handle_data(stream_array &input, stream_array &output)
+	boost::tribool rtmpt_session::handle_data(stream_array &input, byte_writer &output)
 	{
 		if (m_sstate == eCSReadCommands)
 		{
@@ -180,7 +181,7 @@ namespace fms
 		return m_poll_time[m_poll_index];
 	}
 
-	boost::tribool rtmpt_session::handle_handshake(stream_array &input, stream_array &output)
+	boost::tribool rtmpt_session::handle_handshake(stream_array &input, byte_writer &output)
 	{
  		if (input.available() < eHandShakeSize + 1)
  			return false;

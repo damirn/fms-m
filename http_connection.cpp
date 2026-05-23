@@ -40,8 +40,7 @@ namespace fms
 		}
 		else
 		{
-//			std::cout << "writing data, size: " << (m_output_buffer.write_pos() - m_output_buffer.read_pos()) << std::endl;
-			boost::asio::async_write(m_socket, m_output_buffer.read_buffer(),
+			boost::asio::async_write(m_socket, boost::asio::buffer(m_output_buffer.data(), m_output_buffer.size()),
 				[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write(ec, bytes); });
 		}
 	}

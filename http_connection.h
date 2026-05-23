@@ -8,6 +8,7 @@
 #include <string>
 
 #include "stream_array.h"
+#include "byte_writer.h"
 
 namespace fms
 {
@@ -99,7 +100,7 @@ namespace fms
 
 		// Buffers for incoming and outgoing data.
 		stream_array m_buffer;
-		stream_array m_output_buffer;
+		byte_writer m_output_buffer;
 		boost::asio::streambuf m_header;
 	};
 

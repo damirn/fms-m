@@ -2,6 +2,7 @@
 #include "rtmpt_manager.h"
 #include "config.h"
 #include "rtmp_app_manager.h"
+#include "byte_writer.h"
 
 namespace fms
 {
@@ -48,7 +49,7 @@ namespace fms
 		return true;
 	}
 
-	std::uint32_t rtmpt_manager::handle_data(const std::string &cid, std::uint32_t seq, stream_array &input, stream_array &output)
+	std::uint32_t rtmpt_manager::handle_data(const std::string &cid, std::uint32_t seq, stream_array &input, byte_writer &output)
 	{
 		std::unique_lock const lock(m_mutex);
 		auto const i = m_ids.find(cid);
@@ -79,10 +80,10 @@ namespace fms
 			i->second->m_session->serialize_poll_time(output);
 		}
 
-		return output.wrote_size();
+		return output.size();
 	}
 
-	std::uint32_t rtmpt_manager::serialize_result(const std::string &cid, std::uint32_t seq, stream_array &buffer)
+	std::uint32_t rtmpt_manager::serialize_result(const std::string &cid, std::uint32_t seq, byte_writer &buffer)
 	{
 		std::unique_lock const lock(m_mutex);
 		auto const i = m_ids.find(cid);
@@ -92,7 +93,7 @@ namespace fms
 		if (i->second->m_sequence == seq)
 			i->second->m_sequence++;
 		i->second->m_session->serialize_result(buffer);
-		return buffer.wrote_size();
+		return buffer.size();
 	}
 
 	void rtmpt_manager::update_stats(const std::string &id, std::uint32_t bytes_transferred, bool is_inbound)
