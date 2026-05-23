@@ -167,6 +167,15 @@ namespace fms::rtmp_client
 		if (m_input_buffer_int.available() == m_content_length)
 		{
 			m_write_in_progress = false;
+			// An empty body (not even the 1-byte poll interval) has nothing to
+			// consume; the poll/send branches below would skip/read that missing
+			// byte and throw buffer_eof. Bail out instead of crashing on a peer
+			// that returns a 0-length RTMPT response.
+			if (m_content_length == 0)
+			{
+				m_input_buffer_int.clear();
+				return;
+			}
 			if (m_state == eReadingOpen)
 			{
 				read_cid();
@@ -257,7 +266,7 @@ namespace fms::rtmp_client
 					return false;
 				m_input_buffer_int.rewind();
 				m_input_buffer_int.skip((std::uint8_t *)pos - m_input_buffer_int.read_pos() + 4);
-				return true;
+						return true;
 			}
 			catch (buffer_eof_exception &)
 			{
