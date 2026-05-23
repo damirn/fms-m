@@ -30,6 +30,15 @@ namespace
 		return a.read(buf);
 	}
 
+	// same value, serialized through byte_writer instead of stream_array
+	bytes encode_bw(const amf0_type_ptr &v)
+	{
+		amf0 a;
+		byte_writer bw;
+		a.write(bw, v);
+		return bytes(bw.data(), bw.data() + bw.size());
+	}
+
 	bytes hx(const std::string &s)
 	{
 		bytes out;
@@ -269,4 +278,30 @@ TEST_CASE("malformed input throws rather than crashing")
 	CHECK_THROWS(decode(hx("07 00 00")));         // reference to non-existent index
 	CHECK_THROWS(decode(hx("04")));               // MovieClip (reserved / unimplemented)
 	CHECK_THROWS(decode(hx("")));                 // empty
+}
+
+TEST_CASE("amf0 write: byte_writer output is byte-identical to stream_array")
+{
+	std::vector<amf0_type_ptr> vals;
+	vals.emplace_back(new amf0_number(3.14159));
+	vals.emplace_back(new amf0_boolean(true));
+	vals.emplace_back(new amf0_boolean(false));
+	vals.emplace_back(new amf0_string("NetConnection.Connect.Success"));
+	vals.emplace_back(new amf0_null);
+	vals.emplace_back(new amf0_undefined);
+
+	amf0_object_ptr const obj(new amf0_object);
+	obj->add_entry("level", "status");
+	obj->add_entry("code", "NetStream.Play.Start");
+	obj->add_entry("capabilities", 239);
+	obj->add_entry("audioCodecs", 3191);
+	vals.emplace_back(obj);
+
+	amf0_ecma_array_ptr const ecma(new amf0_ecma_array);
+	ecma->add_entry("duration", 12.5);
+	ecma->add_entry("width", 320);
+	vals.emplace_back(ecma);
+
+	for (const auto &v : vals)
+		CHECK(encode(v) == encode_bw(v));
 }

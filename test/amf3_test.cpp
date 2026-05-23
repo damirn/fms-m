@@ -23,6 +23,15 @@ namespace
 		return bytes(buf.read_pos(), buf.read_pos() + buf.available());
 	}
 
+	// same value, serialized through byte_writer instead of stream_array
+	bytes encode_bw(const amf3_type_ptr &v)
+	{
+		amf3 a;
+		byte_writer bw;
+		a.write(bw, v);
+		return bytes(bw.data(), bw.data() + bw.size());
+	}
+
 	// Decode one AMF3 value from bytes.
 	amf3_type_ptr decode(const bytes &b)
 	{
@@ -387,4 +396,23 @@ TEST_CASE("malformed input throws rather than crashing")
 	CHECK_THROWS(decode(hx("09 03")));            // array claims a dense element, none follows
 	CHECK_THROWS(decode(hx("0d 01")));            // unimplemented marker (Vector<int>)
 	CHECK_THROWS(decode(hx("")));                 // empty
+}
+
+TEST_CASE("amf3 write: byte_writer output is byte-identical to stream_array")
+{
+	std::vector<amf3_type_ptr> vals;
+	vals.push_back(I(0));
+	vals.push_back(I(127));
+	vals.push_back(I(0x1FFFFFFF));
+	vals.push_back(D(3.14159));
+	vals.push_back(S("NetStream.Play.Start"));
+	vals.push_back(S(""));
+	vals.push_back(Bool(true));
+	vals.push_back(Bool(false));
+	vals.push_back(std::make_shared<amf3_empty_type>(amf3_type::eAMF3Null));
+	vals.push_back(std::make_shared<amf3_date_type>(1710000000000.0));
+	vals.push_back(std::make_shared<amf3_bytearray_type>(std::string("\x01\x02\x03\x04", 4)));
+
+	for (const auto &v : vals)
+		CHECK(encode(v) == encode_bw(v));
 }

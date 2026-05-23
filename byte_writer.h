@@ -37,9 +37,13 @@ namespace fms
 			m_buf.insert(m_buf.end(), b + 1, b + 4);
 		}
 
-		void write(const std::uint8_t *src, std::size_t n)
+		// Copy n bytes from any pointer type (matches stream_array::write, which
+		// AMF calls with const char* string data as well as uint8_t buffers).
+		template<typename V>
+		void write(const V *src, std::size_t n)
 		{
-			m_buf.insert(m_buf.end(), src, src + n);
+			const auto *p = reinterpret_cast<const std::uint8_t *>(src);
+			m_buf.insert(m_buf.end(), p, p + n);
 		}
 
 		// Back-patch support: remember the current offset, keep writing, then patch
