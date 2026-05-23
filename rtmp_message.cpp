@@ -2,20 +2,21 @@
 #include "rtmp_message.h"
 #include "rtmp_header.h"
 #include "rtmp_protocol.h"
-#include "stream_array.h"
+#include "byte_reader.h"
+#include "byte_writer.h"
 
 #include <iostream>
 
 namespace fms
 {
-	void rtmp_message_notify::deserialize(stream_array &buffer)
+	void rtmp_message_notify::deserialize(byte_reader &buffer)
 	{
 		m_amf0.read_short_string(buffer, m_function);
 		while(buffer.available() > 0)
 			m_params.push_back(m_amf0.read(buffer));
 	}
 
-	void rtmp_message_notify::serialize(stream_array &buffer)
+	void rtmp_message_notify::serialize(byte_writer &buffer)
 	{
 		m_amf0.write_short_string(buffer, m_function);
 		parameters_list_t::iterator i;
@@ -25,7 +26,7 @@ namespace fms
 			m_amf0.write(buffer, *i);
 	}
 
-	void rtmp_message_notify_amf3::deserialize(stream_array &buffer)
+	void rtmp_message_notify_amf3::deserialize(byte_reader &buffer)
 	{
 		std::uint8_t const type = *(buffer.read_pos());
 		if (type == 0x00)
@@ -35,14 +36,14 @@ namespace fms
 		}
 	}
 
-	void rtmp_message_notify_amf3::serialize(stream_array &buffer)
+	void rtmp_message_notify_amf3::serialize(byte_writer &buffer)
 	{
 		static std::uint8_t type = 0x00;
 		buffer << type;
 		rtmp_message_notify::serialize(buffer);
 	}
 
-	void rtmp_message_invoke_amf3::deserialize(stream_array &buffer)
+	void rtmp_message_invoke_amf3::deserialize(byte_reader &buffer)
 	{
 		std::uint8_t const type = *(buffer.read_pos());
 		if (type == 0x00)
@@ -53,14 +54,14 @@ namespace fms
 //		std::cout << "Invoke_AMF3 |" << m_function->value() << "| id: " << static_cast<std::uint32_t>(m_invoke_id->value()) << std::endl;
 	}
 
-	void rtmp_message_invoke_amf3::serialize(stream_array &buffer)
+	void rtmp_message_invoke_amf3::serialize(byte_writer &buffer)
 	{
 		static std::uint8_t type = 0x00;
 		buffer << type;
 		rtmp_message_invoke::serialize(buffer);
 	}
 
-	void rtmp_message_invoke::deserialize(stream_array &buffer)
+	void rtmp_message_invoke::deserialize(byte_reader &buffer)
 	{
 		m_amf0.read_short_string(buffer, m_function);
 		m_amf0.read_number(buffer, m_invoke_id);
@@ -69,7 +70,7 @@ namespace fms
 			m_params.push_back(m_amf0.read(buffer));
 	}
 
-	void rtmp_message_invoke::serialize(stream_array &buffer)
+	void rtmp_message_invoke::serialize(byte_writer &buffer)
 	{
 		m_amf0.write_short_string(buffer, m_function);
 		m_amf0.write_number(buffer, m_invoke_id);
@@ -80,33 +81,33 @@ namespace fms
 			m_amf0.write(buffer, *i);
 	}
 
-	void rtmp_message_chunk_size::serialize(stream_array &buffer)
+	void rtmp_message_chunk_size::serialize(byte_writer &buffer)
 	{
 		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_chunk_size);
 		buffer << tmp;
 	}
 
-	void rtmp_message_chunk_size::deserialize(stream_array &buffer)
+	void rtmp_message_chunk_size::deserialize(byte_reader &buffer)
 	{
 		std::uint32_t tmp;
 		buffer >> tmp;
 		m_chunk_size = boost::asio::detail::socket_ops::network_to_host_long(tmp);
 	}
 
-	void rtmp_message_bytes_read::serialize(stream_array &buffer)
+	void rtmp_message_bytes_read::serialize(byte_writer &buffer)
 	{
 		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_bytes_read);
 		buffer << tmp;
 	}
 
-	void rtmp_message_bytes_read::deserialize(stream_array &buffer)
+	void rtmp_message_bytes_read::deserialize(byte_reader &buffer)
 	{
 		std::uint32_t tmp;
 		buffer >> tmp;
 		m_bytes_read = boost::asio::detail::socket_ops::network_to_host_long(tmp);
 	}
 
-	void rtmp_message_ping::deserialize(stream_array &buffer)
+	void rtmp_message_ping::deserialize(byte_reader &buffer)
 	{
 		buffer >> m_value1;
 		m_value1 = boost::asio::detail::socket_ops::network_to_host_short(m_value1);
@@ -123,7 +124,7 @@ namespace fms
 		}
 	}
 
-	void rtmp_message_ping::serialize(stream_array &buffer)
+	void rtmp_message_ping::serialize(byte_writer &buffer)
 	{
 		std::uint16_t v1 = boost::asio::detail::socket_ops::host_to_network_short(m_value1);
 		std::uint32_t v2 = boost::asio::detail::socket_ops::host_to_network_long(m_value2);
@@ -135,58 +136,54 @@ namespace fms
 		}
 	}
 
-	void rtmp_message_window_acknowledgement_size::deserialize(stream_array &buffer)
+	void rtmp_message_window_acknowledgement_size::deserialize(byte_reader &buffer)
 	{
 		buffer >> m_size;
 		m_size = boost::asio::detail::socket_ops::network_to_host_long(m_size);
 	}
 
-	void rtmp_message_window_acknowledgement_size::serialize(stream_array &buffer)
+	void rtmp_message_window_acknowledgement_size::serialize(byte_writer &buffer)
 	{
 		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_size);
 		buffer << tmp;
 	}
 
-	void rtmp_message_set_peer_bandwidth::deserialize(stream_array &buffer)
+	void rtmp_message_set_peer_bandwidth::deserialize(byte_reader &buffer)
 	{
 		buffer >> m_size >> m_type;
 		m_size = boost::asio::detail::socket_ops::network_to_host_long(m_size);
 	}
 
-	void rtmp_message_set_peer_bandwidth::serialize(stream_array &buffer)
+	void rtmp_message_set_peer_bandwidth::serialize(byte_writer &buffer)
 	{
 		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_size);
 		buffer << tmp << m_type;
 	}
 
-	void rtmp_message_audio_data::deserialize(stream_array &buffer)
+	void rtmp_message_audio_data::deserialize(byte_reader &buffer)
 	{
-		if (buffer.available() < m_size)   // wire length must not exceed the buffer
-			throw buffer_eof_exception();
-		std::memcpy(reinterpret_cast<void *>(m_data.get()), reinterpret_cast<void *>(buffer.read_pos()), m_size);
-		buffer.skip(m_size);
+		// read() is the corruption guard now: it throws buffer_eof_exception if
+		// the wire length exceeds what's left of the (complete) message buffer.
+		buffer.read(m_data.get(), m_size);
 	}
 
-	void rtmp_message_audio_data::serialize(stream_array &buffer)
+	void rtmp_message_audio_data::serialize(byte_writer &buffer)
 	{
 		if (m_size > 0)
 			buffer.write(m_data.get(), m_size);
 	}
 
-	void rtmp_message_video_data::deserialize(stream_array &buffer)
+	void rtmp_message_video_data::deserialize(byte_reader &buffer)
 	{
-		if (buffer.available() < m_size)   // wire length must not exceed the buffer
-			throw buffer_eof_exception();
-		std::memcpy(reinterpret_cast<void *>(m_data.get()), reinterpret_cast<void *>(buffer.read_pos()), m_size);
-		buffer.skip(m_size);
+		buffer.read(m_data.get(), m_size);
 	}
 
-	void rtmp_message_video_data::serialize(stream_array &buffer)
+	void rtmp_message_video_data::serialize(byte_writer &buffer)
 	{
 		buffer.write(m_data.get(), m_size);
 	}
 
-	void rtmp_message_aggregate::deserialize(stream_array &buffer)
+	void rtmp_message_aggregate::deserialize(byte_reader &buffer)
 	{
 		bool first = true;
 		std::uint32_t prev_ts = 0;
@@ -231,6 +228,6 @@ namespace fms
 		}
 	}
 
-	void rtmp_message_aggregate::serialize(stream_array &)
+	void rtmp_message_aggregate::serialize(byte_writer &)
 	{}
 }

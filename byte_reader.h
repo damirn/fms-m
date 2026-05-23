@@ -106,6 +106,17 @@ namespace fms
 			m_pos += n;
 		}
 
+		// 24-bit big-endian, throwing (matches stream_array::read_uint32_3).
+		std::uint32_t read_uint32_3()
+		{
+			if (remaining() < 3) throw buffer_eof_exception();
+			std::uint32_t const v = (static_cast<std::uint32_t>(m_data[m_pos]) << 16)
+			                      | (static_cast<std::uint32_t>(m_data[m_pos + 1]) << 8)
+			                      |  static_cast<std::uint32_t>(m_data[m_pos + 2]);
+			m_pos += 3;
+			return v;
+		}
+
 	private:
 		const std::uint8_t *m_data;
 		std::size_t m_len;

@@ -10,7 +10,8 @@
 
 namespace fms
 {
-	class stream_array;
+	class byte_reader;
+	class byte_writer;
 
 	class rtmp_message
 	{
@@ -46,9 +47,9 @@ namespace fms
 		
 		virtual ~rtmp_message() = default;
 
-		virtual void deserialize (stream_array &) = 0;
+		virtual void deserialize (byte_reader &) = 0;
 
-		virtual void serialize (stream_array &) = 0;
+		virtual void serialize (byte_writer &) = 0;
 
 		std::uint8_t type() const
 		{
@@ -112,9 +113,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 
 		std::uint32_t chunk_size() const
 		{
@@ -142,9 +143,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 
 		std::uint32_t bytes_read() const
 		{
@@ -202,9 +203,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 
 		std::uint16_t get_type() const
 		{
@@ -241,9 +242,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 
 		const std::uint32_t &size() const
 		{
@@ -273,9 +274,9 @@ namespace fms
 			m_timestamp = 0;
 		}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 
 		const std::uint32_t &size() const
 		{
@@ -320,9 +321,9 @@ namespace fms
 		~rtmp_message_audio_data() override
 		= default;
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 
 		std::uint8_t *data()
 		{
@@ -388,9 +389,9 @@ namespace fms
 		~rtmp_message_video_data() override
 		= default;
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 
 		std::uint8_t *data()
 		{
@@ -478,9 +479,9 @@ namespace fms
 			: rtmp_message_with_params(eMessageNotify, std::move(function))
 		{}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 	};
 
 	using rtmp_message_notify_ptr = std::shared_ptr<rtmp_message_notify>;
@@ -506,9 +507,9 @@ namespace fms
 			m_type = eMessageNotifyAMF3;
 		}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 	};
 
 	using rtmp_message_notify_amf3_ptr = std::shared_ptr<rtmp_message_notify_amf3>;
@@ -546,9 +547,9 @@ namespace fms
 			return msg;
 		}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 
 		amf0_number_ptr invoke_id()
 		{
@@ -580,9 +581,9 @@ namespace fms
 			m_type = eMessageInvokeAMF3;
 		}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 	};
 
 	using rtmp_message_invoke_amf3_ptr = std::shared_ptr<rtmp_message_invoke_amf3>;
@@ -595,9 +596,9 @@ namespace fms
 			, m_ts(ts)
 		{}
 
-		void deserialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
 
-		void serialize(stream_array &) override;
+		void serialize(byte_writer &) override;
 
 		using message_list_t = std::list<rtmp_message_ptr>;
 
@@ -620,8 +621,8 @@ namespace fms
 			: rtmp_message(eMessageClose)
 		{}
 
-		void deserialize(stream_array &) override{}
-		void serialize(stream_array &) override{}
+		void deserialize(byte_reader &) override{}
+		void serialize(byte_writer &) override{}
 	};
 
 	using rtmp_message_close_ptr = std::shared_ptr<rtmp_message_close>;

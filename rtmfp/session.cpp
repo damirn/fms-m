@@ -15,6 +15,8 @@
 #include "rtmp_header.h"
 #include "rtmp_message.h"
 #include "rtmp_protocol.h"
+#include "byte_reader.h"
+#include "byte_writer.h"
 
 #include <iostream>
 
@@ -403,7 +405,8 @@ namespace fms
 					h.stream_id() = i->second;
 					h.message_length() = len - 5; // msg type + timestamp
 					rtmp_protocol p;
-					if (p.deserialize(s, h))
+					byte_reader r(s.read_pos(), s.available());
+					if (p.deserialize(r, h))
 					{
 						rtmp_message_ptr const msg = p.message();
 						handle_message(msg, h);
@@ -492,7 +495,7 @@ namespace fms
 
 	void session::message_to_fragment(const rtmp_message_ptr& result)
 	{
-		stream_array temp;
+		byte_writer temp;
 		std::uint8_t t = result->type();
 		temp << t;
 		std::uint32_t ts = result->timestamp();
@@ -527,7 +530,7 @@ namespace fms
 			}
 			else
 				flow = *k;
-			flow->add_and_fragment_data(temp.read_pos(), temp.wrote_size());
+			flow->add_and_fragment_data(temp.data(), static_cast<std::uint32_t>(temp.size()));
 		}
 	}
 
