@@ -19,70 +19,66 @@ namespace fms
 	*/
 	boost::tribool rtmp_raw_data::parse_data(stream_array &buffer)
 	{
-		boost::tribool result = boost::indeterminate;
+		// Resumable, non-throwing framing. We scan the readable bytes through a
+		// byte_reader, tracking `committed` = the offset up to which everything is
+		// fully processed and safe to drop. Two partial cases stop the scan without
+		// consuming past `committed`:
+		//   - partial chunk header -> try_deserialize_header leaves the reader put,
+		//     so `committed` stays before the header (re-parsed next time),
+		//   - partial chunk payload -> the header is already committed, the payload
+		//     bytes are not (m_read_header stays false, so we don't re-parse it).
+		std::size_t const total = buffer.available();
+		byte_reader r(buffer.read_pos(), total);
+		std::size_t committed = 0;
+		bool seen_complete_msg = false;
 
-		// try to parse whole buffer - it might have several RTMP messages
-		// if we catch an exception then we need more data from the network
-		try
+		while (r.remaining() > 0)
 		{
-			bool seen_complete_msg = false;
-
-			while (buffer.available() > 0)
+			rtmp_channel_ptr channel;
+			if (m_read_header)
 			{
-				rtmp_channel_ptr channel;
-				if (m_read_header)
-				{
-					m_channel_id = peek_channel_id(buffer);
-					channel = m_channel_manager->get_channel(m_channel_id);
-
-					buffer.mark();
-					channel->deserialize_header(buffer);
-
-					m_read_header = false;
-					buffer.mark();
-				}
-				else
-					channel = m_channel_manager->get_channel(m_channel_id);
-
-				const rtmp_header &h = channel->received_header();
-
-				//				std::cout<< "msg type: " << (int) h.message_type() << " ts: " << h.timestamp() << " header type: " << (int) h.header_type() << std::endl;
-				std::uint32_t size = h.message_length() - static_cast<std::uint32_t>(channel->data_size());
-				size = size > m_chunk_size ? m_chunk_size : size;
-				if (size <= buffer.available())
-				{
-					m_read_header = true;
-					channel->adjust_timestamp();
-					channel->add_data(buffer, size);
-					if (channel->has_enough_data())
-					{
-						// we have enough data for the current RTMP channel
-						channel->prev_message_complete() = true;
-						seen_complete_msg = true;
-						handle_message(channel);
-					}
-					else
-						channel->prev_message_complete() = false;
-				}
-				else
-				{
-					// compact the remaining data in the buffer
-					buffer.compact();
-					return result;
-				}
+				std::uint32_t cid;
+				if (!peek_channel_id(r, cid))
+					break;   // partial basic header
+				channel = m_channel_manager->get_channel(cid);
+				m_channel_id = cid;
+				if (!channel->try_deserialize_header(r))
+					break;   // partial header — reader untouched
+				m_read_header = false;
+				committed = r.position();
 			}
-			buffer.clear();
-			if (!seen_complete_msg)
-				result = false;
 			else
-				result = true;
-		}
-		catch (buffer_eof_exception &)
-		{
-			buffer.rewind();
+				channel = m_channel_manager->get_channel(m_channel_id);
+
+			const rtmp_header &h = channel->received_header();
+			std::uint32_t size = h.message_length() - static_cast<std::uint32_t>(channel->data_size());
+			if (size > m_chunk_size)
+				size = m_chunk_size;
+
+			if (r.remaining() < size)
+				break;   // partial chunk payload — header already committed
+
+			m_read_header = true;
+			channel->adjust_timestamp();
+			channel->add_data(r.current(), size);
+			r.try_skip(size);
+			committed = r.position();
+
+			if (channel->has_enough_data())
+			{
+				channel->prev_message_complete() = true;
+				seen_complete_msg = true;
+				handle_message(channel);
+			}
+			else
+				channel->prev_message_complete() = false;
 		}
 
-		return result;
+		buffer.consume_parsed(committed);
+
+		if (committed < total)
+			return boost::indeterminate;   // stopped on a partial chunk/header
+		return seen_complete_msg ? boost::tribool(true) : boost::tribool(false);
 	}
 
 	/**
@@ -95,17 +91,26 @@ namespace fms
 	void rtmp_raw_data::handle_message(const rtmp_channel_ptr& channel)
 	{
 		rtmp_protocol p;
-		if (p.deserialize(channel->buffer(), channel->received_header()))
+		// The message body is a *complete* assembled buffer here; deserialize's
+		// buffer_eof is now a corruption guard (a body that over-reads its own
+		// declared length), not framing flow control — drop such a message.
+		try
 		{
-			if (p.message()->type() != rtmp_message::eMessageChunkSize &&
-				p.message()->type() != rtmp_message::eMessageWindowAcknowledgementSize)
-				handle_message(channel, p.message());
-			else
+			if (p.deserialize(channel->buffer(), channel->received_header()))
 			{
-				handle_internal_message(p.message());
-				if (p.message()->type() == rtmp_message::eMessageWindowAcknowledgementSize)
+				if (p.message()->type() != rtmp_message::eMessageChunkSize &&
+					p.message()->type() != rtmp_message::eMessageWindowAcknowledgementSize)
 					handle_message(channel, p.message());
+				else
+				{
+					handle_internal_message(p.message());
+					if (p.message()->type() == rtmp_message::eMessageWindowAcknowledgementSize)
+						handle_message(channel, p.message());
+				}
 			}
+		}
+		catch (buffer_eof_exception &)
+		{
 		}
 
 		channel->clear_data();
@@ -117,20 +122,21 @@ namespace fms
 	* @returns RTMP channel
 	* @note might throw an exception if there's no enough data in the buffer
 	*/
-	std::uint32_t rtmp_raw_data::peek_channel_id(stream_array &buffer)
+	// Peek the channel id from the chunk basic header without consuming (the reader
+	// is taken by value). Returns false if the basic header isn't fully present.
+	bool rtmp_raw_data::peek_channel_id(byte_reader r, std::uint32_t &channel)
 	{
-		buffer.mark();
-
-		std::uint32_t channel = 0;
 		std::uint8_t c;
+		if (!r.try_u8(c))
+			return false;
 
-		buffer >> c;
 		switch (c & 0x3f)
 		{
 		case 0:
 			{
 				std::uint8_t a;
-				buffer >> a;
+				if (!r.try_u8(a))
+					return false;
 				channel = 64 + a;
 				break;
 			}
@@ -138,7 +144,8 @@ namespace fms
 			{
 				std::uint8_t a;
 				std::uint8_t b;
-				buffer >> a >> b;
+				if (!r.try_u8(a) || !r.try_u8(b))
+					return false;
 				channel = 64 + a + b * 256;
 				break;
 			}
@@ -146,8 +153,6 @@ namespace fms
 			channel = c & 0x3f;
 			break;
 		}
-
-		buffer.rewind();
-		return channel;
+		return true;
 	}
 }

@@ -58,6 +58,21 @@ namespace fms
 			m_received_header.deserialize(buffer);
 		}
 
+		// Non-throwing, peek-then-commit header parse. Returns false (nothing
+		// changed) if the whole chunk header isn't present in the reader yet.
+		bool try_deserialize_header(byte_reader &r)
+		{
+			std::uint8_t const prev_type = m_received_header.header_type();
+			std::uint32_t const prev_delta = m_received_header.time_delta();
+			std::uint32_t const prev_ts = m_received_header.timestamp();
+			if (!m_received_header.try_deserialize(r))
+				return false;
+			m_prev_header_type = prev_type;
+			m_prev_time_delta = prev_delta;
+			m_prev_timestamp = prev_ts;
+			return true;
+		}
+
 		void adjust_timestamp()
 		{
 			if (((m_prev_header_type == rtmp_header::eHeaderTimerChange || m_prev_header_type == rtmp_header::eHeaderSameSource || m_prev_header_type == rtmp_header::eHeaderContinue) && m_prev_message_complete && m_received_header.header_type() == rtmp_header::eHeaderContinue))// ||
@@ -108,6 +123,14 @@ namespace fms
 			m_buffer.write(source.read_pos(), size);
 			m_message_len += static_cast<std::uint32_t>(size);
 			source.skip(size);
+		}
+
+		// Append chunk payload from a raw byte range (the resumable parser copies
+		// straight out of the input buffer via a byte_reader).
+		void add_data(const std::uint8_t *src, std::size_t size)
+		{
+			m_buffer.write(src, size);
+			m_message_len += static_cast<std::uint32_t>(size);
 		}
 
 		bool has_enough_data()
