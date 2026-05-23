@@ -180,7 +180,8 @@ namespace fms
 		return true;
 	}
 
-	void rtmp_header::serialize(stream_array &buffer, rtmp_header &previous_header)
+	template<typename W>
+	void rtmp_header::serialize(W &buffer, rtmp_header &previous_header)
 	{
 		std::uint32_t size = eHeaderNewSize;
 		std::uint32_t const prev_delta = previous_header.m_ts_delta_write;
@@ -257,7 +258,8 @@ namespace fms
 		}
 	}
 
-	void rtmp_header::serialize(stream_array &buffer, std::uint32_t size)
+	template<typename W>
+	void rtmp_header::serialize(W &buffer, std::uint32_t size)
 	{
 		switch (size)
 		{
@@ -280,7 +282,8 @@ namespace fms
 		}
 	}
 
-	void rtmp_header::serialize_header_new(stream_array &buffer)
+	template<typename W>
+	void rtmp_header::serialize_header_new(W &buffer)
 	{
 		std::uint8_t a;
 		if (m_channel_id < 64)
@@ -320,7 +323,8 @@ namespace fms
 		}
 	}
 
-	void rtmp_header::serialize_header_same_source(stream_array &buffer)
+	template<typename W>
+	void rtmp_header::serialize_header_same_source(W &buffer)
 	{
 		std::uint8_t a;
 		if (m_channel_id < 64)
@@ -361,7 +365,8 @@ namespace fms
 		}
 	}
 
-	void rtmp_header::serialize_header_timer_change(stream_array &buffer)
+	template<typename W>
+	void rtmp_header::serialize_header_timer_change(W &buffer)
 	{
 		std::uint8_t a;
 		if (m_channel_id < 64)
@@ -396,7 +401,8 @@ namespace fms
 		}
 	}
 
-	void rtmp_header::serialize_header_continue_size(stream_array &buffer)
+	template<typename W>
+	void rtmp_header::serialize_header_continue_size(W &buffer)
 	{
 		std::uint8_t a;
 		if (m_channel_id < 64)
@@ -422,4 +428,11 @@ namespace fms
 			buffer << b;
 		}
 	}
+
+	// Explicit instantiations: the serializers run against stream_array (the live
+	// output path) and byte_writer (the migration target / tests).
+	template void rtmp_header::serialize<stream_array>(stream_array &, rtmp_header &);
+	template void rtmp_header::serialize<byte_writer>(byte_writer &, rtmp_header &);
+	template void rtmp_header::serialize_header_continue_size<stream_array>(stream_array &);
+	template void rtmp_header::serialize_header_continue_size<byte_writer>(byte_writer &);
 }

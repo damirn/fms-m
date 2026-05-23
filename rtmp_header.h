@@ -1,6 +1,7 @@
 #pragma once
 
 #include "byte_reader.h"
+#include "byte_writer.h"
 #include "stream_array.h"
 
 namespace fms
@@ -26,8 +27,9 @@ namespace fms
 		// present yet. Behaviour-equivalent to deserialize() for complete headers.
 		bool try_deserialize(byte_reader &);
 
-		// Serialize rtmp header to binary stream.
-		void serialize(stream_array &, rtmp_header &);
+		// Serialize rtmp header to binary stream. Templated on the writer so the one
+		// implementation serves both stream_array and byte_writer (byte-identical).
+		template<typename W> void serialize(W &, rtmp_header &);
 
 		std::uint32_t &header_size()
 		{
@@ -104,7 +106,7 @@ namespace fms
 			return m_ts_delta_read;
 		}
 
-		void serialize_header_continue_size(stream_array &);
+		template<typename W> void serialize_header_continue_size(W &);
 
 	protected:
 		void deserialize_header_new(stream_array &);
@@ -116,10 +118,10 @@ namespace fms
 		bool try_header_same_source(byte_reader &);
 		bool try_header_timer_change(byte_reader &);
 		bool try_extended_ts(byte_reader &);
-		void serialize(stream_array &, std::uint32_t);
-		void serialize_header_new(stream_array &);
-		void serialize_header_same_source(stream_array &);
-		void serialize_header_timer_change(stream_array &);
+		template<typename W> void serialize(W &, std::uint32_t);
+		template<typename W> void serialize_header_new(W &);
+		template<typename W> void serialize_header_same_source(W &);
+		template<typename W> void serialize_header_timer_change(W &);
 
 		std::uint32_t m_header_size{0};
 		std::uint32_t m_channel_id{0};
