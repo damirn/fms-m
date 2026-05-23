@@ -55,6 +55,7 @@ namespace fms
 		}
 
 		const std::uint8_t *data() const { return m_buf.data(); }
+		std::uint8_t *data() { return m_buf.data(); }   // in-place transforms (rc4)
 		std::size_t size() const { return m_buf.size(); }
 		bool empty() const { return m_buf.empty(); }
 		void clear() { m_buf.clear(); }

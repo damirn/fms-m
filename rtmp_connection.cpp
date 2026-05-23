@@ -254,10 +254,10 @@ namespace fms
 		m_wto_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_wto(ec); });
 
 		// encrypt outgoing data if needed
-		if (m_key_out != nullptr && m_output_buffer.wrote_size() > 0)
-			rc4_crypt(m_key_out, m_output_buffer.wrote_size(), m_output_buffer.read_pos(), m_output_buffer.read_pos());
+		if (m_key_out != nullptr && !m_output_buffer.empty())
+			rc4_crypt(m_key_out, m_output_buffer.size(), m_output_buffer.data(), m_output_buffer.data());
 
-		boost::asio::async_write(m_socket, m_output_buffer.read_buffer(),
+		boost::asio::async_write(m_socket, boost::asio::buffer(m_output_buffer.data(), m_output_buffer.size()),
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write_packet(ec, bytes); });
 	}
 

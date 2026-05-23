@@ -78,7 +78,8 @@ namespace fms
 		}
 	}
 
-	void rtmp_protocol::serialize(stream_array &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)
+	template<typename W>
+	void rtmp_protocol::serialize(W &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)
 	{
 		byte_writer tmp_buffer;
 		msg->serialize(tmp_buffer);
@@ -204,7 +205,8 @@ namespace fms
 		m_message = msg;
 	}
 
-	void rtmp_protocol::chunk_buffer(stream_array &buffer, const byte_writer &input, rtmp_header &header) const
+	template<typename W>
+	void rtmp_protocol::chunk_buffer(W &buffer, const byte_writer &input, rtmp_header &header) const
 	{
 		std::size_t size = input.size();
 		if (size != 0)
@@ -224,4 +226,10 @@ namespace fms
 			buffer.write(src, size);
 		}
 	}
+
+	// The output buffer is stream_array today (RTMPT server + RTMP client) and
+	// byte_writer for the RTMP server connection; chunk_buffer cascades from
+	// each. GCC needs both spelled out explicitly.
+	template void rtmp_protocol::serialize<stream_array>(stream_array &, const rtmp_message_ptr &, rtmp_header &, rtmp_header &);
+	template void rtmp_protocol::serialize<byte_writer>(byte_writer &, const rtmp_message_ptr &, rtmp_header &, rtmp_header &);
 }
