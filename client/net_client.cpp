@@ -97,7 +97,7 @@ namespace fms::rtmp_client
 	{
 		m_write_in_progress = true;
 
-		boost::asio::async_write(m_socket, m_output_buffer.read_buffer(),
+		boost::asio::async_write(m_socket, boost::asio::buffer(m_output_buffer.data(), m_output_buffer.size()),
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->write_complete(ec, n); });
 	}
 

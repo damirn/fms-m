@@ -46,6 +46,16 @@ namespace fms
 			m_buf.insert(m_buf.end(), p, p + n);
 		}
 
+		// Grow the buffer by n (uninitialised) bytes and return a writable pointer
+		// to that region, for code that fills a block through a raw pointer (e.g.
+		// the handshake). Replaces stream_array's data()+update() idiom.
+		std::uint8_t *extend(std::size_t n)
+		{
+			std::size_t const old = m_buf.size();
+			m_buf.resize(old + n);
+			return m_buf.data() + old;
+		}
+
 		// Back-patch support: remember the current offset, keep writing, then patch
 		// the reserved bytes once their value is known.
 		std::size_t mark() const { return m_buf.size(); }

@@ -323,7 +323,7 @@ namespace fms::rtmp_client
 					return;
 				}
 			}
-			if (m_output_buffer->available())
+			if (!m_output_buffer->empty())
 				write_data();
 		}
 		else
@@ -350,7 +350,7 @@ namespace fms::rtmp_client
 
 	void net_connection::prepare_handshake()
 	{
-		std::uint8_t *data = m_output_buffer->data();
+		std::uint8_t *data = m_output_buffer->extend(eHandshakeSize + 1);
 		*data = ePlainMagic;                 // C0
 		std::uint8_t *c1 = data + 1;         // C1 (eHandshakeSize bytes)
 
@@ -377,8 +377,6 @@ namespace fms::rtmp_client
 			for (int i = 2; i < eHandshakeSize / 4; ++i)
 				*p++ = std::rand();
 		}
-
-		m_output_buffer->update(eHandshakeSize + 1);
 	}
 
 	void net_connection::write_signed_c2(const std::uint8_t *s1)
@@ -386,14 +384,13 @@ namespace fms::rtmp_client
 		// FP9 signed C2: key = HMAC(server's S1 digest, full FP key);
 		// C2 = 1504 random bytes + HMAC(those bytes, key). The server verifies this
 		// in check_hand_shake_response.
-		std::uint8_t *c2 = m_output_buffer->data();
+		std::uint8_t *c2 = m_output_buffer->extend(eHandshakeSize);
 		std::uint32_t const off = digest_offset(s1, m_hs_scheme);
 		std::uint8_t key[SHA256_DIGEST_LENGTH];
 		HMAC_SHA256(s1 + off, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, key);
 		for (int i = 0; i < eHandshakeSize - SHA256_DIGEST_LENGTH; ++i)
 			c2[i] = static_cast<std::uint8_t>(std::rand());
 		HMAC_SHA256(c2, eHandshakeSize - SHA256_DIGEST_LENGTH, key, SHA256_DIGEST_LENGTH, c2 + eHandshakeSize - SHA256_DIGEST_LENGTH);
-		m_output_buffer->update(eHandshakeSize);
 	}
 
 	void net_connection::handle_message(rtmp_channel_ptr, rtmp_message_ptr msg)

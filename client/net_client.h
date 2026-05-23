@@ -8,6 +8,7 @@
 #include <boost/noncopyable.hpp>
 
 #include "stream_array.h"
+#include "byte_writer.h"
 
 namespace fms::rtmp_client
 {
@@ -47,7 +48,7 @@ namespace fms::rtmp_client
 			return &m_input_buffer;
 		}
 
-		stream_array *output_buffer()
+		byte_writer *output_buffer()
 		{
 			return &m_output_buffer;
 		}
@@ -87,7 +88,7 @@ namespace fms::rtmp_client
 
 		// I/O buffers
 		stream_array m_input_buffer;
-		stream_array m_output_buffer;
+		byte_writer m_output_buffer;
 
 		bool m_write_in_progress{false};
 		std::string m_host;
