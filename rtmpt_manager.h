@@ -26,8 +26,8 @@ namespace fms
 
 		bool validate(const boost::asio::ip::tcp::endpoint &, const std::string &, std::uint32_t);
 
-		std::uint32_t handle_data(const std::string &, std::uint32_t, stream_array &, stream_array &);
-		std::uint32_t serialize_result(const std::string &, std::uint32_t, stream_array &);
+		std::uint32_t handle_data(const std::string &, std::uint32_t, stream_array &, byte_writer &);
+		std::uint32_t serialize_result(const std::string &, std::uint32_t, byte_writer &);
 
 		void create_new_connection(const std::string &);
 
