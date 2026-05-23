@@ -18,7 +18,9 @@
 #include <cstring>
 #include <vector>
 
+#include "byte_reader.h"
 #include "rtmp_channel.h"
+#include "rtmp_header.h"
 #include "rtmp_message.h"
 #include "rtmp_raw_data.h"
 #include "stream_array.h"
@@ -313,4 +315,90 @@ TEST_CASE("chunk parser: garbage input does not crash and yields no messages")
 	// whatever it decides, it must not fabricate audio/video frames from noise
 	for (auto &m : h.messages)
 		CHECK((m.type != AUDIO && m.type != VIDEO));
+}
+
+// ------------------------- Phase 1: byte_reader + try_deserialize -----------
+
+namespace
+{
+	void fill(fms::stream_array &sa, const std::vector<std::uint8_t> &b)
+	{
+		auto mb = sa.write_buffer();
+		std::memcpy(mb.data(), b.data(), b.size());
+		sa.update(b.size());
+	}
+}
+
+TEST_CASE("byte_reader: endianness, bounds, and no-advance-on-failure")
+{
+	std::vector<std::uint8_t> const b = {0x12, 0x34, 0x56, 0x78, 0x9A};
+
+	byte_reader r1(b.data(), b.size());
+	std::uint8_t u = 0;
+	CHECK(r1.try_u8(u)); CHECK(u == 0x12); CHECK(r1.position() == 1);
+
+	std::uint32_t v = 0;
+	byte_reader r2(b.data(), b.size());
+	CHECK(r2.try_u24_be(v)); CHECK(v == 0x123456u); CHECK(r2.position() == 3);
+	byte_reader r3(b.data(), b.size());
+	CHECK(r3.try_u32_be(v)); CHECK(v == 0x12345678u);
+	byte_reader r4(b.data(), b.size());
+	CHECK(r4.try_u32_le(v)); CHECK(v == 0x78563412u);
+
+	byte_reader r5(b.data(), 2);          // only 2 bytes available
+	CHECK_FALSE(r5.try_u32_be(v));        // needs 4
+	CHECK(r5.position() == 0);            // did not advance
+	CHECK(r5.remaining() == 2);
+}
+
+TEST_CASE("try_deserialize matches deserialize field-for-field (all header types)")
+{
+	chunk_stream cs;
+	cs.hdr0(6, 1000, 10, AUDIO, 42);   // type 0 absolute
+	cs.hdr1(6, 40, 12, VIDEO);         // type 1 delta -> ts 1040, inherits sid
+	cs.hdr2(6, 25);                    // type 2 delta -> ts 1065
+	cs.hdr3(6);                        // type 3 continuation (no ext ts)
+	cs.hdr0(50, 0x01020304, 8, AUDIO, 7);   // type 0 with extended timestamp
+
+	fms::stream_array sa;
+	fill(sa, cs.bytes);
+	byte_reader r(cs.bytes.data(), cs.bytes.size());
+
+	rtmp_header h_old;   // parsed via the throwing stream_array path
+	rtmp_header h_new;   // parsed via the non-throwing byte_reader path
+
+	for (int i = 0; i < 5; ++i)
+	{
+		h_old.deserialize(sa);
+		REQUIRE(h_new.try_deserialize(r));
+		CHECK(h_old.channel_id()     == h_new.channel_id());
+		CHECK(h_old.timestamp()      == h_new.timestamp());
+		CHECK(h_old.message_length() == h_new.message_length());
+		CHECK(int(h_old.message_type()) == int(h_new.message_type()));
+		CHECK(h_old.stream_id()      == h_new.stream_id());
+		CHECK(int(h_old.header_type()) == int(h_new.header_type()));
+		CHECK(h_old.time_delta()     == h_new.time_delta());
+	}
+}
+
+TEST_CASE("try_deserialize is peek-then-commit on partial headers")
+{
+	chunk_stream cs;
+	cs.hdr0(6, 1000, 10, AUDIO, 42);   // 12-byte header (1-byte basic + 11)
+	std::size_t const hdr_len = cs.bytes.size();
+
+	// every prefix shorter than the full header must fail and consume nothing
+	for (std::size_t k = 0; k < hdr_len; ++k)
+	{
+		byte_reader r(cs.bytes.data(), k);
+		rtmp_header h;
+		CHECK_FALSE(h.try_deserialize(r));
+		CHECK(r.position() == 0);
+	}
+
+	// the full header succeeds and consumes exactly the header bytes
+	byte_reader r(cs.bytes.data(), hdr_len);
+	rtmp_header h;
+	REQUIRE(h.try_deserialize(r));
+	CHECK(r.position() == hdr_len);
 }

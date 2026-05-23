@@ -65,6 +65,121 @@ namespace fms
 		}
 	}
 
+	bool rtmp_header::try_deserialize(byte_reader &reader)
+	{
+		// Work on copies; commit both the header state and the reader position
+		// only if the whole header is present. This mirrors deserialize() exactly.
+		byte_reader r = reader;
+		rtmp_header h = *this;   // preserve accumulated timestamp across chunks
+
+		std::uint8_t c;
+		if (!r.try_u8(c))
+			return false;
+		h.m_header_type = c >> 6;
+
+		std::uint32_t channel_bytes_count;
+		switch (c & 0x3f)
+		{
+		case 0:
+			{
+				std::uint8_t b;
+				if (!r.try_u8(b))
+					return false;
+				h.m_channel_id = 64 + b;
+				channel_bytes_count = 2;
+				break;
+			}
+		case 1:
+			{
+				std::uint8_t a;
+				std::uint8_t b;
+				if (!r.try_u8(a) || !r.try_u8(b))
+					return false;
+				h.m_channel_id = 64 + a + b * 256;
+				channel_bytes_count = 3;
+				break;
+			}
+		default:
+			h.m_channel_id = c & 0x3f;
+			channel_bytes_count = 1;
+			break;
+		}
+
+		switch (h.m_header_type)
+		{
+		case eHeaderNew:
+			if (!h.try_header_new(r)) return false;
+			h.m_header_size = channel_bytes_count + 11;
+			break;
+		case eHeaderSameSource:
+			if (!h.try_header_same_source(r)) return false;
+			h.m_header_size = channel_bytes_count + 7;
+			break;
+		case eHeaderTimerChange:
+			if (!h.try_header_timer_change(r)) return false;
+			h.m_header_size = channel_bytes_count + 3;
+			break;
+		case eHeaderContinue:
+			h.m_header_size = channel_bytes_count;
+			if (h.m_has_extended_ts)   // rtmp_specification_1.0: 5.3.1.3
+			{
+				if (!r.try_u32_be(h.m_timestamp))
+					return false;
+			}
+			break;
+		}
+
+		*this = h;
+		reader = r;
+		return true;
+	}
+
+	bool rtmp_header::try_header_new(byte_reader &r)
+	{
+		m_ts_delta_read = 0;
+		if (!r.try_u24_be(m_timestamp)) return false;
+		if (!r.try_u24_be(m_message_length)) return false;
+		if (!r.try_u8(m_message_type)) return false;
+		if (!r.try_u32_le(m_stream_id)) return false;
+
+		m_has_extended_ts = false;
+		if (m_timestamp == 0x00ffffff)
+		{
+			if (!r.try_u32_be(m_timestamp)) return false;
+			m_has_extended_ts = true;
+		}
+		return true;
+	}
+
+	bool rtmp_header::try_header_same_source(byte_reader &r)
+	{
+		if (!r.try_u24_be(m_ts_delta_read)) return false;
+		if (!r.try_u24_be(m_message_length)) return false;
+		if (!r.try_u8(m_message_type)) return false;
+		if (!try_extended_ts(r)) return false;
+		m_timestamp += m_ts_delta_read;
+		return true;
+	}
+
+	bool rtmp_header::try_header_timer_change(byte_reader &r)
+	{
+		if (!r.try_u24_be(m_ts_delta_read)) return false;
+		if (!try_extended_ts(r)) return false;
+		m_timestamp += m_ts_delta_read;
+		return true;
+	}
+
+	bool rtmp_header::try_extended_ts(byte_reader &r)
+	{
+		m_has_extended_ts = false;
+		if (m_ts_delta_read == 0x00ffffff)
+		{
+			if (!r.try_u32_be(m_ts_delta_read)) return false;
+			m_has_extended_ts = true;
+		}
+		return true;
+	}
+
 	void rtmp_header::serialize(stream_array &buffer, rtmp_header &previous_header)
 	{
 		std::uint32_t size = eHeaderNewSize;
