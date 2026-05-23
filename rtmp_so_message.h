@@ -23,8 +23,8 @@ namespace fms
 			, m_flags(flags)
 		{}
 
-		void deserialize(stream_array &) override;
-		void serialize(stream_array &) override;
+		void deserialize(byte_reader &) override;
+		void serialize(byte_writer &) override;
 
 		enum
 		{
@@ -104,11 +104,11 @@ namespace fms
 		}
 
 	protected:
-		event_ptr deserialize_event(stream_array &);
-		void deserialize_request_change_event(stream_array &, event_ptr &);
-		void deserialize_request_remove_event(stream_array &, event_ptr &);
-		static void deserialize_send_message_event(std::uint32_t, stream_array &, event_ptr &);
-		void serialize_event(stream_array &, event_ptr &);
+		event_ptr deserialize_event(byte_reader &);
+		void deserialize_request_change_event(byte_reader &, event_ptr &);
+		void deserialize_request_remove_event(byte_reader &, event_ptr &);
+		static void deserialize_send_message_event(std::uint32_t, byte_reader &, event_ptr &);
+		void serialize_event(byte_writer &, event_ptr &);
 
 		amf0_string_ptr m_name;
 		std::uint32_t m_version;

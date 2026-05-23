@@ -96,7 +96,11 @@ namespace fms
 		// declared length), not framing flow control — drop such a message.
 		try
 		{
-			if (p.deserialize(channel->buffer(), channel->received_header()))
+			// the body is fully assembled; read it through a cursor over the
+			// channel's buffer (clear_data() below resets it regardless)
+			stream_array &body = channel->buffer();
+			byte_reader r(body.read_pos(), body.available());
+			if (p.deserialize(r, channel->received_header()))
 			{
 				if (p.message()->type() != rtmp_message::eMessageChunkSize &&
 					p.message()->type() != rtmp_message::eMessageWindowAcknowledgementSize)

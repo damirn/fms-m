@@ -1,9 +1,11 @@
 #include "pch.h"
 #include "rtmp_so_message.h"
+#include "byte_reader.h"
+#include "byte_writer.h"
 
 namespace fms
 {
-	void rtmp_message_shared_object::deserialize(stream_array &buffer)
+	void rtmp_message_shared_object::deserialize(byte_reader &buffer)
 	{
 		m_amf0.read_short_string(buffer, m_name, true);
 
@@ -22,7 +24,7 @@ namespace fms
 		}
 	}
 
-	void rtmp_message_shared_object::serialize(stream_array &buffer)
+	void rtmp_message_shared_object::serialize(byte_writer &buffer)
 	{
 		m_amf0.write_short_string(buffer, m_name, true);
 
@@ -40,7 +42,7 @@ namespace fms
 			serialize_event(buffer, *i);
 	}
 
-	rtmp_message_shared_object::event_ptr rtmp_message_shared_object::deserialize_event(stream_array &buffer)
+	rtmp_message_shared_object::event_ptr rtmp_message_shared_object::deserialize_event(byte_reader &buffer)
 	{
 		event_ptr ev(new event);
 		buffer >> ev->m_type;
@@ -70,7 +72,7 @@ namespace fms
 		return ev;
 	}
 
-	void rtmp_message_shared_object::deserialize_request_change_event(stream_array &buffer, event_ptr &ev)
+	void rtmp_message_shared_object::deserialize_request_change_event(byte_reader &buffer, event_ptr &ev)
 	{
 		amf0_string_ptr const str(new amf0_string);
 		m_amf0.read_short_string(buffer, str, true);
@@ -78,14 +80,14 @@ namespace fms
 		ev->m_value = m_amf0.read(buffer);
 	}
 
-	void rtmp_message_shared_object::deserialize_request_remove_event(stream_array &buffer, event_ptr &ev)
+	void rtmp_message_shared_object::deserialize_request_remove_event(byte_reader &buffer, event_ptr &ev)
 	{
 		amf0_string_ptr const str(new amf0_string);
 		m_amf0.read_short_string(buffer, str, true);
 		ev->m_name = str;
 	}
 
-	void rtmp_message_shared_object::deserialize_send_message_event(std::uint32_t len, stream_array &buffer, event_ptr &ev)
+	void rtmp_message_shared_object::deserialize_send_message_event(std::uint32_t len, byte_reader &buffer, event_ptr &ev)
 	{
 		if (len > 0)
 		{
@@ -95,7 +97,7 @@ namespace fms
 		}
 	}
 
-	void rtmp_message_shared_object::serialize_event(stream_array &buffer, event_ptr &ev)
+	void rtmp_message_shared_object::serialize_event(byte_writer &buffer, event_ptr &ev)
 	{
 		static std::uint32_t zero = 0;
 
@@ -111,15 +113,16 @@ namespace fms
 		}
 		else
 		{
-			std::uint32_t size = 0;
-			std::uint8_t *pos = buffer.write_pos();
-			buffer.skip_write(sizeof(size));
+			// reserve a 4-byte length slot, write the body, then back-patch the
+			// slot with the body length once it's known (byte_writer mark/patch).
+			std::size_t const pos = buffer.mark();
+			buffer << zero;
 			m_amf0.write_short_string(buffer, ev->m_name, true);
 			if (ev->m_type != eSuccess && ev->m_type != eRemove)
 				m_amf0.write(buffer, ev->m_value);
-			std::uint8_t  const*now = buffer.write_pos();
-			size = boost::asio::detail::socket_ops::host_to_network_long(now - pos - 4);
-			std::memcpy(reinterpret_cast<void *>(pos), reinterpret_cast<void *>(&size), sizeof(size));
+			std::uint32_t const size = boost::asio::detail::socket_ops::host_to_network_long(
+				static_cast<std::uint32_t>(buffer.mark() - pos - 4));
+			buffer.patch(pos, reinterpret_cast<const std::uint8_t *>(&size), sizeof(size));
 		}
 	}
 }

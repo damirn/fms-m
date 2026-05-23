@@ -3,11 +3,13 @@
 #include "rtmp_header.h"
 #include "rtmp_so_message.h"
 #include "stream_array.h"
+#include "byte_reader.h"
+#include "byte_writer.h"
 #include "amf3.h"
 
 namespace fms
 {
-	bool rtmp_protocol::deserialize(stream_array &buffer, rtmp_header &h)
+	bool rtmp_protocol::deserialize(byte_reader &buffer, rtmp_header &h)
 	{
 		try
 		{
@@ -78,7 +80,7 @@ namespace fms
 
 	void rtmp_protocol::serialize(stream_array &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)
 	{
-		stream_array tmp_buffer;
+		byte_writer tmp_buffer;
 		msg->serialize(tmp_buffer);
 
 		// write header
@@ -92,49 +94,49 @@ namespace fms
 		chunk_buffer(buffer, tmp_buffer, new_header);
 	}
 
-	void rtmp_protocol::deserialize_notify(stream_array &buffer)
+	void rtmp_protocol::deserialize_notify(byte_reader &buffer)
 	{
 		rtmp_message_notify_ptr const msg(new rtmp_message_notify);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_notify_amf3(stream_array &buffer)
+	void rtmp_protocol::deserialize_notify_amf3(byte_reader &buffer)
 	{
 		rtmp_message_notify_amf3_ptr const msg(new rtmp_message_notify_amf3);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_invoke_amf3(stream_array &buffer)
+	void rtmp_protocol::deserialize_invoke_amf3(byte_reader &buffer)
 	{
 		rtmp_message_invoke_amf3_ptr const msg(new rtmp_message_invoke_amf3);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_invoke(stream_array &buffer)
+	void rtmp_protocol::deserialize_invoke(byte_reader &buffer)
 	{
 		rtmp_message_invoke_ptr const msg(new rtmp_message_invoke);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_shared_object(stream_array &buffer)
+	void rtmp_protocol::deserialize_shared_object(byte_reader &buffer)
 	{
 		rtmp_message_shared_object_ptr const msg(new rtmp_message_shared_object);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_bytes_read(stream_array &buffer)
+	void rtmp_protocol::deserialize_bytes_read(byte_reader &buffer)
 	{
 		rtmp_message_bytes_read_ptr const msg(new rtmp_message_bytes_read);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_ping(stream_array &buffer, std::uint32_t size)
+	void rtmp_protocol::deserialize_ping(byte_reader &buffer, std::uint32_t size)
 	{
 		std::uint8_t elements = 0;
 		switch (size)
@@ -160,65 +162,66 @@ namespace fms
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_window_acknowladge_size(stream_array &buffer)
+	void rtmp_protocol::deserialize_window_acknowladge_size(byte_reader &buffer)
 	{
 		rtmp_message_window_acknowledgement_size_ptr const msg(new rtmp_message_window_acknowledgement_size);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_set_peer_bandwidth(stream_array &buffer)
+	void rtmp_protocol::deserialize_set_peer_bandwidth(byte_reader &buffer)
 	{
 		rtmp_message_set_peer_bandwidth_ptr const msg(new rtmp_message_set_peer_bandwidth);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_audio_data(stream_array &buffer, std::uint32_t size)
+	void rtmp_protocol::deserialize_audio_data(byte_reader &buffer, std::uint32_t size)
 	{
 		rtmp_message_audio_data_ptr const msg(new rtmp_message_audio_data(static_cast<std::uint16_t>(size)));
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_video_data(stream_array &buffer, std::uint32_t size)
+	void rtmp_protocol::deserialize_video_data(byte_reader &buffer, std::uint32_t size)
 	{
 		rtmp_message_video_data_ptr const msg(new rtmp_message_video_data(size));
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_chunk_size(stream_array &buffer)
+	void rtmp_protocol::deserialize_chunk_size(byte_reader &buffer)
 	{
 		rtmp_message_chunk_size_ptr const msg(new rtmp_message_chunk_size());
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::deserialize_aggregate(stream_array &buffer, std::uint32_t ts)
+	void rtmp_protocol::deserialize_aggregate(byte_reader &buffer, std::uint32_t ts)
 	{
 		rtmp_message_aggregate_ptr const msg(new rtmp_message_aggregate(ts));
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
-	void rtmp_protocol::chunk_buffer(stream_array &buffer, stream_array &input, rtmp_header &header) const
+	void rtmp_protocol::chunk_buffer(stream_array &buffer, const byte_writer &input, rtmp_header &header) const
 	{
 		std::size_t size = input.size();
 		if (size != 0)
 		{
+			const std::uint8_t *src = input.data();
 			std::uint32_t chunks = static_cast<std::uint32_t>(size) / m_chunk_size;
 			chunks += (size % m_chunk_size) == 0 ? 0 : 1;
-			std::uint32_t chunk_size = 0;
 
 			for (std::uint32_t i = 0; i < chunks - 1; ++i)
 			{
-				chunk_size = static_cast<std::uint32_t>(size > m_chunk_size ? m_chunk_size : size);
-				buffer.copy(input, chunk_size);
+				std::uint32_t const chunk_size = static_cast<std::uint32_t>(size > m_chunk_size ? m_chunk_size : size);
+				buffer.write(src, chunk_size);
+				src += chunk_size;
 				header.serialize_header_continue_size(buffer);
 				size -= chunk_size;
 			}
-			buffer.copy(input, size);
+			buffer.write(src, size);
 		}
 	}
 }
