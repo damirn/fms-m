@@ -106,6 +106,23 @@ namespace fms
 			m_pos += n;
 		}
 
+		// Variable-length unsigned (RTMFP VLU): 7 bits/byte, high bit = "more".
+		// Matches stream_array::read_vlu.
+		std::uint64_t read_vlu()
+		{
+			std::uint8_t a = 0;
+			std::uint64_t ret = 0;
+			bool more = false;
+			do
+			{
+				*this >> a;
+				more = (a & 0x80) == 0x80;
+				ret = (ret << 7) + (a & 0x7f);
+			}
+			while (more);
+			return ret;
+		}
+
 		// 24-bit big-endian, throwing (matches stream_array::read_uint32_3).
 		std::uint32_t read_uint32_3()
 		{

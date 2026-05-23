@@ -450,6 +450,43 @@ TEST_CASE("byte_writer: append, write_uint32_3, mark/patch")
 	CHECK(std::vector<std::uint8_t>(w2.data(), w2.data() + w2.size()) == exp2);
 }
 
+TEST_CASE("VLU: byte_writer/byte_reader match stream_array and round-trip")
+{
+	auto bytes_of = [](byte_writer &w) {
+		return std::vector<std::uint8_t>(w.data(), w.data() + w.size());
+	};
+
+	// Round-trips for the 1..3 byte forms (< 2^21), which is all RTMFP encodes.
+	std::vector<std::uint64_t> const rt = {0, 1, 0x7f, 0x80, 0x3fff, 0x4000, 0x1fffff};
+	for (std::uint64_t const v : rt)
+	{
+		byte_writer bw;
+		bw.write_vlu(v);
+		fms::stream_array sa;
+		sa.write_vlu(v);
+		std::vector<std::uint8_t> const enc = bytes_of(bw);
+		CHECK(enc == std::vector<std::uint8_t>(sa.read_pos(), sa.read_pos() + sa.available()));  // encode parity
+
+		byte_reader br(enc.data(), enc.size());
+		CHECK(br.read_vlu() == v);   // byte_reader round-trip
+
+		fms::stream_array sa2;
+		sa2.write(enc.data(), enc.size());
+		CHECK(sa2.read_vlu() == v);  // stream_array round-trip
+	}
+
+	// The 4-byte "max" form (>= 2^21) is asymmetric with read_vlu (an 8-bit final
+	// byte) -- a stream_array quirk RTMFP never triggers. Assert encode parity only.
+	for (std::uint64_t const v : {std::uint64_t{0x200000}, std::uint64_t{0x0fffffff}})
+	{
+		byte_writer bw;
+		bw.write_vlu(v);
+		fms::stream_array sa;
+		sa.write_vlu(v);
+		CHECK(bytes_of(bw) == std::vector<std::uint8_t>(sa.read_pos(), sa.read_pos() + sa.available()));
+	}
+}
+
 TEST_CASE("header serialize: byte_writer output is byte-identical to stream_array")
 {
 	rtmp_header const prev_none;                          // stream id 0 -> forces type 0
