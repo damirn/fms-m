@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stream_array.h"
+#include "byte_writer.h"
 
 #include <cstdint>
 #include <openssl/evp.h>
@@ -14,7 +15,7 @@ namespace fms
 		~aes();
 
 		void decrypt(stream_array &, stream_array &);
-		void encrypt(stream_array &, stream_array &);
+		void encrypt(byte_writer &, byte_writer &);
 
 		std::uint8_t *dec_key_data()
 		{

@@ -40,10 +40,10 @@ namespace fms
 		}
 
 		virtual bool deserialize(stream_array &, std::uint16_t) = 0;
-		virtual std::uint16_t serialize(stream_array &) = 0;
+		virtual std::uint16_t serialize(byte_writer &) = 0;
 
 	protected:
-		std::uint16_t serialize_chunk_header(stream_array &);
+		std::uint16_t serialize_chunk_header(byte_writer &, std::size_t);
 
 		type_t m_type;
 		enum { eChunkHeaderSize = 3 };
@@ -88,7 +88,7 @@ namespace fms
 		{
 			return true; // not implemented
 		}
-		std::uint16_t serialize(stream_array &) override;
+		std::uint16_t serialize(byte_writer &) override;
 
 	protected:
 		vlu_t m_epd_len;
@@ -133,7 +133,7 @@ namespace fms
 		}
 
 		bool deserialize(stream_array &, std::uint16_t) override;
-		std::uint16_t serialize(stream_array &) override
+		std::uint16_t serialize(byte_writer &) override
 		{
 			return 0;
 		} // not implemented
@@ -166,7 +166,7 @@ namespace fms
 		{
 			return true;
 		}  // not implemented
-		std::uint16_t serialize(stream_array &) override;
+		std::uint16_t serialize(byte_writer &) override;
 
 	protected:
 		std::uint16_t m_tag_len;
@@ -207,7 +207,7 @@ namespace fms
 		{
 			return true;
 		}  // not implemented
-		std::uint16_t serialize(stream_array &) override;
+		std::uint16_t serialize(byte_writer &) override;
 
 	protected:
 		std::uint16_t m_tag_len;
@@ -268,7 +268,7 @@ namespace fms
 		}
 
 		bool deserialize(stream_array &, std::uint16_t) override;
-		std::uint16_t serialize(stream_array &) override
+		std::uint16_t serialize(byte_writer &) override
 		{
 			return 0;
 		} // not implemented
@@ -299,7 +299,7 @@ namespace fms
 		{
 			return true;
 		}  // not implemented
-		std::uint16_t serialize(stream_array &) override;
+		std::uint16_t serialize(byte_writer &) override;
 
 	protected:
 		static std::uint8_t m_marker;
@@ -408,7 +408,7 @@ namespace fms
 		user_data_chunk(const fragment_ptr&, const vlu_t &, const vlu_t &);
 
 		bool deserialize(stream_array &, std::uint16_t) override;
-		std::uint16_t serialize(stream_array &) override;
+		std::uint16_t serialize(byte_writer &) override;
 
 		const vlu_t &flow_id() const
 		{
@@ -445,7 +445,7 @@ namespace fms
 		{}
 
 		bool deserialize(stream_array &, std::uint16_t) override;
-		std::uint16_t serialize(stream_array &) override
+		std::uint16_t serialize(byte_writer &) override
 		{
 			return 0;
 		} // not implemented
@@ -466,7 +466,7 @@ namespace fms
 		{}
 
 		bool deserialize(stream_array &, std::uint16_t) override;
-		std::uint16_t serialize(stream_array &) override;
+		std::uint16_t serialize(byte_writer &) override;
 
 		const vlu_t &flow_id() const
 		{
@@ -516,7 +516,7 @@ namespace fms
 		{}
 
 		bool deserialize(stream_array &, std::uint16_t) override;
-		std::uint16_t serialize(stream_array &) override
+		std::uint16_t serialize(byte_writer &) override
 		{
 			return 0;
 		} // not implemented
@@ -544,7 +544,7 @@ namespace fms
 		{}
 
 		bool deserialize(stream_array &, std::uint16_t) override;
-		std::uint16_t serialize(stream_array &) override
+		std::uint16_t serialize(byte_writer &) override
 		{
 			return 0;
 		} // not implemented
@@ -577,7 +577,7 @@ namespace fms
 		{
 			return true;
 		} // not implemented
-		std::uint16_t serialize(stream_array &) override;
+		std::uint16_t serialize(byte_writer &) override;
 
 	protected:
 		std::uint16_t m_data_len;
@@ -592,7 +592,7 @@ namespace fms
 		{}
 
 		bool deserialize(stream_array &, std::uint16_t) override;
-		std::uint16_t serialize(stream_array &) override
+		std::uint16_t serialize(byte_writer &) override
 		{
 			return 0;
 		} // not implemented

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stream_array.h"
+#include "byte_writer.h"
 
 #include <cstring>
 #include <list>
@@ -68,7 +69,7 @@ namespace fms
 		}
 
 		bool deserialize(stream_array &);
-		std::uint16_t serialize(stream_array &) const;
+		std::uint16_t serialize(byte_writer &) const;
 
 		const bool is_marker() const
 		{
@@ -90,7 +91,7 @@ namespace fms
 	struct option_list
 	{
 		bool deserialize(stream_array &);
-		std::uint16_t serialize(stream_array &);
+		std::uint16_t serialize(byte_writer &);
 
 		option_ptr create_option(std::uint8_t type, const std::uint8_t *value, const std::uint16_t &value_len);
 		option_ptr create_option(std::uint8_t type, const vlu_t &value);

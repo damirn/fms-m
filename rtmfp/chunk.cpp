@@ -23,21 +23,25 @@ namespace fms
 		return true;
 	}
 
-	std::uint16_t chunk::serialize_chunk_header(stream_array &to)
+	std::uint16_t chunk::serialize_chunk_header(byte_writer &to, std::size_t hdr_pos)
 	{
-		std::uint8_t type = m_type;
-		std::uint16_t const len = to.rewind_write() - eChunkHeaderSize;
-		std::uint16_t nlen = boost::asio::detail::socket_ops::host_to_network_short(len);
-		to << type << nlen;
-		//to.update(to.wrote_size());
-		to.rewind_write_to_end();
+		// body was appended after the reserved 3-byte header slot at hdr_pos;
+		// back-patch [type][len_hi][len_lo] (big-endian len), matching the old
+		// `to << type << host_to_network_short(len)`.
+		std::uint16_t const len = static_cast<std::uint16_t>(to.size() - hdr_pos - eChunkHeaderSize);
+		std::uint8_t const hdr[eChunkHeaderSize] = {
+			static_cast<std::uint8_t>(m_type),
+			static_cast<std::uint8_t>(len >> 8),
+			static_cast<std::uint8_t>(len & 0xFF)
+		};
+		to.patch(hdr_pos, hdr, eChunkHeaderSize);
 		return len + eChunkHeaderSize;
 	}
 
-	std::uint16_t fihello_chunk::serialize(stream_array &to)
+	std::uint16_t fihello_chunk::serialize(byte_writer &to)
 	{
-		to.mark_write();
-		to.skip_write(eChunkHeaderSize);
+		std::size_t const hdr = to.mark();
+		to.extend(eChunkHeaderSize);
 
 		to.write_vlu(m_epd_len);
 		to.write(m_epd, static_cast<std::size_t>(m_epd_len));
@@ -45,7 +49,7 @@ namespace fms
 		to << m_address;
 
 		to.write(m_tag, m_tag_len);
-		return serialize_chunk_header(to);
+		return serialize_chunk_header(to, hdr);
 	}
 
 	bool ihello_chunk::deserialize(stream_array &buff, std::uint16_t len)
@@ -71,10 +75,10 @@ namespace fms
 		}
 	}
 
-	std::uint16_t rhello_chunk::serialize(stream_array &to)
+	std::uint16_t rhello_chunk::serialize(byte_writer &to)
 	{
-		to.mark_write();
-		to.skip_write(eChunkHeaderSize);
+		std::size_t const hdr = to.mark();
+		to.extend(eChunkHeaderSize);
 
 		to.write_vlu(m_tag_len);
 		to.write(m_tag, static_cast<std::size_t>(m_tag_len));
@@ -84,13 +88,13 @@ namespace fms
 
 		to.write(m_cert, m_cert_len);
 
-		return serialize_chunk_header(to);
+		return serialize_chunk_header(to, hdr);
 	}
 
-	std::uint16_t redirect_chunk::serialize(stream_array &to)
+	std::uint16_t redirect_chunk::serialize(byte_writer &to)
 	{
-		to.mark_write();
-		to.skip_write(eChunkHeaderSize);
+		std::size_t const hdr = to.mark();
+		to.extend(eChunkHeaderSize);
 
 		to.write_vlu(m_tag_len);
 		to.write(m_tag, static_cast<std::size_t>(m_tag_len));
@@ -98,7 +102,7 @@ namespace fms
 		for (auto & m_addresse : m_addresses)
 			to << m_addresse;
 
-		return serialize_chunk_header(to);
+		return serialize_chunk_header(to, hdr);
 	}
 
 	bool iikeying_chunk::deserialize(stream_array &buff, std::uint16_t len)
@@ -134,12 +138,12 @@ namespace fms
 
 	std::uint8_t rikeying_chunk::m_marker = 'X';
 
-	std::uint16_t rikeying_chunk::serialize(stream_array &to)
+	std::uint16_t rikeying_chunk::serialize(byte_writer &to)
 	{
-		to.mark_write();
-		to.skip_write(eChunkHeaderSize);
+		std::size_t const hdr = to.mark();
+		to.extend(eChunkHeaderSize);
 
-		std::uint32_t sid = boost::asio::detail::socket_ops::host_to_network_long(m_rsid);
+		std::uint32_t const sid = boost::asio::detail::socket_ops::host_to_network_long(m_rsid);
 		to << sid;
 
 		to.write_vlu(m_skrc_len);
@@ -147,7 +151,7 @@ namespace fms
 
 		to << m_marker;
 
-		return serialize_chunk_header(to);
+		return serialize_chunk_header(to, hdr);
 	}
 
 	void data_chunk::parse_flags()
@@ -218,10 +222,10 @@ namespace fms
 		}
 	}
 
-	std::uint16_t user_data_chunk::serialize(stream_array &to)
+	std::uint16_t user_data_chunk::serialize(byte_writer &to)
 	{
-		to.mark_write();
-		to.skip_write(eChunkHeaderSize);
+		std::size_t const hdr = to.mark();
+		to.extend(eChunkHeaderSize);
 
 		create_flags();
 		to << m_flags;
@@ -234,7 +238,7 @@ namespace fms
 
 		to.write(m_user_data, m_user_data_len);
 
-		return serialize_chunk_header(to);
+		return serialize_chunk_header(to, hdr);
 	}
 
 	bool next_user_data_chunk::deserialize(stream_array &buff, std::uint16_t len)
@@ -290,10 +294,10 @@ namespace fms
 		}
 	}
 
-	std::uint16_t range_ack_chunk::serialize(stream_array &to)
+	std::uint16_t range_ack_chunk::serialize(byte_writer &to)
 	{
-		to.mark_write();
-		to.skip_write(eChunkHeaderSize);
+		std::size_t const hdr = to.mark();
+		to.extend(eChunkHeaderSize);
 
 		to.write_vlu(m_flowid);
 		to.write_vlu(m_buff_blocks_available);
@@ -305,7 +309,7 @@ namespace fms
 			to.write_vlu(m_range.second);
 		}
 
-		return serialize_chunk_header(to);
+		return serialize_chunk_header(to, hdr);
 	}
 
 	bool flow_exception_report_chunk::deserialize(stream_array &buff, std::uint16_t len)
@@ -337,14 +341,14 @@ namespace fms
 		}
 	}
 
-	std::uint16_t ping_reply_chunk::serialize(stream_array &to)
+	std::uint16_t ping_reply_chunk::serialize(byte_writer &to)
 	{
-		to.mark_write();
-		to.skip_write(eChunkHeaderSize);
+		std::size_t const hdr = to.mark();
+		to.extend(eChunkHeaderSize);
 
 		to.write(m_data, m_data_len);
 
-		return serialize_chunk_header(to);
+		return serialize_chunk_header(to, hdr);
 	}
 
 	bool close_ack_chunk::deserialize(stream_array &, std::uint16_t)

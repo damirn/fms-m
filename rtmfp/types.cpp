@@ -33,23 +33,21 @@ namespace fms
 		}
 	}
 
-	std::uint16_t option::serialize(stream_array &to) const
+	std::uint16_t option::serialize(byte_writer &to) const
 	{
 		if (m_len == 0)
 		{
 			to.write_vlu(m_len);
 			return 1;
 		}
-		std::uint8_t  const*here = to.write_pos();
-		vlu_t const size = stream_array::get_vlu_size(m_type) + m_value_len;
-		to.mark_write();
-		to.skip_write(stream_array::get_vlu_size(size));
+		// length is known up front (type VLU + value), so write it, then the body,
+		// producing the same [len][type][value] bytes the old reserve/back-patch did
+		std::size_t const start = to.size();
+		vlu_t const size = byte_writer::vlu_size(m_type) + m_value_len;
+		to.write_vlu(size);
 		to.write_vlu(m_type);
 		to.write(m_value, m_value_len);
-		to.rewind_write();
-		to.write_vlu(size);
-		to.append();
-		return to.write_pos() - here;
+		return static_cast<std::uint16_t>(to.size() - start);
 	}
 
 	vlu_t option::value_as_vlu() const
@@ -72,7 +70,7 @@ namespace fms
 		return ret;
 	}
 
-	std::uint16_t option_list::serialize(stream_array &to)
+	std::uint16_t option_list::serialize(byte_writer &to)
 	{
 		static vlu_t const end_marker = 0;
 		std::uint16_t size = 0;

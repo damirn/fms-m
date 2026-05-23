@@ -14,6 +14,7 @@
 #include "parser.h"
 #include "session.h"
 #include "stream_array.h"
+#include "byte_writer.h"
 
 namespace fms
 {
@@ -51,7 +52,7 @@ namespace fms
 	protected:
 		void create_certificate();
 		void read();
-		void write(stream_array &, boost::asio::ip::udp::endpoint &);
+		void write(byte_writer &, boost::asio::ip::udp::endpoint &);
 		void handle_receive_from(const boost::system::error_code &, size_t);
 		void handle_send_to(const boost::system::error_code &, size_t);
 		void send_from_queue();
