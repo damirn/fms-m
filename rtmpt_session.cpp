@@ -192,7 +192,10 @@ namespace fms
 		if (magic == ePlainMagic)
 		{
 			m_uses_crypto = false;
-			if (*(input.read_pos() + 5) != 0) // if client is v9 or later, use signed handshake
+			// client_sig points at C1; C1[4] is the version high byte. (Do NOT use
+			// read_pos()+5 here: read_pos() was already advanced past C0 by the
+			// magic read above, so +5 lands on C1[5]=0 and misses the FP9 client.)
+			if (client_sig[4] != 0) // if client is v9 or later, use signed handshake
 				m_is_fp9 = true;
 		}
 		else if (magic == eCryptoMagic) // encrypted
