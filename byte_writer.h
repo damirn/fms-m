@@ -46,6 +46,40 @@ namespace fms
 			m_buf.insert(m_buf.end(), p, p + n);
 		}
 
+		// Variable-length unsigned (RTMFP VLU), matching stream_array::write_vlu:
+		// 7 bits per byte, high bit set on all but the last; a full 4-byte form
+		// (>= 2^21) emits the final byte as 8 bits.
+		static std::uint8_t vlu_size(std::uint64_t v)
+		{
+			std::uint64_t vlu_min = 0x80;
+			std::uint8_t res = 1;
+			while (v >= vlu_min)
+			{
+				++res;
+				vlu_min <<= 7;
+			}
+			return res;
+		}
+
+		void write_vlu(std::uint64_t v)
+		{
+			std::uint8_t size = (vlu_size(v) - 1) * 7;
+			bool max = false;
+			if (size >= 21)   // 4 bytes maximum
+			{
+				size = 22;
+				max = true;
+			}
+			while (size >= 7)
+			{
+				std::uint8_t const b = 0x80 | ((v >> size) & 0x7F);
+				*this << b;
+				size -= 7;
+			}
+			std::uint8_t const b = max ? (v & 0xFF) : (v & 0x7F);
+			*this << b;
+		}
+
 		// Grow the buffer by n (uninitialised) bytes and return a writable pointer
 		// to that region, for code that fills a block through a raw pointer (e.g.
 		// the handshake). Replaces stream_array's data()+update() idiom.
