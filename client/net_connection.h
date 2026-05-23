@@ -187,7 +187,7 @@ namespace fms::rtmp_client
 
 		// I/O buffers
 		stream_array *m_input_buffer;
-		stream_array *m_output_buffer;
+		byte_writer *m_output_buffer;
 
 		std::uint32_t m_messages_read{0};
 		std::uint32_t m_messages_written{0};

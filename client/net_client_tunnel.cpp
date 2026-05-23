@@ -48,7 +48,7 @@ namespace fms::rtmp_client
 				<< "Content-Type: application/x-fcs\r\n"
 				<< "User-Agent: Shockwave Flash\r\n"
 				<< "Host: " << m_host << "\r\n"
-				<< "Content-Length: " << m_output_buffer.available() << "\r\n"
+				<< "Content-Length: " << m_output_buffer.size() << "\r\n"
 				<< "Connection: Keep-Alive\r\n"
 				<< "Cache-Control: no-cache\r\n\r\n";
 	}
