@@ -4,6 +4,7 @@
 
 #include "basic_rtmp_connection.h"
 #include "stream_array.h"
+#include "byte_writer.h"
 
 namespace fms
 {
@@ -109,7 +110,7 @@ namespace fms
 
 		// Buffers for incoming data.
 		stream_array m_buffer;
-		stream_array m_output_buffer;
+		byte_writer m_output_buffer;
 
 		bool m_to_close{false};
 	};
