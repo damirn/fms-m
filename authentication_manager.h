@@ -2,9 +2,9 @@
 
 #include <string>
 #include <functional>
+#include <memory>
 #include <boost/logic/tribool.hpp>
 #include <boost/noncopyable.hpp>
-#include <memory>
 
 #include "authentication_plugin.h"
 

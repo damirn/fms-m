@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "video_call_application.h"
+#include "config.h"
 #include "flv_writer.h"
 #include "mixer.h"
-#include "config.h"
 
 #include <filesystem>
 
@@ -140,7 +140,6 @@ namespace fms
 				}
 				catch (std::runtime_error &)
 				{
-					return;
 				}
 			}
 		}
