@@ -287,7 +287,6 @@ namespace fms::rtmp_client
 		m_bytes_read += static_cast<std::uint32_t>(bytes_read);
 		if (m_bytes_read >= m_ack_size_next)
 		{
-			std::cout << "sending bytes read: " << m_bytes_read << std::endl;
 			m_ack_size_next += m_ack_size;
 			rtmp_message_bytes_read_ptr const msg(new rtmp_message_bytes_read(m_bytes_read));
 			send_message(msg);
@@ -493,7 +492,6 @@ namespace fms::rtmp_client
 
 	void net_connection::handle_win_ack(const rtmp_message_window_acknowledgement_size_ptr& ack)
 	{
-		std::cout << "win ack: " << ack->size() << std::endl;
 		m_ack_size = m_ack_size_next = ack->size();
 	}
 
