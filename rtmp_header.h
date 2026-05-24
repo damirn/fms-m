@@ -2,7 +2,8 @@
 
 #include "byte_reader.h"
 #include "byte_writer.h"
-#include "stream_array.h"
+#include "byte_reader.h"
+#include "byte_writer.h"
 
 namespace fms
 {
@@ -20,7 +21,6 @@ namespace fms
 		rtmp_header()= default;
 
 		// De-serialize rtmp header from binary stream.
-		void deserialize(stream_array &);
 
 		// Non-throwing, peek-then-commit variant over a byte_reader: returns false
 		// (and leaves *this and the reader untouched) if the whole header isn't
@@ -28,7 +28,7 @@ namespace fms
 		bool try_deserialize(byte_reader &);
 
 		// Serialize rtmp header to binary stream. Templated on the writer so the one
-		// implementation serves both stream_array and byte_writer (byte-identical).
+		// implementation serves byte_writer (and is templated for future buffers).
 		template<typename W> void serialize(W &, rtmp_header &);
 
 		std::uint32_t &header_size()
@@ -109,10 +109,6 @@ namespace fms
 		template<typename W> void serialize_header_continue_size(W &);
 
 	protected:
-		void deserialize_header_new(stream_array &);
-		void deserialize_header_same_source(stream_array &);
-		void deserialize_header_timer_change(stream_array &);
-		void deserialize_extended_ts(stream_array &);
 
 		bool try_header_new(byte_reader &);
 		bool try_header_same_source(byte_reader &);

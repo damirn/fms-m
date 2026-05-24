@@ -5,66 +5,6 @@
 
 namespace fms
 {
-	void rtmp_header::deserialize(stream_array &buffer)
-	{
-		std::uint32_t channel_bytes_count = 0;
-		std::uint8_t c;
-
-		buffer >> c;
-		m_header_type = c >> 6;
-
-		switch (c & 0x3f)
-		{
-		case 0:
-			{
-				std::uint8_t b;
-				buffer >> b;
-				m_channel_id = 64 + b;
-				channel_bytes_count = 2;
-				break;
-			}
-		case 1:
-			{
-				std::uint8_t a;
-				std::uint8_t b;
-				buffer >> a >> b;
-				m_channel_id = 64 + a + b * 256;
-				channel_bytes_count = 3;
-				break;
-			};
-		default:
-			{
-				m_channel_id = c & 0x3f;
-				channel_bytes_count = 1;
-				break;
-			}
-		}
-
-		switch (m_header_type)
-		{
-		case eHeaderNew:
-			deserialize_header_new(buffer);
-			m_header_size = channel_bytes_count + 11;
-			break;
-		case eHeaderSameSource:
-			deserialize_header_same_source(buffer);
-			m_header_size = channel_bytes_count + 7;
-			break;
-		case eHeaderTimerChange:
-			deserialize_header_timer_change(buffer);
-			m_header_size = channel_bytes_count + 3;
-			break;
-		case eHeaderContinue:
-			m_header_size = channel_bytes_count;
-			if (m_has_extended_ts) // rtmp_specification_1.0: 5.3.1.3
-			{
-				buffer >> m_timestamp;
-				m_timestamp = boost::asio::detail::socket_ops::network_to_host_long(m_timestamp);
-			}
-			break;
-		}
-	}
-
 	bool rtmp_header::try_deserialize(byte_reader &reader)
 	{
 		// Work on copies; commit both the header state and the reader position
@@ -212,50 +152,6 @@ namespace fms
 			}
 		}
 		serialize(buffer, size);
-	}
-
-	void rtmp_header::deserialize_header_new(stream_array &buffer)
-	{
-		m_ts_delta_read = 0;
-		m_timestamp = buffer.read_uint32_3();
-//		std::cout << "absolute timestamp: " << m_timestamp << std::endl;
-		m_message_length = buffer.read_uint32_3();
-		buffer >> m_message_type >> m_stream_id;
-
-		m_has_extended_ts = false;
-		if (m_timestamp == 0x00ffffff)
-		{
-			buffer >> m_timestamp;
-			m_timestamp = boost::asio::detail::socket_ops::network_to_host_long(m_timestamp);
-			m_has_extended_ts = true;
-		}
-	}
-
-	void rtmp_header::deserialize_header_same_source(stream_array &buffer)
-	{
-		m_ts_delta_read = buffer.read_uint32_3();
-		m_message_length = buffer.read_uint32_3();
-		buffer >> m_message_type;
-		deserialize_extended_ts(buffer);
-		m_timestamp += m_ts_delta_read;
-	}
-
-	void rtmp_header::deserialize_header_timer_change(stream_array &buffer)
-	{
-		m_ts_delta_read = buffer.read_uint32_3();
-		deserialize_extended_ts(buffer);
-		m_timestamp += m_ts_delta_read;
-	}
-
-	void rtmp_header::deserialize_extended_ts(stream_array &buffer)
-	{
-		m_has_extended_ts = false;
-		if (m_ts_delta_read == 0x00ffffff)
-		{
-			buffer >> m_ts_delta_read;
-			m_ts_delta_read = boost::asio::detail::socket_ops::network_to_host_long(m_ts_delta_read);
-			m_has_extended_ts = true;
-		}
 	}
 
 	template<typename W>
@@ -429,7 +325,7 @@ namespace fms
 		}
 	}
 
-	// Explicit instantiations: the serializers run against stream_array (the live
+	// Explicit instantiations: the serializers run against byte_writer (the live
 	// output path) and byte_writer (the migration target / tests).
 	template void rtmp_header::serialize<byte_writer>(byte_writer &, rtmp_header &);
 	template void rtmp_header::serialize_header_continue_size<byte_writer>(byte_writer &);
