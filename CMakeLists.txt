@@ -269,6 +269,13 @@ if(BUILD_CLIENT)
   target_compile_definitions(b2b_test PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
   add_dependencies(b2b_test ${PROJECT_NAME})
 
+  # End-to-end RTMP relay throughput benchmark (publisher -> server -> subscriber).
+  # Not a ctest; drives the spawned server at max rate and reports GiB/s.
+  add_executable(bench_rtmp_throughput test/bench_rtmp_throughput.cpp)
+  target_link_libraries(bench_rtmp_throughput PRIVATE rtmp_client_lib)
+  target_compile_definitions(bench_rtmp_throughput PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
+  add_dependencies(bench_rtmp_throughput ${PROJECT_NAME})
+
   # Characterization tests for the RTMP chunk parser (rtmp_raw_data::parse_data),
   # linked against the shared media lib. Bytes in, messages out.
   add_executable(chunk_parser_test test/chunk_parser_test.cpp test/test_main.cpp)
