@@ -77,8 +77,7 @@ namespace fms
 		}
 	}
 
-	template<typename W>
-	void rtmp_protocol::serialize(W &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)
+	void rtmp_protocol::serialize(byte_writer &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)
 	{
 		byte_writer tmp_buffer;
 		msg->serialize(tmp_buffer);
@@ -204,8 +203,7 @@ namespace fms
 		m_message = msg;
 	}
 
-	template<typename W>
-	void rtmp_protocol::chunk_buffer(W &buffer, const byte_writer &input, rtmp_header &header) const
+	void rtmp_protocol::chunk_buffer(byte_writer &buffer, const byte_writer &input, rtmp_header &header) const
 	{
 		std::size_t size = input.size();
 		if (size != 0)
@@ -226,7 +224,4 @@ namespace fms
 		}
 	}
 
-	// All RTMP/RTMPT output buffers are byte_writer now; chunk_buffer cascades
-	// from serialize's instantiation. GCC needs it spelled out explicitly.
-	template void rtmp_protocol::serialize<byte_writer>(byte_writer &, const rtmp_message_ptr &, rtmp_header &, rtmp_header &);
 }

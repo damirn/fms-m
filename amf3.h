@@ -10,6 +10,8 @@
 
 namespace fms
 {
+	class byte_reader;
+	class byte_writer;
 	class amf3_read_exception : public std::runtime_error
 	{
 	public:
@@ -25,43 +27,43 @@ namespace fms
 	class amf3
 	{
 	public:
-		template<typename R> amf3_type_ptr read(R &);
-		template<typename W> void write(W &, const amf3_type_ptr&);
+		amf3_type_ptr read(byte_reader &);
+		void write(byte_writer &, const amf3_type_ptr&);
 
 	protected:
-		template<typename R> static amf3_empty_type_ptr read_empty_type(R &, std::uint8_t);
-		template<typename W> static void write_empty_type(W &, const amf3_empty_type_ptr&);
+		static amf3_empty_type_ptr read_empty_type(byte_reader &, std::uint8_t);
+		static void write_empty_type(byte_writer &, const amf3_empty_type_ptr&);
 
-		template<typename R> static amf3_integer_type_ptr read_integer(R &);
-		template<typename W> static void write_integer(W &, std::uint32_t);
-		template<typename W> static void write_integer(W &, const amf3_integer_type_ptr&);
+		static amf3_integer_type_ptr read_integer(byte_reader &);
+		static void write_integer(byte_writer &, std::uint32_t);
+		static void write_integer(byte_writer &, const amf3_integer_type_ptr&);
 
-		template<typename R> static amf3_double_type_ptr read_double(R &);
-		template<typename W> static void write_double(W &, const amf3_double_type_ptr&);
+		static amf3_double_type_ptr read_double(byte_reader &);
+		static void write_double(byte_writer &, const amf3_double_type_ptr&);
 
 		// read_string handles the string reference table, so it is per-instance.
-		template<typename R> amf3_string_type_ptr read_string(R &);
-		template<typename W> static void write_string(W &, const amf3_string_type_ptr&);
-		template<typename W> static void write_string(W &, const std::string &);
+		amf3_string_type_ptr read_string(byte_reader &);
+		static void write_string(byte_writer &, const amf3_string_type_ptr&);
+		static void write_string(byte_writer &, const std::string &);
 
 		// The referenceable complex types can decode to a reference pointing at an
 		// earlier complex value of any type, so they return the generic base ptr.
-		template<typename R> amf3_type_ptr read_xml(R &, std::uint8_t marker);
-		template<typename W> void write_xml(W &, const amf3_xml_type_ptr&);
+		amf3_type_ptr read_xml(byte_reader &, std::uint8_t marker);
+		void write_xml(byte_writer &, const amf3_xml_type_ptr&);
 
-		template<typename R> amf3_type_ptr read_date(R &);
-		template<typename W> void write_date(W &, const amf3_date_type_ptr&);
+		amf3_type_ptr read_date(byte_reader &);
+		void write_date(byte_writer &, const amf3_date_type_ptr&);
 
-		template<typename R> amf3_type_ptr read_bytearray(R &);
-		template<typename W> void write_bytearray(W &, const amf3_bytearray_type_ptr&);
+		amf3_type_ptr read_bytearray(byte_reader &);
+		void write_bytearray(byte_writer &, const amf3_bytearray_type_ptr&);
 
-		template<typename R> amf3_type_ptr read_array(R &);
-		template<typename W> void write_array(W &, const amf3_array_type_ptr&);
+		amf3_type_ptr read_array(byte_reader &);
+		void write_array(byte_writer &, const amf3_array_type_ptr&);
 
-		template<typename R> amf3_type_ptr read_object(R &);
-		template<typename W> void write_object(W &, const amf3_object_type_ptr&);
+		amf3_type_ptr read_object(byte_reader &);
+		void write_object(byte_writer &, const amf3_object_type_ptr&);
 
-		template<typename R> static std::uint32_t read_u29(R &);
+		static std::uint32_t read_u29(byte_reader &);
 
 		// Returns the referenced object, or nullptr if idx is out of range.
 		amf3_type_ptr object_ref(std::uint32_t idx) const;

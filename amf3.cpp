@@ -7,8 +7,7 @@
 
 namespace fms
 {
-	template<typename R>
-	amf3_type_ptr amf3::read(R &buffer)
+	amf3_type_ptr amf3::read(byte_reader &buffer)
 	{
 		if (m_depth == 0)          // top-level value: fresh reference context (spec 4.1)
 			reset_refs();
@@ -48,8 +47,7 @@ namespace fms
 		}
 	}
 
-	template<typename W>
-	void amf3::write(W &buffer, const amf3_type_ptr& type)
+	void amf3::write(byte_writer &buffer, const amf3_type_ptr& type)
 	{
 		std::uint8_t const marker = type->type();
 		buffer << marker;
@@ -98,20 +96,17 @@ namespace fms
 		return m_object_refs[idx];
 	}
 
-	template<typename R>
-	amf3_empty_type_ptr amf3::read_empty_type(R &, std::uint8_t type)
+	amf3_empty_type_ptr amf3::read_empty_type(byte_reader &, std::uint8_t type)
 	{
 		return std::make_shared<amf3_empty_type>(static_cast<amf3_type::etype>(type));
 	}
 
-	template<typename W>
-	void amf3::write_empty_type(W &, const amf3_empty_type_ptr&)
+	void amf3::write_empty_type(byte_writer &, const amf3_empty_type_ptr&)
 	{
 		// no payload; the marker written by write() is the whole encoding
 	}
 
-	template<typename R>
-	amf3_integer_type_ptr amf3::read_integer(R &buffer)
+	amf3_integer_type_ptr amf3::read_integer(byte_reader &buffer)
 	{
 		std::uint32_t tmp = read_u29(buffer);
 		// AMF3 integers are 29-bit signed; bit 28 (0x10000000) is the sign bit.
@@ -126,14 +121,12 @@ namespace fms
 		return std::make_shared<amf3_integer_type>(tmp);
 	}
 
-	template<typename W>
-	void amf3::write_integer(W &buffer, const amf3_integer_type_ptr& value)
+	void amf3::write_integer(byte_writer &buffer, const amf3_integer_type_ptr& value)
 	{
 		write_integer(buffer, value->value());
 	}
 
-	template<typename W>
-	void amf3::write_integer(W &buffer, std::uint32_t value)
+	void amf3::write_integer(byte_writer &buffer, std::uint32_t value)
 	{
 		std::uint8_t b;
 		if ((value & 0xffffff80) == 0)
@@ -173,8 +166,7 @@ namespace fms
 		buffer << b;
 	}
 
-	template<typename R>
-	amf3_double_type_ptr amf3::read_double(R &buffer)
+	amf3_double_type_ptr amf3::read_double(byte_reader &buffer)
 	{
 		if (buffer.available() < 8)
 			throw buffer_eof_exception();
@@ -190,8 +182,7 @@ namespace fms
 		return std::make_shared<amf3_double_type>(d);
 	}
 
-	template<typename W>
-	void amf3::write_double(W &buffer, const amf3_double_type_ptr& value)
+	void amf3::write_double(byte_writer &buffer, const amf3_double_type_ptr& value)
 	{
 		double const d = value->value();
 		std::uint64_t u;
@@ -203,8 +194,7 @@ namespace fms
 		}
 	}
 
-	template<typename R>
-	amf3_string_type_ptr amf3::read_string(R &buffer)
+	amf3_string_type_ptr amf3::read_string(byte_reader &buffer)
 	{
 		std::uint32_t const header = read_u29(buffer);
 		if ((header & 0x01) == 0)   // string reference
@@ -225,22 +215,19 @@ namespace fms
 		return std::make_shared<amf3_string_type>(std::move(s));
 	}
 
-	template<typename W>
-	void amf3::write_string(W &buffer, const amf3_string_type_ptr& value)
+	void amf3::write_string(byte_writer &buffer, const amf3_string_type_ptr& value)
 	{
 		write_string(buffer, value->value());
 	}
 
-	template<typename W>
-	void amf3::write_string(W &buffer, const std::string &value)
+	void amf3::write_string(byte_writer &buffer, const std::string &value)
 	{
 		std::uint32_t const header = (static_cast<std::uint32_t>(value.length()) << 1) | 0x01;
 		write_integer(buffer, header);
 		buffer.write(value.c_str(), value.length());
 	}
 
-	template<typename R>
-	amf3_type_ptr amf3::read_xml(R &buffer, std::uint8_t marker)
+	amf3_type_ptr amf3::read_xml(byte_reader &buffer, std::uint8_t marker)
 	{
 		std::uint32_t const header = read_u29(buffer);
 		if ((header & 0x01) == 0)   // object reference (XML uses the object table)
@@ -256,16 +243,14 @@ namespace fms
 		return xml;
 	}
 
-	template<typename W>
-	void amf3::write_xml(W &buffer, const amf3_xml_type_ptr& value)
+	void amf3::write_xml(byte_writer &buffer, const amf3_xml_type_ptr& value)
 	{
 		std::uint32_t const header = (static_cast<std::uint32_t>(value->value().length()) << 1) | 0x01;
 		write_integer(buffer, header);
 		buffer.write(value->value().c_str(), value->value().length());
 	}
 
-	template<typename R>
-	amf3_type_ptr amf3::read_date(R &buffer)
+	amf3_type_ptr amf3::read_date(byte_reader &buffer)
 	{
 		std::uint32_t const header = read_u29(buffer);
 		if ((header & 0x01) == 0)   // object reference
@@ -277,16 +262,14 @@ namespace fms
 		return date;
 	}
 
-	template<typename W>
-	void amf3::write_date(W &buffer, const amf3_date_type_ptr& value)
+	void amf3::write_date(byte_writer &buffer, const amf3_date_type_ptr& value)
 	{
 		write_integer(buffer, 0x01);   // U29D-value: low bit 1, rest unused
 		auto const tmp = std::make_shared<amf3_double_type>(value->value());
 		write_double(buffer, tmp);
 	}
 
-	template<typename R>
-	amf3_type_ptr amf3::read_bytearray(R &buffer)
+	amf3_type_ptr amf3::read_bytearray(byte_reader &buffer)
 	{
 		std::uint32_t const header = read_u29(buffer);
 		if ((header & 0x01) == 0)   // object reference
@@ -302,16 +285,14 @@ namespace fms
 		return ba;
 	}
 
-	template<typename W>
-	void amf3::write_bytearray(W &buffer, const amf3_bytearray_type_ptr& value)
+	void amf3::write_bytearray(byte_writer &buffer, const amf3_bytearray_type_ptr& value)
 	{
 		std::uint32_t const header = (static_cast<std::uint32_t>(value->value().length()) << 1) | 0x01;
 		write_integer(buffer, header);
 		buffer.write(value->value().c_str(), value->value().length());
 	}
 
-	template<typename R>
-	amf3_type_ptr amf3::read_array(R &buffer)
+	amf3_type_ptr amf3::read_array(byte_reader &buffer)
 	{
 		std::uint32_t const header = read_u29(buffer);
 		if ((header & 0x01) == 0)   // object reference
@@ -337,8 +318,7 @@ namespace fms
 		return arr;
 	}
 
-	template<typename W>
-	void amf3::write_array(W &buffer, const amf3_array_type_ptr& arr)
+	void amf3::write_array(byte_writer &buffer, const amf3_array_type_ptr& arr)
 	{
 		std::uint32_t const header = (static_cast<std::uint32_t>(arr->dense().size()) << 1) | 0x01;
 		write_integer(buffer, header);
@@ -354,8 +334,7 @@ namespace fms
 			write(buffer, v);
 	}
 
-	template<typename R>
-	amf3_type_ptr amf3::read_object(R &buffer)
+	amf3_type_ptr amf3::read_object(byte_reader &buffer)
 	{
 		std::uint32_t obj_info = read_u29(buffer);
 		if ((obj_info & 0x01) == 0)   // object reference
@@ -412,8 +391,7 @@ namespace fms
 		return obj;
 	}
 
-	template<typename W>
-	void amf3::write_object(W &buffer, const amf3_object_type_ptr& obj)
+	void amf3::write_object(byte_writer &buffer, const amf3_object_type_ptr& obj)
 	{
 		// Encode as an anonymous, dynamic object with no sealed members: U29O bits
 		// low->high = instance(1), new-traits(1), not-externalizable(0), dynamic(1),
@@ -429,8 +407,7 @@ namespace fms
 		write_string(buffer, std::string());   // terminate dynamic members
 	}
 
-	template<typename R>
-	std::uint32_t amf3::read_u29(R &buffer)
+	std::uint32_t amf3::read_u29(byte_reader &buffer)
 	{
 		std::uint32_t ret = 0;
 		std::uint8_t byte;
@@ -454,36 +431,4 @@ namespace fms
 		return ret;
 	}
 
-	// Explicit instantiations for both writers (GCC needs each — no cascade).
-#define AMF3_WRITE_INSTANCES(W) \
-	template void amf3::write<W>(W &, const amf3_type_ptr &); \
-	template void amf3::write_empty_type<W>(W &, const amf3_empty_type_ptr &); \
-	template void amf3::write_integer<W>(W &, std::uint32_t); \
-	template void amf3::write_integer<W>(W &, const amf3_integer_type_ptr &); \
-	template void amf3::write_double<W>(W &, const amf3_double_type_ptr &); \
-	template void amf3::write_string<W>(W &, const amf3_string_type_ptr &); \
-	template void amf3::write_string<W>(W &, const std::string &); \
-	template void amf3::write_xml<W>(W &, const amf3_xml_type_ptr &); \
-	template void amf3::write_date<W>(W &, const amf3_date_type_ptr &); \
-	template void amf3::write_bytearray<W>(W &, const amf3_bytearray_type_ptr &); \
-	template void amf3::write_array<W>(W &, const amf3_array_type_ptr &); \
-	template void amf3::write_object<W>(W &, const amf3_object_type_ptr &);
-	AMF3_WRITE_INSTANCES(byte_writer)
-#undef AMF3_WRITE_INSTANCES
-
-	// Explicit read instantiations for both readers.
-#define AMF3_READ_INSTANCES(R) \
-	template amf3_type_ptr amf3::read<R>(R &); \
-	template amf3_empty_type_ptr amf3::read_empty_type<R>(R &, std::uint8_t); \
-	template amf3_integer_type_ptr amf3::read_integer<R>(R &); \
-	template amf3_double_type_ptr amf3::read_double<R>(R &); \
-	template amf3_string_type_ptr amf3::read_string<R>(R &); \
-	template amf3_type_ptr amf3::read_xml<R>(R &, std::uint8_t); \
-	template amf3_type_ptr amf3::read_date<R>(R &); \
-	template amf3_type_ptr amf3::read_bytearray<R>(R &); \
-	template amf3_type_ptr amf3::read_array<R>(R &); \
-	template amf3_type_ptr amf3::read_object<R>(R &); \
-	template std::uint32_t amf3::read_u29<R>(R &);
-	AMF3_READ_INSTANCES(byte_reader)
-#undef AMF3_READ_INSTANCES
 }

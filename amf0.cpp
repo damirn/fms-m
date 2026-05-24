@@ -11,8 +11,7 @@ namespace fms
 {
 	static const std::uint8_t end_of_object[] = { 0x00, 0x00, 0x09 };
 
-	template<typename R>
-	bool amf0::read_short_string(R &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
+	bool amf0::read_short_string(byte_reader &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
 	{
 		std::uint8_t b;
 		if (!skip_type)
@@ -33,14 +32,12 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_short_string(W &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
+	void amf0::write_short_string(byte_writer &buffer, const amf0_string_ptr& value, bool skip_type /* = false */)
 	{
 		write_short_string(buffer, value->value().c_str(), static_cast<std::uint16_t >(value->value().size()), skip_type);
 	}
 
-	template<typename W>
-	void amf0::write_short_string(W &buffer, const char *value, std::uint16_t len, bool skip_type /* = false */)
+	void amf0::write_short_string(byte_writer &buffer, const char *value, std::uint16_t len, bool skip_type /* = false */)
 	{
 		std::uint8_t const b = amf0_type::eAMF0String;
 		if (!skip_type)
@@ -51,8 +48,7 @@ namespace fms
 		buffer.write(value, len);
 	}
 
-	template<typename R>
-	bool amf0::read_boolean(R &buffer, const amf0_boolean_ptr& value)
+	bool amf0::read_boolean(byte_reader &buffer, const amf0_boolean_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -65,8 +61,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_boolean(W &buffer, const amf0_boolean_ptr& value)
+	void amf0::write_boolean(byte_writer &buffer, const amf0_boolean_ptr& value)
 	{
 		std::uint8_t b = amf0_type::eAMF0Boolean;
 		buffer << b;
@@ -75,8 +70,7 @@ namespace fms
 		buffer << b;
 	}
 
-	template<typename R>
-	bool amf0::read_number(R &buffer, const amf0_number_ptr& value)
+	bool amf0::read_number(byte_reader &buffer, const amf0_number_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -95,8 +89,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_number(W &buffer, const amf0_number_ptr& value)
+	void amf0::write_number(byte_writer &buffer, const amf0_number_ptr& value)
 	{
 		std::uint8_t const b = amf0_type::eAMF0Number;
 		buffer << b;
@@ -108,8 +101,7 @@ namespace fms
 			buffer << tmp[i];
 	}
 
-	template<typename R>
-	bool amf0::read_object(R &buffer, const amf0_object_ptr& value)
+	bool amf0::read_object(byte_reader &buffer, const amf0_object_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -131,8 +123,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_object(W &buffer, const amf0_object_ptr& value)
+	void amf0::write_object(byte_writer &buffer, const amf0_object_ptr& value)
 	{
 		std::uint8_t const b = amf0_type::eAMF0Object;
 		buffer << b;
@@ -146,38 +137,33 @@ namespace fms
 		buffer.write(end_of_object, 3);
 	}
 
-	template<typename R>
-	bool amf0::read_null(R &buffer)
+	bool amf0::read_null(byte_reader &buffer)
 	{
 		std::uint8_t b;
 		buffer >> b;
 		return b == amf0_type::eAMF0Null;
 	}
 
-	template<typename W>
-	void amf0::write_null(W &buffer)
+	void amf0::write_null(byte_writer &buffer)
 	{
 		std::uint8_t const b = amf0_type::eAMF0Null;
 		buffer << b;
 	}
 
-	template<typename R>
-	bool amf0::read_undefined(R &buffer)
+	bool amf0::read_undefined(byte_reader &buffer)
 	{
 		std::uint8_t b;
 		buffer >> b;
 		return b == amf0_type::eAMF0Undefined;
 	}
 
-	template<typename W>
-	void amf0::write_undefined(W &buffer)
+	void amf0::write_undefined(byte_writer &buffer)
 	{
 		std::uint8_t const b = amf0_type::eAMF0Undefined;
 		buffer << b;
 	}
 
-	template<typename R>
-	bool amf0::read_mixed_array(R &buffer, const amf0_ecma_array_ptr& value)
+	bool amf0::read_mixed_array(byte_reader &buffer, const amf0_ecma_array_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -201,8 +187,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_mixed_array(W &buffer, const amf0_ecma_array_ptr& value)
+	void amf0::write_mixed_array(byte_writer &buffer, const amf0_ecma_array_ptr& value)
 	{
 		std::uint8_t const b = amf0_type::eAMF0EcmaArray;
 		buffer << b;
@@ -221,8 +206,7 @@ namespace fms
 		buffer.write(end_of_object, 3);
 	}
 
-	template<typename R>
-	bool amf0::read_strict_array(R &buffer, const amf0_strict_array_ptr& value)
+	bool amf0::read_strict_array(byte_reader &buffer, const amf0_strict_array_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -245,8 +229,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_strict_array(W &buffer, const amf0_strict_array_ptr& value)
+	void amf0::write_strict_array(byte_writer &buffer, const amf0_strict_array_ptr& value)
 	{
 		std::uint8_t const b = amf0_type::eAMF0StrictArray;
 		buffer << b;
@@ -260,8 +243,7 @@ namespace fms
 			write(buffer, i);
 	}
 
-	template<typename R>
-	bool amf0::read_long_string(R &buffer, const amf0_long_string_ptr& value)
+	bool amf0::read_long_string(byte_reader &buffer, const amf0_long_string_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -283,8 +265,7 @@ namespace fms
 		return false;
 	}
 
-	template<typename W>
-	void amf0::write_long_string(W &buffer, const amf0_long_string_ptr& value)
+	void amf0::write_long_string(byte_writer &buffer, const amf0_long_string_ptr& value)
 	{
 		std::uint8_t const b = amf0_type::eAMF0LongString;
 		buffer << b;
@@ -296,8 +277,7 @@ namespace fms
 		buffer.write(value->data(), value->size());
 	}
 
-	template<typename R>
-	bool amf0::read_date(R &buffer, const amf0_date_ptr& value)
+	bool amf0::read_date(byte_reader &buffer, const amf0_date_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -320,8 +300,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_date(W &buffer, const amf0_date_ptr& value)
+	void amf0::write_date(byte_writer &buffer, const amf0_date_ptr& value)
 	{
 		std::uint8_t const b = amf0_type::eAMF0Date;
 		buffer << b;
@@ -335,8 +314,7 @@ namespace fms
 		buffer << tz;
 	}
 
-	template<typename R>
-	bool amf0::read_xml_document(R &buffer, const amf0_xml_document_ptr& value)
+	bool amf0::read_xml_document(byte_reader &buffer, const amf0_xml_document_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -356,8 +334,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_xml_document(W &buffer, const amf0_xml_document_ptr& value)
+	void amf0::write_xml_document(byte_writer &buffer, const amf0_xml_document_ptr& value)
 	{
 		std::uint8_t const b = amf0_type::eAMF0XMLDocument;
 		buffer << b;
@@ -368,8 +345,7 @@ namespace fms
 		buffer.write(value->value().c_str(), value->value().size());
 	}
 
-	template<typename R>
-	bool amf0::read_typed_object(R &buffer, const amf0_typed_object_ptr& value)
+	bool amf0::read_typed_object(byte_reader &buffer, const amf0_typed_object_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -394,8 +370,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_typed_object(W &buffer, const amf0_typed_object_ptr& value)
+	void amf0::write_typed_object(byte_writer &buffer, const amf0_typed_object_ptr& value)
 	{
 		std::uint8_t const b = amf0_type::eAMF0TypedObject;
 		buffer << b;
@@ -412,8 +387,7 @@ namespace fms
 		buffer.write(end_of_object, 3);
 	}
 
-	template<typename R>
-	bool amf0::read_amf3_container(R &buffer, const amf0_amf3_container_ptr& value)
+	bool amf0::read_amf3_container(byte_reader &buffer, const amf0_amf3_container_ptr& value)
 	{
 		std::uint8_t b;
 		buffer >> b;
@@ -427,8 +401,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void amf0::write_amf3_container(W &buffer, const amf0_amf3_container_ptr& value)
+	void amf0::write_amf3_container(byte_writer &buffer, const amf0_amf3_container_ptr& value)
 	{
 		std::uint8_t const b = amf0_type::eAMF0AMF3Container;
 		buffer << b;
@@ -436,8 +409,7 @@ namespace fms
 		m3.write(buffer, value->data());
 	}
 
-	template<typename R>
-	amf0_type_ptr amf0::read(R &buffer)
+	amf0_type_ptr amf0::read(byte_reader &buffer)
 	{
 		if (m_depth == 0)            // top-level value: fresh reference context
 			m_ref_table.clear();
@@ -559,8 +531,7 @@ namespace fms
 		}
 	}
 
-	template<typename W>
-	void amf0::write(W &buffer, const amf0_type_ptr& type)
+	void amf0::write(byte_writer &buffer, const amf0_type_ptr& type)
 	{
 		switch (type->type())
 		{
@@ -651,42 +622,4 @@ namespace fms
 		}
 	}
 
-	// Explicit instantiations for both writers (GCC needs each — no cascade).
-#define AMF0_WRITE_INSTANCES(W) \
-	template void amf0::write_short_string<W>(W &, const amf0_string_ptr &, bool); \
-	template void amf0::write_short_string<W>(W &, const char *, std::uint16_t, bool); \
-	template void amf0::write_boolean<W>(W &, const amf0_boolean_ptr &); \
-	template void amf0::write_number<W>(W &, const amf0_number_ptr &); \
-	template void amf0::write_object<W>(W &, const amf0_object_ptr &); \
-	template void amf0::write_null<W>(W &); \
-	template void amf0::write_undefined<W>(W &); \
-	template void amf0::write_mixed_array<W>(W &, const amf0_ecma_array_ptr &); \
-	template void amf0::write_strict_array<W>(W &, const amf0_strict_array_ptr &); \
-	template void amf0::write_long_string<W>(W &, const amf0_long_string_ptr &); \
-	template void amf0::write_date<W>(W &, const amf0_date_ptr &); \
-	template void amf0::write_xml_document<W>(W &, const amf0_xml_document_ptr &); \
-	template void amf0::write_typed_object<W>(W &, const amf0_typed_object_ptr &); \
-	template void amf0::write_amf3_container<W>(W &, const amf0_amf3_container_ptr &); \
-	template void amf0::write<W>(W &, const amf0_type_ptr &);
-	AMF0_WRITE_INSTANCES(byte_writer)
-#undef AMF0_WRITE_INSTANCES
-
-	// Explicit read instantiations for both readers.
-#define AMF0_READ_INSTANCES(R) \
-	template bool amf0::read_short_string<R>(R &, const amf0_string_ptr &, bool); \
-	template bool amf0::read_boolean<R>(R &, const amf0_boolean_ptr &); \
-	template bool amf0::read_number<R>(R &, const amf0_number_ptr &); \
-	template bool amf0::read_object<R>(R &, const amf0_object_ptr &); \
-	template bool amf0::read_null<R>(R &); \
-	template bool amf0::read_undefined<R>(R &); \
-	template bool amf0::read_mixed_array<R>(R &, const amf0_ecma_array_ptr &); \
-	template bool amf0::read_strict_array<R>(R &, const amf0_strict_array_ptr &); \
-	template bool amf0::read_long_string<R>(R &, const amf0_long_string_ptr &); \
-	template bool amf0::read_date<R>(R &, const amf0_date_ptr &); \
-	template bool amf0::read_xml_document<R>(R &, const amf0_xml_document_ptr &); \
-	template bool amf0::read_typed_object<R>(R &, const amf0_typed_object_ptr &); \
-	template bool amf0::read_amf3_container<R>(R &, const amf0_amf3_container_ptr &); \
-	template amf0_type_ptr amf0::read<R>(R &);
-	AMF0_READ_INSTANCES(byte_reader)
-#undef AMF0_READ_INSTANCES
 }

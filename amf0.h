@@ -8,6 +8,8 @@
 
 namespace fms
 {
+	class byte_reader;
+	class byte_writer;
 	class amf0_read_exception : public std::runtime_error
 	{
 	public:
@@ -19,48 +21,48 @@ namespace fms
 	class amf0
 	{
 	public:
-		template<typename R> static bool read_short_string(R &, const amf0_string_ptr&, bool = false);
-		template<typename W> static void write_short_string(W &, const amf0_string_ptr&, bool = false);
-		template<typename W> static void write_short_string(W &, const char *, std::uint16_t, bool = false);
+		static bool read_short_string(byte_reader &, const amf0_string_ptr&, bool = false);
+		static void write_short_string(byte_writer &, const amf0_string_ptr&, bool = false);
+		static void write_short_string(byte_writer &, const char *, std::uint16_t, bool = false);
 
-		template<typename R> static bool read_boolean(R &, const amf0_boolean_ptr&);
-		template<typename W> static void write_boolean(W &, const amf0_boolean_ptr&);
+		static bool read_boolean(byte_reader &, const amf0_boolean_ptr&);
+		static void write_boolean(byte_writer &, const amf0_boolean_ptr&);
 
-		template<typename R> static bool read_number(R &, const amf0_number_ptr&);
-		template<typename W> static void write_number(W &, const amf0_number_ptr&);
+		static bool read_number(byte_reader &, const amf0_number_ptr&);
+		static void write_number(byte_writer &, const amf0_number_ptr&);
 
-		template<typename R> bool read_object(R &, const amf0_object_ptr&);
-		template<typename W> static void write_object(W &, const amf0_object_ptr&);
+		bool read_object(byte_reader &, const amf0_object_ptr&);
+		static void write_object(byte_writer &, const amf0_object_ptr&);
 
-		template<typename R> static bool read_null(R &);
-		template<typename W> static void write_null(W &);
+		static bool read_null(byte_reader &);
+		static void write_null(byte_writer &);
 
-		template<typename R> static bool read_undefined(R &);
-		template<typename W> static void write_undefined(W &);
+		static bool read_undefined(byte_reader &);
+		static void write_undefined(byte_writer &);
 
-		template<typename R> bool read_mixed_array(R &, const amf0_ecma_array_ptr&);
-		template<typename W> static void write_mixed_array(W &, const amf0_ecma_array_ptr&);
+		bool read_mixed_array(byte_reader &, const amf0_ecma_array_ptr&);
+		static void write_mixed_array(byte_writer &, const amf0_ecma_array_ptr&);
 
-		template<typename R> bool read_strict_array(R &, const amf0_strict_array_ptr&);
-		template<typename W> static void write_strict_array(W &, const amf0_strict_array_ptr&);
+		bool read_strict_array(byte_reader &, const amf0_strict_array_ptr&);
+		static void write_strict_array(byte_writer &, const amf0_strict_array_ptr&);
 
-		template<typename R> static bool read_long_string(R &, const amf0_long_string_ptr&);
-		template<typename W> static void write_long_string(W &, const amf0_long_string_ptr&);
+		static bool read_long_string(byte_reader &, const amf0_long_string_ptr&);
+		static void write_long_string(byte_writer &, const amf0_long_string_ptr&);
 
-		template<typename R> static bool read_date(R &, const amf0_date_ptr&);
-		template<typename W> static void write_date(W &, const amf0_date_ptr&);
+		static bool read_date(byte_reader &, const amf0_date_ptr&);
+		static void write_date(byte_writer &, const amf0_date_ptr&);
 
-		template<typename R> static bool read_xml_document(R &, const amf0_xml_document_ptr&);
-		template<typename W> static void write_xml_document(W &, const amf0_xml_document_ptr&);
+		static bool read_xml_document(byte_reader &, const amf0_xml_document_ptr&);
+		static void write_xml_document(byte_writer &, const amf0_xml_document_ptr&);
 
-		template<typename R> bool read_typed_object(R &, const amf0_typed_object_ptr&);
-		template<typename W> static void write_typed_object(W &, const amf0_typed_object_ptr&);
+		bool read_typed_object(byte_reader &, const amf0_typed_object_ptr&);
+		static void write_typed_object(byte_writer &, const amf0_typed_object_ptr&);
 
-		template<typename R> static bool read_amf3_container(R &, const amf0_amf3_container_ptr&);
-		template<typename W> static void write_amf3_container(W &, const amf0_amf3_container_ptr&);
+		static bool read_amf3_container(byte_reader &, const amf0_amf3_container_ptr&);
+		static void write_amf3_container(byte_writer &, const amf0_amf3_container_ptr&);
 
-		template<typename R> amf0_type_ptr read(R &);
-		template<typename W> static void write(W &, const amf0_type_ptr&);
+		amf0_type_ptr read(byte_reader &);
+		static void write(byte_writer &, const amf0_type_ptr&);
 
 	private:
 		// AMF0 object reference table (spec: anonymous/typed objects and arrays can
