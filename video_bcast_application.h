@@ -4,6 +4,7 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -102,7 +103,16 @@ namespace fms
 
 		void send_aac_config(const stream_client_id_t &, const stream_client_ptr &);
 
-		std::mutex m_mutex;
+		// Reader/writer split: the per-frame data path (handle_video_data /
+		// handle_audio_data) takes a SHARED lock and only structurally reads the
+		// maps below while mutating disjoint per-stream leaf data (its own bcid's
+		// queue/config and its subscribers' client state). Control paths that
+		// restructure the maps (publish/play/close/teardown) take an EXCLUSIVE
+		// (unique) lock and therefore never overlap a reader. This is only sound
+		// because the data path never inserts into a shared map -- add_stream
+		// pre-creates each publisher's per-bcid slots so the hot path only ever
+		// hits existing keys.
+		std::shared_mutex m_mutex;
 
 		// broadcaster -> subscribers
 		using stream_client_map_t = boost::bimaps::bimap<boost::bimaps::multiset_of<stream_client_id_t>, boost::bimaps::set_of<stream_client_id_t> >;

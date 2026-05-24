@@ -190,7 +190,13 @@ namespace fms
 		stream_client_id_t const bcid = std::make_pair(connection_id, audio->stream_id());
 		m_app_manager->update_netstream_stats(bcid, audio->size(), audio->timestamp());
 
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
+
+		// Only a registered publisher has pre-created per-bcid slots; without them
+		// the operator[] accesses below would insert (and rehash) under the shared
+		// lock. Drop frames for unregistered streams -- they have no subscribers.
+		if (!m_video_queue_map.contains(bcid))
+			return;
 
 		if (audio->get_codec() == rtmp_message_audio_data::eAAC
 			&& audio->size() > 1
@@ -234,7 +240,13 @@ namespace fms
 		stream_client_id_t const bcid = std::make_pair(connection_id, video->stream_id());
 		m_app_manager->update_netstream_stats(bcid, video->size(), video->timestamp());
 
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
+
+		// Only a registered publisher has pre-created per-bcid slots (see add_stream);
+		// drop frames for unregistered streams so the hot path never inserts under
+		// the shared lock.
+		if (!m_video_queue_map.contains(bcid))
+			return;
 
 		// enqueue video frame for later sending
 		enqueue_video_frame(video, bcid);
@@ -705,6 +717,14 @@ namespace fms
 		if (streams.right.find(stream) != streams.right.end())
 			return false;
 		streams.insert(streams_map_t::value_type(id, stream));
+		// Pre-create this publisher's per-bcid slots while we hold the exclusive
+		// lock, so the shared-locked data path only ever hits existing keys and
+		// never inserts (which would rehash a map another stream is reading).
+		// Erased together in close_stream. avc/aac configs start null and are
+		// filled in-place by the first config frame (an existing-key assignment).
+		m_video_queue_map[id];
+		m_avc_config[id];
+		m_aac_config[id];
 		return true;
 	}
 
@@ -907,7 +927,8 @@ namespace fms
 		{
 			if (video->get_codec() == rtmp_message_video_data::eAVC)
 			{
-				if (!m_avc_config.contains(bcid) && video->size() > 1 && video->data()[1] == 0)
+				// slot pre-exists (add_stream); "not yet stored" == null value
+				if (!m_avc_config[bcid] && video->size() > 1 && video->data()[1] == 0)
 					m_avc_config[bcid] = video;
 			}
 			m_video_queue_map[bcid].clear();
@@ -979,7 +1000,7 @@ namespace fms
 		std::uint32_t const size = list.size();
 
 		auto const i = m_avc_config.find(bcid);
-		if (i != m_avc_config.end())
+		if (i != m_avc_config.end() && i->second)   // slot pre-exists; may still be null
 		{
 			rtmp_message_video_data_ptr const conf(new rtmp_message_video_data(*i->second));
 			conf->timestamp() = 0;
@@ -1067,7 +1088,7 @@ namespace fms
 	void video_bcast_application::send_aac_config(const stream_client_id_t &src, const stream_client_ptr &client)
 	{
 		auto const i = m_aac_config.find(src);
-		if (i != m_aac_config.end())
+		if (i != m_aac_config.end() && i->second)   // slot pre-exists; may still be null
 		{
 			rtmp_message_audio_data_ptr const conf(new rtmp_message_audio_data(*i->second));
 			conf->timestamp() = 0;
