@@ -1,10 +1,9 @@
 #pragma once
 
-#include <cstdint>
 #include <exception>
 #include <map>
-#include <string>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <list>
+#include <map>
 #include <mutex>
 #include <set>
 #include <string>
@@ -14,8 +15,6 @@
 #include "rtmp_application.h"
 #include "stream_client.h"
 #include "vod_session.h"
-
-#include <map>
 
 namespace fms
 {

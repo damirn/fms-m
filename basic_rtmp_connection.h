@@ -1,11 +1,9 @@
 #pragma once
 
-#include <set>
-
 #include <array>
-#include <boost/asio.hpp>
-#include <memory>
 #include <chrono>
+#include <memory>
+#include <boost/asio.hpp>
 #include <openssl/evp.h>
 
 #include "client_session.h"

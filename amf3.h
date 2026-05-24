@@ -3,10 +3,9 @@
 #include "byte_writer.h"
 #include "amf3_types.h"
 
-#include <cstdint>
 #include <string>
-#include <vector>
 #include <stdexcept>
+#include <vector>
 
 namespace fms
 {

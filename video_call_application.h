@@ -35,9 +35,7 @@ namespace fms
 		// App Instance to client map
 		struct call_instance_data
 		{
-			call_instance_data()
-				 
-			= default;
+			call_instance_data()= default;
 
 			// owns the mixer, which in turn owns (and deletes) m_sink; deleting
 			// the mixer plugs the leak when an instance is torn down without
