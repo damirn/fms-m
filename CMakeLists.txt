@@ -16,6 +16,15 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Default to an optimized build with debug info. Without a build type CMake adds
+# no -O flag at all, so the server would otherwise build unoptimized. Applies to
+# single-config generators only; multi-config ones (Xcode/VS) choose per-build.
+# Pick Debug explicitly (-O0, asserts on) when you want the byte_writer guards.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+      "Build type (Debug, Release, RelWithDebInfo, MinSizeRel)" FORCE)
+endif()
+
 # Code now uses std::chrono / std::filesystem; Boost.Log still needs date_time.
 # Boost.System is header-only since 1.69, so it is not a linked component (newer
 # distros, e.g. Ubuntu 26.04 / Boost 1.90, no longer ship the stub library).
@@ -65,7 +74,8 @@ endif()
 # -fno-strict-aliasing was dropped: the amf0 double type-pun (the only real
 # aliasing UB) is now a std::memcpy, and the build is clean under -Wstrict-aliasing=2.
 # -Wno-deprecated-* only silences Boost 1.76 / libc++ C++23 header internals.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -g -Wall -Wno-write-strings -Wno-deprecated-declarations")
+# Optimization/-g come from CMAKE_BUILD_TYPE (see the default set above).
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -Wall -Wno-write-strings -Wno-deprecated-declarations")
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # clang-only spellings; GCC doesn't recognise these and would warn.
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-builtins -Wno-#pragma-messages")
@@ -157,8 +167,8 @@ endif()
 option(BUILD_AMF_TESTS "Build AMF serialization unit tests" OFF)
 if(BUILD_AMF_TESTS)
   enable_testing()
-  # The AMF serializers use Boost only for headers (via stream_array.h), so tests
-  # need Boost includes but link no Boost libs — avoids dragging in Boost.Log/ICU.
+  # The AMF serializers use Boost only for headers, so tests need Boost includes
+  # but link no Boost libs — avoids dragging in Boost.Log/ICU.
   add_executable(amf_tests
     test/test_main.cpp test/amf0_test.cpp test/amf3_test.cpp test/media_path_test.cpp
     amf0.cpp amf3.cpp)
@@ -168,12 +178,54 @@ if(BUILD_AMF_TESTS)
   endif()
   add_test(NAME amf_tests COMMAND amf_tests)
 
+  # RTMFP byte-level codec tests (option / option_list / header). Like the AMF
+  # tests, these link Boost headers only — the codecs pull in no aes/crypto/session.
+  add_executable(rtmfp_tests
+    test/test_main.cpp test/rtmfp_test.cpp
+    rtmfp/types.cpp rtmfp/header.cpp)
+  if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(rtmfp_tests Threads::Threads)
+  endif()
+  add_test(NAME rtmfp_tests COMMAND rtmfp_tests)
+
   # Manual throughput benchmark for byte_writer's input-buffer role (not a test).
   # Always built optimized (with asserts off) so the numbers are meaningful even
   # in an otherwise-Debug configure.
   add_executable(bench_byte_buffer test/bench_byte_buffer.cpp)
   target_include_directories(bench_byte_buffer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_options(bench_byte_buffer PRIVATE -O2 -DNDEBUG)
+endif()
+
+# ---------------------------------------------------------------------------
+# AMF fuzzers: -DBUILD_FUZZERS=ON.  The AMF decoders parse untrusted network
+# input, so they get continuous fuzzing under ASan/UBSan.  Two harnesses:
+#   fuzz_run  - portable, self-driving (own main + seed corpus); also registered
+#               as a ctest so a normal `ctest` run exercises the decoders.
+#   fuzz_amf3 - libFuzzer entry point (clang only); coverage-guided, run by hand.
+# ---------------------------------------------------------------------------
+option(BUILD_FUZZERS "Build the AMF fuzzers (ASan/UBSan)" OFF)
+if(BUILD_FUZZERS)
+  enable_testing()
+  add_executable(fuzz_run test/fuzz_run.cpp amf0.cpp amf3.cpp)
+  target_include_directories(fuzz_run PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_compile_options(fuzz_run PRIVATE -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined)
+  target_link_options(fuzz_run PRIVATE -fsanitize=address,undefined)
+  if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(fuzz_run Threads::Threads)
+  endif()
+  add_test(NAME fuzz_run COMMAND fuzz_run)
+
+  # libFuzzer needs LLVM clang's -fsanitize=fuzzer runtime; GCC has no equivalent
+  # driver and Apple's Xcode clang ("AppleClang") ships no libFuzzer runtime, so
+  # gate on a real LLVM clang only (STREQUAL, not MATCHES).
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    add_executable(fuzz_amf3 test/fuzz_amf3.cpp amf3.cpp)
+    target_include_directories(fuzz_amf3 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_compile_options(fuzz_amf3 PRIVATE -O1 -g -fno-omit-frame-pointer -fsanitize=fuzzer,address)
+    target_link_options(fuzz_amf3 PRIVATE -fsanitize=fuzzer,address)
+  endif()
 endif()
 
 # ---------------------------------------------------------------------------
