@@ -322,12 +322,6 @@ TEST_CASE("chunk parser: garbage input does not crash and yields no messages")
 
 namespace
 {
-	void fill(fms::stream_array &sa, const std::vector<std::uint8_t> &b)
-	{
-		auto mb = sa.write_buffer();
-		std::memcpy(mb.data(), b.data(), b.size());
-		sa.update(b.size());
-	}
 }
 
 TEST_CASE("byte_reader: endianness, bounds, and no-advance-on-failure")
@@ -350,36 +344,6 @@ TEST_CASE("byte_reader: endianness, bounds, and no-advance-on-failure")
 	CHECK_FALSE(r5.try_u32_be(v));        // needs 4
 	CHECK(r5.position() == 0);            // did not advance
 	CHECK(r5.remaining() == 2);
-}
-
-TEST_CASE("try_deserialize matches deserialize field-for-field (all header types)")
-{
-	chunk_stream cs;
-	cs.hdr0(6, 1000, 10, AUDIO, 42);   // type 0 absolute
-	cs.hdr1(6, 40, 12, VIDEO);         // type 1 delta -> ts 1040, inherits sid
-	cs.hdr2(6, 25);                    // type 2 delta -> ts 1065
-	cs.hdr3(6);                        // type 3 continuation (no ext ts)
-	cs.hdr0(50, 0x01020304, 8, AUDIO, 7);   // type 0 with extended timestamp
-
-	fms::stream_array sa;
-	fill(sa, cs.bytes);
-	byte_reader r(cs.bytes.data(), cs.bytes.size());
-
-	rtmp_header h_old;   // parsed via the throwing stream_array path
-	rtmp_header h_new;   // parsed via the non-throwing byte_reader path
-
-	for (int i = 0; i < 5; ++i)
-	{
-		h_old.deserialize(sa);
-		REQUIRE(h_new.try_deserialize(r));
-		CHECK(h_old.channel_id()     == h_new.channel_id());
-		CHECK(h_old.timestamp()      == h_new.timestamp());
-		CHECK(h_old.message_length() == h_new.message_length());
-		CHECK(int(h_old.message_type()) == int(h_new.message_type()));
-		CHECK(h_old.stream_id()      == h_new.stream_id());
-		CHECK(int(h_old.header_type()) == int(h_new.header_type()));
-		CHECK(h_old.time_delta()     == h_new.time_delta());
-	}
 }
 
 TEST_CASE("try_deserialize is peek-then-commit on partial headers")

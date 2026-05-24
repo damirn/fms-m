@@ -50,14 +50,6 @@ namespace fms
 			return m_uses_continuation;
 		}
 
-		void deserialize_header(stream_array &buffer)
-		{
-			m_prev_header_type = m_received_header.header_type();
-			m_prev_time_delta = m_received_header.time_delta();
-			m_prev_timestamp = m_received_header.timestamp();
-			m_received_header.deserialize(buffer);
-		}
-
 		// Non-throwing, peek-then-commit header parse. Returns false (nothing
 		// changed) if the whole chunk header isn't present in the reader yet.
 		bool try_deserialize_header(byte_reader &r)
