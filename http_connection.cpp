@@ -120,46 +120,45 @@ namespace fms
 
 	boost::tribool http_connection::handle_http_header(std::size_t bytes_transferred)
 	{
-		void *pos = memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\n\r\n", 4);
+		void *pos = memmem(reinterpret_cast<char *>(m_buffer.data()), m_buffer.size(), "\r\n\r\n", 4);
 		if (pos != nullptr)
 		{
-			m_buffer.mark();
-			if (std::memcmp(m_buffer.read_pos(), "POST", 4) != 0)
+			if (std::memcmp(m_buffer.data(), "POST", 4) != 0)
 			{
 				return false;
 			}
+			// parse the header fields through a byte_reader (peek); only on a
+			// complete header do we consume it, leaving the body at data().
+			std::size_t const header_len = static_cast<std::size_t>((std::uint8_t *)pos - m_buffer.data()) + 4;
+			byte_reader r(m_buffer.data(), m_buffer.size());
 			try
 			{
-				m_buffer.skip(4);
-				m_command = get_command();
+				r.skip(4);
+				m_command = get_command(r);
 				if (m_command == eCmdInvalid)
 					return false;
-				if (!handle_http_fields())
+				if (!handle_http_fields(r))
 					return false;
-				m_buffer.rewind();
-				m_buffer.skip((std::uint8_t *)pos - m_buffer.read_pos() + 4);
+				m_buffer.consume(header_len);
 				return handle_command();
 			}
 			catch (buffer_eof_exception &)
 			{
-				m_buffer.rewind();
-				return boost::indeterminate;
+				return boost::indeterminate;   // header incomplete -> re-read (buffer intact)
 			}
 		}
-		if (m_buffer.available() > 512) // more than 512 bytes in header, but no delimiter?
+		if (m_buffer.size() > 512) // more than 512 bytes in header, but no delimiter?
 			return false;
 		return boost::indeterminate;
 	}
 
 	boost::tribool http_connection::handle_command()
 	{
-		//std::cout << "cl: " << m_content_length << " available: " << m_buffer.available() << std::endl;
-		if (m_content_length > m_buffer.available())
+		// the header is already consumed; m_buffer now holds the body
+		if (m_content_length > m_buffer.size())
 		{
-			//std::cout << "not enough data, cl: " << m_content_length << " available: " << m_buffer.available() << std::endl;
-			m_buffer.compact();
 			m_read_http_header = false;
-			return boost::indeterminate;
+			return boost::indeterminate;   // body not fully arrived yet -> re-read
 		}
 
 		m_read_http_header = true;
@@ -197,20 +196,20 @@ namespace fms
 		return ret;
 	}
 
-	bool http_connection::handle_http_fields()
+	bool http_connection::handle_http_fields(byte_reader &r)
 	{
 		std::string cid;
 
 		if (m_command == eCmdFcs)
 		{
-			return get_content_lenght();
+			return get_content_lenght(r);
 		}
 
 		if (m_command != eCmdOpen) // if cmd is not Open, get and validate fields
 		{
-			if (!get_id(cid))
+			if (!get_id(r, cid))
 				return false;
-			if (!get_sequence())
+			if (!get_sequence(r))
 				return false;
 
 			// validate cid and seq
@@ -220,29 +219,29 @@ namespace fms
 			m_cid = cid;
 		}
 
-		if (!get_content_lenght())
+		if (!get_content_lenght(r))
 			return false;
 
 		return true;
 	}
 
-	bool http_connection::get_id(std::string &cid)
+	bool http_connection::get_id(byte_reader &r, std::string &cid)
 	{
-		if (m_buffer.available() < 18)
+		if (r.available() < 18)
 			return false;
 
 		char c;
 		for (int i = 0; i < 16; ++i)
 		{
-			m_buffer >> c;
+			r >> c;
 			cid.push_back(c);
 		}
 
-		m_buffer >> c;
+		r >> c;
 		return c == '/';
 	}
 
-	bool http_connection::get_sequence()
+	bool http_connection::get_sequence(byte_reader &r)
 	{
 		std::string seq;
 		char c;
@@ -251,7 +250,7 @@ namespace fms
 		{
 			while (true)
 			{
-				m_buffer >> c;
+				r >> c;
 				if (c == ' ')
 					break;
 				seq.push_back(c);
@@ -269,7 +268,7 @@ namespace fms
 		}
 	}
 
-	http_connection::commands http_connection::get_command()
+	http_connection::commands http_connection::get_command(byte_reader &r)
 	{
 		std::string command;   // NOT static: shared statics here raced across
 		char c;                // concurrent HTTP (RTMPT) connections on other threads
@@ -280,7 +279,7 @@ namespace fms
 
 		while(true)
 		{
-			m_buffer.read(&c, 1);
+			r.read(&c, 1);
 			if (c == ' ')
 			{
 				if (s == eBegin)
@@ -306,19 +305,19 @@ namespace fms
 		return get_command(command);
 	}
 
-	bool http_connection::get_content_lenght()
+	bool http_connection::get_content_lenght(byte_reader &r)
 	{
-		std::uint8_t const *pos = static_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(m_buffer.read_pos()), m_buffer.available(), "\r\nContent-Length: ", 18));
+		std::uint8_t const *pos = static_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(const_cast<std::uint8_t *>(r.read_pos())), r.available(), "\r\nContent-Length: ", 18));
 		if (pos != nullptr)
 		{
-			m_buffer.skip(pos - m_buffer.read_pos() + 18);
+			r.skip(static_cast<std::size_t>(pos - r.read_pos()) + 18);
 			std::string cl;   // NOT static (see get_command)
 			char c;
 
 			cl = "";
 			while (true)
 			{
-				m_buffer.read(&c, 1);
+				r.read(&c, 1);
 				if (c == '\r')
 				{
 					try

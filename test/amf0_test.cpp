@@ -287,7 +287,7 @@ TEST_CASE("malformed input throws rather than crashing")
 	CHECK_THROWS(decode(hx("")));                 // empty
 }
 
-TEST_CASE("amf0 write: byte_writer output is byte-identical to stream_array")
+TEST_CASE("amf0 write: encode/decode round-trips through byte_writer")
 {
 	std::vector<amf0_type_ptr> vals;
 	vals.emplace_back(new amf0_number(3.14159));
@@ -313,7 +313,7 @@ TEST_CASE("amf0 write: byte_writer output is byte-identical to stream_array")
 		CHECK(encode(v) == encode_bw(v));
 }
 
-TEST_CASE("amf0 read: byte_reader decodes identically to stream_array")
+TEST_CASE("amf0 read: byte_reader decodes the documented vectors")
 {
 	std::vector<bytes> vecs;
 	vecs.push_back(hx("00 3f f8 00 00 00 00 00 00"));                 // number

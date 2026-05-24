@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "rtmp_header.h"
-#include "stream_array.h"
+#include "byte_writer.h"
 
 namespace fms
 {
@@ -105,16 +105,9 @@ namespace fms
 			return m_sent_header;
 		}
 
-		stream_array &buffer()
+		byte_writer &buffer()
 		{
 			return m_buffer;
-		}
-
-		void add_data(stream_array &source, std::size_t size)
-		{
-			m_buffer.write(source.read_pos(), size);
-			m_message_len += static_cast<std::uint32_t>(size);
-			source.skip(size);
 		}
 
 		// Append chunk payload from a raw byte range (the resumable parser copies
@@ -148,7 +141,7 @@ namespace fms
 		bool m_uses_continuation{false};
 		rtmp_header m_received_header;
 		rtmp_header m_sent_header;
-		stream_array m_buffer;
+		byte_writer m_buffer;
 		std::uint8_t m_prev_header_type;
 		std::uint32_t m_prev_time_delta;
 		std::uint32_t m_prev_timestamp;

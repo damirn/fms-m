@@ -7,6 +7,7 @@
 //       -I. -I<boost-include> test/fuzz_run.cpp amf3.cpp -o fuzz_run && ./fuzz_run
 //
 #include "amf0.h"
+#include "byte_reader.h"
 #include "amf3.h"
 
 #include <cstdint>
@@ -21,9 +22,7 @@ namespace
 	template <typename Codec>
 	void drain(const std::uint8_t *d, std::size_t n)
 	{
-		fms::stream_array buf;
-		if (n)
-			buf.write(d, n);
+		fms::byte_reader buf(d, n);
 		try
 		{
 			Codec c;

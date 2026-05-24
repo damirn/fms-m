@@ -3,6 +3,7 @@
 #include <boost/logic/tribool.hpp>
 
 #include "net_client.h"
+#include "byte_reader.h"
 
 namespace fms::rtmp_client
 {
@@ -33,7 +34,7 @@ namespace fms::rtmp_client
 		void send_open();
 		void read_open();
 		boost::tribool handle_http_header(std::size_t);
-		bool get_content_length();
+		bool get_content_length(byte_reader &);
 		void read_cid();
 		void handle_content();
 
@@ -54,7 +55,7 @@ namespace fms::rtmp_client
 		// idle timer
 		boost::asio::steady_timer m_timer;
 
-		stream_array m_input_buffer_int;
+		byte_writer m_input_buffer_int;
 
 		// HTTP content length
 		std::uint32_t m_content_length;

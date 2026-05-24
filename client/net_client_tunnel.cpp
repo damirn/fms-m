@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "net_client_tunnel.h"
+#include "byte_reader.h"
 #include "util.h"
 
 namespace fms::rtmp_client
@@ -86,9 +87,8 @@ namespace fms::rtmp_client
 
 	void net_client_tunnel::parse_poll_time()
 	{
-		std::uint8_t poll_time;
-
-		m_input_buffer_int >> poll_time;
+		std::uint8_t const poll_time = m_input_buffer_int.data()[0];
+		m_input_buffer_int.consume(1);
 		switch(poll_time)
 		{
 			case 0x01:
@@ -164,7 +164,7 @@ namespace fms::rtmp_client
 
 	void net_client_tunnel::handle_content()
 	{
-		if (m_input_buffer_int.available() == m_content_length)
+		if (m_input_buffer_int.size() == m_content_length)
 		{
 			m_write_in_progress = false;
 			// An empty body (not even the 1-byte poll interval) has nothing to
@@ -190,7 +190,7 @@ namespace fms::rtmp_client
 				parse_poll_time();
 				if (m_content_length > 1)
 				{
-					m_input_buffer.write(m_input_buffer_int.read_pos(), m_input_buffer_int.available());
+					m_input_buffer.write(m_input_buffer_int.data(), m_input_buffer_int.size());
 					m_read_cb(true, m_content_length - 1);
 				}
 				else
@@ -203,8 +203,8 @@ namespace fms::rtmp_client
 					m_input_buffer_int.clear();
 				else
 				{
-					m_input_buffer_int.skip(1);
-					m_input_buffer.write(m_input_buffer_int.read_pos(), m_input_buffer_int.available());
+					m_input_buffer_int.consume(1);
+					m_input_buffer.write(m_input_buffer_int.data(), m_input_buffer_int.size());
 					m_read_cb(true, m_content_length - 1);
 				}
 			}
@@ -250,49 +250,49 @@ namespace fms::rtmp_client
 
 	boost::tribool net_client_tunnel::handle_http_header(std::size_t bytes_transferred)
 	{
-		void *pos = memmem(reinterpret_cast<char *>(m_input_buffer_int.read_pos()), m_input_buffer_int.available(), "\r\n\r\n", 4);
+		void *pos = memmem(reinterpret_cast<char *>(m_input_buffer_int.data()), m_input_buffer_int.size(), "\r\n\r\n", 4);
 		if (pos != nullptr)
 		{
-			m_input_buffer_int.mark();
-			if (std::memcmp(m_input_buffer_int.read_pos(), "HTTP/1.", 7) != 0)
+			if (std::memcmp(m_input_buffer_int.data(), "HTTP/1.", 7) != 0)
 			{
 				std::cout << "error, not HTTP response" << std::endl;
 				return false;
 			}
+			// parse the header through a byte_reader (peek); consume only on success
+			std::size_t const header_len = static_cast<std::size_t>((std::uint8_t *)pos - m_input_buffer_int.data()) + 4;
+			byte_reader r(m_input_buffer_int.data(), m_input_buffer_int.size());
 			try
 			{
-				m_input_buffer_int.skip(7);
-				if (!get_content_length())
+				r.skip(7);
+				if (!get_content_length(r))
 					return false;
-				m_input_buffer_int.rewind();
-				m_input_buffer_int.skip((std::uint8_t *)pos - m_input_buffer_int.read_pos() + 4);
-						return true;
+				m_input_buffer_int.consume(header_len);
+				return true;
 			}
 			catch (buffer_eof_exception &)
 			{
-				m_input_buffer_int.rewind();
 				return boost::indeterminate;
 			}
 		}
-		if (m_input_buffer_int.available() > 512) // more than 512 bytes in header, but no delimiter?
+		if (m_input_buffer_int.size() > 512) // more than 512 bytes in header, but no delimiter?
 			return false;
 		std::cout << "Not enough data in HTTP header" << std::endl;
 		return boost::indeterminate;
 	}
 
-	bool net_client_tunnel::get_content_length()
+	bool net_client_tunnel::get_content_length(byte_reader &r)
 	{
-		std::uint8_t  const*pos = reinterpret_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(m_input_buffer_int.read_pos()), m_input_buffer_int.available(), "\r\nContent-Length: ", 18));
+		std::uint8_t  const*pos = reinterpret_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(const_cast<std::uint8_t *>(r.read_pos())), r.available(), "\r\nContent-Length: ", 18));
 		if (pos != nullptr)
 		{
-			m_input_buffer_int.skip(pos - m_input_buffer_int.read_pos() + 18);
+			r.skip(static_cast<std::size_t>(pos - r.read_pos()) + 18);
 			static std::string cl;
 			static char c;
 
 			cl = "";
 			while (true)
 			{
-				m_input_buffer_int.read(&c, 1);
+				r.read(&c, 1);
 				if (c == '\r')
 				{
 					try
@@ -314,10 +314,11 @@ namespace fms::rtmp_client
 
 	void net_client_tunnel::read_cid()
 	{
+		byte_reader r(m_input_buffer_int.data(), m_input_buffer_int.size());
 		char c;
 		for (std::uint32_t i = 0; i < m_content_length; ++i)
 		{
-			m_input_buffer_int >> c;
+			r >> c;
 			if (c == 0x0a)
 				break;
 			m_cid.push_back(c);

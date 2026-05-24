@@ -49,7 +49,7 @@ namespace fms
 		return true;
 	}
 
-	std::uint32_t rtmpt_manager::handle_data(const std::string &cid, std::uint32_t seq, stream_array &input, byte_writer &output)
+	std::uint32_t rtmpt_manager::handle_data(const std::string &cid, std::uint32_t seq, byte_writer &input, byte_writer &output)
 	{
 		std::unique_lock const lock(m_mutex);
 		auto const i = m_ids.find(cid);
@@ -74,9 +74,9 @@ namespace fms
 		}
 		else
 		{
-			auto *data = new std::uint8_t[input.available()];
-			std::memcpy(data, input.read_pos(), input.available());
-			i->second->m_out_of_order_data[seq] = std::make_pair(data, input.available());
+			auto *data = new std::uint8_t[input.size()];
+			std::memcpy(data, input.data(), input.size());
+			i->second->m_out_of_order_data[seq] = std::make_pair(data, input.size());
 			i->second->m_session->serialize_poll_time(output);
 		}
 

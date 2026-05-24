@@ -3,7 +3,6 @@
 #include <boost/noncopyable.hpp>
 
 #include "basic_rtmp_connection.h"
-#include "stream_array.h"
 #include "byte_writer.h"
 
 namespace fms
@@ -109,7 +108,7 @@ namespace fms
 		connection_states m_state{eStateReadHS};
 
 		// Buffers for incoming data.
-		stream_array m_buffer;
+		byte_writer m_buffer;
 		byte_writer m_output_buffer;
 
 		bool m_to_close{false};

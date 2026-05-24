@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "basic_rtmp_connection.h"
+#include "byte_writer.h"
 #include "crypto.h"
 #include "dh.h"
 #include "rtmp_app_manager.h"
@@ -126,12 +127,12 @@ namespace fms
 		}
 	}
 
-	bool basic_rtmp_connection::check_hand_shake_response(stream_array &buffer)
+	bool basic_rtmp_connection::check_hand_shake_response(byte_writer &buffer)
 	{
 		bool valid = false;
 		if (!m_is_fp9)
 		{
-			if (std::memcmp(reinterpret_cast<void *> (buffer.read_pos() + 8), reinterpret_cast<void *> (m_tmp_buff.data() + 9), eHandShakeSize - 8) == 0)
+			if (std::memcmp(reinterpret_cast<void *> (buffer.data() + 8), reinterpret_cast<void *> (m_tmp_buff.data() + 9), eHandShakeSize - 8) == 0)
 				valid = true;
 		}
 		else
@@ -141,20 +142,20 @@ namespace fms
 			std::uint8_t *srv_dig = m_tmp_buff.data() + 1;
 			std::uint32_t const digest = get_digest_offest(srv_dig, m_validation_scheme);
 			HMAC_SHA256(srv_dig + digest, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, dig);
-			HMAC_SHA256(buffer.read_pos(), eHandShakeSize - SHA256_DIGEST_LENGTH, dig, SHA256_DIGEST_LENGTH, sig);
-			if (std::memcmp(sig, buffer.read_pos() + eHandShakeSize - SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH) == 0)
+			HMAC_SHA256(buffer.data(), eHandShakeSize - SHA256_DIGEST_LENGTH, dig, SHA256_DIGEST_LENGTH, sig);
+			if (std::memcmp(sig, buffer.data() + eHandShakeSize - SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH) == 0)
 				valid = true;
 
 			// Some clients (e.g. ffmpeg) send a "simple" C2 that just echoes our
 			// S1 instead of a signed C2. Accept that too — comparing past the
 			// first 8 bytes (time + version, which the peer may rewrite). This is
 			// what production RTMP servers do and keeps Flash's signed C2 working.
-			if (!valid && std::memcmp(buffer.read_pos() + 8, m_tmp_buff.data() + 9, eHandShakeSize - 8) == 0)
+			if (!valid && std::memcmp(buffer.data() + 8, m_tmp_buff.data() + 9, eHandShakeSize - 8) == 0)
 				valid = true;
 		}
 		if (valid)
 		{
-			buffer.skip(eHandShakeSize);
+			buffer.consume(eHandShakeSize);
 			m_hs_timer.cancel();
 			return true;
 		}

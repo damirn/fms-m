@@ -4,7 +4,7 @@
 #include "rtmp_channel.h"
 #include "rtmp_message.h"
 #include "rtmp_protocol.h"
-#include "stream_array.h"
+#include "byte_writer.h"
 
 namespace fms
 {
@@ -17,7 +17,7 @@ namespace fms
 	* @param buffer - input buffer
 	* @returns true on success, false on failure or indeterminate if more data needed
 	*/
-	boost::tribool rtmp_raw_data::parse_data(stream_array &buffer)
+	boost::tribool rtmp_raw_data::parse_data(byte_writer &buffer)
 	{
 		// Resumable, non-throwing framing. We scan the readable bytes through a
 		// byte_reader, tracking `committed` = the offset up to which everything is
@@ -27,8 +27,8 @@ namespace fms
 		//     so `committed` stays before the header (re-parsed next time),
 		//   - partial chunk payload -> the header is already committed, the payload
 		//     bytes are not (m_read_header stays false, so we don't re-parse it).
-		std::size_t const total = buffer.available();
-		byte_reader r(buffer.read_pos(), total);
+		std::size_t const total = buffer.size();
+		byte_reader r(buffer.data(), total);
 		std::size_t committed = 0;
 		bool seen_complete_msg = false;
 
@@ -74,7 +74,7 @@ namespace fms
 				channel->prev_message_complete() = false;
 		}
 
-		buffer.consume_parsed(committed);
+		buffer.consume(committed);
 
 		if (committed < total)
 			return boost::indeterminate;   // stopped on a partial chunk/header
@@ -98,8 +98,8 @@ namespace fms
 		{
 			// the body is fully assembled; read it through a cursor over the
 			// channel's buffer (clear_data() below resets it regardless)
-			stream_array &body = channel->buffer();
-			byte_reader r(body.read_pos(), body.available());
+			byte_writer &body = channel->buffer();
+			byte_reader r(body.data(), body.size());
 			if (p.deserialize(r, channel->received_header()))
 			{
 				if (p.message()->type() != rtmp_message::eMessageChunkSize &&

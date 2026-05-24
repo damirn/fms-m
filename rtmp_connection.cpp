@@ -6,7 +6,6 @@
 #include "rtmp_application.h"
 #include "rtmp_header.h"
 #include "rtmp_protocol.h"
-#include "stream_array.h"
 #include "crypto.h"
 
 namespace fms
@@ -89,10 +88,10 @@ namespace fms
 				m_state = eStateReadPackets;
 				{
 					arm_timer();
-					if (m_buffer.available() > 0)
+					if (!m_buffer.empty())
 					{
 						if (m_key_in != nullptr) // encrypted data
-							rc4_crypt(m_key_in, m_buffer.available(), m_buffer.read_pos(), m_buffer.read_pos());
+							rc4_crypt(m_key_in, m_buffer.size(), m_buffer.data(), m_buffer.data());
 						parse_data(m_buffer);
 					}
 					read_data();
@@ -110,20 +109,18 @@ namespace fms
 	{
 		if (!e)
 		{
+			m_buffer.update(bytes_transferred);
 			if (m_key_in != nullptr)
 			{
-				// decrypt exactly the bytes async_read just appended — at the input
-				// cursor (m_write_high_mark), NOT write_pos()/m_write which is the
-				// output/serialization cursor. Using write_pos() decrypted stale
-				// bytes (e.g. the old C0/C1 handshake at offset 0), garbling the
-				// RC4 session for any packet that didn't arrive pipelined with C2.
-				std::uint8_t *in = m_buffer.input_pos();
+				// decrypt exactly the bytes async_read just appended — the tail
+				// [size()-n, size()) — not the whole buffer, which would re-decrypt
+				// already-processed bytes and garble the RC4 session.
+				std::uint8_t *in = m_buffer.data() + m_buffer.size() - bytes_transferred;
 				rc4_crypt(m_key_in, bytes_transferred, in, in);
 			}
-			m_buffer.update(bytes_transferred);
 			handle_bytes_read(bytes_transferred);
 			parse_data(m_buffer);   // parses and dispatches messages internally
-//			std::cout << "There are " << m_buffer.available() << " bytes left in the buffer." << std::endl;
+//			std::cout << "There are " << m_buffer.size() << " bytes left in the buffer." << std::endl;
 			read_data();
 		}
 		else
@@ -219,13 +216,16 @@ namespace fms
 
 	void rtmp_connection::write_hand_shake_block2()
 	{
-		boost::asio::async_write(m_socket, m_buffer.read_buffer(),
+		// echo the client's C1 (at data()+1) back as S2. Don't consume here: the
+		// buffer must stay put while this async_write is in flight; the processed
+		// C0+C1 are dropped in read_hand_shake_response, once this write is done.
+		boost::asio::async_write(m_socket, boost::asio::buffer(m_buffer.data() + 1, eHandShakeSize),
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
-		m_buffer.skip(eHandShakeSize);
 	}
 
 	void rtmp_connection::read_hand_shake_response()
 	{
+		m_buffer.consume(eHandShakeSize + 1);   // drop the now-sent C0+C1
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
 			boost::asio::transfer_at_least(eHandShakeSize),
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
@@ -267,9 +267,8 @@ namespace fms
 		m_buffer.update(bytes_transferred);
 		m_state = eStateWriteHSBlock1;
 
-		std::uint8_t *client_sig = m_buffer.data() + 1;
-		std::uint8_t magic;
-		m_buffer >> magic;
+		std::uint8_t *client_sig = m_buffer.data() + 1;   // C1
+		std::uint8_t const magic = m_buffer.data()[0];    // C0 (consumed together with C1 after block2)
 		if (magic == ePlainMagic) // not encrypted
 		{
 			m_uses_crypto = false;

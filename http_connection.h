@@ -7,7 +7,8 @@
 
 #include <string>
 
-#include "stream_array.h"
+#include "byte_reader.h"
+#include "byte_writer.h"
 #include "byte_writer.h"
 
 namespace fms
@@ -43,14 +44,14 @@ namespace fms
 
 		// HTTP stuff
 		boost::tribool handle_http_header(std::size_t);
-		bool handle_http_fields();
-		bool get_id(std::string &);
-		bool get_sequence();
-		bool get_content_lenght();
+		bool handle_http_fields(byte_reader &);
+		bool get_id(byte_reader &, std::string &);
+		bool get_sequence(byte_reader &);
+		bool get_content_lenght(byte_reader &);
 
 		enum commands { eCmdInvalid, eCmdFcs, eCmdOpen, eCmdIdle, eCmdSend, eCmdClose };
 
-		commands get_command();
+		commands get_command(byte_reader &);
 		static commands get_command(const std::string &);
 		boost::tribool handle_command();
 
@@ -99,7 +100,7 @@ namespace fms
 		bool m_http_header_is_complete;
 
 		// Buffers for incoming and outgoing data.
-		stream_array m_buffer;
+		byte_writer m_buffer;
 		byte_writer m_output_buffer;
 		boost::asio::streambuf m_header;
 	};

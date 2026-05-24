@@ -7,15 +7,14 @@
 //   ./fuzz_amf3 -max_len=4096
 //
 #include "amf3.h"
+#include "byte_reader.h"
 
 #include <cstddef>
 #include <cstdint>
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t *data, std::size_t size)
 {
-	fms::stream_array buf;
-	if (size)
-		buf.write(data, size);
+	fms::byte_reader buf(data, size);
 	try
 	{
 		fms::amf3 a;

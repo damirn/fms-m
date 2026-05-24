@@ -4,17 +4,18 @@
 #include <cstring>
 #include <vector>
 
+#include <boost/asio/buffer.hpp>
 #include <boost/asio/detail/socket_ops.hpp>   // host_to_network_long (write_uint32_3)
 
 namespace fms
 {
-	// An owning, growable output buffer with append + back-patch. This is the
-	// write-side counterpart to byte_reader and the intended replacement for
-	// stream_array's serialization role. It exposes the same primitives the RTMP
-	// serializers use (operator<< native-order, write_uint32_3 big-endian) so the
-	// existing serialize code can target it unchanged, plus mark()/patch() for the
-	// "reserve a slot, fill it in later" pattern stream_array did via
-	// mark_write()/rewind_write().
+	// An owning, growable byte buffer. Two roles:
+	//  * output: append + back-patch (operator<< native-order, write_uint32_3
+	//    big-endian, mark()/patch()) -- the serialization replacement for
+	//    stream_array, so serialize code targets it unchanged.
+	//  * input: an async-fill accumulator (write_buffer()/update() to receive,
+	//    consume() to drop parsed bytes) that a byte_reader then parses over
+	//    data()/size() -- the input-buffer replacement for stream_array.
 	class byte_writer
 	{
 	public:
@@ -101,11 +102,38 @@ namespace fms
 		const std::uint8_t *data() const { return m_buf.data(); }
 		std::uint8_t *data() { return m_buf.data(); }   // in-place transforms (rc4)
 		std::size_t size() const { return m_buf.size(); }
+
+		// ---- input-buffer role ------------------------------------------------
+		// Reserve n bytes of writable room at the end for an async read/receive
+		// to fill; size() stays put until update() reports how many actually
+		// arrived. (Replaces stream_array::write_buffer()/update().)
+		boost::asio::mutable_buffer write_buffer(std::size_t n = 65536)
+		{
+			std::size_t const old = m_buf.size();
+			m_buf.resize(old + n);
+			m_reserved = n;
+			return boost::asio::mutable_buffer(m_buf.data() + old, n);
+		}
+		void update(std::size_t filled)
+		{
+			m_buf.resize(m_buf.size() - (m_reserved - filled));   // drop the unfilled tail
+			m_reserved = 0;
+		}
+		// Drop the first n (already-parsed) bytes and shift the rest to the front.
+		void consume(std::size_t n)
+		{
+			m_buf.erase(m_buf.begin(), m_buf.begin() + n);
+		}
+		boost::asio::const_buffer read_buffer() const
+		{
+			return boost::asio::const_buffer(m_buf.data(), m_buf.size());
+		}
 		bool empty() const { return m_buf.empty(); }
 		void clear() { m_buf.clear(); }
 		const std::vector<std::uint8_t> &buffer() const { return m_buf; }
 
 	private:
 		std::vector<std::uint8_t> m_buf;
+		std::size_t m_reserved{0};   // bytes reserved by write_buffer(), pending update()
 	};
 }

@@ -65,7 +65,7 @@ namespace fms
 		virtual void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr) = 0;
 
 		// Check hand shake response.
-		bool check_hand_shake_response(stream_array &);
+		bool check_hand_shake_response(byte_writer &);
 
 		bool prepare_hand_shake_response(std::uint8_t = ePlainMagic, std::uint8_t * = nullptr);
 

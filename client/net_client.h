@@ -7,7 +7,6 @@
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
 
-#include "stream_array.h"
 #include "byte_writer.h"
 
 namespace fms::rtmp_client
@@ -43,7 +42,7 @@ namespace fms::rtmp_client
 			m_write_cb = std::move(cb);
 		}
 
-		stream_array *input_buffer()
+		byte_writer *input_buffer()
 		{
 			return &m_input_buffer;
 		}
@@ -87,7 +86,7 @@ namespace fms::rtmp_client
 		io_complete_cb m_write_cb;
 
 		// I/O buffers
-		stream_array m_input_buffer;
+		byte_writer m_input_buffer;
 		byte_writer m_output_buffer;
 
 		bool m_write_in_progress{false};

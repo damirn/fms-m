@@ -14,7 +14,6 @@
 #include "net_client.h"
 #include "rtmp_message.h"
 #include "rtmp_raw_data.h"
-#include "stream_array.h"
 
 namespace fms::rtmp_client
 {
@@ -186,7 +185,7 @@ namespace fms::rtmp_client
 		std::map<std::string, invoke_handler_t> m_invoke_handlers;
 
 		// I/O buffers
-		stream_array *m_input_buffer;
+		byte_writer *m_input_buffer;
 		byte_writer *m_output_buffer;
 
 		std::uint32_t m_messages_read{0};
