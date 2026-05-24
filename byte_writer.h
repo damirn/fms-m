@@ -9,18 +9,16 @@
 
 namespace fms
 {
-	// An owning, growable byte buffer. Two roles:
+	// An owning, growable byte buffer with two roles:
 	//  * output: append + back-patch (operator<< native-order, write_uint32_3
-	//    big-endian, mark()/patch()) -- the serialization replacement for
-	//    stream_array, so serialize code targets it unchanged.
+	//    big-endian, mark()/patch()) for serialization.
 	//  * input: an async-fill accumulator (write_buffer()/update() to receive,
 	//    consume() to drop parsed bytes) that a byte_reader then parses over
-	//    data()/size() -- the input-buffer replacement for stream_array.
+	//    data()/size().
 	class byte_writer
 	{
 	public:
-		// Append sizeof(V) bytes of `value` in native byte order (matches
-		// stream_array::operator<<).
+		// Append sizeof(V) bytes of `value` in native byte order.
 		template<typename V>
 		byte_writer &operator<<(const V &value)
 		{
@@ -29,8 +27,7 @@ namespace fms
 			return *this;
 		}
 
-		// 24-bit big-endian (RTMP timestamps / lengths), matching
-		// stream_array::write_uint32_3.
+		// 24-bit big-endian (RTMP timestamps / lengths).
 		void write_uint32_3(std::uint32_t v)
 		{
 			std::uint32_t const tmp = boost::asio::detail::socket_ops::host_to_network_long(v);
@@ -38,8 +35,8 @@ namespace fms
 			m_buf.insert(m_buf.end(), b + 1, b + 4);
 		}
 
-		// Copy n bytes from any pointer type (matches stream_array::write, which
-		// AMF calls with const char* string data as well as uint8_t buffers).
+		// Copy n bytes from any pointer type (AMF passes const char* string
+		// data as well as uint8_t buffers).
 		template<typename V>
 		void write(const V *src, std::size_t n)
 		{
@@ -47,9 +44,9 @@ namespace fms
 			m_buf.insert(m_buf.end(), p, p + n);
 		}
 
-		// Variable-length unsigned (RTMFP VLU), matching stream_array::write_vlu:
-		// 7 bits per byte, high bit set on all but the last; a full 4-byte form
-		// (>= 2^21) emits the final byte as 8 bits.
+		// Variable-length unsigned (RTMFP VLU): 7 bits per byte, high bit set on
+		// all but the last; a full 4-byte form (>= 2^21) emits the final byte as
+		// 8 bits.
 		static std::uint8_t vlu_size(std::uint64_t v)
 		{
 			std::uint64_t vlu_min = 0x80;
@@ -83,7 +80,7 @@ namespace fms
 
 		// Grow the buffer by n (uninitialised) bytes and return a writable pointer
 		// to that region, for code that fills a block through a raw pointer (e.g.
-		// the handshake). Replaces stream_array's data()+update() idiom.
+		// the handshake).
 		std::uint8_t *extend(std::size_t n)
 		{
 			std::size_t const old = m_buf.size();
@@ -106,7 +103,7 @@ namespace fms
 		// ---- input-buffer role ------------------------------------------------
 		// Reserve n bytes of writable room at the end for an async read/receive
 		// to fill; size() stays put until update() reports how many actually
-		// arrived. (Replaces stream_array::write_buffer()/update().)
+		// arrived.
 		boost::asio::mutable_buffer write_buffer(std::size_t n = 65536)
 		{
 			std::size_t const old = m_buf.size();

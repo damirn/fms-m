@@ -10,8 +10,7 @@ namespace fms
 	// A non-owning, non-throwing cursor over a byte range. Every try_* returns
 	// false and leaves the position untouched when there aren't enough bytes, so
 	// callers can parse speculatively and only commit (copy the advanced reader
-	// back) once a whole unit has been read. This replaces the throw-on-underrun
-	// flow control the chunk parser used via stream_array.
+	// back) once a whole unit has been read.
 	class byte_reader
 	{
 	public:
@@ -80,8 +79,8 @@ namespace fms
 			return true;
 		}
 
-		// ---- throwing façade (mirrors stream_array; used by codecs that treat an
-		// underrun on a complete message buffer as corruption) --------------------
+		// ---- throwing façade (used by codecs that treat an underrun on a
+		// complete message buffer as corruption) ----------------------------------
 		std::size_t available() const { return remaining(); }
 		const std::uint8_t *read_pos() const { return current(); }
 
@@ -107,7 +106,6 @@ namespace fms
 		}
 
 		// Variable-length unsigned (RTMFP VLU): 7 bits/byte, high bit = "more".
-		// Matches stream_array::read_vlu.
 		std::uint64_t read_vlu()
 		{
 			std::uint8_t a = 0;
@@ -123,7 +121,7 @@ namespace fms
 			return ret;
 		}
 
-		// 24-bit big-endian, throwing (matches stream_array::read_uint32_3).
+		// 24-bit big-endian, throwing.
 		std::uint32_t read_uint32_3()
 		{
 			if (remaining() < 3) throw buffer_eof_exception();
