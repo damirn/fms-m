@@ -29,7 +29,7 @@ namespace fms
 
 		// Serialize rtmp header to binary stream. Templated on the writer so the one
 		// implementation serves byte_writer (and is templated for future buffers).
-		template<typename W> void serialize(W &, rtmp_header &);
+		void serialize(byte_writer &, rtmp_header &);
 
 		std::uint32_t &header_size()
 		{
@@ -106,7 +106,7 @@ namespace fms
 			return m_ts_delta_read;
 		}
 
-		template<typename W> void serialize_header_continue_size(W &);
+		void serialize_header_continue_size(byte_writer &);
 
 	protected:
 
@@ -114,10 +114,10 @@ namespace fms
 		bool try_header_same_source(byte_reader &);
 		bool try_header_timer_change(byte_reader &);
 		bool try_extended_ts(byte_reader &);
-		template<typename W> void serialize(W &, std::uint32_t);
-		template<typename W> void serialize_header_new(W &);
-		template<typename W> void serialize_header_same_source(W &);
-		template<typename W> void serialize_header_timer_change(W &);
+		void serialize(byte_writer &, std::uint32_t);
+		void serialize_header_new(byte_writer &);
+		void serialize_header_same_source(byte_writer &);
+		void serialize_header_timer_change(byte_writer &);
 
 		std::uint32_t m_header_size{0};
 		std::uint32_t m_channel_id{0};

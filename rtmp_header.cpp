@@ -120,8 +120,7 @@ namespace fms
 		return true;
 	}
 
-	template<typename W>
-	void rtmp_header::serialize(W &buffer, rtmp_header &previous_header)
+	void rtmp_header::serialize(byte_writer &buffer, rtmp_header &previous_header)
 	{
 		std::uint32_t size = eHeaderNewSize;
 		std::uint32_t const prev_delta = previous_header.m_ts_delta_write;
@@ -154,8 +153,7 @@ namespace fms
 		serialize(buffer, size);
 	}
 
-	template<typename W>
-	void rtmp_header::serialize(W &buffer, std::uint32_t size)
+	void rtmp_header::serialize(byte_writer &buffer, std::uint32_t size)
 	{
 		switch (size)
 		{
@@ -178,8 +176,7 @@ namespace fms
 		}
 	}
 
-	template<typename W>
-	void rtmp_header::serialize_header_new(W &buffer)
+	void rtmp_header::serialize_header_new(byte_writer &buffer)
 	{
 		std::uint8_t a;
 		if (m_channel_id < 64)
@@ -219,8 +216,7 @@ namespace fms
 		}
 	}
 
-	template<typename W>
-	void rtmp_header::serialize_header_same_source(W &buffer)
+	void rtmp_header::serialize_header_same_source(byte_writer &buffer)
 	{
 		std::uint8_t a;
 		if (m_channel_id < 64)
@@ -261,8 +257,7 @@ namespace fms
 		}
 	}
 
-	template<typename W>
-	void rtmp_header::serialize_header_timer_change(W &buffer)
+	void rtmp_header::serialize_header_timer_change(byte_writer &buffer)
 	{
 		std::uint8_t a;
 		if (m_channel_id < 64)
@@ -297,8 +292,7 @@ namespace fms
 		}
 	}
 
-	template<typename W>
-	void rtmp_header::serialize_header_continue_size(W &buffer)
+	void rtmp_header::serialize_header_continue_size(byte_writer &buffer)
 	{
 		std::uint8_t a;
 		if (m_channel_id < 64)
@@ -325,8 +319,4 @@ namespace fms
 		}
 	}
 
-	// Explicit instantiations: the serializers run against byte_writer (the live
-	// output path) and byte_writer (the migration target / tests).
-	template void rtmp_header::serialize<byte_writer>(byte_writer &, rtmp_header &);
-	template void rtmp_header::serialize_header_continue_size<byte_writer>(byte_writer &);
 }

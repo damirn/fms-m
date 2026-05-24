@@ -21,7 +21,7 @@ namespace fms
 
 		bool deserialize(byte_reader &, rtmp_header &);
 
-		template<typename W> void serialize(W &, const rtmp_message_ptr&, rtmp_header &, rtmp_header &);
+		void serialize(byte_writer &, const rtmp_message_ptr&, rtmp_header &, rtmp_header &);
 
 		rtmp_message_ptr message()
 		{
@@ -53,7 +53,7 @@ namespace fms
 
 		void deserialize_chunk_size(byte_reader &);
 
-		template<typename W> void chunk_buffer(W &, const byte_writer &, rtmp_header &) const;
+		void chunk_buffer(byte_writer &, const byte_writer &, rtmp_header &) const;
 
 		void deserialize_aggregate(byte_reader &, std::uint32_t);
 
