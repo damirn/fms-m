@@ -70,6 +70,11 @@ namespace fms::rtmp_client
 			send_message(msg);
 		}
 
+		// Announce a larger outbound chunk size (default 128). Sends Set Chunk Size
+		// and frames our subsequent chunks at n -- real publishers do this to avoid
+		// a chunk header every 128 bytes.
+		void set_output_chunk_size(std::uint32_t n);
+
 		void close()
 		{
 			m_client->close_socket();
@@ -190,6 +195,7 @@ namespace fms::rtmp_client
 
 		std::uint32_t m_messages_read{0};
 		std::uint32_t m_messages_written{0};
+		std::uint16_t m_out_chunk_size{128};   // our outbound chunk size (Set Chunk Size)
 		std::uint32_t m_bytes_read{0};
 		std::uint32_t m_ack_size;
 		std::uint32_t m_ack_size_next{eAckSize};

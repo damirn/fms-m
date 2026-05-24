@@ -333,10 +333,21 @@ namespace fms::rtmp_client
 	void net_connection::serialize_message(const rtmp_message_ptr& message, const rtmp_channel_ptr& channel)
 	{
 		rtmp_header h;
-		rtmp_protocol p;
+		rtmp_protocol p(m_out_chunk_size);
 		m_messages_written++;
 		p.serialize(*m_output_buffer, message, h, channel->sent_header());
 		channel->sent_header() = h;
+		// Apply our own Set Chunk Size only AFTER framing that control message at
+		// the previous size: the peer parses it at the old size, then switches, so
+		// our subsequent media chunks (and its parse) use the new size.
+		if (message->type() == rtmp_message::eMessageChunkSize)
+			m_out_chunk_size = static_cast<std::uint16_t>(
+				std::static_pointer_cast<rtmp_message_chunk_size>(message)->chunk_size());
+	}
+
+	void net_connection::set_output_chunk_size(std::uint32_t n)
+	{
+		send_message(std::make_shared<rtmp_message_chunk_size>(n));
 	}
 
 	std::uint32_t net_connection::digest_offset(const std::uint8_t *buf, std::uint8_t scheme)
