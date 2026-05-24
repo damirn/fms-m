@@ -167,6 +167,13 @@ if(BUILD_AMF_TESTS)
     target_link_libraries(amf_tests Threads::Threads)
   endif()
   add_test(NAME amf_tests COMMAND amf_tests)
+
+  # Manual throughput benchmark for byte_writer's input-buffer role (not a test).
+  # Always built optimized (with asserts off) so the numbers are meaningful even
+  # in an otherwise-Debug configure.
+  add_executable(bench_byte_buffer test/bench_byte_buffer.cpp)
+  target_include_directories(bench_byte_buffer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_compile_options(bench_byte_buffer PRIVATE -O2 -DNDEBUG)
 endif()
 
 # ---------------------------------------------------------------------------

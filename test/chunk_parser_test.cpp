@@ -407,6 +407,64 @@ TEST_CASE("byte_writer: append, write_uint32_3, mark/patch")
 	CHECK(std::vector<std::uint8_t>(w2.data(), w2.data() + w2.size()) == exp2);
 }
 
+TEST_CASE("byte_writer input role: write_buffer/update/consume/read_buffer")
+{
+	byte_writer b;
+
+	// write_buffer reserves n; update() keeps only the bytes actually filled and
+	// drops the unfilled tail (a short async read).
+	auto mb = b.write_buffer(100);
+	CHECK(mb.size() == 100);
+	std::memset(mb.data(), 0xAB, 10);
+	b.update(10);
+	CHECK(b.size() == 10);
+	CHECK(b.data()[0] == 0xAB);
+	CHECK(b.data()[9] == 0xAB);
+
+	// a second read cycle accumulates onto the existing bytes.
+	auto mb2 = b.write_buffer(50);
+	std::memset(mb2.data(), 0xCD, 5);
+	b.update(5);
+	CHECK(b.size() == 15);
+	CHECK(b.data()[10] == 0xCD);
+	CHECK(b.read_buffer().size() == 15);   // whole readable region
+
+	// consume() drops a parsed prefix and shifts the remainder to the front.
+	b.consume(10);
+	CHECK(b.size() == 5);
+	CHECK(b.data()[0] == 0xCD);
+	b.consume(5);
+	CHECK(b.empty());
+
+	// a full read (filled == reserved) keeps everything.
+	auto mb3 = b.write_buffer(8);
+	std::memset(mb3.data(), 0x11, 8);
+	b.update(8);
+	CHECK(b.size() == 8);
+}
+
+TEST_CASE("byte_writer input role: reassemble a message split across reads, then parse")
+{
+	std::vector<std::uint8_t> const msg = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+	byte_writer b;
+	std::size_t fed = 0;
+	for (std::size_t chunk : {std::size_t(4), std::size_t(3), std::size_t(3)})
+	{
+		auto mb = b.write_buffer(64);
+		std::memcpy(mb.data(), msg.data() + fed, chunk);
+		b.update(chunk);
+		fed += chunk;
+	}
+	CHECK(b.size() == msg.size());
+
+	byte_reader r(b.data(), b.size());
+	std::uint8_t got[10] = {0};
+	r.read(got, sizeof(got));
+	CHECK(std::equal(msg.begin(), msg.end(), got));
+	b.consume(r.position());   // drop what the reader consumed
+	CHECK(b.empty());
+}
+
 TEST_CASE("VLU: byte_writer -> byte_reader round-trips the 1..3 byte forms")
 {
 	// RTMFP only encodes values < 2^21 (the 4-byte "max" form is asymmetric with

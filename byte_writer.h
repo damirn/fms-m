@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstring>
 #include <vector>
 
@@ -105,13 +106,20 @@ namespace fms
 		// arrived.
 		boost::asio::mutable_buffer write_buffer(std::size_t n = 65536)
 		{
+			assert(m_reserved == 0 && "write_buffer() called again before update()");
 			std::size_t const old = m_buf.size();
 			m_buf.resize(old + n);
 			m_reserved = n;
 			return boost::asio::mutable_buffer(m_buf.data() + old, n);
 		}
+		// Report how many of the reserved bytes an async read/receive actually
+		// filled. Must directly follow write_buffer() with no intervening size
+		// change (clear/consume/<<) -- else the "drop the unfilled tail" arithmetic
+		// is wrong; the assert catches that misuse in debug builds.
 		void update(std::size_t filled)
 		{
+			assert(filled <= m_reserved && filled <= m_buf.size() &&
+			       "update() must directly follow write_buffer()");
 			m_buf.resize(m_buf.size() - (m_reserved - filled));   // drop the unfilled tail
 			m_reserved = 0;
 		}

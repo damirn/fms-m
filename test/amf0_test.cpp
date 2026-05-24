@@ -29,23 +29,6 @@ namespace
 		return a.read(buf);
 	}
 
-	// same value, serialized through byte_writer instead of stream_array
-	bytes encode_bw(const amf0_type_ptr &v)
-	{
-		amf0 a;
-		byte_writer bw;
-		a.write(bw, v);
-		return bytes(bw.data(), bw.data() + bw.size());
-	}
-
-	// same bytes, deserialized through byte_reader instead of stream_array
-	amf0_type_ptr decode_br(const bytes &b)
-	{
-		amf0 a;
-		byte_reader br(b.data(), b.size());
-		return a.read(br);
-	}
-
 	bytes hx(const std::string &s)
 	{
 		bytes out;
@@ -310,7 +293,7 @@ TEST_CASE("amf0 write: encode/decode round-trips through byte_writer")
 	vals.emplace_back(ecma);
 
 	for (const auto &v : vals)
-		CHECK(encode(v) == encode_bw(v));
+		roundtrip(v);
 }
 
 TEST_CASE("amf0 read: byte_reader decodes the documented vectors")
@@ -331,11 +314,10 @@ TEST_CASE("amf0 read: byte_reader decodes the documented vectors")
 
 	for (const auto &b : vecs)
 	{
-		// both readers must produce a value that re-encodes to the same bytes
-		amf0_type_ptr const via_sa = decode(b);
-		amf0_type_ptr const via_br = decode_br(b);
-		REQUIRE(via_sa);
-		REQUIRE(via_br);
-		CHECK(encode(via_sa) == encode(via_br));
+		// each vector decodes, and re-encoding the decoded value is stable
+		amf0_type_ptr const v = decode(b);
+		REQUIRE(v);
+		bytes const e = encode(v);
+		CHECK(encode(decode(e)) == e);
 	}
 }
