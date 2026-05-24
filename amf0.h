@@ -1,7 +1,6 @@
 #pragma once
 
 #include "byte_writer.h"
-#include "stream_array.h"
 #include "amf0_types.h"
 
 #include <stdexcept>

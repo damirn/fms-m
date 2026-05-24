@@ -108,7 +108,7 @@ namespace fms
 		buffer << i;
 	}
 
-	boost::tribool rtmpt_session::handle_data(stream_array &input, byte_writer &output)
+	boost::tribool rtmpt_session::handle_data(byte_writer &input, byte_writer &output)
 	{
 		if (m_sstate == eCSReadCommands)
 		{
@@ -116,19 +116,19 @@ namespace fms
 			m_results.clear();
 			boost::tribool res;
 			if (m_key_in != nullptr)
-				rc4_crypt(m_key_in, input.available(), input.read_pos(), input.read_pos());
-			if (m_remaining_data.available() > 0)
+				rc4_crypt(m_key_in, input.size(), input.data(), input.data());
+			if (!m_remaining_data.empty())
 			{
-				m_remaining_data.copy(input, input.available());
+				// parse_data consumes what it parses, so no separate compact() is
+				// needed: append this batch, parse, and the unparsed tail stays.
+				m_remaining_data.write(input.data(), input.size());
 				res = parse_data(m_remaining_data);
-				if (boost::indeterminate(res))
-					m_remaining_data.compact();
 			}
 			else
 			{
 				res = parse_data(input);
 				if (boost::indeterminate(res))
-					m_remaining_data.copy(input, input.available());
+					m_remaining_data.write(input.data(), input.size());   // save the leftover
 			}
 
 			handle_results(output);
@@ -142,13 +142,13 @@ namespace fms
 		}
 		if (m_sstate == eCSReadHS)
 		{
-			if (input.available() < eHandShakeSize)
+			if (input.size() < eHandShakeSize)
 				return false;
 			if (!check_hand_shake_response(input))
 				return false;
 			m_sstate = eCSReadCommands;
 			arm_timer();
-			if (input.available() > 0)
+			if (!input.empty())
 				return handle_data(input, output);
 			
 							serialize_poll_time(output);
@@ -181,14 +181,13 @@ namespace fms
 		return m_poll_time[m_poll_index];
 	}
 
-	boost::tribool rtmpt_session::handle_handshake(stream_array &input, byte_writer &output)
+	boost::tribool rtmpt_session::handle_handshake(byte_writer &input, byte_writer &output)
 	{
- 		if (input.available() < eHandShakeSize + 1)
+		if (input.size() < eHandShakeSize + 1)
  			return false;
 
-		std::uint8_t *client_sig = input.read_pos() + 1;
-		std::uint8_t magic;
-		input >> magic;
+		std::uint8_t *client_sig = input.data() + 1;
+		std::uint8_t const magic = input.data()[0];
 		if (magic == ePlainMagic)
 		{
 			m_uses_crypto = false;
@@ -212,7 +211,7 @@ namespace fms
 		output.write(&c, 1);
 		output.write(m_tmp_buff.data(), eHandShakeSize + 1);
 
-		output.write(input.read_pos(), eHandShakeSize);
+		output.write(input.data() + 1, eHandShakeSize);
 
 		input.clear();
 

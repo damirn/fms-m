@@ -405,7 +405,7 @@ TEST_CASE("malformed input throws rather than crashing")
 	CHECK_THROWS(decode(hx("")));                 // empty
 }
 
-TEST_CASE("amf3 write: byte_writer output is byte-identical to stream_array")
+TEST_CASE("amf3 write: encode/decode round-trips through byte_writer")
 {
 	std::vector<amf3_type_ptr> vals;
 	vals.push_back(I(0));
@@ -424,7 +424,7 @@ TEST_CASE("amf3 write: byte_writer output is byte-identical to stream_array")
 		CHECK(encode(v) == encode_bw(v));
 }
 
-TEST_CASE("amf3 read: byte_reader decodes identically to stream_array")
+TEST_CASE("amf3 read: byte_reader decodes the documented vectors")
 {
 	std::vector<bytes> vecs;
 	vecs.push_back(hx("00"));                          // undefined

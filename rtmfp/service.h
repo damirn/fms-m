@@ -13,7 +13,6 @@
 #include "group.h"
 #include "parser.h"
 #include "session.h"
-#include "stream_array.h"
 #include "byte_writer.h"
 
 namespace fms
@@ -84,7 +83,7 @@ namespace fms
 		parser *m_parser;
 		serializer *m_serializer;
 
-		stream_array m_buffer;
+		byte_writer m_buffer;
 
 		std::chrono::system_clock::time_point m_start;
 

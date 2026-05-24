@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stream_array.h"
+#include "byte_reader.h"
 #include "types.h"
 
 #include <set>
@@ -28,7 +28,7 @@ namespace fms
 			: item(id, false)
 		{}
 
-		static group_ptr deserialize(stream_array &s)
+		static group_ptr deserialize(byte_reader &s)
 		{
 			std::uint8_t cmnd;
 			s >> cmnd;
@@ -39,7 +39,7 @@ namespace fms
 				s >> type;
 				if (type == 0x15)
 				{
-					group_ptr g = std::make_shared<group>(s.read_pos());
+					group_ptr g = std::make_shared<group>(const_cast<std::uint8_t *>(s.read_pos()));
 					g->command() = cmnd;
 					return g;
 				}

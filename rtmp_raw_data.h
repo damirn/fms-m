@@ -17,7 +17,7 @@ namespace fms
 	class rtmp_message;
 	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
 
-	class stream_array;
+	class byte_writer;
 
 	/**
 	* rtmp_raw_data implements basics of RTMP parser. It is the base of all classes
@@ -30,7 +30,7 @@ namespace fms
 		virtual ~rtmp_raw_data()= default;
 
 	protected:
-		boost::tribool parse_data(stream_array &);
+		boost::tribool parse_data(byte_writer &);
 		void handle_message(const rtmp_channel_ptr&);
 		static bool peek_channel_id(byte_reader, std::uint32_t &);   // reader by value: peek without consuming
 

@@ -4,7 +4,6 @@
 
 namespace fms
 {
-	class stream_array;
 	class byte_reader;
 	class byte_writer;
 	class rtmp_header;

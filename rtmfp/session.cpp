@@ -277,10 +277,10 @@ namespace fms
 	{
 		static const std::uint8_t meta_data[] = { 0x54, 0x43, 0x04 }; // fixme: use flow::TC here
 		option_list opts;
-		stream_array tmp;
+		byte_writer tmp;
 		tmp.write(meta_data, sizeof(meta_data));
 		tmp.write_vlu(stream_id);
-		opts.create_option(option::eMetadata, tmp.read_pos(), tmp.available());
+		opts.create_option(option::eMetadata, tmp.data(), static_cast<std::uint16_t>(tmp.size()));
 		// The initiator (rtmfp-cpp/librtmfp) only accepts return flows opened on its
 		// *control* flow (the one carrying stream 0 / the connect) and demultiplexes
 		// streams by the metadata stream id above. So every data/response flow must
@@ -395,8 +395,7 @@ namespace fms
 			if (len > 5) // rtmp message min size
 			{
 				rtmp_header h;
-				stream_array s(const_cast<std::uint8_t *>(data));
-				s.update(len);
+				byte_reader s(data, len);
 				s >> h.message_type() >> h.timestamp();
 				h.timestamp() = boost::asio::detail::socket_ops::network_to_host_long(h.timestamp());
 				auto const i = m_flow_id_to_stream_id.find(f->flow_id());
@@ -426,15 +425,14 @@ namespace fms
 		const std::uint8_t *data = f->message_data(len);
 		if (len > 0 && data)
 		{
-			stream_array s(const_cast<std::uint8_t *>(data));
-			s.update(len);
+			byte_reader s(data, len);
 			group_ptr g = group::deserialize(s);
 			m_service->handle_net_group(g, shared_from_this());
 			m_group_membership.push_back(g);
 			if (g->members().size() > 1)
 			{
 				vlu_t const sending = m_receiving_to_sending_flow[f->flow_id()];
-				stream_array temp;
+				byte_writer temp;
 				for (const auto & i : g->members())
 				{
 					session_ptr const tmp = i.lock();
@@ -447,7 +445,7 @@ namespace fms
 				auto const j = m_sending_flows.find(sending);
 				if (j != m_sending_flows.end())
 				{
-					j->second->add_and_fragment_data(temp.read_pos(), temp.wrote_size());
+					j->second->add_and_fragment_data(temp.data(), static_cast<std::uint32_t>(temp.size()));
 				}
 			}
 			// fixme: if this is not new group, but an existing one, send data on the flow associated with 'f'

@@ -83,7 +83,7 @@ namespace fms
 				const session_ptr& s = *ss;
 				// get_sid() left m_buffer's read cursor at the ciphertext (past the
 				// 4-byte session id); parse over that as a non-owning byte_reader.
-				byte_reader packet(m_buffer.read_pos(), m_buffer.available());
+				byte_reader packet(m_buffer.data() + 4, m_buffer.size() - 4);
 				if (s->parse(packet))
 				{
 					// don't start a second async_send_to while one is in flight (it
@@ -133,22 +133,19 @@ namespace fms
 
 	void service::handle_startup_session()
 	{
-		byte_reader packet(m_buffer.read_pos(), m_buffer.available());
+		byte_reader packet(m_buffer.data() + 4, m_buffer.size() - 4);
 		m_parser->parse(packet);
 		read();
 	}
 
 	std::uint32_t service::get_sid()
 	{
-		std::uint32_t sid;
-		m_buffer >> sid;
-		m_buffer.mark();
-		std::uint32_t x;
-		std::uint32_t y;
-		m_buffer >> x >> y;
-		m_buffer.rewind();
-		sid = sid ^ x ^ y;
-		return sid;
+		byte_reader r(m_buffer.data(), m_buffer.size());
+		std::uint32_t sid = 0;
+		std::uint32_t x = 0;
+		std::uint32_t y = 0;
+		r >> sid >> x >> y;
+		return sid ^ x ^ y;
 	}
 
 	std::optional<session_ptr> service::get_session(std::uint32_t sid)

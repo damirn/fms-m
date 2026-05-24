@@ -265,7 +265,7 @@ namespace fms::rtmp_client
 			if (m_state == eHandshake1Sent)
 			{
 				m_output_buffer->clear();
-				std::uint8_t const *s1 = m_input_buffer->read_pos() + 1;   // skip S0
+				std::uint8_t const *s1 = m_input_buffer->data() + 1;   // skip S0
 				if (m_use_fp9_hs)
 					write_signed_c2(s1);
 				else

@@ -3,7 +3,6 @@
 #include "client_session.h"
 #include "parser.h"
 #include "types.h"
-#include "stream_array.h"
 #include "byte_reader.h"
 
 #include <list>

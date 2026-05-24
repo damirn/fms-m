@@ -7,7 +7,7 @@
 #include <string>
 
 #include "basic_rtmp_connection.h"
-#include "stream_array.h"
+#include "byte_writer.h"
 
 namespace fms
 {
@@ -48,7 +48,7 @@ namespace fms
 
 		void close() override;
 
-		boost::tribool handle_data(stream_array &, byte_writer &);
+		boost::tribool handle_data(byte_writer &, byte_writer &);
 		void serialize_result(byte_writer &);
 
 		// Only used when result is not needed
@@ -62,7 +62,7 @@ namespace fms
 		enum session_state { eCSIdle, eCSReadHS, eCSReadCommands, eCSInvalid = 0xffff };
 		enum commands { eCmdInvalid, eCmdFcs, eCmdOpen, eCmdIdle, eCmdSend, eCmdClose };
 
-		boost::tribool handle_handshake(stream_array &, byte_writer &);
+		boost::tribool handle_handshake(byte_writer &, byte_writer &);
 		void handle_results(byte_writer &);
 		void serialize_message(const rtmp_message_ptr&, byte_writer &);
 
@@ -94,7 +94,7 @@ namespace fms
 			return std::static_pointer_cast<rtmpt_session>(basic_rtmp_connection::shared_from_this());
 		}
 
-		stream_array m_remaining_data;
+		byte_writer m_remaining_data;
 	};
 
 	using rtmpt_session_ptr = std::shared_ptr<rtmpt_session>;
