@@ -668,7 +668,6 @@ namespace fms
 	template void amf0::write_typed_object<W>(W &, const amf0_typed_object_ptr &); \
 	template void amf0::write_amf3_container<W>(W &, const amf0_amf3_container_ptr &); \
 	template void amf0::write<W>(W &, const amf0_type_ptr &);
-	AMF0_WRITE_INSTANCES(stream_array)
 	AMF0_WRITE_INSTANCES(byte_writer)
 #undef AMF0_WRITE_INSTANCES
 
@@ -688,7 +687,6 @@ namespace fms
 	template bool amf0::read_typed_object<R>(R &, const amf0_typed_object_ptr &); \
 	template bool amf0::read_amf3_container<R>(R &, const amf0_amf3_container_ptr &); \
 	template amf0_type_ptr amf0::read<R>(R &);
-	AMF0_READ_INSTANCES(stream_array)
 	AMF0_READ_INSTANCES(byte_reader)
 #undef AMF0_READ_INSTANCES
 }

@@ -17,17 +17,15 @@ namespace
 	bytes encode(const amf0_type_ptr &v)
 	{
 		amf0 a;
-		stream_array buf;
+		byte_writer buf;
 		a.write(buf, v);
-		return bytes(buf.read_pos(), buf.read_pos() + buf.available());
+		return bytes(buf.data(), buf.data() + buf.size());
 	}
 
 	amf0_type_ptr decode(const bytes &b)
 	{
 		amf0 a;
-		stream_array buf;
-		if (!b.empty())
-			buf.write(b.data(), b.size());
+		byte_reader buf(b.data(), b.size());
 		return a.read(buf);
 	}
 

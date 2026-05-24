@@ -2,7 +2,6 @@
 #include "rtmp_protocol.h"
 #include "rtmp_header.h"
 #include "rtmp_so_message.h"
-#include "stream_array.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 #include "amf3.h"
@@ -227,9 +226,7 @@ namespace fms
 		}
 	}
 
-	// The output buffer is stream_array today (RTMPT server + RTMP client) and
-	// byte_writer for the RTMP server connection; chunk_buffer cascades from
-	// each. GCC needs both spelled out explicitly.
-	template void rtmp_protocol::serialize<stream_array>(stream_array &, const rtmp_message_ptr &, rtmp_header &, rtmp_header &);
+	// All RTMP/RTMPT output buffers are byte_writer now; chunk_buffer cascades
+	// from serialize's instantiation. GCC needs it spelled out explicitly.
 	template void rtmp_protocol::serialize<byte_writer>(byte_writer &, const rtmp_message_ptr &, rtmp_header &, rtmp_header &);
 }

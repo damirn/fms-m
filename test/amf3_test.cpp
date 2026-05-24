@@ -19,9 +19,9 @@ namespace
 	bytes encode(const amf3_type_ptr &v)
 	{
 		amf3 a;
-		stream_array buf;
+		byte_writer buf;
 		a.write(buf, v);
-		return bytes(buf.read_pos(), buf.read_pos() + buf.available());
+		return bytes(buf.data(), buf.data() + buf.size());
 	}
 
 	// same value, serialized through byte_writer instead of stream_array
@@ -37,9 +37,7 @@ namespace
 	amf3_type_ptr decode(const bytes &b)
 	{
 		amf3 a;
-		stream_array buf;
-		if (!b.empty())
-			buf.write(b.data(), b.size());
+		byte_reader buf(b.data(), b.size());
 		return a.read(buf);
 	}
 

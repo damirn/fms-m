@@ -431,8 +431,6 @@ namespace fms
 
 	// Explicit instantiations: the serializers run against stream_array (the live
 	// output path) and byte_writer (the migration target / tests).
-	template void rtmp_header::serialize<stream_array>(stream_array &, rtmp_header &);
 	template void rtmp_header::serialize<byte_writer>(byte_writer &, rtmp_header &);
-	template void rtmp_header::serialize_header_continue_size<stream_array>(stream_array &);
 	template void rtmp_header::serialize_header_continue_size<byte_writer>(byte_writer &);
 }

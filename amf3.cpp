@@ -468,7 +468,6 @@ namespace fms
 	template void amf3::write_bytearray<W>(W &, const amf3_bytearray_type_ptr &); \
 	template void amf3::write_array<W>(W &, const amf3_array_type_ptr &); \
 	template void amf3::write_object<W>(W &, const amf3_object_type_ptr &);
-	AMF3_WRITE_INSTANCES(stream_array)
 	AMF3_WRITE_INSTANCES(byte_writer)
 #undef AMF3_WRITE_INSTANCES
 
@@ -485,7 +484,6 @@ namespace fms
 	template amf3_type_ptr amf3::read_array<R>(R &); \
 	template amf3_type_ptr amf3::read_object<R>(R &); \
 	template std::uint32_t amf3::read_u29<R>(R &);
-	AMF3_READ_INSTANCES(stream_array)
 	AMF3_READ_INSTANCES(byte_reader)
 #undef AMF3_READ_INSTANCES
 }
