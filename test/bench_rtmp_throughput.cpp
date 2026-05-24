@@ -1,33 +1,38 @@
-// End-to-end RTMP throughput benchmark: how many GB/s can we push through our
-// own client and server on the relay path (publisher -> server -> subscriber)?
+// RTMP relay throughput benchmark against a SINGLE fms-m server.
 //
-// Topology: the fms-m server runs as a subprocess; a subscriber and a publisher
-// each run on their own thread + io_context (so the single-threaded client isn't
-// the artificial bottleneck). The subscriber attaches first, then the publisher
-// streams N identical video frames of a fixed size as fast as the pipeline drains.
-// Throughput = media payload bytes delivered to the subscriber / wall-clock from
-// first send to last receive. Loopback is not the bottleneck; this measures the
-// CPU cost of serialize (client) + chunk-parse/route/serialize (server) + parse
-// (client).
+// One server process is spawned; N independent stream pairs (each a publisher +
+// a subscriber on its own stream name) are attached to it and run concurrently.
+// This measures how one server scales as concurrent streams are added -- and,
+// via /proc accounting, how many CPU cores the server itself burns vs the whole
+// box, so you can see where it saturates.
 //
-//   ./bench_rtmp_throughput [frame_bytes=16384] [total_MB=2048]
+//   ./bench_rtmp_throughput [frame_B=16384] [MB_per_stream=512] [chunk_B=60000]
+//                           [n_streams=1] [server_threads=8] [base_port=26000]
 //
-// Not a correctness test — run by hand.
+// Each stream reuses one video frame (same channel/size -> compact headers) and
+// blasts MB_per_stream of it as fast as the relay drains. Throughput is media
+// payload delivered to the subscribers over the concurrent wall-clock window.
+// Not a correctness test -- run by hand.
 
 #include <exception>
 
 #include <boost/asio.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -44,18 +49,57 @@ using clk = std::chrono::steady_clock;
 
 namespace
 {
-	std::atomic<bool> g_sub_ready{false};
-	std::atomic<bool> g_done{false};
-	std::atomic<std::int64_t> g_t_start{0};
-	std::atomic<std::int64_t> g_t_end{0};
-
 	std::int64_t now_ns() { return clk::now().time_since_epoch().count(); }
 
-	// fork+exec the server; SIGKILL it on teardown.
+	// ---- CPU accounting via /proc ------------------------------------------
+	// server CPU (utime+stime) for a pid, in seconds.
+	double proc_cpu_secs(pid_t pid)
+	{
+		char path[64];
+		std::snprintf(path, sizeof(path), "/proc/%d/stat", (int)pid);
+		FILE *f = std::fopen(path, "r");
+		if (!f) return 0.0;
+		// field 14 = utime, 15 = stime (after "comm" which may contain spaces/parens)
+		long utime = 0, stime = 0;
+		char buf[4096];
+		if (std::fgets(buf, sizeof(buf), f))
+		{
+			char *rp = std::strrchr(buf, ')');   // skip past "(comm)"; state field is non-numeric
+			if (rp)
+			{
+				// tokens after ')': 1=state(field3) ... 12=utime(field14) 13=stime(field15)
+				int tok = 0;
+				for (char *t = std::strtok(rp + 1, " "); t; t = std::strtok(nullptr, " "))
+				{
+					++tok;
+					if (tok == 12) utime = std::strtol(t, nullptr, 10);
+					else if (tok == 13) { stime = std::strtol(t, nullptr, 10); break; }
+				}
+			}
+		}
+		std::fclose(f);
+		return double(utime + stime) / double(sysconf(_SC_CLK_TCK));
+	}
+
+	// whole-box busy CPU (all cores) in seconds, from /proc/stat line 1.
+	double box_cpu_secs()
+	{
+		FILE *f = std::fopen("/proc/stat", "r");
+		if (!f) return 0.0;
+		char label[8]; long user, nice, sys, idle, iowait, irq, softirq, steal;
+		int const n = std::fscanf(f, "%7s %ld %ld %ld %ld %ld %ld %ld %ld",
+		                          label, &user, &nice, &sys, &idle, &iowait, &irq, &softirq, &steal);
+		std::fclose(f);
+		if (n < 9) return 0.0;
+		long const busy = user + nice + sys + irq + softirq + steal;   // exclude idle+iowait
+		return double(busy) / double(sysconf(_SC_CLK_TCK));
+	}
+
+	// fork+exec one server; SIGKILL it on teardown.
 	struct server_process
 	{
 		pid_t pid{-1};
-		server_process(const std::string &dir, int rtmp_port)
+		server_process(const std::string &dir, int rtmp_port, int threads)
 		{
 			pid = ::fork();
 			if (pid == 0)
@@ -65,9 +109,10 @@ namespace
 				std::string const R = std::to_string(rtmp_port);
 				std::string const T = std::to_string(rtmp_port + 1);
 				std::string const K = std::to_string(rtmp_port + 2);
+				std::string const th = std::to_string(threads);
 				::execl(FMS_SERVER_BIN, FMS_SERVER_BIN,
 				        "-R", R.c_str(), "-T", T.c_str(), "-K", K.c_str(),
-				        "-o", dir.c_str(), "-P", dir.c_str(), "-t", "1",
+				        "-o", dir.c_str(), "-P", dir.c_str(), "-t", th.c_str(),
 				        static_cast<char *>(nullptr));
 				::_exit(127);
 			}
@@ -79,18 +124,29 @@ namespace
 		}
 	};
 
-	// ---- subscriber: attach, count frames, stamp last-receive ----------------
+	// per-stream shared state (crosses the pub and sub threads)
+	struct stream_state
+	{
+		std::atomic<bool> sub_ready{false};
+		std::atomic<std::uint64_t> frames{0};
+		std::atomic<std::int64_t> t_start{0};
+		std::atomic<std::int64_t> t_end{0};
+		std::atomic<bool> done{false};
+		std::uint64_t target = 0;
+	};
+
+	// ---- subscriber --------------------------------------------------------
 	struct bench_sink : av_sink
 	{
-		std::uint64_t frames = 0;
-		std::uint64_t target = 0;
-		std::function<void()> on_target;
+		stream_state *st = nullptr;
+		boost::asio::io_context *io = nullptr;
 		void on_video_frame(fms::rtmp_message_video_data_ptr) override
 		{
-			if (++frames == target)
+			if (st->frames.fetch_add(1) + 1 == st->target)
 			{
-				g_t_end.store(now_ns());
-				if (on_target) on_target();
+				st->t_end.store(now_ns());
+				st->done.store(true);
+				io->stop();
 			}
 		}
 		void on_audio_frame(fms::rtmp_message_audio_data_ptr) override {}
@@ -102,13 +158,15 @@ namespace
 		boost::asio::io_context &io;
 		net_stream_ptr ns;
 		bench_sink sink;
+		stream_state *st = nullptr;
 		explicit sub_ns(boost::asio::io_context &io_) : io(io_) {}
 		void on_status(const std::string &s) override
 		{
 			if (s == "NetStream.Play.Start")
 			{
+				sink.st = st; sink.io = &io;
 				ns->set_sink(&sink);
-				g_sub_ready.store(true);
+				st->sub_ready.store(true);
 			}
 			else if (s == "NetStream.Play.Stop" || s == "NetStream.Play.UnpublishNotify")
 				io.stop();
@@ -134,13 +192,14 @@ namespace
 		}
 	};
 
-	// ---- publisher: publish, then stream N frames as fast as it drains -------
+	// ---- publisher ---------------------------------------------------------
 	struct pub_ns : net_stream_event_handler
 	{
 		boost::asio::io_context &io;
 		net_connection_ptr conn;
 		net_stream_ptr ns;
 		fms::rtmp_message_video_data_ptr frame;
+		stream_state *st = nullptr;
 		std::uint64_t count = 0;
 		std::uint32_t out_chunk = 128;
 		bool started = false;
@@ -150,11 +209,10 @@ namespace
 			if (s == "NetStream.Publish.Start")
 				try_start();
 		}
-		// wait until the subscriber is attached, then blast every frame
 		void try_start()
 		{
 			if (started) return;
-			if (!g_sub_ready.load())
+			if (!st->sub_ready.load())
 			{
 				auto t = std::make_shared<boost::asio::steady_timer>(io);
 				t->expires_after(std::chrono::milliseconds(2));
@@ -162,12 +220,12 @@ namespace
 				return;
 			}
 			started = true;
-			frame->stream_id() = ns->stream_id();   // match the published stream
+			frame->stream_id() = ns->stream_id();
 			if (out_chunk > 128 && conn)
-				conn->set_output_chunk_size(out_chunk);   // negotiate a larger chunk size first
-			g_t_start.store(now_ns());
+				conn->set_output_chunk_size(out_chunk);
+			st->t_start.store(now_ns());
 			for (std::uint64_t i = 0; i < count; ++i)
-				ns->send_msg(frame);   // reuse one message: same channel/size -> compact headers
+				ns->send_msg(frame);
 		}
 	};
 
@@ -188,76 +246,144 @@ namespace
 	};
 
 	std::string url_for(int port) { return "rtmp://127.0.0.1:" + std::to_string(port) + "/bcast"; }
+
+	// one stream = its own sub thread + pub thread + io_contexts
+	struct stream_pair
+	{
+		stream_state st;
+		std::unique_ptr<boost::asio::io_context> sub_io, pub_io;
+		std::unique_ptr<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> sub_g, pub_g;
+		std::unique_ptr<sub_nc> sub;
+		std::unique_ptr<pub_nc> pub;
+		std::thread sub_t, pub_t;
+	};
 }
 
 int main(int argc, char **argv)
 {
 	std::uint32_t const frame_bytes = argc > 1 ? std::strtoul(argv[1], nullptr, 10) : 16384;
-	std::uint64_t const total_bytes = (argc > 2 ? std::strtoull(argv[2], nullptr, 10) : 2048) * 1024ull * 1024ull;
-	std::uint32_t const out_chunk = argc > 3 ? std::strtoul(argv[3], nullptr, 10) : 128;
-	int const port = argc > 4 ? std::atoi(argv[4]) : 26000;
+	std::uint64_t const total_bytes = (argc > 2 ? std::strtoull(argv[2], nullptr, 10) : 512) * 1024ull * 1024ull;
+	std::uint32_t const out_chunk = argc > 3 ? std::strtoul(argv[3], nullptr, 10) : 60000;
+	int const n_streams = argc > 4 ? std::atoi(argv[4]) : 1;
+	int const server_threads = argc > 5 ? std::atoi(argv[5]) : 8;
+	int const port = argc > 6 ? std::atoi(argv[6]) : 26000;
 	std::uint64_t const n_frames = total_bytes / frame_bytes;
 
-	std::string const dir = "/tmp/fms_bench_media_" + std::to_string(port);
+	std::string const dir = "/tmp/fms_bench_media";
 	::mkdir(dir.c_str(), 0755);
-	server_process server(dir, port);
 
-	// subscriber first, on its own thread
-	boost::asio::io_context sub_io;
-	auto sub_guard = boost::asio::make_work_guard(sub_io);
-	sub_nc sub(sub_io);
-	sub.stream_name = "bench";
-	sub.nseh.sink.target = n_frames;
-	sub.nseh.sink.on_target = [&] { g_done.store(true); sub_io.stop(); };
-	sub.conn = std::make_shared<net_connection>(sub_io, sub, true);
-	sub.conn->connect(url_for(port));
-	std::thread sub_t([&] { sub_io.run(); });
+	server_process server(dir, port, server_threads);
 
-	// wait for the subscriber to attach (Play.Start)
-	for (int i = 0; i < 2000 && !g_sub_ready.load(); ++i)
-		std::this_thread::sleep_for(std::chrono::milliseconds(2));
+	std::vector<std::unique_ptr<stream_pair>> pairs;
+	pairs.reserve(n_streams);
 
-	// publisher, on its own thread
-	boost::asio::io_context pub_io;
-	auto pub_guard = boost::asio::make_work_guard(pub_io);
-	pub_nc pub(pub_io);
-	pub.stream_name = "bench";
-	pub.nseh.count = n_frames;
-	pub.nseh.out_chunk = out_chunk;
-	pub.nseh.frame = std::make_shared<fms::rtmp_message_video_data>(frame_bytes);
-	pub.nseh.frame->data()[0] = 0x17;   // keyframe + AVC, so every frame relays
-	pub.nseh.frame->data()[1] = 0x01;   // NALU (not a config record)
-	for (std::uint32_t i = 2; i < frame_bytes; ++i) pub.nseh.frame->data()[i] = static_cast<std::uint8_t>(i);
-	pub.nseh.frame->channel_id() = 6;
-	pub.nseh.frame->stream_id() = 0;    // set to the real stream id in try_start()
-	pub.nseh.frame->timestamp() = 0;
-	pub.conn = std::make_shared<net_connection>(pub_io, pub, true);
-	pub.nseh.conn = pub.conn;
-	pub.conn->connect(url_for(port));
-	std::thread pub_t([&] { pub_io.run(); });
+	// build the reusable frame template (one shared payload for every stream)
+	auto make_frame = [&] {
+		auto f = std::make_shared<fms::rtmp_message_video_data>(frame_bytes);
+		f->data()[0] = 0x17; f->data()[1] = 0x01;   // keyframe + AVC NALU -> always relayed
+		for (std::uint32_t i = 2; i < frame_bytes; ++i) f->data()[i] = static_cast<std::uint8_t>(i);
+		f->channel_id() = 6; f->stream_id() = 0; f->timestamp() = 0;
+		return f;
+	};
 
-	// wait for completion (or a hard timeout)
-	auto const deadline = clk::now() + std::chrono::seconds(120);
-	while (!g_done.load() && clk::now() < deadline)
-		std::this_thread::sleep_for(std::chrono::milliseconds(20));
-
-	pub_guard.reset(); sub_guard.reset();
-	pub_io.stop(); sub_io.stop();
-	if (pub_t.joinable()) pub_t.join();
-	if (sub_t.joinable()) sub_t.join();
-
-	if (!g_done.load())
+	// subscribers first, so every stream is attached before its publisher sends
+	for (int i = 0; i < n_streams; ++i)
 	{
-		std::printf("TIMEOUT: received %llu/%llu frames\n",
-		            (unsigned long long)sub.nseh.sink.frames, (unsigned long long)n_frames);
-		return 1;
+		auto sp = std::make_unique<stream_pair>();
+		sp->st.target = n_frames;
+		sp->sub_io = std::make_unique<boost::asio::io_context>();
+		sp->sub_g = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
+			boost::asio::make_work_guard(*sp->sub_io));
+		sp->sub = std::make_unique<sub_nc>(*sp->sub_io);
+		sp->sub->stream_name = "bench" + std::to_string(i);
+		sp->sub->nseh.st = &sp->st;
+		sp->sub->conn = std::make_shared<net_connection>(*sp->sub_io, *sp->sub, true);
+		sp->sub->conn->connect(url_for(port));
+		auto *io = sp->sub_io.get();
+		sp->sub_t = std::thread([io] { io->run(); });
+		pairs.push_back(std::move(sp));
 	}
 
-	double const secs = double(g_t_end.load() - g_t_start.load()) / 1e9;
-	double const gb = double(n_frames * frame_bytes) / (1024.0 * 1024.0 * 1024.0);
-	std::printf("frame=%u B  chunk=%u B  frames=%llu  payload=%.2f GiB  elapsed=%.3f s\n",
-	            frame_bytes, out_chunk, (unsigned long long)n_frames, gb, secs);
-	std::printf("  throughput: %.2f GiB/s  (%.0f MiB/s, %.0f frames/s)\n",
-	            gb / secs, gb * 1024.0 / secs, n_frames / secs);
+	for (auto &sp : pairs)
+		for (int k = 0; k < 2000 && !sp->st.sub_ready.load(); ++k)
+			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
+	// CPU + wall baseline, then launch all publishers
+	double const srv_cpu0 = proc_cpu_secs(server.pid);
+	double const box_cpu0 = box_cpu_secs();
+	auto const wall0 = clk::now();
+
+	for (int i = 0; i < n_streams; ++i)
+	{
+		auto &sp = pairs[i];
+		sp->pub_io = std::make_unique<boost::asio::io_context>();
+		sp->pub_g = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
+			boost::asio::make_work_guard(*sp->pub_io));
+		sp->pub = std::make_unique<pub_nc>(*sp->pub_io);
+		sp->pub->stream_name = "bench" + std::to_string(i);
+		sp->pub->nseh.st = &sp->st;
+		sp->pub->nseh.count = n_frames;
+		sp->pub->nseh.out_chunk = out_chunk;
+		sp->pub->nseh.frame = make_frame();
+		sp->pub->conn = std::make_shared<net_connection>(*sp->pub_io, *sp->pub, true);
+		sp->pub->nseh.conn = sp->pub->conn;
+		sp->pub->conn->connect(url_for(port));
+		auto *io = sp->pub_io.get();
+		sp->pub_t = std::thread([io] { io->run(); });
+	}
+
+	// wait for all streams to finish (or time out)
+	auto const deadline = clk::now() + std::chrono::seconds(300);
+	int done = 0;
+	while (done < n_streams && clk::now() < deadline)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		done = 0;
+		for (auto &sp : pairs) if (sp->st.done.load()) ++done;
+	}
+	auto const wall1 = clk::now();
+	double const srv_cpu1 = proc_cpu_secs(server.pid);
+	double const box_cpu1 = box_cpu_secs();
+
+	// shut the client io down
+	for (auto &sp : pairs)
+	{
+		if (sp->pub_g) sp->pub_g->reset();
+		sp->sub_g->reset();
+		if (sp->pub_io) sp->pub_io->stop();
+		sp->sub_io->stop();
+		if (sp->pub_t.joinable()) sp->pub_t.join();
+		if (sp->sub_t.joinable()) sp->sub_t.join();
+	}
+
+	// concurrent window = first send .. last receive across all streams
+	std::int64_t t_first = INT64_MAX, t_last = 0;
+	std::uint64_t frames_ok = 0;
+	for (auto &sp : pairs)
+	{
+		if (sp->st.done.load())
+		{
+			t_first = std::min(t_first, sp->st.t_start.load());
+			t_last = std::max(t_last, sp->st.t_end.load());
+			frames_ok += sp->st.frames.load();
+			++done;
+		}
+	}
+
+	if (done < n_streams)
+		std::printf("WARNING: only %d/%d streams finished\n", done, n_streams);
+
+	double const secs = double(t_last - t_first) / 1e9;
+	double const wall = std::chrono::duration<double>(wall1 - wall0).count();
+	double const gb = double(frames_ok) * frame_bytes / (1024.0 * 1024.0 * 1024.0);
+	double const srv_cores = (srv_cpu1 - srv_cpu0) / wall;
+	double const box_cores = (box_cpu1 - box_cpu0) / wall;
+
+	std::printf("streams=%d  frame=%u B  chunk=%u B  srv_threads=%d  payload=%.2f GiB\n",
+	            n_streams, frame_bytes, out_chunk, server_threads, gb);
+	std::printf("  aggregate: %.2f GiB/s  (%.0f MiB/s)  over %.3f s\n",
+	            gb / secs, gb * 1024.0 / secs, secs);
+	std::printf("  cpu: server=%.2f cores  box=%.2f cores  (server %.0f%% of box)\n",
+	            srv_cores, box_cores, box_cores > 0 ? 100.0 * srv_cores / box_cores : 0.0);
 	return 0;
 }
