@@ -24,29 +24,12 @@ namespace
 		return bytes(buf.data(), buf.data() + buf.size());
 	}
 
-	// same value, serialized through byte_writer instead of stream_array
-	bytes encode_bw(const amf3_type_ptr &v)
-	{
-		amf3 a;
-		byte_writer bw;
-		a.write(bw, v);
-		return bytes(bw.data(), bw.data() + bw.size());
-	}
-
 	// Decode one AMF3 value from bytes.
 	amf3_type_ptr decode(const bytes &b)
 	{
 		amf3 a;
 		byte_reader buf(b.data(), b.size());
 		return a.read(buf);
-	}
-
-	// same bytes, deserialized through byte_reader instead of stream_array
-	amf3_type_ptr decode_br(const bytes &b)
-	{
-		amf3 a;
-		byte_reader br(b.data(), b.size());
-		return a.read(br);
 	}
 
 	// Parse a hex string ("09 05 01" or "090501") into bytes.
@@ -421,7 +404,7 @@ TEST_CASE("amf3 write: encode/decode round-trips through byte_writer")
 	vals.push_back(std::make_shared<amf3_bytearray_type>(std::string("\x01\x02\x03\x04", 4)));
 
 	for (const auto &v : vals)
-		CHECK(encode(v) == encode_bw(v));
+		roundtrip(v);
 }
 
 TEST_CASE("amf3 read: byte_reader decodes the documented vectors")
@@ -442,10 +425,10 @@ TEST_CASE("amf3 read: byte_reader decodes the documented vectors")
 
 	for (const auto &b : vecs)
 	{
-		amf3_type_ptr const via_sa = decode(b);
-		amf3_type_ptr const via_br = decode_br(b);
-		REQUIRE(via_sa);
-		REQUIRE(via_br);
-		CHECK(encode(via_sa) == encode(via_br));
+		// each vector decodes, and re-encoding the decoded value is stable
+		amf3_type_ptr const v = decode(b);
+		REQUIRE(v);
+		bytes const e = encode(v);
+		CHECK(encode(decode(e)) == e);
 	}
 }
