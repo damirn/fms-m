@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "video_bcast_application.h"
+#include "byte_writer.h"
 #include "config.h"
 #include "flv_writer.h"
 #include "logging.h"
@@ -603,12 +604,12 @@ namespace fms
 				auto const j = m_flv_writers.find(cid);
 				if (j != m_flv_writers.end())
 				{
-					stream_array tmp;
+					byte_writer tmp;
 					amf0_string_ptr const str(new amf0_string("onMetaData"));
 					amf0 a;
 					a.write(tmp, str);
 					a.write(tmp, *i);
-					j->second->write_script((const char *) tmp.read_pos(), tmp.available(), 0);
+					j->second->write_script((const char *) tmp.data(), tmp.size(), 0);
 				}
 			}
 		}

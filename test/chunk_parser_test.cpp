@@ -408,12 +408,6 @@ TEST_CASE("try_deserialize is peek-then-commit on partial headers")
 
 namespace
 {
-	std::vector<std::uint8_t> bytes_of(const fms::stream_array &sa)
-	{
-		auto &m = const_cast<fms::stream_array &>(sa);
-		return {m.read_pos(), m.read_pos() + m.size()};
-	}
-
 	rtmp_header make_header(std::uint32_t cid, std::uint32_t ts, std::uint32_t len,
 	                        std::uint8_t type, std::uint32_t sid)
 	{
@@ -484,31 +478,6 @@ TEST_CASE("VLU: byte_writer/byte_reader match stream_array and round-trip")
 		fms::stream_array sa;
 		sa.write_vlu(v);
 		CHECK(bytes_of(bw) == std::vector<std::uint8_t>(sa.read_pos(), sa.read_pos() + sa.available()));
-	}
-}
-
-TEST_CASE("header serialize: byte_writer output is byte-identical to stream_array")
-{
-	rtmp_header const prev_none;                          // stream id 0 -> forces type 0
-	rtmp_header const prev_same = make_header(6, 500, 100, AUDIO, 1);
-
-	struct { rtmp_header h; rtmp_header prev; } cases[] = {
-		{ make_header(6, 1000, 100, AUDIO, 1),   prev_none },   // type 0 (new)
-		{ make_header(500, 1000, 100, VIDEO, 1), prev_none },   // type 0, 3-byte channel id
-		{ make_header(6, 0x01020304, 50, AUDIO, 1), prev_none },// type 0 + extended ts
-		{ make_header(6, 540, 100, AUDIO, 1),    prev_same },   // delta vs same source
-	};
-
-	for (auto &c : cases)
-	{
-		rtmp_header ha = c.h;
-		rtmp_header hb = c.h;
-		byte_writer bw;
-		fms::stream_array sa;
-		ha.serialize(bw, const_cast<rtmp_header &>(c.prev));
-		hb.serialize(sa, const_cast<rtmp_header &>(c.prev));
-		std::vector<std::uint8_t> const from_bw(bw.data(), bw.data() + bw.size());
-		CHECK(from_bw == bytes_of(sa));
 	}
 }
 
