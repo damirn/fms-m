@@ -1,16 +1,15 @@
 #include "pch.h"
 
+#include <boost/algorithm/string.hpp>
+
 #include "config.h"
 
 static const char version[] = "0.1.1";
 
-config *config::m_instance = nullptr;
-
 config *config::instance()
 {
-	if (m_instance == nullptr)
-		m_instance = new config;
-	return m_instance;
+	static config inst;
+	return &inst;
 }
 
 const char *config::version_string() 
@@ -107,19 +106,8 @@ bool config::check_params()
 			std::cout << "No stream list given" << std::endl;
 			return false;
 		}
-		
-		std::string item;
-		for (unsigned int i = 0; i < m_stream_list_str.length(); ++i)
-		{
-			if (m_stream_list_str[i] != ',')
-				item += m_stream_list_str[i];
-			else
-			{
-				m_stream_list.push_back(item);
-				item = "";
-			}
-		}
-		m_stream_list.push_back(item);
+
+		boost::algorithm::split(m_stream_list, m_stream_list_str, boost::algorithm::is_any_of(","));
 	}
 
 	return true;

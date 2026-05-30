@@ -10,7 +10,7 @@ namespace fms::rtmp_client
 		if (reason == "NetConnection.Connect.Success")
 		{
 			std::cout << "Connected!" << std::endl;
-			net_stream_ptr const ns(new net_stream(m_client, m_nseh));
+			net_stream_ptr const ns = std::make_shared<net_stream>(m_client, m_nseh);
 			m_nseh.set_net_stream(ns);
 			std::string const cmd = config::instance()->command();
 			if (cmd == "play")
@@ -34,7 +34,7 @@ namespace fms::rtmp_client
 			ns_event_handler *eh = new ns_event_handler(m_service);
 			m_ns_event_handlers.push_back(eh);
 
-			net_stream_ptr const ns(new net_stream(m_client, *eh));
+			net_stream_ptr const ns = std::make_shared<net_stream>(m_client, *eh);
 			eh->set_net_stream(ns);
 			m_net_streams.push_back(ns);
 
