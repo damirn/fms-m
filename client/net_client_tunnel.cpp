@@ -1,57 +1,129 @@
 #include "pch.h"
 
 #include "net_client_tunnel.h"
-#include "byte_reader.h"
-#include "util.h"
+
+namespace beast = boost::beast;
+namespace http = boost::beast::http;
 
 namespace fms::rtmp_client
 {
 	void net_client_tunnel::handle_connect(const boost::system::error_code &err, boost::asio::ip::tcp::resolver::iterator endpoint_iterator)
 	{
-		if (!err)
+		if (err)
 		{
-			m_connected = true;
-			send_open();
-		}
-		else
 			net_client::handle_connect(err, endpoint_iterator);
+			return;
+		}
+		m_connected = true;
+		m_state = eOpening;
+		m_cmd = eCmdOpen;
+		m_request_id = 1;             // the open request uses sequence 1
+		send_command("open", {0x00});
+		m_request_id = 0;             // send/idle then count from 0 (the session's start seq)
 	}
 
 	void net_client_tunnel::read_data(std::size_t)
 	{
-		// no-op
+		// no-op: the RTMP layer's read requests are satisfied by the poll loop.
 	}
 
 	void net_client_tunnel::write_data()
 	{
-		boost::asio::streambuf b;
-		std::ostream os(&b);
-
-		if (m_state == eReady)
-		{
-			m_write_in_progress = true;
-			m_prev_cmd = eCmdSend;
-			prepare_http_header("send", os);
-			m_sending_header = true;
-			m_input_buffer_int.clear();
-
-			boost::asio::async_write(m_socket, b.data(),
-			                         [this](const boost::system::error_code &ec, std::size_t n) { write_complete(ec, n); });
-		}
+		if (m_state != eReady)
+			return;
+		m_write_in_progress = true;
+		m_cmd = eCmdSend;
+		std::vector<std::uint8_t> body(m_output_buffer.data(), m_output_buffer.data() + m_output_buffer.size());
+		m_output_buffer.clear();
+		send_command("send", std::move(body));
 	}
 
-	void net_client_tunnel::prepare_http_header(const std::string &command, std::ostream &str)
+	void net_client_tunnel::send_command(const char *verb, std::vector<std::uint8_t> body)
 	{
-		str << "POST /" << command << "/";
+		std::string target = std::string("/") + verb + "/";
 		if (!m_cid.empty())
-			str << m_cid << "/";
-		str << m_request_id++ << " HTTP/1.1\r\n"
-				<< "Content-Type: application/x-fcs\r\n"
-				<< "User-Agent: Shockwave Flash\r\n"
-				<< "Host: " << m_host << "\r\n"
-				<< "Content-Length: " << m_output_buffer.size() << "\r\n"
-				<< "Connection: Keep-Alive\r\n"
-				<< "Cache-Control: no-cache\r\n\r\n";
+			target += m_cid + "/";
+		target += std::to_string(m_request_id++);
+
+		m_request = request_t{};
+		m_request.method(http::verb::post);
+		m_request.target(target);
+		m_request.set(http::field::content_type, "application/x-fcs");
+		m_request.set(http::field::user_agent, "Shockwave Flash");
+		m_request.set(http::field::host, m_host);
+		m_request.keep_alive(true);
+		m_request.set(http::field::cache_control, "no-cache");
+		m_request.body() = std::move(body);
+		m_request.prepare_payload();
+
+		http::async_write(m_socket, m_request,
+			[this](const boost::system::error_code &ec, std::size_t n) { on_write(ec, n); });
+	}
+
+	void net_client_tunnel::on_write(const boost::system::error_code &e, std::size_t bytes)
+	{
+		if (e)
+		{
+			close_socket();
+			m_write_cb(false, bytes);
+			return;
+		}
+		m_parser.emplace();
+		m_parser->body_limit(16 * 1024 * 1024);
+		http::async_read(m_socket, m_read_buffer, *m_parser,
+			[this](const boost::system::error_code &ec, std::size_t n) { on_read(ec, n); });
+	}
+
+	void net_client_tunnel::on_read(const boost::system::error_code &e, std::size_t bytes)
+	{
+		if (e)
+		{
+			close_socket();
+			m_read_cb(false, bytes);
+			return;
+		}
+
+		std::vector<std::uint8_t> const &body = m_parser->get().body();
+
+		if (m_state == eOpening)
+		{
+			// open response body is "<cid>\n"
+			m_cid.clear();
+			for (std::uint8_t const c : body)
+			{
+				if (c == 0x0a)
+					break;
+				m_cid.push_back(static_cast<char>(c));
+			}
+			m_state = eReady;
+			arm_timer();
+			m_connect_cb(true, "");
+			return;
+		}
+
+		m_write_in_progress = false;
+		deliver(body);
+	}
+
+	void net_client_tunnel::deliver(const std::vector<std::uint8_t> &body)
+	{
+		// A 0-length response has nothing to strip or forward (matches the old
+		// guard that kept a peer returning an empty body from crashing us).
+		if (body.empty())
+			return;
+
+		// Both send and idle responses are [poll-interval byte][tunneled RTMP...].
+		// A send response also acknowledges the write.
+		if (m_cmd == eCmdSend)
+			m_write_cb(true, body.size() - 1);
+		else   // eCmdIdle
+			set_poll_interval(body[0]);
+
+		if (body.size() > 1)
+		{
+			m_input_buffer.write(body.data() + 1, body.size() - 1);
+			m_read_cb(true, body.size() - 1);
+		}
 	}
 
 	void net_client_tunnel::arm_timer()
@@ -62,266 +134,28 @@ namespace fms::rtmp_client
 
 	void net_client_tunnel::handle_timer(const boost::system::error_code &e)
 	{
-		static std::uint8_t b0 = 0;
-		if (!e)
+		if (e)
+			return;
+		arm_timer();
+		if (!m_write_in_progress)
 		{
-			arm_timer();
-			if (!m_write_in_progress)
-			{
-				boost::asio::streambuf b;
-				std::ostream os(&b);
-
-				m_output_buffer << b0;
-
-				m_prev_cmd = eCmdIdle;
-				prepare_http_header("idle", os);
-
-				m_sending_header = m_write_in_progress = true;
-
-				m_input_buffer_int.clear();
-				boost::asio::async_write(m_socket, b.data(),
-				                         [this](const boost::system::error_code &ec, std::size_t n) { write_complete(ec, n); });
-			}
+			m_write_in_progress = true;
+			m_cmd = eCmdIdle;
+			send_command("idle", {0x00});
 		}
 	}
 
-	void net_client_tunnel::parse_poll_time()
+	void net_client_tunnel::set_poll_interval(std::uint8_t poll)
 	{
-		std::uint8_t const poll_time = m_input_buffer_int.data()[0];
-		m_input_buffer_int.consume(1);
-		switch(poll_time)
+		switch (poll)
 		{
-			case 0x01:
-				m_ms_timer = 100;
-				break;
-			case 0x03:
-				m_ms_timer = 300;
-				break;
-			case 0x05:
-				m_ms_timer = 600;
-				break;
-			case 0x09:
-				m_ms_timer = 700;
-				break;
-			case 0x11:
-				m_ms_timer = 800;
-				break;
-			case 0x21:
-				m_ms_timer = 1000;
-				break;
-			default:
-				m_ms_timer = 100;
-		}
-	}
-
-	void net_client_tunnel::send_open()
-	{
-		static std::uint8_t b0 = 0;
-		boost::asio::streambuf b;
-		std::ostream os(&b);
-
-		m_output_buffer << b0;
-
-		m_request_id = 1;
-		prepare_http_header("open", os);
-		m_request_id = 0;
-
-		m_sending_header = true;
-		m_state = eSendingOpen;
-
-		boost::asio::async_write(m_socket, b.data(),
-		                         [this](const boost::system::error_code &ec, std::size_t n) { write_complete(ec, n); });
-	}
-
-	void net_client_tunnel::read_complete(const boost::system::error_code &e, std::size_t bytes_transferred)
-	{
-		if (!e)
-		{
-			m_input_buffer_int.update(bytes_transferred);
-			if (m_reading_header)
-			{
-				boost::tribool const result = handle_http_header(bytes_transferred);
-				if (!result)
-					close_socket();
-				else if (result)
-				{
-					// header complete
-					m_reading_header = false;
-					handle_content();
-				}
-				else
-					read_data_internal();
-			}
-			else
-				handle_content();
-		}
-		else
-		{
-			close_socket();
-			m_read_cb(false, bytes_transferred);
-		}
-	}
-
-	void net_client_tunnel::handle_content()
-	{
-		if (m_input_buffer_int.size() == m_content_length)
-		{
-			m_write_in_progress = false;
-			// An empty body (not even the 1-byte poll interval) has nothing to
-			// consume; the poll/send branches below would skip/read that missing
-			// byte and throw buffer_eof. Bail out instead of crashing on a peer
-			// that returns a 0-length RTMPT response.
-			if (m_content_length == 0)
-			{
-				m_input_buffer_int.clear();
-				return;
-			}
-			if (m_state == eReadingOpen)
-			{
-				read_cid();
-				m_input_buffer_int.clear();
-				m_state = eReady;
-				arm_timer();
-				m_connect_cb(true, "");
-				return;
-			}
-			if (m_prev_cmd == eCmdIdle)
-			{
-				parse_poll_time();
-				if (m_content_length > 1)
-				{
-					m_input_buffer.write(m_input_buffer_int.data(), m_input_buffer_int.size());
-					m_read_cb(true, m_content_length - 1);
-				}
-				else
-					m_input_buffer_int.clear();
-			}
-			else
-			{
-				m_write_cb(true, m_content_length - 1);
-				if (m_content_length == 1)
-					m_input_buffer_int.clear();
-				else
-				{
-					m_input_buffer_int.consume(1);
-					m_input_buffer.write(m_input_buffer_int.data(), m_input_buffer_int.size());
-					m_read_cb(true, m_content_length - 1);
-				}
-			}
-		}
-		else
-			read_data_internal();
-	}
-
-	void net_client_tunnel::write_complete(const boost::system::error_code &e, std::size_t bytes_transferred)
-	{
-		if (!e)
-		{
-			if (m_sending_header)
-			{
-				// HTTP header sent, now send the rest of data
-				m_sending_header = false;
-				return net_client::write_data();
-			}
-			m_output_buffer.clear();
-			if (m_state == eSendingOpen)
-			{
-				read_open();
-				return;
-			}
-
-			// HTTP header and RTMP data sent, read the response
-			m_reading_header = true;
-			read_data_internal();
-
-		}
-		else
-		{
-			close_socket();
-			m_write_cb(false, bytes_transferred);
-		}
-	}
-
-	void net_client_tunnel::read_open()
-	{
-		m_state = eReadingOpen;
-		read_data_internal();
-	}
-
-	boost::tribool net_client_tunnel::handle_http_header(std::size_t bytes_transferred)
-	{
-		void *pos = memmem(reinterpret_cast<char *>(m_input_buffer_int.data()), m_input_buffer_int.size(), "\r\n\r\n", 4);
-		if (pos != nullptr)
-		{
-			if (std::memcmp(m_input_buffer_int.data(), "HTTP/1.", 7) != 0)
-			{
-				std::cout << "error, not HTTP response" << std::endl;
-				return false;
-			}
-			// parse the header through a byte_reader (peek); consume only on success
-			std::size_t const header_len = static_cast<std::size_t>((std::uint8_t *)pos - m_input_buffer_int.data()) + 4;
-			byte_reader r(m_input_buffer_int.data(), m_input_buffer_int.size());
-			try
-			{
-				r.skip(7);
-				if (!get_content_length(r))
-					return false;
-				m_input_buffer_int.consume(header_len);
-				return true;
-			}
-			catch (buffer_eof_exception &)
-			{
-				return boost::indeterminate;
-			}
-		}
-		if (m_input_buffer_int.size() > 512) // more than 512 bytes in header, but no delimiter?
-			return false;
-		std::cout << "Not enough data in HTTP header" << std::endl;
-		return boost::indeterminate;
-	}
-
-	bool net_client_tunnel::get_content_length(byte_reader &r)
-	{
-		std::uint8_t  const*pos = reinterpret_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(const_cast<std::uint8_t *>(r.read_pos())), r.available(), "\r\nContent-Length: ", 18));
-		if (pos != nullptr)
-		{
-			r.skip(static_cast<std::size_t>(pos - r.read_pos()) + 18);
-			static std::string cl;
-			static char c;
-
-			cl = "";
-			while (true)
-			{
-				r.read(&c, 1);
-				if (c == '\r')
-				{
-					try
-					{
-						m_content_length = static_cast<std::uint32_t>(std::stoul(cl));
-						return true;
-					}
-					catch (const std::exception &)
-					{
-						return false;
-					}
-				}
-				else
-					cl.push_back(c);
-			}
-		}
-		return false;
-	}
-
-	void net_client_tunnel::read_cid()
-	{
-		byte_reader r(m_input_buffer_int.data(), m_input_buffer_int.size());
-		char c;
-		for (std::uint32_t i = 0; i < m_content_length; ++i)
-		{
-			r >> c;
-			if (c == 0x0a)
-				break;
-			m_cid.push_back(c);
+		case 0x01: m_ms_timer = 100;  break;
+		case 0x03: m_ms_timer = 300;  break;
+		case 0x05: m_ms_timer = 600;  break;
+		case 0x09: m_ms_timer = 700;  break;
+		case 0x11: m_ms_timer = 800;  break;
+		case 0x21: m_ms_timer = 1000; break;
+		default:   m_ms_timer = 100;
 		}
 	}
 }
