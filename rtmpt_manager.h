@@ -29,8 +29,6 @@ namespace fms
 		std::uint32_t handle_data(const std::string &, std::uint32_t, byte_writer &, byte_writer &);
 		std::uint32_t serialize_result(const std::string &, std::uint32_t, byte_writer &);
 
-		void create_new_connection(const std::string &);
-
 		void update_bytes_read(const std::string &cid, std::uint32_t bytes_transferred)
 		{
 			update_stats(cid, bytes_transferred, true);
@@ -64,8 +62,7 @@ namespace fms
 		struct rtmpt_session_data
 		{
 			explicit rtmpt_session_data(const boost::asio::ip::address &address)
-				: 
-				 m_address(address)
+				: m_address(address)
 			{}
 			std::uint32_t m_sequence{0};
 			std::uint32_t m_connection_id;
