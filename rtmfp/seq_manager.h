@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <list>
 #include <set>
-#include <cstdint>
 
 namespace fms
 {
@@ -11,7 +11,7 @@ namespace fms
 	{
 	protected:
 		using set_t = std::set<T>;
-		using set_iterator = typename std::set<T>::iterator;
+		using set_iterator = std::set<T>::iterator;
 
 	public:
 		seq_manager()
@@ -114,19 +114,18 @@ namespace fms
 				return m_csn;
 			}
 			
-							if (!m_sequences.empty())
+			if (!m_sequences.empty())
+			{
+				auto i = m_missing.begin();
+				T ret = *i - 1;
+				while (i != m_missing.end())
 				{
-					auto i = m_missing.begin();
-					T ret = *i - 1;
-					while (i != m_missing.end())
-					{
-						std::pair<T, T> const pair = count_sequence(i);
-						list.push_back(pair);
-					}
-					return ret;
+					std::pair<T, T> const pair = count_sequence(i);
+					list.push_back(pair);
 				}
-				return 0;
-		
+				return ret;
+			}
+			return 0;
 		}
 
 		const T &csn() const

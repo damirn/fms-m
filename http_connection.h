@@ -5,6 +5,7 @@
 #include <boost/beast/http.hpp>
 #include <boost/noncopyable.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>

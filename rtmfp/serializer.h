@@ -10,7 +10,7 @@ namespace fms
 	class aes;
 	class header;
 
-	class serializer : private boost::noncopyable
+	class serializer : boost::noncopyable
 	{
 	public:
 		void prepare_raw_packet();

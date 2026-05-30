@@ -1,14 +1,14 @@
 #pragma once
 
+#include <cstdint>
+#include <chrono>
+#include <optional>
 #include <map>
+#include <memory>
 #include <set>
 
 #include <boost/asio.hpp>
-#include <cstdint>
-#include <chrono>
 #include <boost/noncopyable.hpp>
-#include <optional>
-#include <memory>
 
 #include "group.h"
 #include "parser.h"
@@ -22,7 +22,7 @@ namespace fms
 	class serializer;
 	class rtmp_app_manager;
 
-	class service : private boost::noncopyable, public chunk_handler
+	class service : boost::noncopyable, public chunk_handler
 	{
 	public:
 		service(boost::asio::io_context &, std::uint16_t, rtmp_app_manager *);

@@ -3,12 +3,11 @@
 #include "byte_reader.h"
 #include "types.h"
 
-#include <set>
 #include <cstdint>
 #include <memory>
+#include <set>
+
 #include <boost/noncopyable.hpp>
-#include <memory>
-#include <memory>
 
 namespace fms
 {
@@ -19,7 +18,7 @@ namespace fms
 	using session_ptr = std::shared_ptr<session>;
 	using session_weak_ptr = std::weak_ptr<session>;
 
-	class group : public item, private boost::noncopyable
+	class group : public item, boost::noncopyable
 	{
 	public:
 		enum commands { eJoinGroup = 0x01 };
@@ -49,7 +48,7 @@ namespace fms
 
 		void take_ownership()
 		{
-			std::uint8_t  const*tmp = m_id;
+			std::uint8_t const *tmp = m_id;
 			m_id = new std::uint8_t[item::eIDLength];
 			std::memcpy(reinterpret_cast<void *>(m_id), tmp, item::eIDLength);
 			m_owner = true;
@@ -87,13 +86,6 @@ namespace fms
 		{
 			return m_members.empty();
 		}
-
-// 		const bool is_member(session_ptr s) const
-// 		{
-// 			if (m_members.find(s) != m_members.end())
-// 				return true;
-// 			return false;
-// 		}
 
 		const std::set<session_weak_ptr, std::owner_less<session_weak_ptr>> &members() const
 		{

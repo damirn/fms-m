@@ -4,10 +4,10 @@
 #include "seq_manager.h"
 #include "types.h"
 
+#include <cstdint>
 #include <map>
-#include <optional>
 #include <memory>
-#include <unordered_set>
+#include <optional>
 
 namespace fms
 {
@@ -15,8 +15,7 @@ namespace fms
 	{
 		fragment(const vlu_t &seq, const std::uint8_t *data, const std::uint16_t &data_len, const std::uint8_t &frag_ctrl, bool make_copy = false)
 			: m_seq(seq)
-			, 
-			 m_data_len(data_len)
+			, m_data_len(data_len)
 			, m_frag_ctrl(frag_ctrl)
 		{
 			if (frag_ctrl == eWhole && !make_copy)
