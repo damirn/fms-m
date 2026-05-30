@@ -276,11 +276,17 @@ int main(int argc, char **argv)
 	int const server_threads = argc > 5 ? std::atoi(argv[5]) : 8;
 	int const port = argc > 6 ? std::atoi(argv[6]) : 26000;
 	if (argc > 7) g_window = std::strtoull(argv[7], nullptr, 10);
+	int const name_off = argc > 8 ? std::atoi(argv[8]) : 0;   // distinct stream names per client instance
 	double const warmup = std::min(3.0, seconds * 0.2);
 
 	std::string const dir = "/tmp/fms_bench_media";
 	::mkdir(dir.c_str(), 0755);
-	server_process server(dir, port, server_threads);
+	// server_threads==0 => client-only: drive an already-running server on `port`
+	// (lets several bench processes hammer one fms-m). Otherwise spawn our own.
+	std::unique_ptr<server_process> server;
+	if (server_threads > 0)
+		server = std::make_unique<server_process>(dir, port, server_threads);
+	pid_t const srv_pid = server ? server->pid : -1;
 
 	std::vector<std::unique_ptr<stream_pair>> pairs;
 	pairs.reserve(n_streams);
@@ -300,7 +306,7 @@ int main(int argc, char **argv)
 		sp->sub_g = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
 			boost::asio::make_work_guard(*sp->sub_io));
 		sp->sub = std::make_unique<sub_nc>(*sp->sub_io);
-		sp->sub->stream_name = "bench" + std::to_string(i);
+		sp->sub->stream_name = "bench" + std::to_string(name_off + i);
 		sp->sub->nseh.st = &sp->st;
 		sp->sub->conn = std::make_shared<net_connection>(*sp->sub_io, *sp->sub, true);
 		sp->sub->conn->connect(url_for(port));
@@ -320,7 +326,7 @@ int main(int argc, char **argv)
 		sp->pub_g = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
 			boost::asio::make_work_guard(*sp->pub_io));
 		sp->pub = std::make_unique<pub_nc>(*sp->pub_io);
-		sp->pub->stream_name = "bench" + std::to_string(i);
+		sp->pub->stream_name = "bench" + std::to_string(name_off + i);
 		sp->pub->nseh.st = &sp->st;
 		sp->pub->nseh.out_chunk = out_chunk;
 		sp->pub->nseh.frame = make_frame();
@@ -335,12 +341,12 @@ int main(int argc, char **argv)
 	std::this_thread::sleep_for(std::chrono::duration<double>(warmup));
 	std::vector<std::uint64_t> recv0(n_streams);
 	for (int i = 0; i < n_streams; ++i) recv0[i] = pairs[i]->st.recv.load();
-	double const srv0 = proc_cpu_secs(server.pid), box0 = box_cpu_secs();
+	double const srv0 = proc_cpu_secs(srv_pid), box0 = box_cpu_secs();
 	auto const wall0 = clk::now();
 
 	std::this_thread::sleep_for(std::chrono::duration<double>(seconds - warmup));
 	auto const wall1 = clk::now();
-	double const srv1 = proc_cpu_secs(server.pid), box1 = box_cpu_secs();
+	double const srv1 = proc_cpu_secs(srv_pid), box1 = box_cpu_secs();
 	std::uint64_t frames_win = 0;
 	for (int i = 0; i < n_streams; ++i) frames_win += pairs[i]->st.recv.load() - recv0[i];
 
