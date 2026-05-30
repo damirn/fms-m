@@ -145,12 +145,10 @@ namespace fms
 		rtmp_app_manager *m_app_manager;
 		std::string m_app_name;
 
-		// Stage 3: per-connection async send queue. The map structure is guarded by
-		// a shared_mutex (find is shared; the rare first-message insert and teardown
-		// erase are exclusive) and each entry carries its OWN mutex, so enqueues to
-		// different subscriber connections don't serialise on one global lock.
-		// unordered_map never relocates its nodes, so a mutex living in the value is
-		// stable; the value is non-movable, which is fine (only ever built in place).
+		// Per-connection async send queue. The map is guarded by a shared_mutex
+		// (find shared; first-message insert and teardown erase exclusive) and each
+		// entry has its OWN mutex, so enqueues to different connections don't
+		// serialise. The mutex-in-value is safe: unordered_map never relocates nodes.
 		struct async_queue
 		{
 			std::mutex mutex;
@@ -207,7 +205,7 @@ namespace fms
 		using bwcheck_result_handler_ptr = std::shared_ptr<bwcheck_result_handler>;
 
 		result_handlers_t m_result_handlers;
-		std::mutex m_result_handlers_mutex;   // was folded into the async-messages lock
+		std::mutex m_result_handlers_mutex;
 
 		std::uint32_t enqueue_async_message(std::uint32_t, const rtmp_message_invoke_ptr&, result_handler_ptr, bool = false);
 		void add_result_handler(std::uint32_t, result_handler_ptr);

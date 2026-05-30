@@ -116,12 +116,11 @@ namespace fms
 
 		rtmpt_manager *m_rtmpt_manager;
 
-		// Reader/writer split (Stage 2): the per-frame hot reads (get_connection /
-		// has_connection / get_app_instance) and update_netstream_stats take a
-		// SHARED lock; connection add/remove, netstream create/delete and the admin
-		// stats readers take EXCLUSIVE. update_netstream_stats mutates under the
-		// shared lock, which is safe because each netstream's stats has a single
-		// writer (its feeding thread) and the exclusive admin readers never overlap.
+		// Reader/writer split: the hot reads (get_connection / has_connection /
+		// get_app_instance) and update_netstream_stats take a SHARED lock; structural
+		// changes and admin stats readers take EXCLUSIVE. update_netstream_stats
+		// mutating under the shared lock is safe -- each netstream's stats has a
+		// single writer and the exclusive admin readers never overlap it.
 		std::shared_mutex m_mutex;
 		netstream_stats_map_t m_netstream_stats;
 

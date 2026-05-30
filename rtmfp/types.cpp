@@ -41,8 +41,7 @@ namespace fms
 			to.write_vlu(m_len);
 			return 1;
 		}
-		// length is known up front (type VLU + value), so write it, then the body,
-		// producing the same [len][type][value] bytes the old reserve/back-patch did
+		// length is known up front (type VLU + value): write [len][type][value]
 		std::size_t const start = to.size();
 		vlu_t const size = byte_writer::vlu_size(m_type) + m_value_len;
 		to.write_vlu(size);

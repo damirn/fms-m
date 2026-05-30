@@ -12,7 +12,6 @@ namespace fms
 	public:
 		explicit rtmp_channel(std::uint32_t id)
 			: m_id(id)
-			 
 		{}
 
 		const std::uint32_t &id() const

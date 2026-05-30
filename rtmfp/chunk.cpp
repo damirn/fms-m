@@ -25,9 +25,8 @@ namespace fms
 
 	std::uint16_t chunk::serialize_chunk_header(byte_writer &to, std::size_t hdr_pos)
 	{
-		// body was appended after the reserved 3-byte header slot at hdr_pos;
-		// back-patch [type][len_hi][len_lo] (big-endian len), matching the old
-		// `to << type << host_to_network_short(len)`.
+		// body was appended after the reserved 3-byte slot at hdr_pos; back-patch
+		// [type][len_hi][len_lo] (big-endian len) into it.
 		std::uint16_t const len = static_cast<std::uint16_t>(to.size() - hdr_pos - eChunkHeaderSize);
 		std::uint8_t const hdr[eChunkHeaderSize] = {
 			static_cast<std::uint8_t>(m_type),
