@@ -94,6 +94,19 @@ namespace fms
 		m_chunk_size = boost::asio::detail::socket_ops::network_to_host_long(tmp);
 	}
 
+	void rtmp_message_abort::serialize(byte_writer &buffer)
+	{
+		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_chunk_stream_id);
+		buffer << tmp;
+	}
+
+	void rtmp_message_abort::deserialize(byte_reader &buffer)
+	{
+		std::uint32_t tmp;
+		buffer >> tmp;
+		m_chunk_stream_id = boost::asio::detail::socket_ops::network_to_host_long(tmp);
+	}
+
 	void rtmp_message_bytes_read::serialize(byte_writer &buffer)
 	{
 		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_bytes_read);

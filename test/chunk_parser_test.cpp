@@ -310,6 +310,35 @@ TEST_CASE("chunk parser: garbage input does not crash and yields no messages")
 		CHECK((m.type != AUDIO && m.type != VIDEO));
 }
 
+TEST_CASE("chunk parser: Abort (type 2) discards the partial message on a chunk stream")
+{
+	chunk_stream cs;                       // default chunk_size 128
+	auto const abandoned = pattern(200, 1);   // 200-byte message: needs two chunks
+	auto const fresh = pattern(20, 2);
+
+	// 1) start a 200-byte video message on channel 7 but send only its first chunk
+	cs.hdr0(7, 1000, 200, VIDEO, 1);
+	cs.raw(abandoned.data(), 128);
+
+	// 2) Abort on the control channel (2): type 2, 4-byte payload = chunk stream id 7
+	cs.hdr0(2, 0, 4, 0x02, 0);
+	cs.u32be(7);
+
+	// 3) a fresh, complete 20-byte audio message on channel 7
+	cs.message(7, AUDIO, 1, 1100, fresh);
+
+	parser_harness h;
+	h.feed(cs.bytes);
+
+	// The abandoned partial is dropped, so channel 7 starts clean and only the
+	// fresh message is emitted. Without Abort handling the leftover 128 bytes would
+	// make message_length - data_size underflow and swallow the fresh message.
+	REQUIRE(h.messages.size() == 1);
+	CHECK(h.messages[0].type == AUDIO);
+	CHECK(h.messages[0].channel_id == 7);
+	CHECK(h.messages[0].payload == fresh);
+}
+
 // ------------------------- Phase 1: byte_reader + try_deserialize -----------
 
 namespace
