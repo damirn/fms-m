@@ -97,12 +97,10 @@ namespace fms
 
 	void rtmp_application::delete_connection(std::uint32_t conn_id, const std::string &)
 	{
-		std::unique_lock lock(m_async_messages_mutex);
-		auto const i = m_async_messages.find(conn_id);
-		if (i != m_async_messages.end())
-			m_async_messages.erase(i);
+		std::unique_lock lock(m_async_map_mutex);   // exclusive: excludes all entry access
+		m_async_messages.erase(conn_id);
 		lock.unlock();
-	
+
 		std::unique_lock const lock2(m_delay_mutex);
 		auto const j = m_delays.find(conn_id);
 		if (j != m_delays.end())
@@ -111,57 +109,77 @@ namespace fms
 
 	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_ptr& msg, bool urgent /* = false */)
 	{
-		if (m_app_manager->has_connection(connection_id))
-		{
-			std::unique_lock const lock(m_async_messages_mutex);
+		if (!m_app_manager->has_connection(connection_id))
+			return 0;
+
+		auto push = [&](async_queue &q) {
+			std::unique_lock const qlock(q.mutex);
 			if (urgent)
-				m_async_messages[connection_id].second.push_front(msg);
+				q.msgs.push_front(msg);
 			else
-				m_async_messages[connection_id].second.push_back(msg);
-			m_async_messages[connection_id].first++;
-			return m_async_messages[connection_id].first;
+				q.msgs.push_back(msg);
+			return ++q.count;
+		};
+
+		// Fast path: the entry already exists (true for every message after the
+		// first) -> shared map lock + this connection's own mutex, so enqueues to
+		// different connections run concurrently.
+		{
+			std::shared_lock const maplock(m_async_map_mutex);
+			auto const i = m_async_messages.find(connection_id);
+			if (i != m_async_messages.end())
+				return push(i->second);
 		}
-		return 0;
+		// Slow path: first message for this connection -> create the entry under the
+		// exclusive lock (which excludes all shared holders, so the insert is safe).
+		std::unique_lock const maplock(m_async_map_mutex);
+		return push(m_async_messages[connection_id]);
 	}
 
 	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_invoke_ptr& msg, result_handler_ptr res_handler, bool urgent /* = false */)
 	{
 		std::uint32_t const size = enqueue_async_message(connection_id, msg, urgent);
-		std::unique_lock const lock(m_async_messages_mutex);
+		std::unique_lock const lock(m_result_handlers_mutex);
 		m_result_handlers[static_cast<std::uint32_t>(msg->invoke_id()->value())] = std::move(res_handler);
 		return size;
 	}
 
 	void rtmp_application::add_result_handler(std::uint32_t invoke_id, result_handler_ptr res_handler)
 	{
-		std::unique_lock const lock(m_async_messages_mutex);
+		std::unique_lock const lock(m_result_handlers_mutex);
 		m_result_handlers[invoke_id] = std::move(res_handler);
 	}
 
 	bool rtmp_application::has_async_messages(std::uint32_t connection_id)
 	{
-		std::unique_lock const lock(m_async_messages_mutex);
+		std::shared_lock const maplock(m_async_map_mutex);
 		auto const i = m_async_messages.find(connection_id);
-		return !(i == m_async_messages.end() || i->second.second.empty());
+		if (i == m_async_messages.end())
+			return false;
+		std::unique_lock const qlock(i->second.mutex);
+		return !i->second.msgs.empty();
 	}
 
 	bool rtmp_application::get_async_message(std::uint32_t connection_id, rtmp_message_ptr &msg)
 	{
-		std::unique_lock const lock(m_async_messages_mutex);
+		std::shared_lock const maplock(m_async_map_mutex);
 		auto const i = m_async_messages.find(connection_id);
-		if (i == m_async_messages.end() || i->second.second.empty())
+		if (i == m_async_messages.end())
 			return false;
-		msg = i->second.second.front();
-		i->second.second.pop_front();
-		i->second.first--;
+		std::unique_lock const qlock(i->second.mutex);
+		if (i->second.msgs.empty())
+			return false;
+		msg = i->second.msgs.front();
+		i->second.msgs.pop_front();
+		--i->second.count;
 		return true;
 	}
 
 	void rtmp_application::get_queue_stats(queue_stats_list_t &list)
 	{
-		std::unique_lock const lock(m_async_messages_mutex);
-		for (auto & m_async_message : m_async_messages)
-			list.emplace_back(m_async_message.first, m_async_message.second.first);
+		std::unique_lock const lock(m_async_map_mutex);   // exclusive: safe to read every entry's count
+		for (auto &kv : m_async_messages)
+			list.emplace_back(kv.first, kv.second.count);
 	}
 
 	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, std::uint32_t value)
@@ -229,7 +247,7 @@ namespace fms
 
 	bool rtmp_application::handle_invoke_result(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		std::unique_lock lock(m_async_messages_mutex);
+		std::unique_lock lock(m_result_handlers_mutex);
 		auto const i = m_result_handlers.find(static_cast<std::uint32_t>(msg->invoke_id()->value()));
 		if (i != m_result_handlers.end())
 		{

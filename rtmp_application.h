@@ -1,8 +1,10 @@
 #pragma once
 
 #include <atomic>
+#include <list>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -143,10 +145,21 @@ namespace fms
 		rtmp_app_manager *m_app_manager;
 		std::string m_app_name;
 
-		using size_list_pair_t = std::pair<std::uint32_t, std::list<rtmp_message_ptr> >;
-		using async_messages_map_t = std::unordered_map<std::uint32_t, size_list_pair_t>;
+		// Stage 3: per-connection async send queue. The map structure is guarded by
+		// a shared_mutex (find is shared; the rare first-message insert and teardown
+		// erase are exclusive) and each entry carries its OWN mutex, so enqueues to
+		// different subscriber connections don't serialise on one global lock.
+		// unordered_map never relocates its nodes, so a mutex living in the value is
+		// stable; the value is non-movable, which is fine (only ever built in place).
+		struct async_queue
+		{
+			std::mutex mutex;
+			std::uint32_t count{0};
+			std::list<rtmp_message_ptr> msgs;
+		};
+		using async_messages_map_t = std::unordered_map<std::uint32_t, async_queue>;
 		async_messages_map_t m_async_messages;
-		std::mutex m_async_messages_mutex;
+		std::shared_mutex m_async_map_mutex;
 
 		using delay_map_t = std::unordered_map<std::uint32_t, std::uint32_t>;
 		delay_map_t m_delays;
@@ -194,6 +207,7 @@ namespace fms
 		using bwcheck_result_handler_ptr = std::shared_ptr<bwcheck_result_handler>;
 
 		result_handlers_t m_result_handlers;
+		std::mutex m_result_handlers_mutex;   // was folded into the async-messages lock
 
 		std::uint32_t enqueue_async_message(std::uint32_t, const rtmp_message_invoke_ptr&, result_handler_ptr, bool = false);
 		void add_result_handler(std::uint32_t, result_handler_ptr);
