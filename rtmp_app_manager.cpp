@@ -94,7 +94,7 @@ namespace fms
 
 	client_session_ptr rtmp_app_manager::get_connection(std::uint32_t conn_id)
 	{
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
 		auto const i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return i->second;
@@ -103,7 +103,7 @@ namespace fms
 
 	const std::string &rtmp_app_manager::get_app_instance(std::uint32_t conn_id)
 	{
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
 		auto const i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return i->second->app_instance();
@@ -112,7 +112,7 @@ namespace fms
 
 	bool rtmp_app_manager::has_connection(std::uint32_t conn_id)
 	{
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
 		auto const i = m_connections.find(conn_id);
 		return i != m_connections.end();
 	}
@@ -394,7 +394,7 @@ namespace fms
 
 	void rtmp_app_manager::update_netstream_stats(const stream_client_id_t &id, std::uint32_t bytes, std::uint32_t ts)
 	{
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);   // find + mutate own stats object (single writer per key)
 		auto const i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 		{
