@@ -15,7 +15,7 @@ namespace fms
 	class byte_writer;
 
 	// Represents a single connection from a client.
-	class rtmpt_session : public basic_rtmp_connection, private boost::noncopyable
+	class rtmpt_session : public basic_rtmp_connection, boost::noncopyable
 	{
 	public:
 		// Construct a connection with the given io_context.

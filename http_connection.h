@@ -5,7 +5,6 @@
 #include <boost/beast/http.hpp>
 #include <boost/noncopyable.hpp>
 
-#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -21,7 +20,7 @@ namespace fms
 	// target as "/<verb>[/<cid>/<seq>]" (verbs: fcs, open, send, idle, close). One
 	// connection per socket, kept alive across requests, on its own single-threaded
 	// io_context (like rtmp_connection).
-	class http_connection : public std::enable_shared_from_this<http_connection>, private boost::noncopyable
+	class http_connection : public std::enable_shared_from_this<http_connection>, boost::noncopyable
 	{
 	public:
 		http_connection(std::uint32_t, boost::asio::io_context &, rtmp_app_manager *, rtmpt_manager *);
