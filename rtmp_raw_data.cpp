@@ -102,13 +102,20 @@ namespace fms
 			byte_reader r(body.data(), body.size());
 			if (p.deserialize(r, channel->received_header()))
 			{
-				if (p.message()->type() != rtmp_message::eMessageChunkSize &&
-					p.message()->type() != rtmp_message::eMessageWindowAcknowledgementSize)
+				auto const type = p.message()->type();
+				if (type == rtmp_message::eMessageAbort)
+				{
+					// discard the in-progress reassembly on the referenced chunk stream
+					auto const abort = std::dynamic_pointer_cast<rtmp_message_abort>(p.message());
+					m_channel_manager->get_channel(abort->chunk_stream_id())->clear_data();
+				}
+				else if (type != rtmp_message::eMessageChunkSize &&
+					type != rtmp_message::eMessageWindowAcknowledgementSize)
 					handle_message(channel, p.message());
 				else
 				{
 					handle_internal_message(p.message());
-					if (p.message()->type() == rtmp_message::eMessageWindowAcknowledgementSize)
+					if (type == rtmp_message::eMessageWindowAcknowledgementSize)
 						handle_message(channel, p.message());
 				}
 			}

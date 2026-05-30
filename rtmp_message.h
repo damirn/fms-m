@@ -19,6 +19,7 @@ namespace fms
 		enum message_type
 		{
 			eMessageChunkSize = 0x01,
+			eMessageAbort = 0x02,
 			eMessageBytesRead = 0x03,
 			eMessagePing = 0x04,
 			eMessageWindowAcknowledgementSize = 0x05,
@@ -127,6 +128,38 @@ namespace fms
 	};
 
 	using rtmp_message_chunk_size_ptr = std::shared_ptr<rtmp_message_chunk_size>;
+
+	// Protocol control message (type 2): tells the peer to discard a partially
+	// received message on the given chunk stream. The payload is the 4-byte
+	// chunk-stream id whose in-progress reassembly should be dropped.
+	class rtmp_message_abort : public rtmp_message
+	{
+	public:
+		rtmp_message_abort()
+			: rtmp_message(eMessageAbort)
+		{}
+
+		explicit rtmp_message_abort(std::uint32_t chunk_stream_id)
+			: rtmp_message(eMessageAbort), m_chunk_stream_id(chunk_stream_id)
+		{
+			m_channel_id = 2;
+			m_stream_id = 0;
+			m_timestamp = 0;
+		}
+
+		void deserialize(byte_reader &) override;
+		void serialize(byte_writer &) override;
+
+		std::uint32_t chunk_stream_id() const
+		{
+			return m_chunk_stream_id;
+		}
+
+	protected:
+		std::uint32_t m_chunk_stream_id{0};
+	};
+
+	using rtmp_message_abort_ptr = std::shared_ptr<rtmp_message_abort>;
 
 	class rtmp_message_bytes_read : public rtmp_message
 	{

@@ -50,6 +50,9 @@ namespace fms
 			case rtmp_message::eMessageChunkSize:
 				deserialize_chunk_size(buffer);
 				break;
+			case rtmp_message::eMessageAbort:
+				deserialize_abort(buffer);
+				break;
 			case rtmp_message::eMessageAggregate:
 				deserialize_aggregate(buffer, h.timestamp());
 				break;
@@ -192,6 +195,13 @@ namespace fms
 	void rtmp_protocol::deserialize_chunk_size(byte_reader &buffer)
 	{
 		rtmp_message_chunk_size_ptr const msg(new rtmp_message_chunk_size());
+		msg->deserialize(buffer);
+		m_message = msg;
+	}
+
+	void rtmp_protocol::deserialize_abort(byte_reader &buffer)
+	{
+		rtmp_message_abort_ptr const msg(new rtmp_message_abort());
 		msg->deserialize(buffer);
 		m_message = msg;
 	}

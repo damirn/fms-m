@@ -52,6 +52,7 @@ namespace fms
 		void deserialize_video_data(byte_reader &, std::uint32_t);
 
 		void deserialize_chunk_size(byte_reader &);
+		void deserialize_abort(byte_reader &);
 
 		void chunk_buffer(byte_writer &, const byte_writer &, rtmp_header &) const;
 
