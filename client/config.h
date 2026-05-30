@@ -11,11 +11,6 @@ class config : boost::noncopyable
 public:
 	static config *instance();
 
-	~config()
-	{
-		delete m_instance;
-	}
-
 	bool parse_cli(int, char **);
 
 	const std::string &url() const
@@ -92,11 +87,8 @@ protected:
 private:
 	config()
 		: m_description("Allowed options")
-		 
 	{
 		create_description();
 	}
-
-	static config *m_instance;
 };
 

@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	{
 		boost::asio::io_context service;
 		fms::rtmp_client::nc_event_handler eh(service);
-		fms::rtmp_client::net_connection_ptr const client(new fms::rtmp_client::net_connection(service, eh, true));
+		auto const client = std::make_shared<fms::rtmp_client::net_connection>(service, eh, true);
 		eh.set_client(client);
 		client->connect(config::instance()->url());
 		service.run();
