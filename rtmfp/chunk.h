@@ -31,8 +31,7 @@ namespace fms
 			: m_type(t)
 		{}
 
-		virtual ~chunk()
-		= default;
+		virtual ~chunk()= default;
 
 		const type_t &type() const
 		{
@@ -61,8 +60,7 @@ namespace fms
 			, m_tag(const_cast<std::uint8_t *>(tag))
 		{}
 
-		~fihello_chunk() override
-		= default;
+		~fihello_chunk() override= default;
 
 		const vlu_t &epd_len() const
 		{
@@ -391,8 +389,7 @@ namespace fms
 	public:
 		user_data_chunk()
 			: chunk(eUserData)
-			, 
-			 m_flow_id(0)
+			, m_flow_id(0)
 			, m_seq_number(0)
 			, m_fsn_offset(0)
 		{}

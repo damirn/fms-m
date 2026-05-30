@@ -3,6 +3,7 @@
 #include "byte_writer.h"
 #include "amf3_types.h"
 
+#include <cstdint>
 #include <string>
 #include <stdexcept>
 #include <vector>

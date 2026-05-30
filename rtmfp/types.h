@@ -3,9 +3,9 @@
 #include "byte_reader.h"
 #include "byte_writer.h"
 
+#include <cstdint>
 #include <cstring>
 #include <list>
-#include <cstdint>
 #include <optional>
 #include <memory>
 

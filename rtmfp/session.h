@@ -5,16 +5,16 @@
 #include "types.h"
 #include "byte_reader.h"
 
+#include <chrono>
+#include <cstdint>
+#include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <set>
+
 #include <boost/asio.hpp>
-#include <cstdint>
-#include <chrono>
-#include <memory>
-#include <functional>
 #include <boost/noncopyable.hpp>
-#include <memory>
 
 namespace fms
 {
@@ -43,7 +43,7 @@ namespace fms
 	class group;
 	using group_weak_ptr = std::weak_ptr<group>;
 
-	class session : private boost::noncopyable, public client_session, public chunk_handler, public std::enable_shared_from_this<session>
+	class session : boost::noncopyable, public client_session, public chunk_handler, public std::enable_shared_from_this<session>
 	{
 	public:
 		session(service *, const boost::asio::ip::udp::endpoint &, std::uint32_t, rtmp_app_manager *);
