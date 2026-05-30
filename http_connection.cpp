@@ -2,76 +2,133 @@
 #include "http_connection.h"
 #include "rtmp_app_manager.h"
 #include "rtmpt_manager.h"
-#include "util.h"
+#include "byte_writer.h"
+
+#include <vector>
+
+namespace beast = boost::beast;
+namespace http = boost::beast::http;
 
 namespace fms
 {
-	http_connection::http_connection(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager, rtmpt_manager *rtmpt_manager)
+	http_connection::http_connection(std::uint32_t id, boost::asio::io_context &io_context,
+	                                 rtmp_app_manager *app_manager, rtmpt_manager *rtmpt_manager)
 		: m_socket(io_context)
 		, m_timer(io_context)
-		, m_io_context(io_context)
 		, m_id(id)
 		, m_app_manager(app_manager)
 		, m_rtmpt_manager(rtmpt_manager)
-		 
 	{}
 
 	void http_connection::start()
 	{
-		perform_read();
+		do_read();
 	}
 
-	void http_connection::perform_read()
+	void http_connection::do_read()
 	{
-		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
-			boost::asio::transfer_at_least(1),
-			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_read(ec, bytes); });
+		// One request at a time; a fresh parser each time. RTMPT bodies are small,
+		// but cap generously rather than at Beast's 1 MB default.
+		m_parser.emplace();
+		m_parser->body_limit(16 * 1024 * 1024);
+
 		m_timer.expires_after(std::chrono::seconds(7200));
-		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timeout(ec); });
+		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->on_timeout(ec); });
+
+		http::async_read(m_socket, m_buffer, *m_parser,
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_read(ec, n); });
 	}
 
-	void http_connection::perform_write()
+	void http_connection::on_read(const boost::system::error_code &e, std::size_t bytes_transferred)
 	{
-		if (m_write_http_header)
+		m_timer.cancel();
+		if (e)   // includes http::error::end_of_stream when the peer closes
 		{
-//			std::cout << "writing header, size: " << m_header.size() << std::endl;
-			boost::asio::async_write(m_socket, m_header,
-				[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write(ec, bytes); });
+			close();
+			return;
 		}
-		else
-		{
-			boost::asio::async_write(m_socket, boost::asio::buffer(m_output_buffer.data(), m_output_buffer.size()),
-				[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write(ec, bytes); });
-		}
+		m_rtmpt_manager->update_bytes_read(m_cid, static_cast<std::uint32_t>(bytes_transferred));
+		handle_request(m_parser->get());
 	}
 
-	void http_connection::handle_read(const boost::system::error_code &e, std::size_t bytes_transferred)
+	void http_connection::handle_request(const request_t &req)
 	{
-		if (!e)
+		if (req.method() != http::verb::post)
 		{
-//			std::cout << "Read " << bytes_transferred << " bytes from port: " << m_socket.remote_endpoint().port() << std::endl;
-			m_timer.cancel();
-			m_buffer.update(bytes_transferred);
-			boost::tribool result;
-			if (m_read_http_header)
-			{
-				result = handle_http_header(bytes_transferred);
-				if (!result)
-				{
-					close();
-					return;
-				}
-				// at this point we have cid
- 				if (boost::indeterminate(result))
- 					perform_read();
-			}
-			else
-			{
- 				result = handle_command();
-				if (boost::indeterminate(result))
-					perform_read();
-			}
-			m_rtmpt_manager->update_bytes_read(m_cid, bytes_transferred);
+			close();
+			return;
+		}
+
+		// Split the target "/<verb>[/<cid>/<seq>]" into its path segments.
+		std::string const target(req.target().data(), req.target().size());
+		std::string verb, cid, seq;
+		for (std::size_t i = 0, seen = 0; i < target.size(); )
+		{
+			if (target[i] == '/') { ++i; continue; }
+			std::size_t j = target.find('/', i);
+			if (j == std::string::npos)
+				j = target.size();
+			std::string const part = target.substr(i, j - i);
+			if (seen == 0) verb = part;
+			else if (seen == 1) cid = part;
+			else if (seen == 2) seq = part;
+			++seen;
+			i = j;
+		}
+
+		boost::system::error_code ec;
+		boost::asio::ip::tcp::endpoint const remote = m_socket.remote_endpoint(ec);
+
+		// Ident probe: reply with our address, no session.
+		if (verb == "fcs")
+		{
+			boost::asio::ip::tcp::endpoint const local = m_socket.local_endpoint(ec);
+			std::string const addr = local.address().to_string();
+			reply(std::vector<std::uint8_t>(addr.begin(), addr.end()));
+			return;
+		}
+
+		// Open a new session: reply with its id + '\n'.
+		if (verb == "open")
+		{
+			m_rtmpt_manager->create_session(remote, m_cid);
+			std::vector<std::uint8_t> body(m_cid.begin(), m_cid.end());
+			body.push_back('\n');
+			reply(std::move(body));
+			return;
+		}
+
+		// send / idle / close carry the session id and a sequence number.
+		std::uint32_t seq_n = 0;
+		try { seq_n = static_cast<std::uint32_t>(std::stoul(seq)); }
+		catch (...) { close(); return; }
+
+		if (cid.empty() || !m_rtmpt_manager->validate(remote, cid, seq_n))   // validate rejects unknown ids
+		{
+			close();
+			return;
+		}
+		m_cid = cid;
+
+		if (verb == "send")
+		{
+			byte_writer input;
+			if (!req.body().empty())
+				input.write(req.body().data(), req.body().size());
+			byte_writer output;
+			m_rtmpt_manager->handle_data(cid, seq_n, input, output);
+			reply(std::vector<std::uint8_t>(output.data(), output.data() + output.size()));
+		}
+		else if (verb == "idle")
+		{
+			byte_writer output;
+			m_rtmpt_manager->serialize_result(cid, seq_n, output);
+			reply(std::vector<std::uint8_t>(output.data(), output.data() + output.size()));
+		}
+		else if (verb == "close")
+		{
+			m_rtmpt_manager->remove_session(cid);
+			reply(std::vector<std::uint8_t>{0x00});
 		}
 		else
 		{
@@ -79,403 +136,49 @@ namespace fms
 		}
 	}
 
-	void http_connection::handle_timeout(const boost::system::error_code &e)
+	void http_connection::reply(std::vector<std::uint8_t> body)
 	{
-		if (!e)
+		m_response = response_t{};
+		m_response.version(11);
+		m_response.result(http::status::ok);
+		m_response.keep_alive(true);
+		m_response.set(http::field::cache_control, "no-cache");
+		m_response.set(http::field::server, m_rtmpt_manager->version());
+		m_response.set(http::field::content_type, "image/png");   // RTMPT convention (defeats caching proxies)
+		m_response.body() = std::move(body);
+		m_response.prepare_payload();   // sets Content-Length
+
+		http::async_write(m_socket, m_response,
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_write(ec, n); });
+	}
+
+	void http_connection::on_write(const boost::system::error_code &e, std::size_t bytes_transferred)
+	{
+		if (e)
 		{
 			close();
+			return;
 		}
-	}
-
-	void http_connection::handle_write(const boost::system::error_code &e, std::size_t bytes_transferred)
-	{
-		if (!e)
-		{
-//			std::cout << "write done: " << bytes_transferred << " bytes" << std::endl;
-			m_rtmpt_manager->update_bytes_written(m_cid, bytes_transferred);
-			if (m_write_http_header)
-			{
-				m_write_http_header = false;
-				if (!m_http_header_is_complete)
-					perform_write();
-				else
-				{
-					m_http_header_is_complete = false;
-					m_output_buffer.clear();
-					perform_read();
-				}
-			}
-			else
-			{
-				m_buffer.clear();
-				m_output_buffer.clear();
-				perform_read();
-			}
-		}
-		else
+		m_rtmpt_manager->update_bytes_written(m_cid, static_cast<std::uint32_t>(bytes_transferred));
+		if (!m_response.keep_alive())
 		{
 			close();
+			return;
 		}
+		do_read();
 	}
 
-	boost::tribool http_connection::handle_http_header(std::size_t bytes_transferred)
+	void http_connection::on_timeout(const boost::system::error_code &e)
 	{
-		void *pos = memmem(reinterpret_cast<char *>(m_buffer.data()), m_buffer.size(), "\r\n\r\n", 4);
-		if (pos != nullptr)
-		{
-			if (std::memcmp(m_buffer.data(), "POST", 4) != 0)
-			{
-				return false;
-			}
-			// parse the header fields through a byte_reader (peek); only on a
-			// complete header do we consume it, leaving the body at data().
-			std::size_t const header_len = static_cast<std::size_t>((std::uint8_t *)pos - m_buffer.data()) + 4;
-			byte_reader r(m_buffer.data(), m_buffer.size());
-			try
-			{
-				r.skip(4);
-				m_command = get_command(r);
-				if (m_command == eCmdInvalid)
-					return false;
-				if (!handle_http_fields(r))
-					return false;
-				m_buffer.consume(header_len);
-				return handle_command();
-			}
-			catch (buffer_eof_exception &)
-			{
-				return boost::indeterminate;   // header incomplete -> re-read (buffer intact)
-			}
-		}
-		if (m_buffer.size() > 512) // more than 512 bytes in header, but no delimiter?
-			return false;
-		return boost::indeterminate;
-	}
-
-	boost::tribool http_connection::handle_command()
-	{
-		// the header is already consumed; m_buffer now holds the body
-		if (m_content_length > m_buffer.size())
-		{
-			m_read_http_header = false;
-			return boost::indeterminate;   // body not fully arrived yet -> re-read
-		}
-
-		m_read_http_header = true;
-		boost::tribool ret = true;
-		switch (m_command)
-		{
-		case eCmdIdle:
-			{
-				handle_idle();
-				break;
-			}
-		case eCmdSend:
-			{
-				ret = handle_send();
-				break;
-			}
-		case eCmdOpen:
-			{
-				handle_open();
-				break;
-			}
-		case eCmdFcs:
-			{
-				handle_fcs();
-				break;
-			}
-		case eCmdClose:
-			{
-				handle_close();
-				break;
-			}
-		case eCmdInvalid:
-			break;
-		}
-		return ret;
-	}
-
-	bool http_connection::handle_http_fields(byte_reader &r)
-	{
-		std::string cid;
-
-		if (m_command == eCmdFcs)
-		{
-			return get_content_lenght(r);
-		}
-
-		if (m_command != eCmdOpen) // if cmd is not Open, get and validate fields
-		{
-			if (!get_id(r, cid))
-				return false;
-			if (!get_sequence(r))
-				return false;
-
-			// validate cid and seq
-			if (!m_rtmpt_manager->validate(m_socket.remote_endpoint(), cid, m_sequence))
-				return false;
-
-			m_cid = cid;
-		}
-
-		if (!get_content_lenght(r))
-			return false;
-
-		return true;
-	}
-
-	bool http_connection::get_id(byte_reader &r, std::string &cid)
-	{
-		if (r.available() < 18)
-			return false;
-
-		char c;
-		for (int i = 0; i < 16; ++i)
-		{
-			r >> c;
-			cid.push_back(c);
-		}
-
-		r >> c;
-		return c == '/';
-	}
-
-	bool http_connection::get_sequence(byte_reader &r)
-	{
-		std::string seq;
-		char c;
-
-		try
-		{
-			while (true)
-			{
-				r >> c;
-				if (c == ' ')
-					break;
-				seq.push_back(c);
-			}
-			m_sequence = static_cast<std::uint32_t>(std::stoul(seq));
-			return true;
-		}
-		catch (buffer_eof_exception &)
-		{
-			return false;
-		}
-		catch (std::exception &)
-		{
-			return false;
-		}
-	}
-
-	http_connection::commands http_connection::get_command(byte_reader &r)
-	{
-		std::string command;   // NOT static: shared statics here raced across
-		char c;                // concurrent HTTP (RTMPT) connections on other threads
-		enum state { eBegin, eReadSpace, eInCommand };
-		state s = eBegin;
-
-		command = "";
-
-		while(true)
-		{
-			r.read(&c, 1);
-			if (c == ' ')
-			{
-				if (s == eBegin)
-					s = eReadSpace;
-				else
-					command += c;
-				continue;
-			}
-			if (c == '/')
-			{
-				if (s == eReadSpace)
-				{
-					s = eInCommand;
-					continue;
-				}
-				if (s == eInCommand)
-					break;
-				continue;
-			}
-			command.push_back(c);
-		}
-
-		return get_command(command);
-	}
-
-	bool http_connection::get_content_lenght(byte_reader &r)
-	{
-		std::uint8_t const *pos = static_cast<std::uint8_t *>(memmem(reinterpret_cast<char *>(const_cast<std::uint8_t *>(r.read_pos())), r.available(), "\r\nContent-Length: ", 18));
-		if (pos != nullptr)
-		{
-			r.skip(static_cast<std::size_t>(pos - r.read_pos()) + 18);
-			std::string cl;   // NOT static (see get_command)
-			char c;
-
-			cl = "";
-			while (true)
-			{
-				r.read(&c, 1);
-				if (c == '\r')
-				{
-					try
-					{
-						m_content_length = static_cast<std::uint32_t>(std::stoul(cl));
-						return true;
-					}
-					catch (std::exception &)
-					{
-						return false;
-					}
-				}
-				else
-					cl.push_back(c);
-			}
-		}
-		return false;
-	}
-
-	void http_connection::prepare_http_header(std::uint32_t content_len)
-	{
-		std::ostream header(&m_header);
-
-		header
-			<< "HTTP/1.1 200 OK\r\n"
-			<< "Cache-Control: no-cache\r\n"
-			<< "Connection: Keep-Alive\r\n"
-			<< "Content-Length: " << content_len << "\r\n"
-			<< "Server: "
-			<< m_rtmpt_manager->version()
-			<< "\r\n"
-			<< "Content-Type: image/png\r\n\r\n";
-
-		m_write_http_header = true;
-	}
-
-	void http_connection::add_to_http_header(std::uint8_t *data, std::uint32_t size)
-	{
-		std::ostream header(&m_header);
-		header.write(reinterpret_cast<char *>(data), size);
-	}
-
-	void http_connection::add_to_http_header(const char *data)
-	{
-		std::ostream header(&m_header);
-		header << data;
-	}
-
-	void http_connection::add_to_http_header(char data)
-	{
-		std::ostream header(&m_header);
-		header << data;
-	}
-
-	http_connection::commands http_connection::get_command(const std::string &command)
-	{
-		if (command == "send")
-			return eCmdSend;
-		if (command == "idle")
-			return eCmdIdle;
-		if (command == "open")
-			return eCmdOpen;
-		if (command == "fcs")
-			return eCmdFcs;
-		if (command == "close")
-			return eCmdClose;
-		return eCmdInvalid;
-	}
-
-	void http_connection::handle_close()
-	{
-		m_rtmpt_manager->remove_session(m_cid);
-		m_output_buffer.clear();
-		m_buffer.clear();
-		prepare_http_header(1);
-		char const c = 0x00;
-		add_to_http_header(c);
-		m_http_header_is_complete = true;
-		perform_write();
-	}
-
-	void http_connection::handle_fcs()
-	{
-
-		boost::asio::ip::tcp::endpoint const endpoint = m_socket.local_endpoint();
-		boost::asio::ip::address const address = endpoint.address();
-		std::string const str = address.to_string();
-		prepare_http_header(str.size());
-		m_http_header_is_complete = true;
-		add_to_http_header(str.c_str());
-		m_buffer.clear();
-		perform_write();
-	}
-
-	void http_connection::handle_idle()
-	{
-//		std::cout << "in handle_idle() cid: " << m_cid << std::endl;
-
-		m_buffer.clear();
-		m_output_buffer.clear();
-		std::uint32_t const size = m_rtmpt_manager->serialize_result(m_cid, m_sequence, m_output_buffer);
-		prepare_http_header(size);
-
-		if (size < 32)
-		{
-			add_to_http_header(m_output_buffer.data(), size);
-			m_http_header_is_complete = true;
-		}
-		else
-			m_http_header_is_complete = false;
-
-		perform_write();
-	}
-
-	void http_connection::handle_open()
-	{
- 		m_rtmpt_manager->create_session(m_socket.remote_endpoint(), m_cid);
-
-		m_output_buffer.clear();
-		prepare_http_header(17);
-		add_to_http_header(m_cid.c_str());
-		add_to_http_header('\n');
-
-		m_http_header_is_complete = true;
-		m_buffer.clear();
-
-		perform_write();
-	}
-
-	boost::tribool http_connection::handle_send()
-	{
-//		std::cout << "in handle_send() cid: " << m_cid << std::endl;
-//		std::cout << "content length OK: " << m_content_length << std::endl;
-
-		m_output_buffer.clear();
-		std::uint32_t const size = m_rtmpt_manager->handle_data(m_cid, m_sequence, m_buffer, m_output_buffer);
-
-		m_buffer.clear();
-		prepare_http_header(size);
-
-		if (size < 32)
-		{
-			add_to_http_header(m_output_buffer.data(), size);
-			m_http_header_is_complete = true;
-		}
-		else
-			m_http_header_is_complete = false;
-
-		perform_write();
-
-		return true;
+		if (!e)   // fired (not cancelled) -> idle too long
+			close();
 	}
 
 	void http_connection::close()
 	{
-		m_socket.close();
+		boost::system::error_code ec;
+		m_socket.close(ec);
 		m_timer.cancel();
-
 		m_app_manager->delete_http_connection(m_id);
 	}
 }

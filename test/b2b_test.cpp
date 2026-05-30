@@ -284,6 +284,50 @@ TEST_CASE("b2b: publish -> play round-trip (live relay)")
 	std::error_code ec; fs::remove_all(dir, ec);
 }
 
+TEST_CASE("b2b(rtmpt): publish -> play round-trip over the HTTP tunnel")
+{
+	// Same live relay as above, but both ends speak RTMPT (rtmp tunneled over HTTP)
+	// against the server's HTTP port (rtmp_port + 1). Exercises the beast-based
+	// http_connection transport end to end.
+	int const port = 25985;
+	fs::path const dir = fs::temp_directory_path() / "fms_b2b_rtmpt";
+	fs::create_directories(dir);
+	int const in_file = write_test_flv(dir / "src.flv", 10);
+
+	server_process server(dir.string(), port);
+
+	boost::asio::io_context io;
+	std::string const url = "rtmpt://127.0.0.1:" + std::to_string(port + 1) + "/bcast";
+
+	player_nc player(io);
+	player.stream_name = "livestream";
+	player.conn = std::make_shared<net_connection>(io, player, true);
+
+	pub_nc pub;
+	pub.stream_name = "livestream";
+	pub.nseh.flv_path = (dir / "src.flv").string();
+	pub.conn = std::make_shared<net_connection>(io, pub, true);
+
+	bool play_ready = false;
+	bool pub_ready = false;
+	auto go = [&] { if (play_ready && pub_ready) pub.nseh.send_all(); };
+	player.nseh.on_play_start = [&] { play_ready = true; go(); };
+	pub.nseh.on_publish_start = [&] { pub_ready = true; go(); };
+
+	player.conn->connect(url);
+	pub.conn->connect(url);
+	io.run_for(std::chrono::seconds(12));   // RTMPT polls, so allow more time
+
+	CHECK(saw(pub.nseh.status, "NetStream.Publish.Start"));
+	CHECK(saw(player.nseh.status, "NetStream.Play.Start"));
+	int const got = player.nseh.sink.audio + player.nseh.sink.video;
+	MESSAGE("rtmpt live frames published=" << pub.nseh.sent << " received=" << got);
+	CHECK(pub.nseh.sent == in_file);
+	CHECK(got >= in_file);
+
+	std::error_code ec; fs::remove_all(dir, ec);
+}
+
 TEST_CASE("b2b: path traversal is rejected (secret file outside the media dir is not served)")
 {
 	int const port = 25955;
