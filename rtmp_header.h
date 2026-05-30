@@ -2,8 +2,6 @@
 
 #include "byte_reader.h"
 #include "byte_writer.h"
-#include "byte_reader.h"
-#include "byte_writer.h"
 
 namespace fms
 {
