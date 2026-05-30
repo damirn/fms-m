@@ -1,13 +1,6 @@
-// Characterization tests for the RTMP chunk parser (rtmp_raw_data::parse_data).
-//
-// These lock in the *current* framing/reassembly behaviour so the planned
-// non-throwing / asio-dynamic-buffer rewrite can be proven behaviour-preserving.
-//
-// Deliberately written against the durable interface — bytes in, messages out —
-// not against stream_array. The harness feeds a std::vector<uint8_t> (optionally
-// in fragments, to exercise the partial-message path) and records the messages
-// the parser emits. When the input buffer moves to an owned vector / asio views,
-// only feed()'s internals change; every test stays as-is.
+// Characterization tests for the RTMP chunk parser (rtmp_raw_data::parse_data):
+// bytes in, messages out. The harness feeds a std::vector<uint8_t> (optionally in
+// fragments, to exercise the partial-message path) and records the emitted messages.
 
 #include "doctest.h"
 

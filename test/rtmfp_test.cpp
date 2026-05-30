@@ -1,12 +1,9 @@
 // Unit tests for the RTMFP byte-level codecs (option / option_list / header).
 //
-// These are the pure serialize/deserialize paths migrated from stream_array to
-// byte_writer (output) + byte_reader (input). They parse untrusted UDP payloads,
-// so the tests cover round-trips *and* malformed input (truncation, lengths that
-// overrun the datagram) — the deserializers must reject, never over-read.
-//
-// Deliberately scoped to the codecs that link with Boost headers only (no aes /
-// crypto / session stack), matching the amf_tests pattern.
+// They parse untrusted UDP payloads, so the tests cover round-trips *and*
+// malformed input (truncation, lengths that overrun the datagram) -- the
+// deserializers must reject, never over-read. Scoped to the codecs that link with
+// Boost headers only (no aes / crypto / session stack), like amf_tests.
 
 #include "doctest.h"
 

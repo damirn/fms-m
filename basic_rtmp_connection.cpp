@@ -18,7 +18,6 @@ namespace fms
 		, m_io_context(io_context)
 		, m_hs_timer(io_context)
 		, m_timer(io_context)
-		 
 	{}
 
 	basic_rtmp_connection::~basic_rtmp_connection()

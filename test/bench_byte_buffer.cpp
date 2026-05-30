@@ -1,11 +1,9 @@
 // Throughput micro-benchmark for byte_writer's input-buffer role.
 //
-// byte_writer replaced stream_array as the owning input accumulator. Where
-// stream_array advanced a read cursor, the input parsers now consume() a parsed
-// prefix -- a std::vector::erase, i.e. an O(n) memmove of the unparsed tail on
-// every read. This measures whether that memmove matters. (Answer, on the
-// dev box: no -- 50-75 GB/s even in the worst misaligned case, ~1000x any
-// realistic network, so the tail memmove is negligible.)
+// The input parsers consume() a parsed prefix -- a std::vector::erase, i.e. an
+// O(n) memmove of the unparsed tail on every read. This measures whether that
+// memmove matters. (Answer, on the dev box: no -- 50-75 GB/s even in the worst
+// misaligned case, ~1000x any realistic network, so it's negligible.)
 //
 // Not a correctness test; run it by hand when touching the input buffer:
 //   cmake --build build --target bench_byte_buffer && ./build/bench_byte_buffer

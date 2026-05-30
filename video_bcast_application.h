@@ -103,15 +103,10 @@ namespace fms
 
 		void send_aac_config(const stream_client_id_t &, const stream_client_ptr &);
 
-		// Reader/writer split: the per-frame data path (handle_video_data /
-		// handle_audio_data) takes a SHARED lock and only structurally reads the
-		// maps below while mutating disjoint per-stream leaf data (its own bcid's
-		// queue/config and its subscribers' client state). Control paths that
-		// restructure the maps (publish/play/close/teardown) take an EXCLUSIVE
-		// (unique) lock and therefore never overlap a reader. This is only sound
-		// because the data path never inserts into a shared map -- add_stream
-		// pre-creates each publisher's per-bcid slots so the hot path only ever
-		// hits existing keys.
+		// Reader/writer split: the per-frame data path takes a SHARED lock (it only
+		// reads the map structure and mutates its own bcid's leaf data); control
+		// paths that restructure the maps take EXCLUSIVE. Sound only because the data
+		// path never inserts -- add_stream pre-creates each publisher's per-bcid slots.
 		std::shared_mutex m_mutex;
 
 		// broadcaster -> subscribers
