@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace beast = boost::beast;
-namespace http = boost::beast::http;
+namespace http = beast::http;
 
 namespace fms
 {

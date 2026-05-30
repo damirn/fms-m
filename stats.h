@@ -1,11 +1,10 @@
 #pragma once
 
-#include <map>
-#include <list>
-#include <string>
-
-#include <memory>
 #include <chrono>
+#include <list>
+#include <map>
+#include <memory>
+#include <string>
 
 namespace fms
 {
@@ -29,9 +28,7 @@ namespace fms
 
 	struct client_stats
 	{
-		client_stats()
-			 
-		{}
+		client_stats()= default;
 		std::uint32_t m_online_time{0};
 		std::uint32_t m_bytes_read{0};
 		std::uint32_t m_bytes_written{0};
@@ -41,9 +38,7 @@ namespace fms
 
 	struct app_stats
 	{
-		app_stats()
-			 
-		{}
+		app_stats()= default;
 		std::uint32_t m_bytes_read{0};
 		std::uint32_t m_bytes_written{0};
 		std::uint32_t m_messages_read{0};

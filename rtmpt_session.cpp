@@ -19,12 +19,10 @@ namespace fms
 	rtmpt_session::rtmpt_session(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager)
 		: basic_rtmp_connection(id, io_context, app_manager)
 		, m_rtmpt_manager(app_manager->get_rtmpt_manager())
-		 
 	{}
 
 	void rtmpt_session::start()
 	{
-
 		// arm handshake timer
 		arm_hs_timer();
 	}
@@ -112,7 +110,6 @@ namespace fms
 	{
 		if (m_sstate == eCSReadCommands)
 		{
-//			std::cout << "RTMP command arrived" << std::endl;
 			m_results.clear();
 			boost::tribool res;
 			if (m_key_in != nullptr)
