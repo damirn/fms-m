@@ -18,42 +18,24 @@ namespace fms::rtmp_client
 	{
 		m_host = host;
 		m_stopped = false;
-		boost::asio::ip::tcp::resolver::query const query(host, port);
-		m_resolver.async_resolve(query, [self = shared_from_this()](const boost::system::error_code &ec, const boost::asio::ip::tcp::resolver::iterator &it) { self->handle_resolve(ec, it); });
+		m_resolver.async_resolve(host, port, [self = shared_from_this()](const boost::system::error_code &ec, const boost::asio::ip::tcp::resolver::results_type &results) { self->handle_resolve(ec, results); });
 	}
 
-	void net_client::handle_resolve(const boost::system::error_code &err, const boost::asio::ip::tcp::resolver::iterator &endpoint_iterator)
+	void net_client::handle_resolve(const boost::system::error_code &err, const boost::asio::ip::tcp::resolver::results_type &results)
 	{
 		if (!err)
-			start(endpoint_iterator);
+			start(results);
 		else
 			std::cout << "Cannot resolve hostname: " << err.message() << std::endl;
 	}
 
-	void net_client::start(const boost::asio::ip::tcp::resolver::iterator& endpoint_iterator)
+	void net_client::start(const boost::asio::ip::tcp::resolver::results_type &results)
 	{
-		start_connect(endpoint_iterator);
+		// async_connect walks the resolved endpoints itself, trying each until one
+		// connects; the deadline timer below bounds the whole attempt.
+		m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eConnectTimeout)));
+		boost::asio::async_connect(m_socket, results, [self = shared_from_this()](const boost::system::error_code &ec, const boost::asio::ip::tcp::endpoint &ep) { self->handle_connect(ec, ep); });
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &) { self->check_deadline(); });
-	}
-
-	void net_client::stop()
-	{
-		m_stopped = true;
-		boost::system::error_code ignored_ec;
-		m_socket.close(ignored_ec);
-		m_timer.cancel();
-		m_connect_cb(false, "Timeout");
-	}
-
-	void net_client::start_connect(const boost::asio::ip::tcp::resolver::iterator& endpoint_iter)
-	{
-		if (endpoint_iter != boost::asio::ip::tcp::resolver::iterator())
-		{
-			m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eConnectTimeout)));
-			m_socket.async_connect(endpoint_iter->endpoint(), [self = shared_from_this(), endpoint_iter](const boost::system::error_code &ec) { self->handle_connect(ec, endpoint_iter); });
-		}
-		else
-			stop();
 	}
 
 	void net_client::check_deadline()
@@ -68,11 +50,9 @@ namespace fms::rtmp_client
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &) { self->check_deadline(); });
 	}
 
-	void net_client::handle_connect(const boost::system::error_code &err, boost::asio::ip::tcp::resolver::iterator endpoint_iter)
+	void net_client::handle_connect(const boost::system::error_code &err, const boost::asio::ip::tcp::endpoint &)
 	{
-		if (!m_socket.is_open())
-			start_connect(++endpoint_iter);
-		else if (!err)
+		if (!err)
 		{
 			m_connected = true;
 			m_connect_cb(m_connected, "");
@@ -80,9 +60,9 @@ namespace fms::rtmp_client
 		}
 		else
 		{
-			// The connection failed. Try the next endpoint in the list.
+			// Every endpoint failed, or the deadline closed the socket mid-connect.
 			m_socket.close();
-			start_connect(++endpoint_iter);
+			m_connect_cb(false, err.message());
 		}
 	}
 
