@@ -1,12 +1,21 @@
 #pragma once
 
-#include <boost/logic/tribool.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
+
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 #include "net_client.h"
-#include "byte_reader.h"
 
 namespace fms::rtmp_client
 {
+	// RTMPT client transport: tunnels the RTMP byte stream over HTTP POSTs
+	// (/open once, then /send when the RTMP layer has data and periodic /idle
+	// polls), using Boost.Beast for the HTTP framing. Presents the plain net_client
+	// interface (read_data / write_data + the io callbacks) to the RTMP layer above.
 	class net_client_tunnel : public net_client
 	{
 	public:
@@ -15,52 +24,37 @@ namespace fms::rtmp_client
 			, m_timer(io_context)
 		{}
 
-		void read_data(std::size_t = 1) override;
-		void write_data() override;
+		void read_data(std::size_t = 1) override;   // no-op: the poll timer drives reads
+		void write_data() override;                  // flush m_output_buffer as a POST /send
 
-	protected:
+	private:
+		using body_t = boost::beast::http::vector_body<std::uint8_t>;
+		using request_t = boost::beast::http::request<body_t>;
+		using response_t = boost::beast::http::response<body_t>;
+
 		void handle_connect(const boost::system::error_code &, boost::asio::ip::tcp::resolver::iterator) override;
-		void read_complete(const boost::system::error_code &, std::size_t) override;
-		void write_complete(const boost::system::error_code &, std::size_t) override;
 
-		void read_data_internal()
-		{
-			//			net_client::read_data();
-			boost::asio::async_read(m_socket, m_input_buffer_int.write_buffer(),
-			                        boost::asio::transfer_at_least(1),
-			                        [this](const boost::system::error_code &ec, std::size_t n) { read_complete(ec, n); });
-		}
-
-		void send_open();
-		void read_open();
-		boost::tribool handle_http_header(std::size_t);
-		bool get_content_length(byte_reader &);
-		void read_cid();
-		void handle_content();
-
-		void prepare_http_header(const std::string &, std::ostream &);
+		void send_command(const char *verb, std::vector<std::uint8_t> body);
+		void on_write(const boost::system::error_code &, std::size_t);
+		void on_read(const boost::system::error_code &, std::size_t);
+		void deliver(const std::vector<std::uint8_t> &body);   // strip poll byte, forward RTMP bytes
+		void set_poll_interval(std::uint8_t);
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
-		void parse_poll_time();
 
-		enum { eSendingOpen, eReadingOpen, eReady };
-		enum { eCmdIdle, eCmdSend };
+		enum state { eOpening, eReady };
+		enum command { eCmdOpen, eCmdSend, eCmdIdle };
 
-		std::uint32_t m_request_id{0};
-		bool m_sending_header;
-		bool m_reading_header{true};
-		std::uint8_t m_state;
-		std::uint8_t m_prev_cmd;
-
-		// idle timer
 		boost::asio::steady_timer m_timer;
+		boost::beast::flat_buffer m_read_buffer;
+		std::optional<boost::beast::http::response_parser<body_t>> m_parser;
+		request_t m_request;
 
-		byte_writer m_input_buffer_int;
-
-		// HTTP content length
-		std::uint32_t m_content_length;
-		std::uint32_t m_ms_timer{30};
-		std::string m_cid;
+		std::uint32_t m_request_id{0};      // RTMPT sequence number
+		std::uint8_t m_state{eOpening};
+		std::uint8_t m_cmd{eCmdOpen};        // which request's response we're reading
+		std::uint32_t m_ms_timer{30};        // idle-poll interval
+		std::string m_cid;                   // session id from the open response
 	};
 
 	using net_client_tunnel_ptr = std::shared_ptr<net_client_tunnel>;
