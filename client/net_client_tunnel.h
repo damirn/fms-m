@@ -32,7 +32,7 @@ namespace fms::rtmp_client
 		using request_t = boost::beast::http::request<body_t>;
 		using response_t = boost::beast::http::response<body_t>;
 
-		void handle_connect(const boost::system::error_code &, boost::asio::ip::tcp::resolver::iterator) override;
+		void handle_connect(const boost::system::error_code &, const boost::asio::ip::tcp::endpoint &) override;
 
 		void send_command(const char *verb, std::vector<std::uint8_t> body);
 		void on_write(const boost::system::error_code &, std::size_t);

@@ -63,12 +63,10 @@ namespace fms::rtmp_client
 		void close_socket();
 
 	protected:
-		void start(const boost::asio::ip::tcp::resolver::iterator&);
-		void stop();
-		void start_connect(const boost::asio::ip::tcp::resolver::iterator&);
+		void start(const boost::asio::ip::tcp::resolver::results_type &);
 		void check_deadline();
-		void handle_resolve(const boost::system::error_code &, const boost::asio::ip::tcp::resolver::iterator&);
-		virtual void handle_connect(const boost::system::error_code &, boost::asio::ip::tcp::resolver::iterator);
+		void handle_resolve(const boost::system::error_code &, const boost::asio::ip::tcp::resolver::results_type &);
+		virtual void handle_connect(const boost::system::error_code &, const boost::asio::ip::tcp::endpoint &);
 		virtual void read_complete(const boost::system::error_code &, std::size_t);
 		virtual void write_complete(const boost::system::error_code &, std::size_t);
 

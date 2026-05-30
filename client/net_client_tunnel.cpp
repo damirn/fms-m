@@ -7,11 +7,11 @@ namespace http = boost::beast::http;
 
 namespace fms::rtmp_client
 {
-	void net_client_tunnel::handle_connect(const boost::system::error_code &err, boost::asio::ip::tcp::resolver::iterator endpoint_iterator)
+	void net_client_tunnel::handle_connect(const boost::system::error_code &err, const boost::asio::ip::tcp::endpoint &endpoint)
 	{
 		if (err)
 		{
-			net_client::handle_connect(err, endpoint_iterator);
+			net_client::handle_connect(err, endpoint);
 			return;
 		}
 		m_connected = true;
