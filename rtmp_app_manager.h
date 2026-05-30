@@ -2,6 +2,7 @@
 
 #include <map>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <optional>
 
@@ -115,7 +116,13 @@ namespace fms
 
 		rtmpt_manager *m_rtmpt_manager;
 
-		std::mutex m_mutex;
+		// Reader/writer split (Stage 2): the per-frame hot reads (get_connection /
+		// has_connection / get_app_instance) and update_netstream_stats take a
+		// SHARED lock; connection add/remove, netstream create/delete and the admin
+		// stats readers take EXCLUSIVE. update_netstream_stats mutates under the
+		// shared lock, which is safe because each netstream's stats has a single
+		// writer (its feeding thread) and the exclusive admin readers never overlap.
+		std::shared_mutex m_mutex;
 		netstream_stats_map_t m_netstream_stats;
 
 		boost::asio::io_context &m_io_context;
