@@ -261,6 +261,11 @@ if(BUILD_CLIENT)
   add_executable(rtmp_client client/main.cpp)
   target_link_libraries(rtmp_client PRIVATE rtmp_client_lib)
 
+  # RTMP pull-relay: the external tool fms-m spawns as --helper-app to bridge a
+  # remote origin stream into the local server (see spawn_helper).
+  add_executable(fms_helper client/helper_main.cpp)
+  target_link_libraries(fms_helper PRIVATE rtmp_client_lib)
+
   # Back-to-back test: drives the fms-m server (spawned as a subprocess) with the
   # client library and asserts on the protocol events + frames it receives.
   add_executable(b2b_test test/b2b_test.cpp test/test_main.cpp)
