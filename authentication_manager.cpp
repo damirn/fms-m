@@ -1,11 +1,8 @@
 #include "pch.h"
 #include "authentication_manager.h"
 
-#ifndef WIN32
 #include <dlfcn.h>
-
 #include <utility>
-#endif
 
 namespace fms
 {
@@ -46,20 +43,11 @@ namespace fms
 
 	void authentication_manager::load_plugin(const std::string &plugin_name)
 	{
-#ifdef WIN32
-		HMODULE h = ::LoadLibrary(plugin_name.c_str());
-		if (h == 0)
-			throw std::runtime_error("Cannot load authentication plugin");
-
-		create c = reinterpret_cast<create>(GetProcAddress(h, "create_plugin"));
-		destroy d = reinterpret_cast<destroy>(GetProcAddress(h, "destroy_plugin"));
-#else
 		void *h = ::dlopen(plugin_name.c_str(), RTLD_LAZY);
 		if (h == nullptr)
 			throw std::runtime_error("Cannot load authentication plugin");
 		auto c = reinterpret_cast<create>(::dlsym(h, "create_plugin"));
 		auto d = reinterpret_cast<destroy>(::dlsym(h, "destroy_plugin"));
-#endif
 		// Fail loudly on a malformed plugin rather than leaving m_auth_plugin
 		// null (later deref) or silently defaulting to allow-all.
 		if (c == nullptr || d == nullptr)
