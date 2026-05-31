@@ -20,6 +20,9 @@ available CPU cores.
 
 - **Live relay** — one publisher fans out to many subscribers with per-client
   queueing and QoS notifications.
+- **Origin pull** — play `stream@rtmp://origin/app` and, with no local
+  publisher, the server bridges the stream in from the remote origin using the
+  bundled `fms_helper` relay (see [Stream relay](#stream-relay-origin-pull)).
 - **Recording** — publish a stream as type `record` and the server writes it to
   `<output-folder>/<stream>.flv`.
 - **Multiple transports** for the same content:
@@ -31,8 +34,6 @@ available CPU cores.
   G.711 audio support used by the call application.
 - **Admin application** — a password-protected control app exposing live
   application/client/stream statistics and the ability to disconnect clients.
-- **Pluggable authentication** — an optional shared-library auth plugin can gate
-  who is allowed to connect and publish.
 - **Multi-threaded** — a pool of I/O threads, one `io_context` per thread, with
   each connection pinned to a single thread.
 
@@ -168,7 +169,7 @@ A more typical invocation:
 | `-a`  | `--auth-plugin <path>`            | *(none)*  | Path to an authentication plugin shared library.       |
 | `-F`  | `--password-file <path>`          | `./passwd`| Password file used by the `admin` application.         |
 | `-A`  | `--admin-data-keep-time <sec>`    | `600`     | How long admin statistics are retained, in seconds.    |
-| `-H`  | `--helper-app <path>`             | *(none)*  | External helper application.                           |
+| `-H`  | `--helper-app <path>`             | *(none)*  | Relay helper spawned for origin-pull play (`fms_helper`). |
 | `-q`  | `--quality <0..10>`               | `6`       | Speex encoder quality.                                 |
 | `-e`  | `--max-audio-frames <n>`          | `2`       | Max audio frames queued per client.                    |
 | `-E`  | `--max-audio-frames-high-latency` | `10`      | Max audio frames queued per client in high-latency mode.|
@@ -250,6 +251,32 @@ the published audio/video and can be played back with any FLV-capable player.
 
 ---
 
+## Stream relay (origin pull)
+
+A client can request a stream that lives on **another** server by playing the
+`<stream>@rtmp://<origin-host>/<app>` syntax. When the local server has no
+publisher (and no recorded VOD) for `<stream>`, it bridges the stream in from
+the origin by spawning the program given by `--helper-app`:
+
+```
+fms_helper -r rtmp://<origin-host>/<app> -l rtmp://localhost:<rtmp-port>/<app> -s <stream>
+```
+
+The helper plays `<stream>` from the origin and republishes it to the local
+server under the same name, feeding the waiting subscriber. The bundled
+`fms_helper` tool (built alongside the client, from `client/helper_main.cpp`)
+implements exactly this contract — point `--helper-app` at its full path:
+
+```sh
+./build/fms-m --helper-app "$PWD/build/fms_helper" ...
+```
+
+The relay carries H.264 / AAC (and `onMetaData`) straight through, keeps no
+state, and exits when the origin stream ends; the server re-spawns it on the
+next remote-stream play.
+
+---
+
 ## Admin application & authentication
 
 - **Admin app** — connect to the `admin` application to query live statistics
@@ -257,9 +284,11 @@ the published audio/video and can be played back with any FLV-capable player.
   Access is authenticated against the file given by `--password-file` (default
   `./passwd`). Each line is `user:sha256hash`, optionally salted as
   `user:salt$sha256(salt+password)`.
-- **Auth plugin** — `--auth-plugin <lib>` loads an external shared library that
-  can approve or reject connections and publishes, for integrating with your own
-  user directory or token system.
+- **Auth plugin (interface only)** — a loader and plugin ABI exist for an
+  external shared-library authenticator (`--auth-plugin <lib>`), intended to
+  approve/reject connections and publishes against your own user directory or
+  token system. The loader works, but the hook is **not yet wired into the
+  connect/publish path**, so no plugin is consulted at runtime.
 
 ---
 
@@ -267,23 +296,3 @@ the published audio/video and can be played back with any FLV-capable player.
 
 The server writes rotating log files to `--log-path` (default: current
 directory). Verbosity is controlled with `--log-level` (higher is more verbose).
-
----
-
-## Project layout
-
-| Path                          | Contents                                             |
-|-------------------------------|------------------------------------------------------|
-| `main.cpp`, `server.*`        | Process entry point and acceptor/listener setup.     |
-| `rtmp_connection.*`, `basic_rtmp_connection.*` | RTMP/RTMPE connection + handshake state machine. |
-| `rtmp_protocol.*`, `rtmp_message.*`, `rtmp_header.*` | RTMP chunking and message (de)serialization. |
-| `amf0.*`, `amf3.*`            | AMF0 / AMF3 command and value encoding.              |
-| `crypto.*`, `dh.*`, `evp_dh.*`| RTMPE crypto: RC4, HMAC-SHA256, Diffie-Hellman.      |
-| `http_connection.*`, `rtmpt_*`| RTMPT (HTTP-tunnelled RTMP).                          |
-| `rtmfp/`                      | RTMFP (UDP) service, sessions, and flows.            |
-| `video_bcast_application.*`   | The `bcast` application (publish/play/record).       |
-| `video_call_application.*`    | The `video_call` application.                        |
-| `admin_application.*`         | The `admin` application.                             |
-| `flv_writer.*`, `flv_reader.*`| FLV file writing/reading.                            |
-| `io_service_pool.*`           | The `io_context`-per-thread engine.                  |
-| `stream_array.h`, `dynamic_array.h` | The network read/write buffer.                 |
