@@ -11,7 +11,7 @@ encrypted RTMPE, HTTP-tunnelled RTMPT, and UDP-based RTMFP — over a
 available CPU cores.
 
 - **Language / build:** C++23, CMake, Boost, OpenSSL 3, Speex
-- **Platforms:** macOS (Apple clang) and Linux (GCC/clang)
+- **Platforms:** macOS (Apple clang) and Linux (GCC/clang) — POSIX only
 - **Version:** 0.28.1
 
 ---
@@ -120,6 +120,11 @@ Arch Linux images are additionally validated clean under **AddressSanitizer**
 (including 24 concurrent RTMFP clients). The `Dockerfile*` build files accept
 `--build-arg CXX=clang++` and sanitizer flags via `--build-arg CXXFLAGS_EXTRA` /
 `LDFLAGS_EXTRA`.
+
+The bundled client tools (`rtmp_client`, `fms_helper`) build alongside the
+server on every combination above. The `fms_helper` origin-pull relay is
+additionally verified end-to-end — remote publish → relay → local play — on
+macOS and Linux.
 
 ---
 
