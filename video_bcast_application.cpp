@@ -9,10 +9,8 @@
 #include <filesystem>
 #include <memory>
 #include <vector>
-#ifndef _WIN32
 #include <csignal>
 #include <unistd.h>
-#endif
 #include <utility>
 
 namespace fms
@@ -452,7 +450,6 @@ namespace fms
 			args.emplace_back("-s");
 			args.push_back(stream);
 
-#ifndef _WIN32
 			// Launch the helper as a detached child (argv[0] is the executable).
 			// SIGCHLD is ignored so the kernel reaps it — no zombie, no wait().
 			::signal(SIGCHLD, SIG_IGN);
@@ -466,7 +463,6 @@ namespace fms
 				::execvp(argv[0], argv.data());
 				::_exit(127);   // exec failed
 			}
-#endif
 		}
 	}
 

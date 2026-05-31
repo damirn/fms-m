@@ -108,13 +108,6 @@ namespace fms
 			m_http_acceptor.async_accept(m_http_connection->socket(),
 				[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
 		}
-#ifdef WIN32
-		else if (e.value() == ERROR_SEM_TIMEOUT)
-		{
-			m_http_acceptor.async_accept(m_http_connection->socket(),
-				[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
-		}
-#endif
 	}
 
 	void server::create_applications()
