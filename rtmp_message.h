@@ -335,15 +335,15 @@ namespace fms
 			: rtmp_message(eMessageAudioData), m_size(0)
 		{}
 
-		explicit rtmp_message_audio_data(std::uint16_t size)
+		explicit rtmp_message_audio_data(std::uint32_t size)
 			: rtmp_message(eMessageAudioData), m_data(new std::uint8_t[size]), m_size(size)
 		{}
 
-		rtmp_message_audio_data(std::uint8_t *data, std::uint16_t size)
+		rtmp_message_audio_data(std::uint8_t *data, std::uint32_t size)
 			: rtmp_message(eMessageAudioData), m_data(data), m_size(size)
 		{}
 
-		rtmp_message_audio_data(std::shared_ptr<std::uint8_t[]> &data, std::uint16_t size)
+		rtmp_message_audio_data(std::shared_ptr<std::uint8_t[]> &data, std::uint32_t size)
 			: rtmp_message(eMessageAudioData), m_data(data), m_size(size)
 		{}
 
@@ -363,7 +363,7 @@ namespace fms
 			return m_data.get();
 		}
 
-		std::uint16_t size() const
+		std::uint32_t size() const
 		{
 			return m_size;
 		}
@@ -403,7 +403,7 @@ namespace fms
 
 	protected:
 		std::shared_ptr<std::uint8_t[]> m_data;
-		std::uint16_t m_size;
+		std::uint32_t m_size;
 	};
 
 	using rtmp_message_audio_data_ptr = std::shared_ptr<rtmp_message_audio_data>;

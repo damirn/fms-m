@@ -180,7 +180,7 @@ namespace fms
 
 	void rtmp_protocol::deserialize_audio_data(byte_reader &buffer, std::uint32_t size)
 	{
-		rtmp_message_audio_data_ptr const msg(new rtmp_message_audio_data(static_cast<std::uint16_t>(size)));
+		rtmp_message_audio_data_ptr const msg(new rtmp_message_audio_data(size));
 		msg->deserialize(buffer);
 		m_message = msg;
 	}

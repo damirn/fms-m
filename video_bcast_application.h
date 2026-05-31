@@ -6,6 +6,7 @@
 #include <set>
 #include <shared_mutex>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 
 #include <boost/asio.hpp>
@@ -178,7 +179,8 @@ namespace fms
 		{
 			bool operator() (const subscriber &a, const subscriber &b) const
 			{
-				return a.m_id < b.m_id && a.m_stream_id < b.m_stream_id;
+				// tuple order: ANDing two `<` isn't a strict weak ordering (std::set UB)
+				return std::tie(a.m_id, a.m_stream_id) < std::tie(b.m_id, b.m_stream_id);
 			}
 		};
 
