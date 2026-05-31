@@ -21,9 +21,14 @@ namespace fms
 
 		enum result { _eOK, _eDuplicate, _eGapClosed, _eProducesGap, _eGapStillPresent };
 
+		// Cap on how far ahead of csn a seq may jump. A hostile fragment can carry
+		// a 64-bit seq; without this the gap-fill loop below inserts (val - csn)
+		// nodes into m_missing -> OOM. Far above any legitimate receive window.
+		static constexpr T eMaxGap = 0x10000;
+
 		result add_seq(const T &val)
 		{
-			if (val <= m_csn || m_sequences.find(val) != m_sequences.end())
+			if (val <= m_csn || val - m_csn > eMaxGap || m_sequences.find(val) != m_sequences.end())
 			{
 				return _eDuplicate;
 			}
