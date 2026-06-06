@@ -42,6 +42,16 @@ namespace fms
 		std::uint32_t m_chunk_size{eChunkSize};
 		std::uint32_t m_channel_id;
 
+		// Set by parse_data when a chunk header declares a message longer than
+		// eMaxMessageLength (protocol abuse / DoS). The owning connection checks
+		// it after parse_data and tears the connection down.
+		bool m_framing_error{false};
+
 		enum { eChunkSize = 128 };
+		// 24-bit RTMP length allows up to 16 MiB; no legitimate audio/video frame
+		// (or live aggregate) is this big. Bounds per-channel reassembly and the
+		// per-message allocation in rtmp_protocol::deserialize. Tune if a workload
+		// legitimately sends larger aggregate messages.
+		static constexpr std::uint32_t eMaxMessageLength = 8u * 1024 * 1024;
 	};
 }

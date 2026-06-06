@@ -78,6 +78,18 @@ namespace fms
 			// deliberately NOT caught here — parse_data needs it to rewind.
 			return false;
 		}
+		catch (const std::bad_alloc &)
+		{
+			// audio/video/aggregate bodies allocate new[message_length]; a failed
+			// allocation would otherwise escape to the io worker and terminate the
+			// server. Drop the message instead. (Caught specifically, not via
+			// std::exception, so buffer_eof_exception still propagates as above.)
+			return false;
+		}
+		catch (const std::length_error &)
+		{
+			return false;
+		}
 	}
 
 	void rtmp_protocol::serialize(byte_writer &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)

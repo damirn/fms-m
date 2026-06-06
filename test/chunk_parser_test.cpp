@@ -100,6 +100,8 @@ namespace
 		fms::byte_writer buf;
 
 		void set_chunk_size(std::uint32_t n) { m_chunk_size = n; }
+		bool framing_error() const { return m_framing_error; }
+		static constexpr std::uint32_t max_message_length() { return eMaxMessageLength; }
 
 		// bytes in; feed in `frag`-sized pieces (default: all at once)
 		boost::tribool feed(const std::vector<std::uint8_t> &bytes, std::size_t frag = SIZE_MAX)
@@ -158,6 +160,23 @@ TEST_CASE("chunk parser: single small message, one chunk")
 	CHECK(h.messages[0].stream_id == 1);
 	CHECK(h.messages[0].channel_id == 4);
 	CHECK(h.messages[0].payload == p);
+}
+
+TEST_CASE("chunk parser: oversized message length is rejected (DoS guard)")
+{
+	// A type-0 header declaring a message longer than eMaxMessageLength must be
+	// refused before any payload is buffered, and the connection flagged, rather
+	// than accumulating/allocating up to gigabytes across channels (remote DoS).
+	chunk_stream cs;
+	cs.hdr0(4, 0, parser_harness::max_message_length() + 1, VIDEO, 1);
+	auto const p = pattern(64);   // a little payload, not the whole declared size
+	cs.raw(p.data(), p.size());
+
+	parser_harness h;
+	h.feed(cs.bytes);
+
+	CHECK(h.framing_error());
+	CHECK(h.messages.empty());
 }
 
 TEST_CASE("chunk parser: basic-header channel-id encodings (1/2/3 byte)")
