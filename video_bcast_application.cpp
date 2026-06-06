@@ -912,7 +912,7 @@ namespace fms
 
 	void video_bcast_application::create_stream_client(const stream_client_id_t &broadcaster, const stream_client_id_t &subscriber, bool stream_is_playing)
 	{
-		stream_client_ptr const client(new stream_client(subscriber.first, subscriber.second, stream_is_playing));
+		stream_client_ptr const client = std::make_shared<stream_client>(subscriber.first, subscriber.second, stream_is_playing);
 		m_subscribers[subscriber] = client;
 		m_stream_clients.insert(stream_client_map_t::value_type(broadcaster, subscriber));
 	}

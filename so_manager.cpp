@@ -52,7 +52,7 @@ namespace fms
 		auto i = m_so_map.find(so_name);
 		if (i == m_so_map.end())
 		{
-			so_data_ptr const data(new so_data);
+			so_data_ptr const data = std::make_shared<so_data>();
 			i = m_so_map.insert(std::map<std::string, so_data_ptr>::value_type(so_name, data)).first;
 			data->m_clients.insert(connection_id);
 		}
@@ -61,16 +61,16 @@ namespace fms
 
 		result->flags() = 0x20;
 
-		rtmp_message_shared_object::event_ptr const use_event(new rtmp_message_shared_object::event(rtmp_message_shared_object::eUseSuccess));
+		rtmp_message_shared_object::event_ptr const use_event = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eUseSuccess);
 		result->add_event(use_event);
 
-		rtmp_message_shared_object::event_ptr const clear_event(new rtmp_message_shared_object::event(rtmp_message_shared_object::eClear));
+		rtmp_message_shared_object::event_ptr const clear_event = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eClear);
 		result->add_event(clear_event);
 
 		const std::map<std::string, amf0_type_ptr> &values = i->second->m_values;
 		for (const auto & value : values)
 		{
-			rtmp_message_shared_object::event_ptr const e(new rtmp_message_shared_object::event(rtmp_message_shared_object::eChange));
+			rtmp_message_shared_object::event_ptr const e = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eChange);
 			amf0_string_ptr const s = std::make_shared<amf0_string>(value.first);
 			e->m_name = s;
 			e->m_value = value.second;
@@ -103,7 +103,7 @@ namespace fms
 			s->m_values[e->m_name->value()] = e->m_value;
 
 			result->version() = s->m_version;
-			rtmp_message_shared_object::event_ptr const ev(new rtmp_message_shared_object::event(rtmp_message_shared_object::eSuccess));
+			rtmp_message_shared_object::event_ptr const ev = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eSuccess);
 			ev->m_name = e->m_name;
 			result->add_event(ev);
 
@@ -113,7 +113,7 @@ namespace fms
 				if (client == connection_id)
 					continue;
 				rtmp_message_shared_object_ptr const notify = std::make_shared<rtmp_message_shared_object>(so->name(), s->m_version, 0);
-				rtmp_message_shared_object::event_ptr const evc(new rtmp_message_shared_object::event(rtmp_message_shared_object::eChange));
+				rtmp_message_shared_object::event_ptr const evc = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eChange);
 				evc->m_name = e->m_name;
 				evc->m_value = e->m_value;
 				notify->add_event(evc);
@@ -155,7 +155,7 @@ namespace fms
 
 				const std::set<std::uint32_t> &clients = s->m_clients;
 				rtmp_message_shared_object_ptr const notify = std::make_shared<rtmp_message_shared_object>(so->name(), s->m_version, 0);
-				rtmp_message_shared_object::event_ptr const evc(new rtmp_message_shared_object::event(rtmp_message_shared_object::eRemove));
+				rtmp_message_shared_object::event_ptr const evc = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eRemove);
 				evc->m_name = e->m_name;
 				notify->add_event(evc);
 

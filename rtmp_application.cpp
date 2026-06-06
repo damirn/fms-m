@@ -27,7 +27,7 @@ namespace fms
 		const char setPeerInfo[] = "setPeerInfo";
 	}
 
-	amf0_string_ptr rtmp_application::m_rnd_str(new amf0_string);
+	amf0_string_ptr rtmp_application::m_rnd_str = std::make_shared<amf0_string>();
 	bool rtmp_application::m_rnd_str_generated(false);
 
 	rtmp_application::rtmp_application(rtmp_app_manager *app_manager, const std::string &app_name)
@@ -261,7 +261,7 @@ namespace fms
 
 	void rtmp_application::handle_invoke_check_bandwidth(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr const res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_download(std::move(a), std::move(b), c); }));
+		bwcheck_result_handler_ptr const res_handler = std::make_shared<bwcheck_result_handler>(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_download(std::move(a), std::move(b), c); });
 		std::uint32_t const id = ++m_invoke_id;
 		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>("onBWCheck", id);
 
@@ -279,7 +279,7 @@ namespace fms
 
 	void rtmp_application::handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		bwcheck_result_handler_ptr const res_handler(new bwcheck_result_handler(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_upload(std::move(a), std::move(b), c); }));
+		bwcheck_result_handler_ptr const res_handler = std::make_shared<bwcheck_result_handler>(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_upload(std::move(a), std::move(b), c); });
 		std::uint32_t const id = ++m_invoke_id;
 		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>("onBWCheckU", id);
 

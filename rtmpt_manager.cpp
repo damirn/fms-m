@@ -118,7 +118,7 @@ namespace fms
 			auto const i = m_ids.find(id);
 			if (i == m_ids.end())
 			{
-				rtmpt_session_data_ptr const tmp(new rtmpt_session_data(address));
+				rtmpt_session_data_ptr const tmp = std::make_shared<rtmpt_session_data>(address);
 				tmp->m_session = session;
 				m_ids[id] = tmp;
 				return id;

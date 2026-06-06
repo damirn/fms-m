@@ -44,7 +44,7 @@ namespace fms
 
 	rtmp_message_shared_object::event_ptr rtmp_message_shared_object::deserialize_event(byte_reader &buffer)
 	{
-		event_ptr ev(new event);
+		event_ptr ev = std::make_shared<event>();
 		buffer >> ev->m_type;
 
 		std::uint32_t len;

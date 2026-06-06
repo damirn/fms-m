@@ -41,20 +41,14 @@ namespace fms
 
 			if (c == 0x08)
 			{
-				// audio buffer is 16-bit sized; a larger tag can't fit, so skip it
-				if (size > 0xFFFF)
-				{
-					m_f.seekg(size + 4, std::ios_base::cur);
-					continue;
-				}
-				fms::rtmp_message_audio_data_ptr const audio(new fms::rtmp_message_audio_data(static_cast<std::uint16_t>(size)));
+				fms::rtmp_message_audio_data_ptr const audio = std::make_shared<fms::rtmp_message_audio_data>(size);
 				m_f.read((char *)audio->data(), size);
 				m_frame = audio;
 			}
 			else if (c == 0x09)
 			{
 				// allocate the full 24-bit tag size (was truncated to 16 bits -> heap overflow)
-				fms::rtmp_message_video_data_ptr const video(new fms::rtmp_message_video_data(size));
+				fms::rtmp_message_video_data_ptr const video = std::make_shared<fms::rtmp_message_video_data>(size);
 				m_f.read((char *)video->data(), size);
 				m_frame = video;
 			}
