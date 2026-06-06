@@ -41,6 +41,8 @@ namespace fms
 		start_timer();
 	}
 
+	video_bcast_application::~video_bcast_application() = default;
+
 	void video_bcast_application::delete_connection(std::uint32_t connection_id, const std::string &app_instance)
 	{
 		rtmp_application::delete_connection(connection_id, app_instance);
@@ -732,8 +734,7 @@ namespace fms
 		{
 			std::filesystem::path const flv_name(stream + ".flv");
 			std::filesystem::path const flv_full_name = config::instance()->flv_folder() / flv_name;
-			auto *fw = new flv_writer(flv_full_name.string());
-			m_flv_writers[id] = fw;
+			m_flv_writers[id] = std::make_unique<flv_writer>(flv_full_name.string());
 		}
 		catch (std::runtime_error &)
 		{
@@ -834,8 +835,7 @@ namespace fms
 			if (i != m_flv_writers.end())
 			{
 				i->second->close();
-				delete i->second;
-				m_flv_writers.erase(i);
+				m_flv_writers.erase(i);   // unique_ptr deletes the writer
 			}
 			m_metadata.erase(cid);
 		}

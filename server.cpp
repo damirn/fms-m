@@ -17,11 +17,9 @@ namespace fms
 		, m_acceptor(m_io_context_pool.get_io_context())
 		, m_http_acceptor(m_io_context_pool.get_io_context()) {}
 
-	server::~server()
-	{
-		delete m_app_manager;
-		delete m_rtmfp_service;
-	}
+	// Out-of-line (not =default) so the unique_ptr members' destructors are
+	// instantiated here, where rtmp_app_manager / service are complete types.
+	server::~server() = default;
 
 	void server::run()
 	{
@@ -112,12 +110,12 @@ namespace fms
 
 	void server::create_applications()
 	{
-		m_app_manager = new rtmp_app_manager(m_io_context_pool);
+		m_app_manager = std::make_unique<rtmp_app_manager>(m_io_context_pool);
 
-		rtmp_application *bc = new video_bcast_application(m_app_manager);
+		rtmp_application *bc = new video_bcast_application(m_app_manager.get());
 		m_app_manager->register_rtmp_app(bc);
-		m_app_manager->register_rtmp_app(new admin_application(m_app_manager));
-		m_app_manager->register_rtmp_app(new video_call_application(m_app_manager));
+		m_app_manager->register_rtmp_app(new admin_application(m_app_manager.get()));
+		m_app_manager->register_rtmp_app(new video_call_application(m_app_manager.get()));
 	}
 
 	void server::create_connections()
@@ -135,6 +133,6 @@ namespace fms
 
 	void server::init_rtmfp_service()
 	{
-		m_rtmfp_service = new service(m_io_context_pool.get_io_context(), config::instance()->rtmpf_port(), m_app_manager);
+		m_rtmfp_service = std::make_unique<service>(m_io_context_pool.get_io_context(), config::instance()->rtmpf_port(), m_app_manager.get());
 	}
 }

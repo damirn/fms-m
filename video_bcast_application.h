@@ -2,6 +2,7 @@
 
 #include <list>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <shared_mutex>
@@ -33,7 +34,9 @@ namespace fms
 	public:
 		explicit video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
 
-		~video_bcast_application() override = default;
+		// Out-of-line so the m_flv_writers unique_ptr dtor is instantiated in the
+		// .cpp, where flv_writer is a complete type.
+		~video_bcast_application() override;
 
 		void delete_connection(std::uint32_t, const std::string & = "") override;
 
@@ -191,7 +194,7 @@ namespace fms
 		using subscribers_to_stream_name_t = stream_client_id_map<std::string>;
 		subscribers_to_stream_name_t m_subscribers_to_stream;
 
-		using flv_writer_map_t = std::map<stream_client_id_t, flv_writer *>;
+		using flv_writer_map_t = std::map<stream_client_id_t, std::unique_ptr<flv_writer>>;
 		flv_writer_map_t m_flv_writers;
 
 		// active VOD playbacks, keyed by (connection_id, stream_id)
