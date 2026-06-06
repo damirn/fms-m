@@ -43,30 +43,23 @@ namespace fms
 		struct stream_data
 		{
 			stream_data()
-				: m_buffer(new char[eBufferSize * 2])
-				, m_speex_codec(new speex_codec(false))
-			{
-				std::memset((void *) m_buffer, 0, eBufferSize * 2);
-			}
-
-			~stream_data()
-			{
-				delete[] m_buffer;
-			}
+				: m_buffer(std::make_unique<char[]>(eBufferSize * 2))   // zero-initialised
+				, m_speex_codec(std::make_shared<speex_codec>(false))
+			{}
 
 			// Fills m_buffer with one eBufferSize block of 16-bit PCM,
 			// pulled (and speex-decoded when needed) from the queue, or
 			// silence when the queue is empty.
 			void fill_frame();
 
-			char *m_buffer;
+			std::unique_ptr<char[]> m_buffer;
 			speex_codec_ptr m_speex_codec;
 
 			using audio_queue_t = queue<rtmp_message_audio_data_ptr>;
 			audio_queue_t m_queue;
 		};
 
-		using stream_map_t = std::map<std::uint32_t, stream_data *>;
+		using stream_map_t = std::map<std::uint32_t, std::unique_ptr<stream_data>>;
 
 		stream_map_t m_streams;
 		std::mutex m_streams_mutex;
@@ -94,7 +87,7 @@ namespace fms
 		void run_loop();
 		void mix_tick();
 
-		char *m_rec_buffer;
+		std::unique_ptr<char[]> m_rec_buffer;
 
 		bool m_init;
 		std::atomic<bool> m_running;   // toggled by mixer thread + owner thread
@@ -102,7 +95,7 @@ namespace fms
 
 		std::uint32_t m_timestamp;
 
-		audio_sink *m_sink;
+		std::unique_ptr<audio_sink> m_sink;   // owned; freed with the mixer
 		speex_codec_ptr m_speex_codec;
 	};
 }

@@ -21,7 +21,7 @@ namespace fms
 		if (m_streams.contains(id))
 			return;
 
-		m_streams[id] = new stream_data;
+		m_streams[id] = std::make_unique<stream_data>();
 	}
 
 	void simple_mixer::remove_source_stream(std::uint32_t id)
@@ -29,10 +29,7 @@ namespace fms
 		std::unique_lock const lock(m_streams_mutex);
 		auto const i = m_streams.find(id);
 		if (i != m_streams.end())
-		{
-			delete i->second;
-			m_streams.erase(i);
-		}
+			m_streams.erase(i);   // unique_ptr deletes the stream_data
 	}
 
 	void simple_mixer::stream_data::fill_frame()
@@ -41,19 +38,19 @@ namespace fms
 		if (!m_queue.try_pop(audio_msg))
 		{
 			// no audio frame available; emit silence
-			std::memset((void *) m_buffer, 0, eBufferSize);
+			std::memset((void *) m_buffer.get(), 0, eBufferSize);
 			return;
 		}
 
 		if (audio_msg->data()[0] == 0x00)
 		{
 			// raw 16-bit PCM payload
-			std::memcpy((void *) m_buffer, (void *) (audio_msg->data() + 1), eBufferSize);
+			std::memcpy((void *) m_buffer.get(), (void *) (audio_msg->data() + 1), eBufferSize);
 		}
 		else
 		{
 			std::uint32_t size = 0;
-			m_speex_codec->decode(m_buffer, audio_msg->data() + 1, audio_msg->size() - 1, size);
+			m_speex_codec->decode(m_buffer.get(), audio_msg->data() + 1, audio_msg->size() - 1, size);
 		}
 	}
 
@@ -91,7 +88,7 @@ namespace fms
 		, m_running(false)
 		, m_timestamp(0)
 		, m_sink(nullptr)
-		, m_speex_codec(new speex_codec)
+		, m_speex_codec(std::make_shared<speex_codec>())
 	{}
 
 	mixer::mixer(audio_sink *sink)
@@ -101,13 +98,12 @@ namespace fms
 		, m_running(false)
 		, m_timestamp(0)
 		, m_sink(sink)
-		, m_speex_codec(new speex_codec)
+		, m_speex_codec(std::make_shared<speex_codec>())
 	{}
 
 	mixer::~mixer()
 	{
-		uninit();
-		delete m_sink;
+		uninit();   // m_sink freed by its unique_ptr
 	}
 
 	void mixer::init()
@@ -116,8 +112,7 @@ namespace fms
 			return;
 		m_init = true;
 
-		m_rec_buffer = new char[eBufferSize];
-		std::memset((void *) m_rec_buffer, 0, eBufferSize);
+		m_rec_buffer = std::make_unique<char[]>(eBufferSize);   // zero-initialised
 
 		m_running = true;
 		m_thread = std::thread(&mixer::run_loop, this);
@@ -132,12 +127,9 @@ namespace fms
 				m_thread.join();
 		}
 
-		for (auto & m_stream : m_streams)
-			delete m_stream.second;
-		m_streams.clear();
+		m_streams.clear();   // unique_ptrs delete each stream_data
 
-		delete[] m_rec_buffer;
-		m_rec_buffer = nullptr;
+		m_rec_buffer.reset();
 	}
 
 	void mixer::run_loop()
@@ -160,13 +152,13 @@ namespace fms
 			for (auto & m_stream : m_streams)
 			{
 				m_stream.second->fill_frame();
-				const auto *src = reinterpret_cast<const short *>(m_stream.second->m_buffer);
+				const auto *src = reinterpret_cast<const short *>(m_stream.second->m_buffer.get());
 				for (std::size_t s = 0; s < samples; ++s)
 					acc[s] += src[s];
 			}
 		}
 
-		auto *mix = reinterpret_cast<short *>(m_rec_buffer);
+		auto *mix = reinterpret_cast<short *>(m_rec_buffer.get());
 		for (std::size_t s = 0; s < samples; ++s)
 		{
 			std::int32_t v = acc[s];
@@ -178,7 +170,7 @@ namespace fms
 		}
 
 		std::uint32_t size = 0;
-		std::uint8_t *data = m_speex_codec->encode(reinterpret_cast<std::uint8_t *>(m_rec_buffer), eBufferSize, size);
+		std::uint8_t *data = m_speex_codec->encode(reinterpret_cast<std::uint8_t *>(m_rec_buffer.get()), eBufferSize, size);
 		if (data != nullptr)
 		{
 			data[0] = 0xb2;
