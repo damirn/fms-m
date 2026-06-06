@@ -93,7 +93,11 @@ namespace fms
 						if (m_key_in != nullptr) // encrypted data
 							rc4_crypt(m_key_in, m_buffer.size(), m_buffer.data(), m_buffer.data());
 						parse_data(m_buffer);
-						if (m_framing_error) { close(); return; }
+						if (m_framing_error)
+						{
+							close();
+							return;
+						}
 					}
 					read_data();
 				}
@@ -121,7 +125,11 @@ namespace fms
 			}
 			handle_bytes_read(bytes_transferred);
 			parse_data(m_buffer);   // parses and dispatches messages internally
-			if (m_framing_error) { close(); return; }
+			if (m_framing_error)
+			{
+				close();
+				return;
+			}
 			read_data();
 		}
 		else
