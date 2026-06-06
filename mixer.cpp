@@ -76,7 +76,7 @@ namespace fms
 			auto const i = m_streams.find(id);
 			if (i != m_streams.end())
 			{
-				rtmp_message_audio_data_ptr const audio(new rtmp_message_audio_data(size + 1));
+				rtmp_message_audio_data_ptr const audio = std::make_shared<rtmp_message_audio_data>(size + 1);
 				audio->data()[0] = 0x00;
 				std::memcpy((void *)(audio->data() + 1), (void *) data, size);
 				i->second->m_queue.push(audio);

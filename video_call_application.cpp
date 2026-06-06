@@ -212,9 +212,9 @@ namespace fms
 
 	void video_call_application::send_call_end_notify(std::uint32_t connection_id)
 	{
-		rtmp_message_invoke_ptr const result(new rtmp_message_invoke(invoke_functions::call_end, 0.0f));
+		rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>(invoke_functions::call_end, 0.0f);
 
-		amf0_null_ptr const null(new amf0_null);
+		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		result->add_parameter(null);
 
 		enqueue_async_message(connection_id, result);

@@ -113,7 +113,7 @@ namespace fms
 
 		while (buffer.available() >= 3 && (*(buffer.read_pos()) != 0 || *(buffer.read_pos() + 1) != 0 || *(buffer.read_pos() + 2) != 9))
 		{
-			amf0_string_ptr const key(new amf0_string);
+			amf0_string_ptr const key = std::make_shared<amf0_string>();
 			read_short_string(buffer, key, true);
 			amf0_type_ptr const val(read(buffer));
 			value->add_entry(static_cast<std::string>(*key), val);
@@ -177,7 +177,7 @@ namespace fms
 
 		while (buffer.available() >= 3 && (*(buffer.read_pos()) != 0 || *(buffer.read_pos() + 1) != 0 || *(buffer.read_pos() + 2) != 9))
 		{
-			amf0_string_ptr const key(new amf0_string);
+			amf0_string_ptr const key = std::make_shared<amf0_string>();
 			read_short_string(buffer, key, true);
 			amf0_type_ptr const val(read(buffer));
 			value->add_entry((std::string) *key, val);
@@ -352,13 +352,13 @@ namespace fms
 		if (b != amf0_type::eAMF0TypedObject)
 			return false;
 
-		amf0_string_ptr const cn(new amf0_string);
+		amf0_string_ptr const cn = std::make_shared<amf0_string>();
 		read_short_string(buffer, cn, true);   // class name (u16 string, no marker)
 		value->class_name() = cn->value();
 
 		while (buffer.available() >= 3 && (*(buffer.read_pos()) != 0 || *(buffer.read_pos() + 1) != 0 || *(buffer.read_pos() + 2) != 9))
 		{
-			amf0_string_ptr const key(new amf0_string);
+			amf0_string_ptr const key = std::make_shared<amf0_string>();
 			read_short_string(buffer, key, true);
 			amf0_type_ptr const val(read(buffer));
 			value->add_entry(static_cast<std::string>(*key), val);
@@ -425,38 +425,38 @@ namespace fms
 		{
 		case amf0_type::eAMF0Number:
 			{
-				amf0_number_ptr tmp(new amf0_number);
+				amf0_number_ptr tmp = std::make_shared<amf0_number>();
 				read_number(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0Boolean:
 			{
-				amf0_boolean_ptr tmp(new amf0_boolean);
+				amf0_boolean_ptr tmp = std::make_shared<amf0_boolean>();
 				read_boolean(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0String:
 			{
-				amf0_string_ptr tmp(new amf0_string);
+				amf0_string_ptr tmp = std::make_shared<amf0_string>();
 				read_short_string(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0Object:
 			{
-				amf0_object_ptr tmp(new amf0_object);
+				amf0_object_ptr tmp = std::make_shared<amf0_object>();
 				m_ref_table.push_back(tmp);   // referenceable; register before populating
 				read_object(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0Null:
 			{
-				amf0_null_ptr tmp(new amf0_null);
+				amf0_null_ptr tmp = std::make_shared<amf0_null>();
 				read_null(buffer);
 				return tmp;
 			}
 		case amf0_type::eAMF0Undefined:
 			{
-				amf0_undefined_ptr tmp(new amf0_undefined);
+				amf0_undefined_ptr tmp = std::make_shared<amf0_undefined>();
 				read_undefined(buffer);
 				return tmp;
 			}
@@ -475,27 +475,27 @@ namespace fms
 			}
 		case amf0_type::eAMF0EcmaArray:
 			{
-				amf0_ecma_array_ptr tmp(new amf0_ecma_array);
+				amf0_ecma_array_ptr tmp = std::make_shared<amf0_ecma_array>();
 				m_ref_table.push_back(tmp);
 				read_mixed_array(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0StrictArray:
 			{
-				amf0_strict_array_ptr tmp(new amf0_strict_array);
+				amf0_strict_array_ptr tmp = std::make_shared<amf0_strict_array>();
 				m_ref_table.push_back(tmp);
 				read_strict_array(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0Date:
 			{
-				amf0_date_ptr tmp(new amf0_date);
+				amf0_date_ptr tmp = std::make_shared<amf0_date>();
 				read_date(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0LongString:
 			{
-				amf0_long_string_ptr tmp(new amf0_long_string);
+				amf0_long_string_ptr tmp = std::make_shared<amf0_long_string>();
 				read_long_string(buffer, tmp);
 				return tmp;
 			}
@@ -507,20 +507,20 @@ namespace fms
 			}
 		case amf0_type::eAMF0XMLDocument:
 			{
-				amf0_xml_document_ptr tmp(new amf0_xml_document);
+				amf0_xml_document_ptr tmp = std::make_shared<amf0_xml_document>();
 				read_xml_document(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0TypedObject:
 			{
-				amf0_typed_object_ptr tmp(new amf0_typed_object);
+				amf0_typed_object_ptr tmp = std::make_shared<amf0_typed_object>();
 				m_ref_table.push_back(tmp);
 				read_typed_object(buffer, tmp);
 				return tmp;
 			}
 		case amf0_type::eAMF0AMF3Container:
 			{
-				amf0_amf3_container_ptr tmp(new amf0_amf3_container);
+				amf0_amf3_container_ptr tmp = std::make_shared<amf0_amf3_container>();
 				read_amf3_container(buffer, tmp);
 				return tmp;
 			}

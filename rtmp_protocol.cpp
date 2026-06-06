@@ -98,42 +98,42 @@ namespace fms
 
 	void rtmp_protocol::deserialize_notify(byte_reader &buffer)
 	{
-		rtmp_message_notify_ptr const msg(new rtmp_message_notify);
+		rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_notify_amf3(byte_reader &buffer)
 	{
-		rtmp_message_notify_amf3_ptr const msg(new rtmp_message_notify_amf3);
+		rtmp_message_notify_amf3_ptr const msg = std::make_shared<rtmp_message_notify_amf3>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_invoke_amf3(byte_reader &buffer)
 	{
-		rtmp_message_invoke_amf3_ptr const msg(new rtmp_message_invoke_amf3);
+		rtmp_message_invoke_amf3_ptr const msg = std::make_shared<rtmp_message_invoke_amf3>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_invoke(byte_reader &buffer)
 	{
-		rtmp_message_invoke_ptr const msg(new rtmp_message_invoke);
+		rtmp_message_invoke_ptr const msg = std::make_shared<rtmp_message_invoke>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_shared_object(byte_reader &buffer)
 	{
-		rtmp_message_shared_object_ptr const msg(new rtmp_message_shared_object);
+		rtmp_message_shared_object_ptr const msg = std::make_shared<rtmp_message_shared_object>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_bytes_read(byte_reader &buffer)
 	{
-		rtmp_message_bytes_read_ptr const msg(new rtmp_message_bytes_read);
+		rtmp_message_bytes_read_ptr const msg = std::make_shared<rtmp_message_bytes_read>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
@@ -159,56 +159,56 @@ namespace fms
 				return;
 		}
 
-		rtmp_message_ping_ptr const msg(new rtmp_message_ping(elements));
+		rtmp_message_ping_ptr const msg = std::make_shared<rtmp_message_ping>(elements);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_window_acknowladge_size(byte_reader &buffer)
 	{
-		rtmp_message_window_acknowledgement_size_ptr const msg(new rtmp_message_window_acknowledgement_size);
+		rtmp_message_window_acknowledgement_size_ptr const msg = std::make_shared<rtmp_message_window_acknowledgement_size>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_set_peer_bandwidth(byte_reader &buffer)
 	{
-		rtmp_message_set_peer_bandwidth_ptr const msg(new rtmp_message_set_peer_bandwidth);
+		rtmp_message_set_peer_bandwidth_ptr const msg = std::make_shared<rtmp_message_set_peer_bandwidth>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_audio_data(byte_reader &buffer, std::uint32_t size)
 	{
-		rtmp_message_audio_data_ptr const msg(new rtmp_message_audio_data(size));
+		rtmp_message_audio_data_ptr const msg = std::make_shared<rtmp_message_audio_data>(size);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_video_data(byte_reader &buffer, std::uint32_t size)
 	{
-		rtmp_message_video_data_ptr const msg(new rtmp_message_video_data(size));
+		rtmp_message_video_data_ptr const msg = std::make_shared<rtmp_message_video_data>(size);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_chunk_size(byte_reader &buffer)
 	{
-		rtmp_message_chunk_size_ptr const msg(new rtmp_message_chunk_size());
+		rtmp_message_chunk_size_ptr const msg = std::make_shared<rtmp_message_chunk_size>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_abort(byte_reader &buffer)
 	{
-		rtmp_message_abort_ptr const msg(new rtmp_message_abort());
+		rtmp_message_abort_ptr const msg = std::make_shared<rtmp_message_abort>();
 		msg->deserialize(buffer);
 		m_message = msg;
 	}
 
 	void rtmp_protocol::deserialize_aggregate(byte_reader &buffer, std::uint32_t ts)
 	{
-		rtmp_message_aggregate_ptr const msg(new rtmp_message_aggregate(ts));
+		rtmp_message_aggregate_ptr const msg = std::make_shared<rtmp_message_aggregate>(ts);
 		msg->deserialize(buffer);
 		m_message = msg;
 	}

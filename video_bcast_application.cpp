@@ -334,14 +334,14 @@ namespace fms
 				}
 			}
 
-			rtmp_message_invoke_ptr const result(new rtmp_message_invoke("onStatus", 0.0f));
+			rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
 			result->channel_id() = invoke->channel_id();
 			result->stream_id() = invoke->stream_id();
 
-			amf0_null_ptr const null(new amf0_null);
+			amf0_null_ptr const null = std::make_shared<amf0_null>();
 			result->add_parameter(null);
 
-			amf0_object_ptr const obj(new amf0_object);
+			amf0_object_ptr const obj = std::make_shared<amf0_object>();
 
 			if (add_stream(stream_name, connection_id, invoke->stream_id(), m_streams))
 			{
@@ -378,14 +378,14 @@ namespace fms
 
 	void video_bcast_application::handle_publish_record(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, const std::string &stream)
 	{
-		rtmp_message_invoke_ptr const rec_result(new rtmp_message_invoke("onStatus", 0.0f));
+		rtmp_message_invoke_ptr const rec_result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
 		rec_result->channel_id() = invoke->channel_id();
 		rec_result->stream_id() = invoke->stream_id();
 
-		amf0_null_ptr const null(new amf0_null);
+		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		rec_result->add_parameter(null);
 
-		amf0_object_ptr const obj(new amf0_object);
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
 
 		if (add_recording_stream(stream, connection_id, invoke->stream_id()))
 		{
@@ -613,7 +613,7 @@ namespace fms
 				if (j != m_flv_writers.end())
 				{
 					byte_writer tmp;
-					amf0_string_ptr const str(new amf0_string("onMetaData"));
+					amf0_string_ptr const str = std::make_shared<amf0_string>("onMetaData");
 					amf0 a;
 					a.write(tmp, str);
 					a.write(tmp, *i);
@@ -629,12 +629,12 @@ namespace fms
 
 	rtmp_message_ptr video_bcast_application::send_stream_notify(std::uint32_t connection_id, std::uint32_t stream_id, const std::string &code, const std::string &description, bool enqueue)
 	{
-		rtmp_message_invoke_ptr result(new rtmp_message_invoke("onStatus", 0.0f));
+		rtmp_message_invoke_ptr result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
 		result->stream_id() = stream_id;
-		amf0_null_ptr const null(new amf0_null);
+		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		result->add_parameter(null);
 
-		amf0_object_ptr const obj(new amf0_object);
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
 
 		obj->add_entry("level", "status");
 		obj->add_entry("code", code);
@@ -663,7 +663,7 @@ namespace fms
 		auto const i = m_metadata.find(cid);
 		if (i != m_metadata.end())
 		{
-			rtmp_message_notify_ptr const msg(new rtmp_message_notify("onMetaData"));
+			rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>("onMetaData");
 			msg->stream_id() = stream_id;
 			msg->parameters().push_back(i->second);
 			enqueue_async_message(connection_id, msg);
@@ -824,7 +824,7 @@ namespace fms
 				{
 					stream_client_ptr const client = cli->second;
 					// tell the subscriber the source ended before the status message
-					rtmp_message_ping_ptr const eof(new rtmp_message_ping(rtmp_message_ping::ePingStreamEOF, ssid.second));
+					rtmp_message_ping_ptr const eof = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingStreamEOF, ssid.second);
 					enqueue_async_message(ssid.first, eof);
 					notify_client(ssid.first, ssid.second, stream_name);
 					m_subscribers.erase(cli);
@@ -938,7 +938,7 @@ namespace fms
 	{
 		client->m_key_frame_sent = true;
 
-		rtmp_message_video_data_ptr const tmp(new rtmp_message_video_data(*video));
+		rtmp_message_video_data_ptr const tmp = std::make_shared<rtmp_message_video_data>(*video);
 		tmp->stream_id() = client->m_stream_id;
 		tmp->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 
@@ -998,13 +998,13 @@ namespace fms
 		auto const i = m_avc_config.find(bcid);
 		if (i != m_avc_config.end() && i->second)   // slot pre-exists; may still be null
 		{
-			rtmp_message_video_data_ptr const conf(new rtmp_message_video_data(*i->second));
+			rtmp_message_video_data_ptr const conf = std::make_shared<rtmp_message_video_data>(*i->second);
 			conf->timestamp() = 0;
 			conf->stream_id() = client->m_stream_id;
 			conf->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 			enqueue_async_message(client->m_connection_id, conf);
 		}
-		rtmp_message_video_data_ptr const info_msg(new rtmp_message_video_data(2));
+		rtmp_message_video_data_ptr const info_msg = std::make_shared<rtmp_message_video_data>(2);
 		std::uint8_t const tag = (static_cast<std::uint8_t>(rtmp_message_video_data::eVideoInfo) << 4) | video->get_codec();
 		info_msg->data()[0] = tag;
 		info_msg->data()[1] = 0x00;
@@ -1013,7 +1013,7 @@ namespace fms
 		info_msg->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 		enqueue_async_message(client->m_connection_id, info_msg);
 
-		rtmp_message_video_data_ptr const info_msg2(new rtmp_message_video_data(2));
+		rtmp_message_video_data_ptr const info_msg2 = std::make_shared<rtmp_message_video_data>(2);
 		info_msg2->data()[0] = tag;
 		info_msg2->data()[1] = 0x01;
 		info_msg2->timestamp() = 0;
@@ -1023,7 +1023,7 @@ namespace fms
 		auto it = list.begin();
 		for (std::uint32_t cnt = 0; cnt < size; ++cnt)
 		{
-			rtmp_message_video_data_ptr const tmp2(new rtmp_message_video_data(**it));
+			rtmp_message_video_data_ptr const tmp2 = std::make_shared<rtmp_message_video_data>(**it);
 			tmp2->stream_id() = client->m_stream_id;
 			tmp2->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 			tmp2->timestamp() = 0;
@@ -1036,7 +1036,7 @@ namespace fms
 
 	void video_bcast_application::send_audio_frame(const rtmp_message_audio_data_ptr& audio, const stream_client_ptr &client, const stream_client_id_t &src)
 	{
-		rtmp_message_audio_data_ptr const tmp(new rtmp_message_audio_data(*audio));
+		rtmp_message_audio_data_ptr const tmp = std::make_shared<rtmp_message_audio_data>(*audio);
 		tmp->stream_id() = client->m_stream_id;
 		tmp->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
 
@@ -1060,7 +1060,7 @@ namespace fms
 				start_time = client->m_audio_time = 0;
 			tmp->timestamp() = client->m_audio_time;
 
-			rtmp_message_audio_data_ptr const tmp2(new rtmp_message_audio_data);
+			rtmp_message_audio_data_ptr const tmp2 = std::make_shared<rtmp_message_audio_data>();
 			tmp2->stream_id() = client->m_stream_id;
 			tmp2->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
 			tmp2->timestamp() = start_time;
@@ -1086,7 +1086,7 @@ namespace fms
 		auto const i = m_aac_config.find(src);
 		if (i != m_aac_config.end() && i->second)   // slot pre-exists; may still be null
 		{
-			rtmp_message_audio_data_ptr const conf(new rtmp_message_audio_data(*i->second));
+			rtmp_message_audio_data_ptr const conf = std::make_shared<rtmp_message_audio_data>(*i->second);
 			conf->timestamp() = 0;
 			conf->stream_id() = client->m_stream_id;
 			conf->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
@@ -1153,7 +1153,7 @@ namespace fms
 		if (!session->m_next)   // end of file reached on the previous tick
 		{
 			// StreamEOF user-control, then the Play.Stop status.
-			rtmp_message_ping_ptr const eof(new rtmp_message_ping(rtmp_message_ping::ePingStreamEOF, session->m_stream_id));
+			rtmp_message_ping_ptr const eof = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingStreamEOF, session->m_stream_id);
 			enqueue_async_message(session->m_connection_id, eof);
 			send_stream_notify(session->m_connection_id, session->m_stream_id,
 				"NetStream.Play.Stop", "Stopped playing " + session->m_stream_name, true);
@@ -1278,7 +1278,7 @@ namespace fms
 	void video_bcast_application::handle_invoke_release_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
 		double const txn = invoke->invoke_id() ? invoke->invoke_id()->value() : 0.0;
-		rtmp_message_invoke_ptr const res(new rtmp_message_invoke(invoke_functions::result, txn));
+		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>(invoke_functions::result, txn);
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 		res->add_parameter(std::make_shared<amf0_null>());
@@ -1300,11 +1300,11 @@ namespace fms
 				stream_name = std::dynamic_pointer_cast<amf0_string>(*i)->value();
 		}
 
-		rtmp_message_invoke_ptr const res(new rtmp_message_invoke("onFCPublish", 0.0));
+		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>("onFCPublish", 0.0);
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 		res->add_parameter(std::make_shared<amf0_null>());
-		amf0_object_ptr const obj(new amf0_object);
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
 		obj->add_entry("level", "status");
 		obj->add_entry("code", "NetStream.Publish.Start");
 		obj->add_entry("description", stream_name);
@@ -1316,7 +1316,7 @@ namespace fms
 	void video_bcast_application::handle_invoke_fcunpublish(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
 		double const txn = invoke->invoke_id() ? invoke->invoke_id()->value() : 0.0;
-		rtmp_message_invoke_ptr const res(new rtmp_message_invoke(invoke_functions::result, txn));
+		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>(invoke_functions::result, txn);
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 		res->add_parameter(std::make_shared<amf0_null>());
@@ -1328,7 +1328,7 @@ namespace fms
 	void video_bcast_application::handle_invoke_fcsubscribe(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
 		double const txn = invoke->invoke_id() ? invoke->invoke_id()->value() : 0.0;
-		rtmp_message_invoke_ptr const res(new rtmp_message_invoke(invoke_functions::result, txn));
+		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>(invoke_functions::result, txn);
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 		res->add_parameter(std::make_shared<amf0_null>());
