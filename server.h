@@ -70,6 +70,11 @@ namespace fms
 		// Acceptor used to listen for incoming connections on HTTP port.
 		boost::asio::ip::tcp::acceptor m_http_acceptor;
 
+		// SIGINT/SIGTERM -> stop(). A clean stop lets ~server run, which flushes
+		// in-progress FLV recordings (flv_writer's dtor) and closes sockets;
+		// clients observe the TCP close as NetConnection.Connect.Closed.
+		boost::asio::signal_set m_signals;
+
  		// The next HTTP connection to be accepted.
  		http_connection_ptr m_http_connection;
 		std::unique_ptr<rtmp_app_manager> m_app_manager;
