@@ -18,8 +18,8 @@ int main(int argc, char **argv)
 	if (!fms::init_crypto_providers())
 		std::cerr << "Warning: OpenSSL legacy provider not available; RTMPE (encrypted) handshakes will be refused." << std::endl;
 
-	auto *log = new fms::logging;
-	log->init_logging(fms::config::instance()->log_path());
+	fms::logging log;
+	log.init_logging(fms::config::instance()->log_path());
 
 	// register main thread
 	BOOST_LOG_SCOPED_THREAD_TAG("ThreadID", boost::this_thread::get_id());
@@ -29,10 +29,9 @@ int main(int argc, char **argv)
 	int ret = 0;
 	try
 	{
-		auto *s = new fms::server;
-		s->init(fms::config::instance()->bind_address());
-		s->run();
-		delete s;
+		fms::server s;
+		s.init(fms::config::instance()->bind_address());
+		s.run();
 	}
 	catch (std::exception &e)
 	{
@@ -41,6 +40,5 @@ int main(int argc, char **argv)
 		ret = -1;
 	}
 
-	delete log;
 	return ret;
 }

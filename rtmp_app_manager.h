@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
@@ -69,7 +70,7 @@ namespace fms
 
 		rtmpt_manager *get_rtmpt_manager()
 		{
-			return m_rtmpt_manager;
+			return m_rtmpt_manager.get();
 		}
 
 		void list_applications(string_list_t &);
@@ -102,11 +103,12 @@ namespace fms
 		io_context_pool &m_io_context_pool;
 		std::uint32_t m_connection_counter{0};
 
-		using app_map_t = std::map<std::string, rtmp_application *>;
+		using app_map_t = std::map<std::string, std::unique_ptr<rtmp_application>>;
 		app_map_t m_apps;
 
+		// non-owning observer: the admin app is owned by m_apps
 		admin_application *m_admin_app{nullptr};
-		fake_application *m_fake_app;
+		std::unique_ptr<fake_application> m_fake_app;
 
 		using connection_map_t = std::unordered_map<std::uint32_t, client_session_ptr>;
 		connection_map_t m_connections;
@@ -114,7 +116,7 @@ namespace fms
 		using http_connection_map_t = std::unordered_map<std::uint32_t, http_connection_ptr>;
 		http_connection_map_t m_http_conns;
 
-		rtmpt_manager *m_rtmpt_manager;
+		std::unique_ptr<rtmpt_manager> m_rtmpt_manager;
 
 		// Reader/writer split: the hot reads (get_connection / has_connection /
 		// get_app_instance) and update_netstream_stats take a SHARED lock; structural

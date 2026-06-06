@@ -21,30 +21,26 @@ namespace fms
 		 m_io_context(io_pool.get_io_context())
 		, m_timer(m_io_context)
 	{
-		m_rtmpt_manager = new rtmpt_manager(this);
-		m_fake_app = new fake_application(this);
+		m_rtmpt_manager = std::make_unique<rtmpt_manager>(this);
+		m_fake_app = std::make_unique<fake_application>(this);
 		start_timer();
 	}
 
-	rtmp_app_manager::~rtmp_app_manager()
-	{
-		for(auto & m_app : m_apps)
-			delete m_app.second;
-		delete m_rtmpt_manager;
-		delete m_fake_app;
-	}
+	// Out-of-line (not =default in the header) so the unique_ptr members'
+	// destructors are instantiated here, where the app types are complete.
+	rtmp_app_manager::~rtmp_app_manager() = default;
 
 	void rtmp_app_manager::register_rtmp_app(rtmp_application *app)
 	{
-		m_apps[app->app_name()] = app;
 		if (app->app_name() == "admin")
 			m_admin_app = dynamic_cast<admin_application *>(app);
+		m_apps[app->app_name()] = std::unique_ptr<rtmp_application>(app);
 	}
 
 	rtmp_application *rtmp_app_manager::get_app_by_name(const std::string &app_name)
 	{
 		if (m_apps.contains(app_name))
-			return m_apps[app_name];
+			return m_apps[app_name].get();
 		return nullptr;
 	}
 
@@ -79,7 +75,7 @@ namespace fms
 	http_connection_ptr rtmp_app_manager::create_http_connection()
 	{
 		std::unique_lock const lock(m_mutex);
-		http_connection_ptr tmp = std::make_shared<http_connection>(m_connection_counter, m_io_context_pool.get_io_context(), this, m_rtmpt_manager);
+		http_connection_ptr tmp = std::make_shared<http_connection>(m_connection_counter, m_io_context_pool.get_io_context(), this, m_rtmpt_manager.get());
 		m_http_conns[m_connection_counter++] = tmp;
 		return tmp;
 	}
@@ -194,7 +190,7 @@ namespace fms
 					{
 						BOOST_LOG(lg::get()) << "cid: " << connection_id << " connecting to " << app_name->value();
 						client_session_ptr const conn = get_connection(connection_id);
-						conn->set_app(m_app.second);
+						conn->set_app(m_app.second.get());
 						conn->app_instance() = instance;
 						return m_app.second->handle_message(msg, connection_id, header, res);
 					}
@@ -202,7 +198,7 @@ namespace fms
 				BOOST_LOG(lg::get()) << "cid: " << connection_id << " connecting to " << app_name->value() << " which is an unknown app";
 			}
 			client_session_ptr const conn = get_connection(connection_id);
-			conn->set_app(m_fake_app);
+			conn->set_app(m_fake_app.get());
 
 			// we don't have requested app
 			rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("_error", 1.0f);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <stdexcept>
 #include <boost/asio.hpp>
@@ -71,7 +72,7 @@ namespace fms
 
  		// The next HTTP connection to be accepted.
  		http_connection_ptr m_http_connection;
-		rtmp_app_manager *m_app_manager = nullptr;
-		service *m_rtmfp_service = nullptr;
+		std::unique_ptr<rtmp_app_manager> m_app_manager;
+		std::unique_ptr<service> m_rtmfp_service;
 	};
 }
