@@ -51,7 +51,7 @@ namespace fms
 	rtmp_connection_ptr rtmp_app_manager::create_connection(boost::asio::io_context &io)
 	{
 		std::unique_lock const lock(m_mutex);
-		rtmp_connection_ptr tmp(new rtmp_connection(m_connection_counter, io, this));
+		rtmp_connection_ptr tmp = std::make_shared<rtmp_connection>(m_connection_counter, io, this);
 		m_connections[m_connection_counter++] = tmp;
 		return tmp;
 	}
@@ -59,7 +59,7 @@ namespace fms
 	rtmpt_session_ptr rtmp_app_manager::create_rtmpt_session()
 	{
 		std::unique_lock const lock(m_mutex);
-		rtmpt_session_ptr tmp(new rtmpt_session(m_connection_counter, m_io_context_pool.get_io_context(), this));
+		rtmpt_session_ptr tmp = std::make_shared<rtmpt_session>(m_connection_counter, m_io_context_pool.get_io_context(), this);
 		m_connections[m_connection_counter++] = tmp;
 		return tmp;
 	}
@@ -79,7 +79,7 @@ namespace fms
 	http_connection_ptr rtmp_app_manager::create_http_connection()
 	{
 		std::unique_lock const lock(m_mutex);
-		http_connection_ptr tmp(new http_connection(m_connection_counter, m_io_context_pool.get_io_context(), this, m_rtmpt_manager));
+		http_connection_ptr tmp = std::make_shared<http_connection>(m_connection_counter, m_io_context_pool.get_io_context(), this, m_rtmpt_manager);
 		m_http_conns[m_connection_counter++] = tmp;
 		return tmp;
 	}
@@ -255,7 +255,7 @@ namespace fms
 		auto const i = m_connections.find(connection_id);
 		if (i != m_connections.end())
 		{
-			client_data_ptr client(new client_data);
+			client_data_ptr client = std::make_shared<client_data>();
 			client->m_id = i->second->id();
 			client->m_sid = i->second->sid();
 			client->m_create_time = i->second->create_time();
@@ -340,7 +340,7 @@ namespace fms
 	void rtmp_app_manager::create_netstream(const stream_client_id_t &id)
 	{
 		std::unique_lock const lock(m_mutex);
-		netstream_stats_ptr const stats(new netstream_stats(id.first));
+		netstream_stats_ptr const stats = std::make_shared<netstream_stats>(id.first);
 		m_netstream_stats[id] = stats;
 	}
 
@@ -472,7 +472,7 @@ namespace fms
 				{
 					if (m_netstream_stat.second->m_name.find("QOS!") != 0)
 					{
-						netstream_stats_ptr const stats(new netstream_stats(*(m_netstream_stat.second)));
+						netstream_stats_ptr const stats = std::make_shared<netstream_stats>(*(m_netstream_stat.second));
 						std::chrono::system_clock::duration const td = now - stats->m_start_streaming_time;
 						std::uint32_t kbps = 0;
 						if (std::chrono::duration_cast<std::chrono::seconds>(td).count() != 0)

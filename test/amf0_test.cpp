@@ -280,14 +280,14 @@ TEST_CASE("amf0 write: encode/decode round-trips through byte_writer")
 	vals.emplace_back(new amf0_null);
 	vals.emplace_back(new amf0_undefined);
 
-	amf0_object_ptr const obj(new amf0_object);
+	amf0_object_ptr const obj = std::make_shared<amf0_object>();
 	obj->add_entry("level", "status");
 	obj->add_entry("code", "NetStream.Play.Start");
 	obj->add_entry("capabilities", 239);
 	obj->add_entry("audioCodecs", 3191);
 	vals.emplace_back(obj);
 
-	amf0_ecma_array_ptr const ecma(new amf0_ecma_array);
+	amf0_ecma_array_ptr const ecma = std::make_shared<amf0_ecma_array>();
 	ecma->add_entry("duration", 12.5);
 	ecma->add_entry("width", 320);
 	vals.emplace_back(ecma);

@@ -154,7 +154,7 @@ namespace fms
 			const std::string &app_instance = conn->app_instance();
 			if (!m_instance_to_client.contains(app_instance))
 			{
-				call_instance_data_ptr const tmp(new call_instance_data);
+				call_instance_data_ptr const tmp = std::make_shared<call_instance_data>();
 				tmp->m_clients.insert(connection_id);
 				m_instance_to_client[app_instance] = tmp;
 			}

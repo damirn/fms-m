@@ -24,7 +24,7 @@ namespace fms
 			auto const i = m_channels.find(id);
 			if (i == m_channels.end())
 			{
-				rtmp_channel_ptr tmp(new rtmp_channel(id));
+				rtmp_channel_ptr tmp = std::make_shared<rtmp_channel>(id);
 				m_channels[id] = tmp;
 				return tmp;
 			}
