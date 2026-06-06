@@ -51,6 +51,12 @@ namespace fms
 				channel = m_channel_manager->get_channel(m_channel_id);
 
 			const rtmp_header &h = channel->received_header();
+			if (h.message_length() > eMaxMessageLength)
+			{
+				// oversized message -> abort; owning connection closes on this flag
+				m_framing_error = true;
+				break;
+			}
 			std::uint32_t size = h.message_length() - static_cast<std::uint32_t>(channel->data_size());
 			if (size > m_chunk_size)
 				size = m_chunk_size;
