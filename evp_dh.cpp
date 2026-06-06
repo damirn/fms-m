@@ -63,6 +63,28 @@ namespace fms
 		unsigned long g, const std::uint8_t *peer_pub, std::size_t peer_len, std::size_t &out_len)
 	{
 		out_len = 0;
+
+		// Reject a degenerate / out-of-range peer public key (0, 1, p-1, p, or
+		// anything >= p) before deriving: such values force a predictable or
+		// small-subgroup shared secret. We range-check 2 <= peer_pub <= p-2
+		// directly with BIGNUMs rather than via EVP_PKEY_public_check(), which
+		// also validates the domain parameters and would reject the legacy
+		// 1024-bit (no-q) RTMP DH group, breaking every handshake.
+		{
+			BIGNUM *pub_bn = BN_bin2bn(peer_pub, static_cast<int>(peer_len), nullptr);
+			BIGNUM *p_bn = BN_bin2bn(p, static_cast<int>(p_len), nullptr);
+			BIGNUM *p_minus_1 = BN_new();
+			bool const valid = pub_bn && p_bn && p_minus_1
+				&& BN_sub(p_minus_1, p_bn, BN_value_one())
+				&& BN_cmp(pub_bn, BN_value_one()) > 0    // peer_pub >= 2
+				&& BN_cmp(pub_bn, p_minus_1) < 0;        // peer_pub <= p-2
+			BN_free(p_minus_1);
+			BN_free(p_bn);
+			BN_free(pub_bn);
+			if (!valid)
+				return nullptr;
+		}
+
 		EVP_PKEY *peer = make_dh_key(p, p_len, g, peer_pub, peer_len, EVP_PKEY_PUBLIC_KEY);
 		if (!peer)
 			return nullptr;
