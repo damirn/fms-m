@@ -220,12 +220,12 @@ namespace fms
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
-		amf0_strict_array_ptr const list(new amf0_strict_array);
+		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
 		string_list_t apps;
 		m_app_manager->list_applications(apps);
 		for (auto & app : apps)
 		{
-			amf0_string_ptr const str(new amf0_string(app));
+			amf0_string_ptr const str = std::make_shared<amf0_string>(app);
 			list->add_entry(str);
 		}
 		res->add_parameter(list);
@@ -239,12 +239,12 @@ namespace fms
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
-		amf0_strict_array_ptr const list(new amf0_strict_array);
+		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
 		client_list_t clients;
 		m_app_manager->list_clients(clients);
 		for (auto & client : clients)
 		{
-			amf0_object_ptr const obj(new amf0_object);
+			amf0_object_ptr const obj = std::make_shared<amf0_object>();
 			obj->add_entry("id", client->m_id);
 			obj->add_entry("sid", client->m_sid);
 			obj->add_entry("app", client->m_app);
@@ -280,7 +280,7 @@ namespace fms
 		client_stats stats;
 		if (m_app_manager->get_client_stats(static_cast<std::uint32_t>(id->value()), stats))
 		{
-			amf0_object_ptr const obj(new amf0_object);
+			amf0_object_ptr const obj = std::make_shared<amf0_object>();
 			obj->add_entry("time", stats.m_online_time);
 			obj->add_entry("bytes_in", stats.m_bytes_read);
 			obj->add_entry("bytes_out", stats.m_bytes_written);
@@ -290,7 +290,7 @@ namespace fms
 		}
 		else
 		{
-			amf0_string_ptr const str(new amf0_string("No such client"));
+			amf0_string_ptr const str = std::make_shared<amf0_string>("No such client");
 			res->add_parameter(str);
 		}
 		result = res;
@@ -315,7 +315,7 @@ namespace fms
 		std::optional<app_stats> stats = m_app_manager->get_app_stats(app->value());
 		if (stats)
 		{
-			amf0_object_ptr const obj(new amf0_object);
+			amf0_object_ptr const obj = std::make_shared<amf0_object>();
 			obj->add_entry("bytes_in", (*stats).m_bytes_read);
 			obj->add_entry("bytes_out", (*stats).m_bytes_written);
 			obj->add_entry("msgs_in", (*stats).m_messages_read);
@@ -324,7 +324,7 @@ namespace fms
 		}
 		else
 		{
-			amf0_string_ptr const str(new amf0_string("No such application"));
+			amf0_string_ptr const str = std::make_shared<amf0_string>("No such application");
 			res->add_parameter(str);
 		}
 		result = res;
@@ -336,7 +336,7 @@ namespace fms
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
-		amf0_strict_array_ptr const list(new amf0_strict_array);
+		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
 		netstream_list_t streams;
 		m_app_manager->list_streams(streams);
 
@@ -350,7 +350,7 @@ namespace fms
 
 	amf0_object_ptr admin_application::create_stream_stat_obj(const netstream_stats_ptr& i, bool complete_data /* = true */)
 	{
-		amf0_object_ptr obj(new amf0_object);
+		amf0_object_ptr obj = std::make_shared<amf0_object>();
 		obj->add_entry("client", i->m_client);
 		obj->add_entry("name", i->m_name);
 		if (!complete_data)
@@ -374,12 +374,12 @@ namespace fms
 		res->channel_id() = invoke->channel_id();
 		res->stream_id() = invoke->stream_id();
 
-		amf0_strict_array_ptr const list(new amf0_strict_array);
+		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
 		queue_stats_list_t queue_stats;
 		m_app_manager->get_queue_stats(queue_stats);
 		for (auto & queue_stat : queue_stats)
 		{
-			amf0_object_ptr const obj(new amf0_object);
+			amf0_object_ptr const obj = std::make_shared<amf0_object>();
 			obj->add_entry("client", queue_stat.m_client);
 			obj->add_entry("messages", queue_stat.m_messages);
 			list->add_entry(obj);
@@ -498,10 +498,10 @@ namespace fms
 	{
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_delete_stream);
 
-		amf0_number_ptr const id(new amf0_number(data->m_client));
+		amf0_number_ptr const id = std::make_shared<amf0_number>(data->m_client);
 		res->add_parameter(id);
 
-		amf0_string_ptr const str(new amf0_string(data->m_name));
+		amf0_string_ptr const str = std::make_shared<amf0_string>(data->m_name);
 		res->add_parameter(str);
 
 		enqueue_async_message(connection_id, res);
@@ -527,7 +527,7 @@ namespace fms
 		{
 			rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_auth_status);
 
-			amf0_object_ptr const obj(new amf0_object);
+			amf0_object_ptr const obj = std::make_shared<amf0_object>();
 			obj->add_entry("sid", cd->m_sid);
 			obj->add_entry("cid", data->m_id);
 			obj->add_entry("ip", cd->m_ip);
@@ -553,7 +553,7 @@ namespace fms
 	{
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_disconnect);
 
-		amf0_object_ptr const obj(new amf0_object);
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
 		obj->add_entry("sid", data->m_sid);
 		obj->add_entry("cid", data->m_id);
 		obj->add_entry("time", to_simple_string(data->m_time));
@@ -574,7 +574,7 @@ namespace fms
 	{
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_call_status);
 
-		amf0_object_ptr const obj(new amf0_object);
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
 		obj->add_entry("cid", cid);
 		obj->add_entry("time", to_simple_string(std::chrono::system_clock::now()));
 		obj->add_entry("call_data", o);

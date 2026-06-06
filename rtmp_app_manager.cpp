@@ -205,13 +205,13 @@ namespace fms
 			conn->set_app(m_fake_app);
 
 			// we don't have requested app
-			rtmp_message_invoke_ptr const result(new rtmp_message_invoke("_error", 1.0f));
+			rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("_error", 1.0f);
 			result->channel_id() = header.channel_id();
 
-			amf0_null_ptr const null(new amf0_null);
+			amf0_null_ptr const null = std::make_shared<amf0_null>();
 			result->add_parameter(null);
 
-			amf0_object_ptr const obj(new amf0_object);
+			amf0_object_ptr const obj = std::make_shared<amf0_object>();
 			obj->add_entry("level", "error");
 			obj->add_entry("code", "NetConnection.Connect.InvalidApp");
 			obj->add_entry("description", "No such application.");

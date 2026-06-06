@@ -315,13 +315,13 @@ namespace fms
 
 		void add_entry(const std::string &key, const std::string &value)
 		{
-			amf0_string_ptr const str(new amf0_string(value));
+			amf0_string_ptr const str = std::make_shared<amf0_string>(value);
 			m_value.push_back(entry(key, str));
 		}
 
 		void add_entry(const std::string &key, double value)
 		{
-			amf0_number_ptr const num(new amf0_number(value));
+			amf0_number_ptr const num = std::make_shared<amf0_number>(value);
 			m_value.push_back(entry(key, num));
 		}
 
@@ -422,13 +422,13 @@ namespace fms
 
 		void add_entry(const std::string &name, const std::string &value)
 		{
-			amf0_string_ptr const str(new amf0_string(value));
+			amf0_string_ptr const str = std::make_shared<amf0_string>(value);
 			m_array.emplace_back(name, str);
 		}
 
 		void add_entry(const std::string &name, double value)
 		{
-			amf0_number_ptr const num(new amf0_number(value));
+			amf0_number_ptr const num = std::make_shared<amf0_number>(value);
 			m_array.emplace_back(name, num);
 		}
 
@@ -459,13 +459,13 @@ namespace fms
 
 		void add_entry(const std::string &value)
 		{
-			amf0_string_ptr const str(new amf0_string(value));
+			amf0_string_ptr const str = std::make_shared<amf0_string>(value);
 			m_array.push_back(str);
 		}
 
 		void add_entry(double value)
 		{
-			amf0_number_ptr const num(new amf0_number(value));
+			amf0_number_ptr const num = std::make_shared<amf0_number>(value);
 			m_array.push_back(num);
 		}
 

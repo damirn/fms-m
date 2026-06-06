@@ -46,7 +46,7 @@ namespace fms
 		if (m_bytes_read >= m_bytes_read_notify)
 		{
 			m_bytes_read_notify += m_win_ack;
-			rtmp_message_bytes_read_ptr const msg(new rtmp_message_bytes_read(m_bytes_read));
+			rtmp_message_bytes_read_ptr const msg = std::make_shared<rtmp_message_bytes_read>(m_bytes_read);
 			m_app->enqueue_async_message(m_id, msg);
 			notify();
 			//std::cout << "Sending bytes read: " << m_bytes_read << " bytes." << std::endl;
@@ -78,7 +78,7 @@ namespace fms
 			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(ePingInterval)));
 			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 
-			rtmp_message_ping_ptr const msg(new rtmp_message_ping(rtmp_message_ping::ePingRequest, get_timestamp()));
+			rtmp_message_ping_ptr const msg = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingRequest, get_timestamp());
 			m_app->enqueue_async_message(m_id, msg);
 			notify();
 		}

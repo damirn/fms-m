@@ -74,7 +74,7 @@ namespace fms
 
 	void rtmp_message_shared_object::deserialize_request_change_event(byte_reader &buffer, event_ptr &ev)
 	{
-		amf0_string_ptr const str(new amf0_string);
+		amf0_string_ptr const str = std::make_shared<amf0_string>();
 		m_amf0.read_short_string(buffer, str, true);
 		ev->m_name = str;
 		ev->m_value = m_amf0.read(buffer);
@@ -82,7 +82,7 @@ namespace fms
 
 	void rtmp_message_shared_object::deserialize_request_remove_event(byte_reader &buffer, event_ptr &ev)
 	{
-		amf0_string_ptr const str(new amf0_string);
+		amf0_string_ptr const str = std::make_shared<amf0_string>();
 		m_amf0.read_short_string(buffer, str, true);
 		ev->m_name = str;
 	}

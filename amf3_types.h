@@ -349,13 +349,13 @@ namespace fms
 
 		void add_entry(const std::string &key, const std::string &value)
 		{
-			amf3_string_type_ptr const tmp(new amf3_string_type(value));
+			amf3_string_type_ptr const tmp = std::make_shared<amf3_string_type>(value);
 			m_properties[key] = tmp;
 		}
 
 		void add_entry(const std::string &key, std::uint32_t value)
 		{
-			amf3_integer_type_ptr const tmp(new amf3_integer_type(value));
+			amf3_integer_type_ptr const tmp = std::make_shared<amf3_integer_type>(value);
 			m_properties[key] = tmp;
 		}
 
