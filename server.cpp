@@ -2,10 +2,13 @@
 #include "server.h"
 #include "admin_application.h"
 #include "config.h"
+#include "logging.h"
 #include "rtmp_app_manager.h"
 #include "service.h"
 #include "video_bcast_application.h"
 #include "video_call_application.h"
+
+#include <csignal>
 
 namespace fms
 {
@@ -15,7 +18,8 @@ namespace fms
 	server::server(std::size_t io_pool_size)
 		: m_io_context_pool(io_pool_size)
 		, m_acceptor(m_io_context_pool.get_io_context())
-		, m_http_acceptor(m_io_context_pool.get_io_context()) {}
+		, m_http_acceptor(m_io_context_pool.get_io_context())
+		, m_signals(m_io_context_pool.get_io_context(), SIGINT, SIGTERM) {}
 
 	// Out-of-line (not =default) so the unique_ptr members' destructors are
 	// instantiated here, where rtmp_app_manager / service are complete types.
@@ -23,6 +27,14 @@ namespace fms
 
 	void server::run()
 	{
+		m_signals.async_wait([this](const boost::system::error_code &ec, int signo)
+		{
+			if (ec)
+				return;   // wait cancelled (e.g. during teardown)
+			BOOST_LOG(lg::get()) << "received signal " << signo << ", shutting down";
+			stop();   // stops the io_context pool; ~server flushes recordings
+		});
+
 		m_io_context_pool.run();
 	}
 
