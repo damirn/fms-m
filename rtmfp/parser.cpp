@@ -103,7 +103,14 @@ namespace fms
 		}
 		if (c)
 		{
-			c->deserialize(raw, len);
+			// A chunk whose deserialize overran its bounds leaves its length/offset
+			// fields attacker-set or indeterminate; do NOT hand it to the handler
+			// (which would use those lengths for reads/allocations).
+			if (!c->deserialize(raw, len))
+			{
+				delete c;
+				return false;
+			}
 			bool const ret = m_chunk_handler.handle_chunk(c);
 			delete c;
 			return ret;
