@@ -202,7 +202,7 @@ namespace fms
 			&& audio->size() > 1
 			&& audio->data()[1] == 0x00)
 		{
-			m_aac_config[bcid] = audio;
+			std::atomic_store(&m_aac_config[bcid], audio);
 		}
 
 		stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(bcid);
@@ -924,8 +924,9 @@ namespace fms
 			if (video->get_codec() == rtmp_message_video_data::eAVC)
 			{
 				// slot pre-exists (add_stream); "not yet stored" == null value
-				if (!m_avc_config[bcid] && video->size() > 1 && video->data()[1] == 0)
-					m_avc_config[bcid] = video;
+				auto &slot = m_avc_config[bcid];
+				if (!std::atomic_load(&slot) && video->size() > 1 && video->data()[1] == 0)
+					std::atomic_store(&slot, video);
 			}
 			m_video_queue_map[bcid].clear();
 			m_video_queue_map[bcid].push_back(video);
@@ -996,9 +997,10 @@ namespace fms
 		std::uint32_t const size = list.size();
 
 		auto const i = m_avc_config.find(bcid);
-		if (i != m_avc_config.end() && i->second)   // slot pre-exists; may still be null
+		rtmp_message_video_data_ptr const cfg = (i != m_avc_config.end()) ? std::atomic_load(&i->second) : nullptr;
+		if (cfg)   // slot pre-exists; may still be null
 		{
-			rtmp_message_video_data_ptr const conf = std::make_shared<rtmp_message_video_data>(*i->second);
+			rtmp_message_video_data_ptr const conf = std::make_shared<rtmp_message_video_data>(*cfg);
 			conf->timestamp() = 0;
 			conf->stream_id() = client->m_stream_id;
 			conf->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
@@ -1084,9 +1086,10 @@ namespace fms
 	void video_bcast_application::send_aac_config(const stream_client_id_t &src, const stream_client_ptr &client)
 	{
 		auto const i = m_aac_config.find(src);
-		if (i != m_aac_config.end() && i->second)   // slot pre-exists; may still be null
+		rtmp_message_audio_data_ptr const cfg = (i != m_aac_config.end()) ? std::atomic_load(&i->second) : nullptr;
+		if (cfg)   // slot pre-exists; may still be null
 		{
-			rtmp_message_audio_data_ptr const conf = std::make_shared<rtmp_message_audio_data>(*i->second);
+			rtmp_message_audio_data_ptr const conf = std::make_shared<rtmp_message_audio_data>(*cfg);
 			conf->timestamp() = 0;
 			conf->stream_id() = client->m_stream_id;
 			conf->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
