@@ -506,6 +506,118 @@ TEST_CASE("byte_writer input role: reassemble a message split across reads, then
 	CHECK(b.empty());
 }
 
+TEST_CASE("byte_writer input role: consume advances the read offset (no data move)")
+{
+	byte_writer b;
+	auto mb = b.write_buffer(64);
+	auto *p = static_cast<std::uint8_t *>(mb.data());
+	for (std::uint8_t i = 0; i < 20; ++i) p[i] = i;
+	b.update(20);
+
+	// partial consume: size/data/read_buffer/empty are all offset-relative,
+	// and the unconsumed bytes keep their values.
+	b.consume(5);
+	CHECK(b.size() == 15);
+	CHECK(b.read_buffer().size() == 15);
+	CHECK(b.empty() == false);
+	CHECK(b.data()[0] == 5);
+	CHECK(b.data()[14] == 19);
+
+	b.consume(10);   // second consume before any new read (O(1), still no move)
+	CHECK(b.size() == 5);
+	CHECK(b.data()[0] == 15);
+	CHECK(b.data()[4] == 19);
+
+	// consuming exactly to the end resets to empty.
+	b.consume(5);
+	CHECK(b.empty());
+	CHECK(b.size() == 0);
+}
+
+TEST_CASE("byte_writer input role: write_buffer compacts, preserving the unconsumed tail")
+{
+	byte_writer b;
+	auto mb = b.write_buffer(64);
+	auto *p = static_cast<std::uint8_t *>(mb.data());
+	for (std::uint8_t i = 0; i < 10; ++i) p[i] = static_cast<std::uint8_t>(0xA0 + i);
+	b.update(10);
+
+	b.consume(6);                 // read offset now 6; tail = {0xA6..0xA9}
+	CHECK(b.size() == 4);
+
+	// the next write_buffer must drop the consumed prefix and keep the tail
+	// contiguous with the freshly written bytes.
+	auto mb2 = b.write_buffer(32);
+	auto *p2 = static_cast<std::uint8_t *>(mb2.data());
+	for (std::uint8_t i = 0; i < 3; ++i) p2[i] = static_cast<std::uint8_t>(0xB0 + i);
+	b.update(3);
+
+	CHECK(b.size() == 7);
+	std::vector<std::uint8_t> const got(b.data(), b.data() + b.size());
+	std::vector<std::uint8_t> const exp = {0xA6, 0xA7, 0xA8, 0xA9, 0xB0, 0xB1, 0xB2};
+	CHECK(got == exp);
+}
+
+TEST_CASE("byte_writer input role: interleaved partial reads and consumes reproduce the stream")
+{
+	// Model the real accumulate -> parse -> consume loop: feed a long stream in
+	// odd-sized reads, consume odd-sized parsed prefixes, and check every byte
+	// that comes out (in order) matches the source. Exercises the read offset,
+	// the lazy compaction in write_buffer, and the drain-to-empty reset.
+	std::vector<std::uint8_t> src(1000);
+	for (std::size_t i = 0; i < src.size(); ++i) src[i] = static_cast<std::uint8_t>((i * 37 + 5) & 0xFF);
+
+	byte_writer b;
+	std::size_t fed = 0;
+	std::size_t consumed = 0;
+	std::vector<std::uint8_t> out;
+	std::size_t feed_step = 7;
+	std::size_t consume_step = 5;
+
+	while (consumed < src.size())
+	{
+		if (fed < src.size())
+		{
+			std::size_t const reserve = 13;   // small reserve to force many cycles
+			// fill at most what we reserved (as a real async_read does)
+			std::size_t const n = std::min({feed_step, src.size() - fed, reserve});
+			auto mb = b.write_buffer(reserve);
+			std::memcpy(mb.data(), src.data() + fed, n);
+			b.update(n);
+			fed += n;
+			feed_step = feed_step * 2 + 1;              // vary the read sizes
+			if (feed_step > 41) feed_step = 3;
+		}
+		std::size_t const take = std::min(consume_step, b.size());
+		out.insert(out.end(), b.data(), b.data() + take);
+		b.consume(take);
+		consumed += take;
+		consume_step += 2;
+		if (consume_step > 29) consume_step = 4;
+	}
+
+	CHECK(out == src);
+	CHECK(b.empty());
+}
+
+TEST_CASE("byte_writer output role is unaffected by the read offset")
+{
+	// mark()/patch()/extend() work in absolute coordinates; an output buffer never
+	// consumes, so its behaviour must be byte-identical to before.
+	byte_writer w;
+	std::size_t const slot = w.mark();
+	std::uint16_t const placeholder = 0;
+	w << placeholder;
+	std::uint8_t *ext = w.extend(3);
+	ext[0] = 0xDE; ext[1] = 0xAD; ext[2] = 0xBE;
+	std::uint16_t const val = 0x0102;   // little-endian -> 0x02 0x01
+	w.patch(slot, reinterpret_cast<const std::uint8_t *>(&val), 2);
+
+	std::vector<std::uint8_t> const got(w.data(), w.data() + w.size());
+	std::vector<std::uint8_t> const exp = {0x02, 0x01, 0xDE, 0xAD, 0xBE};
+	CHECK(got == exp);
+}
+
 TEST_CASE("VLU: byte_writer -> byte_reader round-trips the 1..3 byte forms")
 {
 	// RTMFP only encodes values < 2^21 (the 4-byte "max" form is asymmetric with

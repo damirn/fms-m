@@ -3,6 +3,8 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include <boost/asio/buffer.hpp>
@@ -10,12 +12,49 @@
 
 namespace fms
 {
+	// Allocator that DEFAULT-initializes elements (leaves them indeterminate)
+	// instead of value-initializing (zeroing) them. Used for the receive
+	// accumulator: write_buffer() grows the vector only to hand the new region
+	// to async_read, so zero-filling it first (std::vector's default) is pure
+	// waste -- the bytes are about to be overwritten. Only the argument-less
+	// construct() is specialized; everything else defers to std::allocator.
+	template <typename T, typename A = std::allocator<T>>
+	struct default_init_allocator : A
+	{
+		using a_traits = std::allocator_traits<A>;
+		template <typename U>
+		struct rebind
+		{
+			using other = default_init_allocator<U, typename a_traits::template rebind_alloc<U>>;
+		};
+
+		using A::A;
+
+		template <typename U>
+		void construct(U *p) noexcept(std::is_nothrow_default_constructible_v<U>)
+		{
+			::new (static_cast<void *>(p)) U;   // default-init: no zero-fill
+		}
+		template <typename U, typename... Args>
+		void construct(U *p, Args &&...args)
+		{
+			a_traits::construct(static_cast<A &>(*this), p, std::forward<Args>(args)...);
+		}
+	};
+
 	// An owning, growable byte buffer with two roles:
 	//  * output: append + back-patch (operator<< native-order, write_uint32_3
 	//    big-endian, mark()/patch()) for serialization.
 	//  * input: an async-fill accumulator (write_buffer()/update() to receive,
 	//    consume() to drop parsed bytes) that a byte_reader then parses over
 	//    data()/size().
+	//
+	// consume() advances a read offset (m_read_pos) rather than erasing from the
+	// front, so it is O(1); the consumed prefix is dropped lazily the next time
+	// write_buffer() grows the buffer. data()/size()/read_buffer()/empty() are all
+	// relative to that offset. The two roles are never mixed on one instance, so
+	// the offset stays 0 for output buffers and the output methods (mark/patch/
+	// extend, which work in absolute coordinates) are unaffected.
 	class byte_writer
 	{
 	public:
@@ -97,9 +136,9 @@ namespace fms
 			std::memcpy(m_buf.data() + pos, src, n);
 		}
 
-		const std::uint8_t *data() const { return m_buf.data(); }
-		std::uint8_t *data() { return m_buf.data(); }   // in-place transforms (rc4)
-		std::size_t size() const { return m_buf.size(); }
+		const std::uint8_t *data() const { return m_buf.data() + m_read_pos; }
+		std::uint8_t *data() { return m_buf.data() + m_read_pos; }   // in-place transforms (rc4)
+		std::size_t size() const { return m_buf.size() - m_read_pos; }
 
 		// ---- input-buffer role ------------------------------------------------
 		// Reserve n bytes of writable room at the end for an async read/receive
@@ -108,8 +147,15 @@ namespace fms
 		boost::asio::mutable_buffer write_buffer(std::size_t n = 65536)
 		{
 			assert(m_reserved == 0 && "write_buffer() called again before update()");
+			// Drop the consumed prefix now (amortized): moves only the small
+			// unconsumed tail, and keeps the buffer from growing behind stale bytes.
+			if (m_read_pos > 0)
+			{
+				m_buf.erase(m_buf.begin(), m_buf.begin() + m_read_pos);
+				m_read_pos = 0;
+			}
 			std::size_t const old = m_buf.size();
-			m_buf.resize(old + n);
+			m_buf.resize(old + n);   // default_init_allocator: grows without zero-filling
 			m_reserved = n;
 			return boost::asio::mutable_buffer(m_buf.data() + old, n);
 		}
@@ -124,21 +170,28 @@ namespace fms
 			m_buf.resize(m_buf.size() - (m_reserved - filled));   // drop the unfilled tail
 			m_reserved = 0;
 		}
-		// Drop the first n (already-parsed) bytes and shift the rest to the front.
+		// Drop the first n (already-parsed) bytes. O(1): advances the read offset
+		// rather than shifting; the prefix is reclaimed at the next write_buffer().
 		void consume(std::size_t n)
 		{
-			m_buf.erase(m_buf.begin(), m_buf.begin() + n);
+			assert(n <= size() && "consume() past the end of the readable region");
+			m_read_pos += n;
+			if (m_read_pos == m_buf.size())   // fully drained -> reset to empty
+			{
+				m_buf.clear();
+				m_read_pos = 0;
+			}
 		}
 		boost::asio::const_buffer read_buffer() const
 		{
-			return boost::asio::const_buffer(m_buf.data(), m_buf.size());
+			return boost::asio::const_buffer(m_buf.data() + m_read_pos, m_buf.size() - m_read_pos);
 		}
-		bool empty() const { return m_buf.empty(); }
-		void clear() { m_buf.clear(); }
-		const std::vector<std::uint8_t> &buffer() const { return m_buf; }
+		bool empty() const { return m_buf.size() == m_read_pos; }
+		void clear() { m_buf.clear(); m_read_pos = 0; }
 
 	private:
-		std::vector<std::uint8_t> m_buf;
+		std::vector<std::uint8_t, default_init_allocator<std::uint8_t>> m_buf;
 		std::size_t m_reserved{0};   // bytes reserved by write_buffer(), pending update()
+		std::size_t m_read_pos{0};   // consumed-prefix offset (input role); 0 for output
 	};
 }
