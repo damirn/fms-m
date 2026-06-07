@@ -132,6 +132,13 @@ namespace fms
 		using video_queue_map_t = stream_client_id_map<std::list<rtmp_message_video_data_ptr>>;
 		video_queue_map_t m_video_queue_map;
 
+		// The AVC/AAC sequence-header slots are both written (publisher stores the
+		// header) and read (sent to a joining subscriber) on the data path under the
+		// SHARED lock, so the slot's shared_ptr must be accessed atomically:
+		// m_mutex serialises map STRUCTURE (insert/erase take the EXCLUSIVE lock;
+		// slots are pre-created in add_stream), std::atomic_load/atomic_store
+		// serialise the slot's CONTENTS. (atomic_load/store on shared_ptr rather
+		// than std::atomic<shared_ptr>, which this libc++ toolchain lacks.)
 		using avc_decoder_config_map_t = stream_client_id_map<rtmp_message_video_data_ptr>;
 		avc_decoder_config_map_t m_avc_config;
 
