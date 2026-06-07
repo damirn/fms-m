@@ -281,6 +281,8 @@ namespace fms
 				if (type_bytes > opt_len)
 					break;
 				std::uint64_t const val_len = opt_len - type_bytes;
+				if (val_len > s.available())
+					break;   // option length runs past the cert buffer -> malformed (OOB guard)
 				const std::uint8_t *const val = s.read_pos();
 				if (type == 0x1d) // CERT_OPTION_DH_PUBLIC_KEY
 				{
@@ -306,6 +308,17 @@ namespace fms
 		if (!echo_cookie_valid(iikc->cookie_echo(), iikc->cookie_len()))
 			return;
 		if (iikc->cert_len() < 0x84)
+			return;
+
+		// Bound half-open handshake memory (and the per-packet DH work): the cookie
+		// is only a plaintext addr/port/ts check, not HMAC-authenticated, so an
+		// attacker cycling source endpoints could otherwise grow m_initial_sessions
+		// without limit -> memory-exhaustion crash. Once the cap is reached, drop
+		// new handshakes; the server stays up and RTMP/RTMPT are unaffected. A
+		// complete fix additionally needs stale-half-open reaping and an HMAC cookie.
+		constexpr std::size_t eMaxInitialSessions = 8192;
+		if (m_initial_sessions.size() >= eMaxInitialSessions
+			&& m_initial_sessions.find(m_sender_endpoint) == m_initial_sessions.end())
 			return;
 
 		session_ptr const s = std::make_shared<session>(this, m_sender_endpoint, m_app_manager->reserve_connection_id(), m_app_manager);
