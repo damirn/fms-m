@@ -94,18 +94,31 @@ namespace fms
 
 	void rtmp_protocol::serialize(byte_writer &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)
 	{
-		byte_writer tmp_buffer;
-		msg->serialize(tmp_buffer);
+		// Audio/video frame bodies are already a contiguous block; chunk straight
+		// from them (no copy). Everything else builds its body into a temporary.
+		const std::uint8_t *payload = nullptr;
+		std::uint32_t payload_len = 0;
+		byte_writer tmp_buffer;   // holds the body only for the non-direct path
+		if (msg->payload_view(payload, payload_len))
+		{
+			// payload / payload_len already set
+		}
+		else
+		{
+			msg->serialize(tmp_buffer);
+			payload = tmp_buffer.data();
+			payload_len = static_cast<std::uint32_t>(tmp_buffer.size());
+		}
 
 		// write header
-		new_header.message_length() = static_cast<std::uint32_t>(tmp_buffer.size());
+		new_header.message_length() = payload_len;
 		new_header.message_type() = msg->type();
 		new_header.stream_id() = msg->stream_id();
 		new_header.channel_id() = msg->channel_id();
 		new_header.timestamp() = msg->timestamp();
 
 		new_header.serialize(buffer, previous_header);
-		chunk_buffer(buffer, tmp_buffer, new_header);
+		chunk_buffer(buffer, payload, payload_len, new_header);
 	}
 
 	void rtmp_protocol::deserialize_notify(byte_reader &buffer)
@@ -225,12 +238,10 @@ namespace fms
 		m_message = msg;
 	}
 
-	void rtmp_protocol::chunk_buffer(byte_writer &buffer, const byte_writer &input, rtmp_header &header) const
+	void rtmp_protocol::chunk_buffer(byte_writer &buffer, const std::uint8_t *src, std::size_t size, rtmp_header &header) const
 	{
-		std::size_t size = input.size();
 		if (size != 0)
 		{
-			const std::uint8_t *src = input.data();
 			std::uint32_t chunks = static_cast<std::uint32_t>(size) / m_chunk_size;
 			chunks += (size % m_chunk_size) == 0 ? 0 : 1;
 
