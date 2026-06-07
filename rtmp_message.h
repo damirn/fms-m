@@ -52,6 +52,16 @@ namespace fms
 
 		virtual void serialize (byte_writer &) = 0;
 
+		// If this message's serialized body is already a single contiguous block
+		// in memory (audio/video frame payloads), expose it so that
+		// rtmp_protocol::serialize can chunk straight from it instead of copying
+		// it into a temporary byte_writer first. Default: false (the body must be
+		// built on demand -- AMF invoke/notify, control messages).
+		virtual bool payload_view(const std::uint8_t *&, std::uint32_t &) const
+		{
+			return false;
+		}
+
 		std::uint8_t type() const
 		{
 			return m_type;
@@ -368,6 +378,14 @@ namespace fms
 			return m_size;
 		}
 
+		// The serialized body is exactly the payload block (see serialize()).
+		bool payload_view(const std::uint8_t *&data, std::uint32_t &len) const override
+		{
+			data = m_data.get();
+			len = m_size;
+			return true;
+		}
+
 		enum codec { eLinearPCMPE = 0, eADPCM, eMP3, eLinearPCMLE, eNelly16KHz, eNelly8K, eNelly, ePCMA, ePCMU, eUnknown, eAAC, eSpeex, eMP38KHz = 14, eDeviceSpecific };
 		enum rate { e5500Hz = 0, e11000Hz, e22000Hz, e44000Hz };
 		enum sample_size { e8Bit = 0, e16Bit };
@@ -434,6 +452,14 @@ namespace fms
 		std::uint32_t size() const
 		{
 			return m_size;
+		}
+
+		// The serialized body is exactly the payload block (see serialize()).
+		bool payload_view(const std::uint8_t *&data, std::uint32_t &len) const override
+		{
+			data = m_data.get();
+			len = m_size;
+			return true;
 		}
 
 		enum codec { eJPEG = 1, eSorenson, eScreenVideo, eOn2VP6, eOn2VP6Alpha, eScreenVideoV2, eAVC };

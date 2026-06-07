@@ -16,6 +16,7 @@
 #include "rtmp_channel.h"
 #include "rtmp_header.h"
 #include "rtmp_message.h"
+#include "rtmp_protocol.h"
 #include "rtmp_raw_data.h"
 
 using namespace fms;
@@ -653,4 +654,112 @@ TEST_CASE("header round-trips: serialize (byte_writer) -> try_deserialize (byte_
 		CHECK(int(out.message_type()) == AUDIO);
 		CHECK(out.stream_id() == 7);
 	}
+}
+
+// ------------------------ Phase 3: rtmp_protocol::serialize -----------------
+// The send path chunks audio/video frames straight from the message's own
+// payload buffer (payload_view) instead of copying into a temporary first;
+// everything else falls back to msg->serialize(). These serialize -> parse
+// round-trips assert the wire output is unchanged and correctly framed.
+
+namespace
+{
+	std::vector<std::uint8_t> serialize_to_bytes(const rtmp_message_ptr &msg, std::uint16_t chunk_size)
+	{
+		rtmp_protocol p(chunk_size);
+		byte_writer out;
+		rtmp_header nh;
+		rtmp_header ph;   // fresh previous header -> a full (type-0) header
+		p.serialize(out, msg, nh, ph);
+		return {out.data(), out.data() + out.size()};
+	}
+}
+
+TEST_CASE("rtmp_protocol serialize: single-chunk video frame round-trips (direct payload_view)")
+{
+	auto const payload = pattern(20, 3);
+	auto v = std::make_shared<rtmp_message_video_data>(static_cast<std::uint32_t>(payload.size()));
+	std::memcpy(v->data(), payload.data(), payload.size());
+	v->stream_id() = 7;
+	v->channel_id() = 6;
+	v->timestamp() = 1234;
+
+	parser_harness h;
+	h.feed(serialize_to_bytes(v, 128));
+
+	REQUIRE(h.messages.size() == 1);
+	CHECK(h.messages[0].type == VIDEO);
+	CHECK(h.messages[0].channel_id == 6);
+	CHECK(h.messages[0].stream_id == 7);
+	CHECK(h.messages[0].timestamp == 1234);
+	CHECK(h.messages[0].payload == payload);
+}
+
+TEST_CASE("rtmp_protocol serialize: multi-chunk video frame round-trips (payload > chunk_size)")
+{
+	auto const payload = pattern(300, 11);   // > 128 -> 3 chunks, 2 continuation headers
+	auto v = std::make_shared<rtmp_message_video_data>(static_cast<std::uint32_t>(payload.size()));
+	std::memcpy(v->data(), payload.data(), payload.size());
+	v->stream_id() = 1;
+	v->channel_id() = 6;
+	v->timestamp() = 42;
+
+	parser_harness h;
+	h.feed(serialize_to_bytes(v, 128));
+
+	REQUIRE(h.messages.size() == 1);
+	CHECK(h.messages[0].type == VIDEO);
+	CHECK(h.messages[0].payload == payload);   // reassembled from the direct pointer
+}
+
+TEST_CASE("rtmp_protocol serialize: audio frame on a different channel/stream round-trips")
+{
+	auto const payload = pattern(30, 5);
+	auto a = std::make_shared<rtmp_message_audio_data>(static_cast<std::uint32_t>(payload.size()));
+	std::memcpy(a->data(), payload.data(), payload.size());
+	a->stream_id() = 3;
+	a->channel_id() = 4;
+	a->timestamp() = 555;
+
+	parser_harness h;
+	h.feed(serialize_to_bytes(a, 128));
+
+	REQUIRE(h.messages.size() == 1);
+	CHECK(h.messages[0].type == AUDIO);
+	CHECK(h.messages[0].channel_id == 4);
+	CHECK(h.messages[0].stream_id == 3);
+	CHECK(h.messages[0].timestamp == 555);
+	CHECK(h.messages[0].payload == payload);
+}
+
+TEST_CASE("rtmp_protocol serialize: non-audio/video message uses the serialize fallback path")
+{
+	// chunk_size does not override payload_view -> serialize() builds the body.
+	auto cs = std::make_shared<rtmp_message_chunk_size>(4096);
+
+	parser_harness h;
+	h.feed(serialize_to_bytes(cs, 128));
+
+	// Set Chunk Size is an internal (control) message.
+	REQUIRE(h.internals.size() == 1);
+	CHECK(h.internals[0] == rtmp_message::eMessageChunkSize);
+	CHECK(h.messages.empty());
+}
+
+TEST_CASE("rtmp_protocol serialize: payload_view equals the serialized body (byte-identical direct path)")
+{
+	auto const payload = pattern(50, 9);
+	auto v = std::make_shared<rtmp_message_video_data>(static_cast<std::uint32_t>(payload.size()));
+	std::memcpy(v->data(), payload.data(), payload.size());
+
+	byte_writer bw;
+	v->serialize(bw);   // the old path built the body this way
+	const std::uint8_t *pv = nullptr;
+	std::uint32_t pn = 0;
+	REQUIRE(v->payload_view(pv, pn));
+
+	std::vector<std::uint8_t> const via_view(pv, pv + pn);
+	std::vector<std::uint8_t> const via_serialize(bw.data(), bw.data() + bw.size());
+	CHECK(via_view == via_serialize);   // direct path is byte-for-byte the serialize path
+	CHECK(via_view == payload);
 }
