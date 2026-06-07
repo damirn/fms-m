@@ -110,14 +110,24 @@ namespace fms
 	{
 		if (m_sstate == eCSReadCommands)
 		{
+			// A prior oversized message (rtmp_raw_data's message-length cap) latched
+			// m_framing_error. Stop buffering/parsing so an abusive client can't
+			// drive m_remaining_data to hold unbounded bytes; the session is reaped
+			// by the manager's not-alive timeout.
+			if (m_framing_error)
+			{
+				m_remaining_data.clear();
+				return false;
+			}
+
 			m_results.clear();
 			boost::tribool res;
 			if (m_key_in != nullptr)
 				rc4_crypt(m_key_in, input.size(), input.data(), input.data());
 			if (!m_remaining_data.empty())
 			{
-				// parse_data consumes what it parses, so no separate compact() is
-				// needed: append this batch, parse, and the unparsed tail stays.
+				// byte_writer::consume() self-compacts, so the unparsed tail stays
+				// and the consumed prefix is reclaimed without a separate compact().
 				m_remaining_data.write(input.data(), input.size());
 				res = parse_data(m_remaining_data);
 			}
@@ -126,6 +136,12 @@ namespace fms
 				res = parse_data(input);
 				if (boost::indeterminate(res))
 					m_remaining_data.write(input.data(), input.size());   // save the leftover
+			}
+
+			if (m_framing_error)   // just tripped -> drop the offending buffer
+			{
+				m_remaining_data.clear();
+				return false;
 			}
 
 			handle_results(output);

@@ -535,6 +535,29 @@ TEST_CASE("byte_writer input role: consume advances the read offset (no data mov
 	CHECK(b.size() == 0);
 }
 
+TEST_CASE("byte_writer input role: consume-only pattern stays memory-bounded (RTMPT m_remaining_data)")
+{
+	// Model the RTMPT accumulator: write() + consume() with NO write_buffer().
+	// Each round appends 20 bytes and consumes all but a 5-byte "partial message"
+	// tail. footprint() (underlying storage) must stay bounded by the live size,
+	// not grow with the number of rounds -- the regression this guards against.
+	byte_writer b;
+	std::uint8_t counter = 0;
+	for (int round = 0; round < 5000; ++round)
+	{
+		std::uint8_t buf[20];
+		for (auto &x : buf) x = counter++;
+		b.write(buf, sizeof(buf));
+		std::size_t const avail = b.size();
+		if (avail > 5) b.consume(avail - 5);   // leave a 5-byte tail
+	}
+	CHECK(b.size() == 5);
+	CHECK(b.footprint() < 200);   // bounded; would be ~100000 without self-compaction
+	// the live tail is the five most-recently-written bytes, intact across compaction
+	CHECK(b.data()[0] == static_cast<std::uint8_t>(counter - 5));
+	CHECK(b.data()[4] == static_cast<std::uint8_t>(counter - 1));
+}
+
 TEST_CASE("byte_writer input role: write_buffer compacts, preserving the unconsumed tail")
 {
 	byte_writer b;

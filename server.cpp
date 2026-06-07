@@ -40,6 +40,14 @@ namespace fms
 
 	void server::stop()
 	{
+		// io_context_pool::run() joins every worker thread before returning, so by
+		// the time ~server destroys m_app_manager / m_rtmfp_service, no io thread is
+		// running and the queued handlers that capture raw `this` (accept loop, app
+		// and manager re-arm timers, post_close -> delete_connection) are DESTROYED,
+		// not executed. Teardown correctness depends on that: if this is ever changed
+		// to DRAIN (run-to-completion to flush in-flight frames) instead of stop(),
+		// those handlers would fire against freed objects -- cancel the acceptor and
+		// the app/manager timers first.
 		m_io_context_pool.stop();
 	}
 

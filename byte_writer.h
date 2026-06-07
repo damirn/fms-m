@@ -170,8 +170,12 @@ namespace fms
 			m_buf.resize(m_buf.size() - (m_reserved - filled));   // drop the unfilled tail
 			m_reserved = 0;
 		}
-		// Drop the first n (already-parsed) bytes. O(1): advances the read offset
-		// rather than shifting; the prefix is reclaimed at the next write_buffer().
+		// Drop the first n (already-parsed) bytes. Amortized O(1): advances a read
+		// offset rather than shifting. The consumed prefix is reclaimed either at
+		// the next write_buffer(), or here once it grows to at least half the
+		// buffer -- the latter is what bounds a buffer that only ever write()s and
+		// consume()s and never calls write_buffer() (e.g. the RTMPT
+		// m_remaining_data accumulator), which would otherwise grow without bound.
 		void consume(std::size_t n)
 		{
 			assert(n <= size() && "consume() past the end of the readable region");
@@ -181,6 +185,11 @@ namespace fms
 				m_buf.clear();
 				m_read_pos = 0;
 			}
+			else if (m_read_pos * 2 >= m_buf.size())   // dead prefix >= half -> reclaim (keeps size <= 2x live)
+			{
+				m_buf.erase(m_buf.begin(), m_buf.begin() + m_read_pos);
+				m_read_pos = 0;
+			}
 		}
 		boost::asio::const_buffer read_buffer() const
 		{
@@ -188,6 +197,11 @@ namespace fms
 		}
 		bool empty() const { return m_buf.size() == m_read_pos; }
 		void clear() { m_buf.clear(); m_read_pos = 0; }
+
+		// Underlying storage in use (>= size(); the excess is the consumed prefix
+		// not yet reclaimed). For diagnostics/tests -- verifies consume() keeps a
+		// write()+consume()-only buffer bounded rather than growing per round.
+		std::size_t footprint() const { return m_buf.size(); }
 
 	private:
 		std::vector<std::uint8_t, default_init_allocator<std::uint8_t>> m_buf;
