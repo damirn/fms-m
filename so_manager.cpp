@@ -1,11 +1,12 @@
 #include "pch.h"
 #include "so_manager.h"
-#include "rtmp_application.h"
+
+#include <utility>
 
 namespace fms
 {
-	so_manager::so_manager(rtmp_application *app)
-		: m_app(app)
+	so_manager::so_manager(delivery_fn deliver)
+		: m_deliver(std::move(deliver))
 	{}
 
 	bool so_manager::handle_so(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_ptr &result)
@@ -51,10 +52,7 @@ namespace fms
 
 		// Fan out to the other clients with m_mutex released.
 		for (auto &[client, msg] : pending)
-		{
-			m_app->enqueue_async_message(client, msg);
-			m_app->notify(client);
-		}
+			m_deliver(client, msg);
 
 		if (released)
 			return false;

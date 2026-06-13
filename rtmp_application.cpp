@@ -35,7 +35,11 @@ namespace fms
 		, m_app_name(app_name)
 		, m_invoke_id(100000)
 	{
-		m_so_manager = new so_manager(this);
+		m_so_manager = new so_manager([this](std::uint32_t client, const rtmp_message_ptr &msg)
+		{
+			enqueue_async_message(client, msg);
+			notify(client);
+		});
 		if (!m_rnd_str_generated)
 		{
 			m_rnd_string.generate(eBWCheckStringSize, m_rnd_str->value());
