@@ -6,6 +6,8 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <boost/noncopyable.hpp>
 
@@ -23,11 +25,17 @@ namespace fms
 		bool handle_so(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_ptr &);
 
 	protected:
+		// (client id, message) pairs collected while m_mutex is held and flushed to
+		// enqueue_async_message/notify AFTER it is released -- so the SO fan-out does
+		// not call into the app (which takes rtmp_app_manager::m_mutex) under our own
+		// lock (removes the so_manager -> app_manager lock ordering + serialization).
+		using pending_sends_t = std::vector<std::pair<std::uint32_t, rtmp_message_ptr>>;
+
 		void handle_use_event(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_shared_object_ptr &);
 		void handle_release_event(const rtmp_message_shared_object_ptr&, std::uint32_t);
-		void handle_req_change_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, rtmp_message_shared_object_ptr &);
-		void handle_send_message_event(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_shared_object_ptr &);
-		void handle_req_remove_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, rtmp_message_shared_object_ptr &);
+		void handle_req_change_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, rtmp_message_shared_object_ptr &, pending_sends_t &);
+		void handle_send_message_event(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_shared_object_ptr &, pending_sends_t &);
+		void handle_req_remove_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, rtmp_message_shared_object_ptr &, pending_sends_t &);
 
 		rtmp_application *m_app;
 

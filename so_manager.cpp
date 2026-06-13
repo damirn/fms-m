@@ -15,32 +15,49 @@ namespace fms
 
 		rtmp_message_shared_object_ptr ret = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
 
-		std::unique_lock const lock(m_mutex);
-		m_new_message = true;   // must be written under the lock (was racing)
-
-		for (auto i = list.begin(); i != j; ++i)
+		pending_sends_t pending;   // filled under the lock, flushed after it is released
+		bool released = false;
 		{
-			switch ((*i)->m_type)
+			std::unique_lock const lock(m_mutex);
+			m_new_message = true;   // must be written under the lock (was racing)
+
+			for (auto i = list.begin(); i != j; ++i)
 			{
-			case rtmp_message_shared_object::eUse:
-				handle_use_event(so, connection_id, ret);
-				break;
-			case rtmp_message_shared_object::eRelease:
-				handle_release_event(so, connection_id);
-				return false;
-			case rtmp_message_shared_object::eRequestChange:
-				handle_req_change_event(so, connection_id, *i, ret);
-				break;
-			case rtmp_message_shared_object::eSendMessage:
-				handle_send_message_event(so, connection_id, ret);
-				break;
-			case rtmp_message_shared_object::eRequestRemove:
-				handle_req_remove_event(so, connection_id, *i, ret);
-				break;
-			default:
-				break;
+				switch ((*i)->m_type)
+				{
+				case rtmp_message_shared_object::eUse:
+					handle_use_event(so, connection_id, ret);
+					break;
+				case rtmp_message_shared_object::eRelease:
+					handle_release_event(so, connection_id);
+					released = true;
+					break;
+				case rtmp_message_shared_object::eRequestChange:
+					handle_req_change_event(so, connection_id, *i, ret, pending);
+					break;
+				case rtmp_message_shared_object::eSendMessage:
+					handle_send_message_event(so, connection_id, ret, pending);
+					break;
+				case rtmp_message_shared_object::eRequestRemove:
+					handle_req_remove_event(so, connection_id, *i, ret, pending);
+					break;
+				default:
+					break;
+				}
+				if (released)
+					break;
 			}
 		}
+
+		// Fan out to the other clients with m_mutex released.
+		for (auto &[client, msg] : pending)
+		{
+			m_app->enqueue_async_message(client, msg);
+			m_app->notify(client);
+		}
+
+		if (released)
+			return false;
 
 		result = ret;
 		return true;
@@ -93,7 +110,7 @@ namespace fms
 		}
 	}
 
-	void so_manager::handle_req_change_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object::event_ptr& e, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_req_change_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object::event_ptr& e, rtmp_message_shared_object_ptr &result, pending_sends_t &pending)
 	{
 		std::optional<so_data_ptr> so_d = find_so(so);
 		if (so_d)
@@ -117,13 +134,12 @@ namespace fms
 				evc->m_name = e->m_name;
 				evc->m_value = e->m_value;
 				notify->add_event(evc);
-				m_app->enqueue_async_message(client, notify);
-				m_app->notify(client);
+				pending.emplace_back(client, notify);
 			}
 		}
 	}
 
-	void so_manager::handle_send_message_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_send_message_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result, pending_sends_t &pending)
 	{
 		std::optional<so_data_ptr> so_d = find_so(so);
 		if (so_d)
@@ -135,13 +151,12 @@ namespace fms
 			{
 				if (client == connection_id)
 					continue;
-				m_app->enqueue_async_message(client, so);
-				m_app->notify(client);
+				pending.emplace_back(client, so);
 			}
 		}
 	}
 
-	void so_manager::handle_req_remove_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object::event_ptr& e, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_req_remove_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object::event_ptr& e, rtmp_message_shared_object_ptr &result, pending_sends_t &pending)
 	{
 		std::optional<so_data_ptr> so_d = find_so(so);
 		if (so_d)
@@ -164,8 +179,7 @@ namespace fms
 				{
 					if (client == connection_id)
 						continue;
-					m_app->enqueue_async_message(client, notify);
-					m_app->notify(client);
+					pending.emplace_back(client, notify);
 				}
 			}
 		}

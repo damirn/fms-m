@@ -116,6 +116,13 @@ namespace fms
 		// reads the map structure and mutates its own bcid's leaf data); control
 		// paths that restructure the maps take EXCLUSIVE. Sound only because the data
 		// path never inserts -- add_stream pre-creates each publisher's per-bcid slots.
+		//
+		// LOCK ORDER: this mutex is always acquired BEFORE rtmp_app_manager::m_mutex
+		// (the data path and handle_timer take m_mutex, then call into the manager's
+		// update_netstream_stats/get_stream_stats/get_connection). Never take them in
+		// the reverse order -- no manager method may call back into the app while
+		// holding rtmp_app_manager::m_mutex (delete_connection unlocks first, by
+		// design). Inverting this would deadlock.
 		std::shared_mutex m_mutex;
 
 		// broadcaster -> subscribers
