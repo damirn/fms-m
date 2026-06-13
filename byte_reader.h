@@ -111,8 +111,13 @@ namespace fms
 			std::uint8_t a = 0;
 			std::uint64_t ret = 0;
 			bool more = false;
+			int bytes = 0;
 			do
 			{
+				// A 64-bit value needs at most 10 continuation bytes; a longer run is
+				// malformed (and would silently overflow ret) -- reject it.
+				if (++bytes > 10)
+					throw buffer_eof_exception();
 				*this >> a;
 				more = (a & 0x80) == 0x80;
 				ret = (ret << 7) + (a & 0x7f);
