@@ -120,19 +120,24 @@ namespace fms
 
 		// Grow the buffer by n (uninitialised) bytes and return a writable pointer
 		// to that region, for code that fills a block through a raw pointer (e.g.
-		// the handshake).
+		// the handshake). Output-role only (absolute coordinates); the assert
+		// enforces that this is never mixed with the consume()-based input role.
 		std::uint8_t *extend(std::size_t n)
 		{
+			assert(m_read_pos == 0 && "extend() is output-role only; not valid after consume()");
 			std::size_t const old = m_buf.size();
 			m_buf.resize(old + n);
 			return m_buf.data() + old;
 		}
 
 		// Back-patch support: remember the current offset, keep writing, then patch
-		// the reserved bytes once their value is known.
-		std::size_t mark() const { return m_buf.size(); }
+		// the reserved bytes once their value is known. Output-role only: mark()/
+		// patch() work in absolute m_buf coordinates, so they must not be used on a
+		// buffer that has consumed (m_read_pos != 0) -- the asserts enforce that.
+		std::size_t mark() const { assert(m_read_pos == 0 && "mark() is output-role only"); return m_buf.size(); }
 		void patch(std::size_t pos, const std::uint8_t *src, std::size_t n)
 		{
+			assert(m_read_pos == 0 && "patch() is output-role only");
 			std::memcpy(m_buf.data() + pos, src, n);
 		}
 
