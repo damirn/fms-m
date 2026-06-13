@@ -150,6 +150,16 @@ namespace fms
 			return m_state;
 		}
 
+		// Reassembly bounds (RFC 7016 sec. 3.4: limit reassembly buffers/size). A
+		// flow that streams fragments and never sends an eEnd would otherwise buffer
+		// them without limit; and a huge fragmented message would drive one big
+		// new[]. Exceeding either rejects the flow and drops what it buffered.
+		enum : std::uint32_t
+		{
+			eMaxBufferedFragments = 8192,
+			eMaxReassembledMsgLen = 16u * 1024 * 1024
+		};
+
 		const bool &should_ack() const
 		{
 			return m_should_ack;

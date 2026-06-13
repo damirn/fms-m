@@ -193,7 +193,8 @@ if(BUILD_AMF_TESTS)
   # tests, these link Boost headers only — the codecs pull in no aes/crypto/session.
   add_executable(rtmfp_tests
     test/test_main.cpp test/rtmfp_test.cpp test/rtmfp_chunk_test.cpp test/rtmfp_cookie_test.cpp
-    rtmfp/types.cpp rtmfp/header.cpp rtmfp/chunk.cpp)
+    test/rtmfp_flow_test.cpp
+    rtmfp/types.cpp rtmfp/header.cpp rtmfp/chunk.cpp rtmfp/flow.cpp)
   target_link_libraries(rtmfp_tests ${CRYPTO_LIBRARIES})   # cookie HMAC (rtmfp/cookie.h)
   if(NOT APPLE)
     find_package(Threads REQUIRED)

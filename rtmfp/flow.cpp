@@ -18,6 +18,16 @@ namespace fms
 
 	flow::vlu_seq_manager::result flow::add_fragment(const fragment_ptr& f)
 	{
+		// Cap reassembly buffering: an un-terminated fragment run (eBegin/eMiddle,
+		// never eEnd) would otherwise grow m_fragments without bound. Reject the
+		// flow and free what it buffered. (state != eOpen stops further fragments.)
+		if (m_fragments.size() >= eMaxBufferedFragments)
+		{
+			m_fragments.clear();
+			m_state = eRejected;
+			return vlu_seq_manager::_eDuplicate;
+		}
+
 		flow::vlu_seq_manager::result const ret = m_seq_manager.add_seq(f->m_seq);
 		if (ret != vlu_seq_manager::_eDuplicate)
 		{
@@ -143,6 +153,15 @@ namespace fms
 
 	const std::uint8_t *flow::create_message(const fragment_map_t::iterator &from, const fragment_map_t::iterator &to)
 	{
+		if (m_msg_len > eMaxReassembledMsgLen)   // abusive reassembled size -> refuse + reject the flow
+		{
+			m_fragments.erase(from, to);
+			m_fragments.erase(to);
+			m_data = nullptr;
+			m_msg_is_fragmented = false;
+			m_state = eRejected;
+			return nullptr;
+		}
 		m_data = new std::uint8_t[m_msg_len];
 		std::uint32_t prev_len = 0;
 		fragment_map_t::iterator i = from;
