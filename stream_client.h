@@ -35,6 +35,14 @@ namespace fms
 		// get_connection). weak so it never keeps a gone connection alive; the
 		// cache self-heals via re-lookup when it expires.
 		std::weak_ptr<client_session> m_session;
+
+		// Per-frame netstream stats accumulated lock-free on the publisher's strand
+		// and flushed into the shared stats once/second by the QoS timer, so the
+		// fan-out path takes no manager mutex for stats. (Written under the shared
+		// lock by the single publisher strand; read+reset under the exclusive lock.)
+		std::uint32_t m_stat_bytes{0};
+		std::uint32_t m_stat_msgs{0};
+		std::uint32_t m_stat_last_ts{0};
 	};
 
 	using stream_client_ptr = std::shared_ptr<stream_client>;

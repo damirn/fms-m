@@ -55,6 +55,23 @@ namespace fms
 		if (!e)
 		{
 			std::unique_lock const lock(m_mutex);
+
+			// Flush the per-subscriber stats accumulated lock-free on the fan-out
+			// path into the shared netstream stats -- once/second, under the lock we
+			// already hold, so the hot path takes no manager mutex for stats. Every
+			// live subscriber is covered (m_subscribers), so drift/delay/bytes stay
+			// current for the admin app; drift/delay is now sampled per-second from
+			// the last frame's timestamp rather than per-frame (a QoS-report metric).
+			for (auto &sub : m_subscribers)
+			{
+				stream_client_ptr const &c = sub.second;
+				if (c->m_stat_msgs == 0)
+					continue;
+				m_app_manager->update_netstream_stats(sub.first, c->m_stat_bytes, c->m_stat_msgs, c->m_stat_last_ts);
+				c->m_stat_bytes = 0;
+				c->m_stat_msgs = 0;
+			}
+
 			for (auto & m_qos_source : m_qos_sources)
 			{
 				stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(m_qos_source.second);
@@ -189,7 +206,7 @@ namespace fms
 //		std::cout << "audio timestamp: " << msg->timestamp() << " cid: " << connection_id << std::endl;
 
 		stream_client_id_t const bcid = std::make_pair(connection_id, audio->stream_id());
-		m_app_manager->update_netstream_stats(bcid, audio->size(), audio->timestamp());
+		m_app_manager->update_netstream_stats(bcid, audio->size(), 1, audio->timestamp());
 
 		std::shared_lock const lock(m_mutex);
 
@@ -239,7 +256,7 @@ namespace fms
 		}
 
 		stream_client_id_t const bcid = std::make_pair(connection_id, video->stream_id());
-		m_app_manager->update_netstream_stats(bcid, video->size(), video->timestamp());
+		m_app_manager->update_netstream_stats(bcid, video->size(), 1, video->timestamp());
 
 		std::shared_lock const lock(m_mutex);
 
@@ -1010,7 +1027,11 @@ namespace fms
 
 //		std::cout << "subscriber video timestamp: " << tmp->timestamp() << std::endl;
 
-		m_app_manager->update_netstream_stats(std::make_pair(client->m_connection_id, tmp->stream_id()), tmp->size(), tmp->timestamp());
+		// Accumulate stats lock-free on the publisher strand; the QoS timer flushes
+		// them into the shared netstream stats once/second (see handle_timer).
+		client->m_stat_bytes += tmp->size();
+		++client->m_stat_msgs;
+		client->m_stat_last_ts = tmp->timestamp();
 
 		deliver_to_subscriber(client, tmp);
 	}
@@ -1101,7 +1122,11 @@ namespace fms
 
 //		std::cout << "subscriber audio timestamp: " << tmp->timestamp() << std::endl;
 
-		m_app_manager->update_netstream_stats(std::make_pair(client->m_connection_id, tmp->stream_id()), tmp->size(), tmp->timestamp());
+		// Accumulate stats lock-free on the publisher strand; the QoS timer flushes
+		// them into the shared netstream stats once/second (see handle_timer).
+		client->m_stat_bytes += tmp->size();
+		++client->m_stat_msgs;
+		client->m_stat_last_ts = tmp->timestamp();
 
 		deliver_to_subscriber(client, tmp);
 	}

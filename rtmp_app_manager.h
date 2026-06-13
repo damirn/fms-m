@@ -86,7 +86,7 @@ namespace fms
 		void delete_netstream(const stream_client_id_t &);
 		void delete_netstreams(std::uint32_t);
 		void update_netstream(const stream_client_id_t &, const std::string &, bool);
-		void update_netstream_stats(const stream_client_id_t &, std::uint32_t, std::uint32_t);
+		void update_netstream_stats(const stream_client_id_t &, std::uint32_t bytes, std::uint32_t msgs, std::uint32_t ts);
 		void add_dropped_messages_for_netstream(const stream_client_id_t &, std::size_t);
 		std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &);
 

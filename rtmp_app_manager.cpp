@@ -388,7 +388,7 @@ namespace fms
 		}
 	}
 
-	void rtmp_app_manager::update_netstream_stats(const stream_client_id_t &id, std::uint32_t bytes, std::uint32_t ts)
+	void rtmp_app_manager::update_netstream_stats(const stream_client_id_t &id, std::uint32_t bytes, std::uint32_t msgs, std::uint32_t ts)
 	{
 		std::shared_lock const lock(m_mutex);   // find + mutate own stats object (single writer per key)
 		auto const i = m_netstream_stats.find(id);
@@ -413,7 +413,7 @@ namespace fms
 				else
 					i->second->m_delay = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
 			}
-			i->second->m_messages++;
+			i->second->m_messages += msgs;
 			i->second->m_bytes += bytes;
 		}
 	}
