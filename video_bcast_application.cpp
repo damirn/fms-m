@@ -1005,6 +1005,12 @@ namespace fms
 			}
 			
 							client->m_video_sent_from_queue = false;
+
+				// Subscriber joined before the stream was "playing" (so it does NOT
+				// take the enqueued-frames path); still send the cached AVC sequence
+				// header or it can't decode -- mirrors send_aac_config() for audio.
+				send_avc_config(bcid, client);
+
 				if (video->timestamp() >= client->m_start_epoch)
 					client->m_video_time = video->timestamp() - client->m_start_epoch;
 				else
@@ -1036,11 +1042,8 @@ namespace fms
 		deliver_to_subscriber(client, tmp);
 	}
 
-	void video_bcast_application::send_enqueued_video_frames(const stream_client_id_t &bcid, const rtmp_message_video_data_ptr& video, const stream_client_ptr& client)
+	void video_bcast_application::send_avc_config(const stream_client_id_t &bcid, const stream_client_ptr &client)
 	{
-		std::list<rtmp_message_video_data_ptr> &list = m_video_queue_map[bcid];
-		std::uint32_t const size = list.size();
-
 		auto const i = m_avc_config.find(bcid);
 		rtmp_message_video_data_ptr const cfg = (i != m_avc_config.end()) ? std::atomic_load(&i->second) : nullptr;
 		if (cfg)   // slot pre-exists; may still be null
@@ -1051,6 +1054,15 @@ namespace fms
 			conf->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 			enqueue_async_message(client->m_connection_id, conf);
 		}
+	}
+
+	void video_bcast_application::send_enqueued_video_frames(const stream_client_id_t &bcid, const rtmp_message_video_data_ptr& video, const stream_client_ptr& client)
+	{
+		std::list<rtmp_message_video_data_ptr> &list = m_video_queue_map[bcid];
+		std::uint32_t const size = list.size();
+
+		send_avc_config(bcid, client);
+
 		rtmp_message_video_data_ptr const info_msg = std::make_shared<rtmp_message_video_data>(2);
 		std::uint8_t const tag = (static_cast<std::uint8_t>(rtmp_message_video_data::eVideoInfo) << 4) | video->get_codec();
 		info_msg->data()[0] = tag;

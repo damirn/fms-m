@@ -106,6 +106,7 @@ namespace fms
 		void send_audio_frame(const rtmp_message_audio_data_ptr&, const stream_client_ptr &, const stream_client_id_t &);
 
 		void send_aac_config(const stream_client_id_t &, const stream_client_ptr &);
+		void send_avc_config(const stream_client_id_t &, const stream_client_ptr &);
 
 		// Enqueue + notify a subscriber, using its cached session to skip the
 		// manager-mutex lookups on the per-frame fan-out path.
