@@ -327,13 +327,19 @@ namespace fms
 		if (iikc->cert_len() < 0x84)
 			return;
 
+		// NOTE: iikc->signature() is intentionally NOT verified. This crypto profile
+		// is anonymous Diffie-Hellman with self-signed certificates and no PKI, so
+		// there is nothing to authenticate the signature against -- verifying it
+		// would add cost without adding peer authentication. Confidentiality comes
+		// from the DH-derived session keys; peer identity is not asserted.
+
 		// Bound half-open handshake memory (and the per-packet DH work). The cookie
-		// is now HMAC-authenticated (echo_cookie_valid), so an off-path attacker
-		// can't fabricate one and a real-IP attacker must complete the IHello/RHello
-		// round-trip per endpoint -- but a determined flooder could still cycle real
-		// endpoints, so keep this cap as a backstop. Once reached, drop new
-		// handshakes; the server stays up and RTMP/RTMPT are unaffected. (A stale
-		// half-open reaper is still worthwhile -- see docs/TODO.md.)
+		// is HMAC-authenticated (echo_cookie_valid), so an off-path attacker can't
+		// fabricate one and a real-IP attacker must complete the IHello/RHello
+		// round-trip per endpoint; stalled half-opens are reaped by the session idle
+		// timer (session::init -> arm_timer, service::remove). This cap is a backstop
+		// against a determined flooder cycling real endpoints -- once reached, drop
+		// new handshakes; the server stays up and RTMP/RTMPT are unaffected.
 		constexpr std::size_t eMaxInitialSessions = 8192;
 		if (m_initial_sessions.size() >= eMaxInitialSessions
 			&& m_initial_sessions.find(m_sender_endpoint) == m_initial_sessions.end())
