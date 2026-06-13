@@ -178,6 +178,17 @@ if(BUILD_AMF_TESTS)
   endif()
   add_test(NAME amf_tests COMMAND amf_tests)
 
+  # so_manager unit tests: the shared-object state machine + fan-out, driven
+  # through an injected recording delivery sink (no server / rtmp_application).
+  add_executable(so_tests
+    test/test_main.cpp test/so_test.cpp
+    so_manager.cpp rtmp_so_message.cpp amf0.cpp amf3.cpp)
+  if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(so_tests Threads::Threads)
+  endif()
+  add_test(NAME so_tests COMMAND so_tests)
+
   # RTMFP byte-level codec tests (option / option_list / header). Like the AMF
   # tests, these link Boost headers only — the codecs pull in no aes/crypto/session.
   add_executable(rtmfp_tests

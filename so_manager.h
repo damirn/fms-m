@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -15,12 +16,15 @@
 
 namespace fms
 {
-	class rtmp_application;
-
 	class so_manager : boost::noncopyable
 	{
 	public:
-		explicit so_manager(rtmp_application *);
+		// How a shared-object change/message is delivered to another client. The
+		// owning application injects "enqueue + notify"; this keeps so_manager
+		// decoupled from rtmp_application (and unit-testable with a recording sink).
+		using delivery_fn = std::function<void(std::uint32_t /*client*/, const rtmp_message_ptr &)>;
+
+		explicit so_manager(delivery_fn deliver);
 
 		bool handle_so(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_ptr &);
 
@@ -37,7 +41,7 @@ namespace fms
 		void handle_send_message_event(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_shared_object_ptr &, pending_sends_t &);
 		void handle_req_remove_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, rtmp_message_shared_object_ptr &, pending_sends_t &);
 
-		rtmp_application *m_app;
+		delivery_fn m_deliver;
 
 		struct so_data
 		{
