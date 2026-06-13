@@ -40,10 +40,7 @@ namespace fms
 			return m_io_context;
 		}
 
-		void remove(const session_ptr& s)
-		{
-			remove_session(s->id());
-		}
+		void remove(const session_ptr &);
 
 		std::uint32_t get_timestamp_ms();
 		std::uint16_t get_timestamp();
