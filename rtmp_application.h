@@ -59,6 +59,7 @@ namespace fms
 		virtual void delete_connection(std::uint32_t, const std::string & = "");
 
 		std::uint32_t enqueue_async_message(std::uint32_t, const rtmp_message_ptr&, bool = false);
+		std::uint32_t enqueue_async_message_unchecked(std::uint32_t, const rtmp_message_ptr&, bool = false);
 
 		void notify(std::uint32_t);
 

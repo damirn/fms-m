@@ -4,6 +4,8 @@
 
 namespace fms
 {
+	class client_session;
+
 	struct stream_client
 	{
 		stream_client(std::uint32_t connection_id, std::uint32_t stream_id, bool stream_was_playing)
@@ -27,6 +29,12 @@ namespace fms
 		std::uint32_t m_video_time;
 		std::uint32_t m_audio_time;
 		std::uint32_t m_start_epoch{0};
+
+		// Cached subscriber session, populated lazily on the first fan-out frame so
+		// the per-frame path skips the manager-mutex lookups (has_connection /
+		// get_connection). weak so it never keeps a gone connection alive; the
+		// cache self-heals via re-lookup when it expires.
+		std::weak_ptr<client_session> m_session;
 	};
 
 	using stream_client_ptr = std::shared_ptr<stream_client>;
