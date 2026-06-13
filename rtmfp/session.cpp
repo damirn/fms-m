@@ -548,7 +548,7 @@ namespace fms
 		h.timestamp_present() = ts_present;
 		h.set_optional_ts_echo(m_should_include_ts_echo, m_ts_echo_tx);
 
-		s->prepare_raw_packet(h);
+		s->prepare_raw_packet(h, m_parser->get_aes());
 	}
 
 	bool session::has_data_to_send(serializer *s)

@@ -75,6 +75,16 @@ namespace fms
 		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp2, eAESKeySize, enc_key, nullptr);
 	}
 
+	void dh2::generate_hmac_keys(const std::uint8_t *enc_key, const std::uint8_t *dec_key,
+		std::uint8_t *tx_hmac_key, std::uint8_t *rx_hmac_key)
+	{
+		// We send with enc_key, so the peer verifies us with HMAC(secret, enc_key);
+		// it sends with the key we call dec_key, so we verify it the same way. This
+		// mirrors the reference's txHMAC = HMAC(secret, encrypt_key) exactly.
+		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, enc_key, eAESKeySize, tx_hmac_key, nullptr);
+		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, dec_key, eAESKeySize, rx_hmac_key, nullptr);
+	}
+
 	void dh2::generate_peer_id(const std::uint8_t *data, std::uint16_t data_size, std::uint8_t *target)
 	{
 		EVP_Digest(data, data_size, target, nullptr, EVP_sha256(), nullptr);
@@ -82,7 +92,18 @@ namespace fms
 
 	void dh2::generate_rnonce()
 	{
-		static const std::uint8_t salt[] = { 0x03, 0x1A, 0x00, 0x00, 0x02, 0x1E, 0x00, 0x81, 0x02, 0x0D, 0x02 };
+		// This is our responder keying component (skrc): a list of RFC 7016 options,
+		// then the DH public key, that also feeds session-key derivation.
+		//   03 1A 02 10 : HMAC_NEGOTIATION  flags=SOR (send-on-request), hmac length = 16
+		//   02 1E 02    : SSEQ_NEGOTIATION  flags=SOR (send-on-request)
+		//   81 02 0D 02 : DH_PUBLIC_KEY option header (type 0x0D, group 2), key follows
+		// We advertise "will send on request" (not always, not required) plus a real
+		// HMAC length. A strict peer that requires per-packet HMAC/sequence numbers is
+		// then satisfied and completes keying; a peer that wants neither negotiates
+		// them off. Whether we actually emit/verify them is decided per session from
+		// the initiator's own flags (see service::handle_iikeying) so it always agrees
+		// with what this advertisement promises.
+		static const std::uint8_t salt[] = { 0x03, 0x1A, 0x02, 0x10, 0x02, 0x1E, 0x02, 0x81, 0x02, 0x0D, 0x02 };
 		int size;
 		const std::uint8_t *pk = pub_key(size);
 		m_rnonce = new std::uint8_t[size + sizeof(salt)];
