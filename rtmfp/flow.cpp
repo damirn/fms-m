@@ -209,7 +209,38 @@ namespace fms
 			}
 			frags = cnt;
 		}
+		abandon_stale_fragments();
 		return frags;
+	}
+
+	void flow::abandon_stale_fragments()
+	{
+		// Only live A/V is droppable; reliable command/data flows must never lose data.
+		if (m_usage != eAudioVideo || m_fragments.size() <= eMaxUnackedFragments)
+			return;
+
+		// Mark the oldest whole messages abandoned until at least (size - cap) fragments
+		// are abandoned. get_fragment_for_sending then skips/erases them and advances
+		// the forward sequence number, so the receiver drops the stale frames rather
+		// than stalling on them. Fragments already abandoned (e.g. in flight) count
+		// toward the target, and we always finish the message we are in so a fragmented
+		// frame is never left half-abandoned.
+		std::size_t const target = m_fragments.size() - eMaxUnackedFragments;
+		std::size_t abandoned = 0;
+		for (auto &kv : m_fragments)
+		{
+			fragment_ptr const &f = kv.second;
+			if (f->m_abandoned)
+				++abandoned;
+			else if (abandoned < target)
+			{
+				f->m_abandoned = true;
+				++abandoned;
+			}
+			bool const boundary = (f->m_frag_ctrl == fragment::eWhole || f->m_frag_ctrl == fragment::eEnd);
+			if (abandoned >= target && boundary)
+				break;
+		}
 	}
 
 	std::optional<fragment_ptr> flow::get_fragment_for_sending(vlu_t &fsn)
@@ -242,6 +273,15 @@ namespace fms
 			}
 		}
 		return std::optional<fragment_ptr>();
+	}
+
+	std::uint32_t flow::in_flight_count() const
+	{
+		std::uint32_t n = 0;
+		for (auto const &kv : m_fragments)
+			if (kv.second->m_in_flight)
+				++n;
+		return n;
 	}
 
 	bool flow::has_seq_gaps() const
@@ -284,17 +324,22 @@ namespace fms
 		return tsn;
 	}
 
-	void flow::update_nak_count(const vlu_t &max_tsn)
+	bool flow::update_nak_count(const vlu_t &max_tsn)
 	{
+		bool retransmit = false;
 		for (auto & m_fragment : m_fragments)
 		{
 			if (m_fragment.second->m_in_flight && m_fragment.second->m_tsn < max_tsn)
 			{
 				m_fragment.second->m_nak_count++;
 				if (m_fragment.second->m_nak_count >= 3) // 3.6.2.5
-					m_fragment.second->m_in_flight = false;
+				{
+					m_fragment.second->m_in_flight = false;   // fast retransmit -> a loss signal
+					retransmit = true;
+				}
 			}
 		}
+		return retransmit;
 	}
 
 	std::optional<option_ptr> flow::metadata()

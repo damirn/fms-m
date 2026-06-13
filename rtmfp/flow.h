@@ -160,6 +160,16 @@ namespace fms
 			eMaxReassembledMsgLen = 16u * 1024 * 1024
 		};
 
+		// Cap on the un-acknowledged send backlog of a live A/V flow. Past this,
+		// abandon_stale_fragments() drops the oldest frames instead of retransmitting
+		// them forever, so a slow/lossy subscriber can't inflate latency without bound
+		// (head-of-line blocking). ~256 * 1160B ~= 290 KB / a few seconds of video.
+		enum : std::uint32_t { eMaxUnackedFragments = 256 };
+
+		// Assumed peer receive window (blocks) until the peer's first range-ack tells
+		// us otherwise; keeps the send path from stalling before any feedback arrives.
+		enum : std::uint16_t { eDefaultRwnd = 0xffff };
+
 		const bool &should_ack() const
 		{
 			return m_should_ack;
@@ -187,14 +197,16 @@ namespace fms
 		}
 
 		std::uint16_t add_and_fragment_data(const std::uint8_t *, const std::uint32_t &);
+		void abandon_stale_fragments();
 
 		std::optional<fragment_ptr> get_fragment_for_sending(vlu_t &);
+		std::uint32_t in_flight_count() const;
 
 		bool has_seq_gaps() const;
 		void add_sequences_until(const vlu_t &);
 		vlu_t ack_fragments_until(const vlu_t &);
 		vlu_t ack_fragments_for_range(const vlu_t &, const vlu_t &);
-		void update_nak_count(const vlu_t &);
+		bool update_nak_count(const vlu_t &);   // true if it triggered a fast retransmit
 
 		std::optional<option_ptr> metadata();
 
@@ -216,6 +228,11 @@ namespace fms
 		const vlu_t &flow_id() const
 		{
 			return m_flow_id;
+		}
+
+		std::size_t fragment_count() const
+		{
+			return m_fragments.size();
 		}
 
 		const std::uint16_t &prev_rwnd() const
@@ -265,7 +282,7 @@ namespace fms
 		usage_t m_usage;
 		type_t m_type;
 		vlu_t m_final_sn;
-		std::uint16_t m_prev_rwnd;
+		std::uint16_t m_prev_rwnd{eDefaultRwnd};   // peer's advertised receive window (blocks)
 		bool m_should_ack;
 		bool m_has_associated_flow_id;
 

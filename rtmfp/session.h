@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client_session.h"
+#include "congestion_window.h"
 #include "parser.h"
 #include "types.h"
 #include "byte_reader.h"
@@ -221,7 +222,8 @@ namespace fms
 		chunk *m_ready_chunk;
 		bool m_did_receive_data{false};
 		bool m_has_data_ready{false};
-		std::uint8_t m_data_packet_count{0};
+		std::uint8_t m_data_packet_count{0};   // packets sent since the last ack/alarm
+		congestion_window m_cc;                // bounds the in-flight burst
 		enum { ePeerIdSize = 0x20 };
 
 		enum { ePad0 = 0, ePadff = 0xff };
