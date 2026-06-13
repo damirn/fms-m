@@ -2,12 +2,14 @@
 #include "service.h"
 #include "aes.h"
 #include "chunk.h"
+#include "cookie.h"
 #include "dh2.h"
 #include "header.h"
 #include "rtmp_app_manager.h"
 #include "serializer.h"
 #include "util.h"
 
+#include <cstring>
 #include <memory>
 #include <openssl/rand.h>
 
@@ -30,6 +32,7 @@ namespace fms
 		 m_start(std::chrono::system_clock::now())
 		, m_sessions_iterator(m_sessions.begin())
 	{
+		RAND_bytes(m_cookie_secret, sizeof(m_cookie_secret));   // per-process cookie-HMAC key
 		m_parser = new parser(*this);
 		m_serializer = new serializer;
 		create_certificate();
@@ -310,12 +313,13 @@ namespace fms
 		if (iikc->cert_len() < 0x84)
 			return;
 
-		// Bound half-open handshake memory (and the per-packet DH work): the cookie
-		// is only a plaintext addr/port/ts check, not HMAC-authenticated, so an
-		// attacker cycling source endpoints could otherwise grow m_initial_sessions
-		// without limit -> memory-exhaustion crash. Once the cap is reached, drop
-		// new handshakes; the server stays up and RTMP/RTMPT are unaffected. A
-		// complete fix additionally needs stale-half-open reaping and an HMAC cookie.
+		// Bound half-open handshake memory (and the per-packet DH work). The cookie
+		// is now HMAC-authenticated (echo_cookie_valid), so an off-path attacker
+		// can't fabricate one and a real-IP attacker must complete the IHello/RHello
+		// round-trip per endpoint -- but a determined flooder could still cycle real
+		// endpoints, so keep this cap as a backstop. Once reached, drop new
+		// handshakes; the server stays up and RTMP/RTMPT are unaffected. (A stale
+		// half-open reaper is still worthwhile -- see docs/TODO.md.)
 		constexpr std::size_t eMaxInitialSessions = 8192;
 		if (m_initial_sessions.size() >= eMaxInitialSessions
 			&& m_initial_sessions.find(m_sender_endpoint) == m_initial_sessions.end())
@@ -402,42 +406,18 @@ namespace fms
 	{
 		if (cookie_len != eCookieSize)
 			return false;
-
-		std::uint32_t addr;
-		std::memcpy(static_cast<void *>(&addr), const_cast<std::uint8_t *>(cookie), sizeof(addr));
-		if (addr != m_sender_endpoint.address().to_v4().to_uint())
-			return false;
-
-		std::uint16_t port;
-		std::uint32_t off = sizeof(addr);
-		std::memcpy(static_cast<void *>(&port), const_cast<std::uint8_t *>(cookie + off), sizeof(port));
-		if (port != m_sender_endpoint.port())
-			return false;
-		off += sizeof(port);
-
-		std::uint32_t ts;
-		std::memcpy(static_cast<void *>(&ts), const_cast<std::uint8_t *>(cookie + off), sizeof(ts));
-		return (get_timestamp_ms() - ts) <= 95000;
+		std::uint32_t const addr = m_sender_endpoint.address().to_v4().to_uint();
+		std::uint16_t const port = m_sender_endpoint.port();
+		return rtmfp_cookie::valid(m_cookie_secret, addr, port, get_timestamp_ms(), cookie);
 	}
 
 	void service::create_cookie(std::uint8_t *cookie)
 	{
-		// address part
-		std::uint32_t addr = m_sender_endpoint.address().to_v4().to_uint();
-		std::memcpy(cookie, static_cast<void *>(&addr), sizeof(addr));
-
-		// port part
-		std::uint16_t port = m_sender_endpoint.port();
-		std::uint32_t off = sizeof(addr);
-		std::memcpy(cookie + off, static_cast<void *>(&port), sizeof(port));
-		off += sizeof(port);
-
-		// ts part
-		std::uint32_t ts = get_timestamp_ms();
-		std::memcpy(cookie + off, static_cast<void *>(&ts), sizeof(ts));
-		off += sizeof(ts);
-
-		RAND_bytes(cookie + off, static_cast<int>(eCookieSize - off));   // CSPRNG, not time-seeded MT
+		std::uint32_t const addr = m_sender_endpoint.address().to_v4().to_uint();
+		std::uint16_t const port = m_sender_endpoint.port();
+		rtmfp_cookie::write(m_cookie_secret, addr, port, get_timestamp_ms(), cookie);
+		RAND_bytes(cookie + rtmfp_cookie::header_len,
+		           static_cast<int>(eCookieSize - rtmfp_cookie::header_len));   // opaque pad
 	}
 
 	std::uint32_t service::get_timestamp_ms()

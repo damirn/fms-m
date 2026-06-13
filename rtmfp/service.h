@@ -70,6 +70,8 @@ namespace fms
 		void handle_iikeying(iikeying_chunk *);
 		void redirect_ihello(ihello_chunk *, const std::uint8_t *);
 
+		// Handshake cookie (see rtmfp/cookie.h): HMAC-bound to the initiator's
+		// endpoint for return-routability / anti-DoS (RFC 7016 sec. 2.3.4).
 		void create_cookie(std::uint8_t *);
 		bool echo_cookie_valid(const std::uint8_t *, const vlu_t &);
 
@@ -109,5 +111,9 @@ namespace fms
 		std::uint8_t m_cert[eCertLen];
 		static const std::uint8_t m_c1[];
 		static const std::uint8_t m_c2[];
+
+		// Per-process secret keying the handshake-cookie HMAC. Random at startup;
+		// never leaves the process, so cookies are unforgeable across restarts.
+		std::uint8_t m_cookie_secret[32];
 	};
 }
