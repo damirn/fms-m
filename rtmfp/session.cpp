@@ -196,6 +196,10 @@ namespace fms
 		}
 		i->second->clear_options();
 
+		// Remember the receiver's advertised buffer (blocks) so we don't overrun it
+		// (RFC 7016 sec. 3.6.2.4 receive-window flow control).
+		i->second->prev_rwnd() = static_cast<std::uint16_t>(rac->buff_blocks_available());
+
 		// 3.6.2.5
 		vlu_t max_tsn = i->second->ack_fragments_until(rac->cumulative_ack());
 		if (max_tsn > m_max_tsn_ack)
@@ -207,8 +211,9 @@ namespace fms
 				m_max_tsn_ack = max_tsn;
 		}
 
-		i->second->update_nak_count(m_max_tsn_ack);
+		bool const loss = i->second->update_nak_count(m_max_tsn_ack);
 		m_data_packet_count = 0;
+		m_cc.on_ack(loss);   // grow the window on progress, halve it on loss
 		arm_alarm();
 
 		return true;
@@ -553,7 +558,7 @@ namespace fms
 
 	bool session::has_data_to_send(serializer *s)
 	{
-		if (m_data_packet_count >= 6) // 3.5.2.3
+		if (m_data_packet_count >= m_cc.window()) // 3.5.2.3: bounded by the congestion window
 			return false;
 		if (m_has_data_ready && m_ready_chunk != nullptr)
 		{
@@ -597,6 +602,11 @@ namespace fms
 		for (i = m_sending_flows.begin(); i != m_sending_flows.end(); ++i)
 		{
 			flow_ptr const f = i->second;
+			// Receive-window flow control: don't put more in flight on this flow than
+			// the receiver said it can buffer. rwnd defaults high, so this only bites
+			// once a peer advertises a small (or zero) window.
+			if (f->in_flight_count() >= f->prev_rwnd())
+				continue;
 			vlu_t fsn;
 			std::optional<fragment_ptr> frag = f->get_fragment_for_sending(fsn);
 			if (frag)
@@ -722,6 +732,7 @@ namespace fms
 			}
 			if (was_loss)
 			{
+				m_cc.on_timeout();   // collapse the window; RTO backoff below
 				// 3.5.2.2
 				static const std::chrono::system_clock::duration s10 = std::chrono::seconds(10);
 				std::chrono::system_clock::duration const erto_backoff = std::chrono::milliseconds(static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(m_erto).count() * 1.4142));
