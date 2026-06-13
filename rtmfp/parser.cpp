@@ -28,13 +28,33 @@ namespace fms
 		m_aes->decrypt(data, raw_buf);
 		byte_reader raw(raw_buf.data(), raw_buf.size());
 
-		if (!check_checksum(raw))
-			return false;
+		try
+		{
+			// In a session that negotiated sequence numbers the plaintext is prefixed
+			// with a VLU sequence number (anti-replay); when a per-packet HMAC was
+			// negotiated it carries no checksum -- the HMAC (already verified by the
+			// service before decrypt) is the integrity check instead.
+			if (m_aes->sseq_recv())
+			{
+				std::uint64_t const seq = raw.read_vlu();
+				if (!m_aes->check_rx_seq(seq))   // duplicate / too old -> drop
+					return false;
+			}
+			if (!m_aes->hmac_recv())
+			{
+				if (!check_checksum(raw))
+					return false;
+			}
 
-		header h;
-		h.deserialize(raw);
-		m_chunk_handler.handle_header(h);
-		return parse_chunks(raw);
+			header h;
+			h.deserialize(raw);
+			m_chunk_handler.handle_header(h);
+			return parse_chunks(raw);
+		}
+		catch (buffer_eof_exception &)
+		{
+			return false;   // truncated / malformed packet
+		}
 	}
 
 	bool parser::parse_chunks(byte_reader &raw)
@@ -132,7 +152,6 @@ namespace fms
 		while (data < end)
 		{
 			std::uint16_t x;
-			std::uint8_t y;
 			if (end - data != 1)
 			{
 				std::memcpy(&x, data, 2);   // avoid unaligned / aliasing UB of *(uint16_t*)data
@@ -141,8 +160,14 @@ namespace fms
 			}
 			else
 			{
-				y = *data;
-				sum += y;
+				// Trailing odd byte. We sum 16-bit words in native (little-endian)
+				// order, which makes this checksum the byte-swap of RFC 7016's
+				// big-endian in_cksum -- and that swap is exactly what cancels when a
+				// peer reads our little-endian-stored field big-endian. To preserve
+				// that relationship for odd-length payloads the last byte must land in
+				// the high half of the word (in_cksum adds it low under big-endian
+				// summing). Even payloads never hit this branch.
+				sum += static_cast<std::uint16_t>(*data) << 8;
 				break;
 			}
 		}

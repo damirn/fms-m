@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "aes.h"
 
+#include <cstring>
+#include <openssl/hmac.h>
+#include <openssl/crypto.h>
+
 namespace fms
 {
 	const std::uint8_t aes::m_key[] = "Adobe Systems 02";
@@ -42,5 +46,50 @@ namespace fms
 		// CBC emits exactly from.size() bytes; reserve that and encrypt in place.
 		std::uint8_t *dst = to.extend(from.size());
 		EVP_CipherUpdate(m_encrypt_ctx, dst, &outlen1, from.data(), static_cast<int>(from.size()));
+	}
+
+	void aes::compute_tx_hmac(std::uint8_t *out, const std::uint8_t *ct, std::size_t len)
+	{
+		std::uint8_t md[EVP_MAX_MD_SIZE];
+		unsigned int md_len = 0;
+		HMAC(EVP_sha256(), m_tx_hmac_key, sizeof(m_tx_hmac_key), ct, len, md, &md_len);
+		std::memcpy(out, md, eHmacLen);   // truncate SHA-256 to the negotiated length
+	}
+
+	bool aes::verify_rx_hmac(const std::uint8_t *ct, std::size_t len, const std::uint8_t *mac)
+	{
+		std::uint8_t md[EVP_MAX_MD_SIZE];
+		unsigned int md_len = 0;
+		HMAC(EVP_sha256(), m_rx_hmac_key, sizeof(m_rx_hmac_key), ct, len, md, &md_len);
+		return CRYPTO_memcmp(md, mac, m_rx_hmac_len) == 0;   // constant-time
+	}
+
+	bool aes::check_rx_seq(std::uint64_t seq)
+	{
+		// Bit 0 of the window tracks the highest sequence seen; bit k tracks
+		// (high - k). Standard IPsec-AH style replay window.
+		if (!m_rx_seq_seen)
+		{
+			m_rx_seq_seen = true;
+			m_rx_seq_high = seq;
+			m_rx_seq_window = 1;
+			return true;
+		}
+		if (seq > m_rx_seq_high)
+		{
+			std::uint64_t const shift = seq - m_rx_seq_high;
+			m_rx_seq_window = (shift >= 64) ? 0 : (m_rx_seq_window << shift);
+			m_rx_seq_window |= 1;
+			m_rx_seq_high = seq;
+			return true;
+		}
+		std::uint64_t const back = m_rx_seq_high - seq;
+		if (back >= 64)              // older than the window
+			return false;
+		std::uint64_t const bit = std::uint64_t(1) << back;
+		if (m_rx_seq_window & bit)   // already seen -> replay
+			return false;
+		m_rx_seq_window |= bit;
+		return true;
 	}
 }

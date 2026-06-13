@@ -85,21 +85,40 @@ namespace fms
 			{
 				const session_ptr& s = *ss;
 				// get_sid() left m_buffer's read cursor at the ciphertext (past the
-				// 4-byte session id); parse over that as a non-owning byte_reader.
-				byte_reader packet(m_buffer.data() + 4, m_buffer.size() - 4);
-				if (s->parse(packet))
+				// 4-byte session id). If the session negotiated a per-packet HMAC,
+				// verify and strip the trailing tag (which covers the ciphertext, not
+				// the session-id slot) before parsing.
+				aes *const a = s->get_aes();
+				std::size_t ct_len = m_buffer.size() - 4;
+				bool hmac_ok = true;
+				if (a->hmac_recv())
 				{
-					// don't start a second async_send_to while one is in flight (it
-					// would overwrite the shared serializer buffer mid-send); pending
-					// data is flushed later by handle_send_to -> handle_notify
-					if (!m_write_in_progress && s->has_data_to_send(m_serializer))
-					{
-						write(m_serializer->packet(), s->end_point());
-					}
+					std::size_t const mac_len = a->rx_hmac_len();
+					if (ct_len < mac_len)
+						hmac_ok = false;
 					else
 					{
-						if (s->state() == session::eClosed)
-							remove_session(s->id());
+						ct_len -= mac_len;
+						hmac_ok = a->verify_rx_hmac(m_buffer.data() + 4, ct_len, m_buffer.data() + 4 + ct_len);
+					}
+				}
+				if (hmac_ok)
+				{
+					byte_reader packet(m_buffer.data() + 4, ct_len);
+					if (s->parse(packet))
+					{
+						// don't start a second async_send_to while one is in flight (it
+						// would overwrite the shared serializer buffer mid-send); pending
+						// data is flushed later by handle_send_to -> handle_notify
+						if (!m_write_in_progress && s->has_data_to_send(m_serializer))
+						{
+							write(m_serializer->packet(), s->end_point());
+						}
+						else
+						{
+							if (s->state() == session::eClosed)
+								remove_session(s->id());
+						}
 					}
 				}
 			}
@@ -127,7 +146,7 @@ namespace fms
 
 		std::uint16_t const ts = get_timestamp();
 		header h(false, false, ts, header::eStartup);
-		m_serializer->prepare_raw_packet(h);
+		m_serializer->prepare_raw_packet(h, m_parser->get_aes());
 		p.second->serialize(m_serializer->raw_packet());
 		m_serializer->finish_raw_packet(0, m_parser->get_aes());
 		delete p.second;
@@ -268,7 +287,7 @@ namespace fms
 		rhello_chunk rc(ic->tag_len(), ic->tag(), eCookieSize, cookie, eCertLen, m_cert);
 		std::uint16_t const ts = get_timestamp();
 		header h(false, false, ts, header::eStartup);
-		m_serializer->prepare_raw_packet(h);
+		m_serializer->prepare_raw_packet(h, m_parser->get_aes());
 		rc.serialize(m_serializer->raw_packet());
 		m_serializer->finish_raw_packet(0, m_parser->get_aes());
 		write(m_serializer->packet(), m_sender_endpoint);
@@ -318,6 +337,59 @@ namespace fms
 		{
 		}
 		return nullptr;
+	}
+
+	// The initiator's HMAC / sequence-number preferences, read from its session key
+	// initiator component (skic).
+	struct keying_negotiation
+	{
+		std::uint8_t hmac_flags{0};   // KEYING_NEGOTIATE_FLAG_*: SND 0x04, SOR 0x02, REQ 0x01
+		std::uint8_t sseq_flags{0};
+		std::uint64_t hmac_len{0};    // HMAC length the initiator will send
+	};
+
+	// Parse the skic (an RTMFP option list: <length VLU><type VLU><value> per option,
+	// terminated by a zero length) for KEYING_OPTION_HMAC_NEGOTIATION (0x1a; value is
+	// <flags><hmac length VLU>) and KEYING_OPTION_SSEQ_NEGOTIATION (0x1e; value is
+	// <flags>). Absent options read as flags 0 (peer wants neither).
+	static keying_negotiation parse_keying_negotiation(const std::uint8_t *skic, std::uint32_t skic_len)
+	{
+		keying_negotiation n;
+		byte_reader s(skic, skic_len);
+		try
+		{
+			while (s.available() > 0)
+			{
+				std::uint64_t const opt_len = s.read_vlu();
+				if (opt_len == 0)
+					break;
+				const std::uint8_t *const type_start = s.read_pos();
+				std::uint64_t const type = s.read_vlu();
+				auto const type_bytes = static_cast<std::uint64_t>(s.read_pos() - type_start);
+				if (type_bytes > opt_len)
+					break;
+				std::uint64_t const val_len = opt_len - type_bytes;
+				if (val_len > s.available())
+					break;
+				const std::uint8_t *const val = s.read_pos();
+				if (type == 0x1a && val_len >= 1) // HMAC_NEGOTIATION
+				{
+					n.hmac_flags = val[0];
+					byte_reader vs(val + 1, static_cast<std::size_t>(val_len - 1));
+					if (vs.available() > 0)
+						n.hmac_len = vs.read_vlu();
+				}
+				else if (type == 0x1e && val_len >= 1) // SSEQ_NEGOTIATION
+				{
+					n.sseq_flags = val[0];
+				}
+				s.skip(static_cast<std::size_t>(val_len));
+			}
+		}
+		catch (buffer_eof_exception &)
+		{
+		}
+		return n;
 	}
 
 	void service::handle_iikeying(iikeying_chunk *iikc)
@@ -371,12 +443,34 @@ namespace fms
 
 		std::uint16_t const ts = get_timestamp();
 		header h(false, false, ts, header::eStartup);
-		m_serializer->prepare_raw_packet(h);
+		m_serializer->prepare_raw_packet(h, m_parser->get_aes());
 
 		ric.serialize(m_serializer->raw_packet());
 		m_serializer->finish_raw_packet(s->sid(), m_parser->get_aes());
 
 		d->generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()), rnonce, size, s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data());
+
+		// Enable per-packet session HMAC / sequence numbers (RFC 7016 sec. 4.6) for
+		// this session per the initiator's flags. Our skrc advertised "send on
+		// request", so: send an HMAC/sequence number if the peer requires it (REQ),
+		// and verify the peer's if it always sends one (SND). A peer that asked for
+		// neither keeps the plain-checksum framing. The RIKeying above was already
+		// serialized with the startup (default) key and carries no HMAC -- correct,
+		// since these keys only come into effect for the now-open session.
+		constexpr std::uint8_t eFlagSnd = 0x04;   // KEYING_NEGOTIATE_FLAG_SND
+		constexpr std::uint8_t eFlagReq = 0x01;   // KEYING_NEGOTIATE_FLAG_REQ
+		keying_negotiation const neg = parse_keying_negotiation(iikc->skic(), static_cast<std::uint32_t>(iikc->skic_len()));
+		bool const hmac_send = (neg.hmac_flags & eFlagReq) != 0;
+		bool const hmac_recv = (neg.hmac_flags & eFlagSnd) != 0;
+		bool const sseq_send = (neg.sseq_flags & eFlagReq) != 0;
+		bool const sseq_recv = (neg.sseq_flags & eFlagSnd) != 0;
+		std::size_t const rx_hmac_len = (neg.hmac_len >= 4 && neg.hmac_len <= 32)
+			? static_cast<std::size_t>(neg.hmac_len) : std::size_t(aes::eHmacLen);
+
+		aes *const sa = s->get_aes();
+		sa->set_crypto_mode(hmac_send, hmac_recv, sseq_send, sseq_recv, rx_hmac_len);
+		if (hmac_send || hmac_recv)
+			d->generate_hmac_keys(sa->enc_key_data(), sa->dec_key_data(), sa->tx_hmac_key(), sa->rx_hmac_key());
 
 		s->state() = session::eOpen;
 
@@ -397,7 +491,7 @@ namespace fms
 
 			header h(false, true, ts, header::eResponder);
 			h.set_optional_ts_echo(i->second->should_include_ts_echo(), i->second->ts_echo_tx());
-			m_serializer->prepare_raw_packet(h);
+			m_serializer->prepare_raw_packet(h, i->second->get_aes());
 
 			address a;
 			a.m_type = 0x02; // fixme: replace with enum
