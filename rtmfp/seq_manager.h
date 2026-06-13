@@ -75,6 +75,11 @@ namespace fms
 		{
 			if (val > m_csn)
 			{
+				// Bound the advance the same as add_seq: a forged forward-seq could
+				// otherwise jump csn to ~2^63 in one step, overflowing the
+				// m_csn*(m_csn+1) triangular sum below.
+				if (val - m_csn > eMaxGap)
+					return;
 				m_csn = val;
 				m_sum = m_csn * (m_csn + 1) / 2;
 
