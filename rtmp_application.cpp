@@ -111,7 +111,15 @@ namespace fms
 	{
 		if (!m_app_manager->has_connection(connection_id))
 			return 0;
+		return enqueue_async_message_unchecked(connection_id, msg, urgent);
+	}
 
+	// Same as enqueue_async_message but WITHOUT the has_connection() guard -- for
+	// callers that have already established the connection is live (e.g. the
+	// fan-out path, which holds a locked shared_ptr to the subscriber's session).
+	// Skips one rtmp_app_manager::m_mutex acquisition per call.
+	std::uint32_t rtmp_application::enqueue_async_message_unchecked(std::uint32_t connection_id, const rtmp_message_ptr& msg, bool urgent /* = false */)
+	{
 		auto push = [&](async_queue &q) {
 			std::unique_lock const qlock(q.mutex);
 			if (urgent)

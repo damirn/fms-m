@@ -107,6 +107,10 @@ namespace fms
 
 		void send_aac_config(const stream_client_id_t &, const stream_client_ptr &);
 
+		// Enqueue + notify a subscriber, using its cached session to skip the
+		// manager-mutex lookups on the per-frame fan-out path.
+		void deliver_to_subscriber(const stream_client_ptr &, const rtmp_message_ptr &);
+
 		// Reader/writer split: the per-frame data path takes a SHARED lock (it only
 		// reads the map structure and mutates its own bcid's leaf data); control
 		// paths that restructure the maps take EXCLUSIVE. Sound only because the data

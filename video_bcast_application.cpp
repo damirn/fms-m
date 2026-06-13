@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "video_bcast_application.h"
 #include "byte_writer.h"
+#include "client_session.h"
 #include "config.h"
 #include "flv_writer.h"
 #include "logging.h"
@@ -935,6 +936,30 @@ namespace fms
 			m_video_queue_map[bcid].push_back(video);
 	}
 
+	void video_bcast_application::deliver_to_subscriber(const stream_client_ptr &client, const rtmp_message_ptr &msg)
+	{
+		// Cache the subscriber's session on first use; weak_ptr::lock() is a
+		// lock-free refcount check, so subsequent frames skip both manager-mutex
+		// lookups (has_connection in enqueue, get_connection in notify). The cache
+		// self-heals: if the session went away, lock() fails and we re-look-up (or
+		// drop the frame if the subscriber is truly gone -- same as the old guards).
+		client_session_ptr s = client->m_session.lock();
+		if (!s)
+		{
+			try
+			{
+				s = get_connection(client->m_connection_id);
+			}
+			catch (const std::exception &)
+			{
+				return;   // subscriber gone
+			}
+			client->m_session = s;
+		}
+		enqueue_async_message_unchecked(client->m_connection_id, msg);
+		s->notify();
+	}
+
 	void video_bcast_application::send_video_frame(const stream_client_ptr& client, const rtmp_message_video_data_ptr& video, const stream_client_id_t &bcid)
 	{
 		client->m_key_frame_sent = true;
@@ -987,8 +1012,7 @@ namespace fms
 
 		m_app_manager->update_netstream_stats(std::make_pair(client->m_connection_id, tmp->stream_id()), tmp->size(), tmp->timestamp());
 
-		enqueue_async_message(client->m_connection_id, tmp);
-		notify(client->m_connection_id);
+		deliver_to_subscriber(client, tmp);
 	}
 
 	void video_bcast_application::send_enqueued_video_frames(const stream_client_id_t &bcid, const rtmp_message_video_data_ptr& video, const stream_client_ptr& client)
@@ -1079,8 +1103,7 @@ namespace fms
 
 		m_app_manager->update_netstream_stats(std::make_pair(client->m_connection_id, tmp->stream_id()), tmp->size(), tmp->timestamp());
 
-		enqueue_async_message(client->m_connection_id, tmp);
-		notify(client->m_connection_id);
+		deliver_to_subscriber(client, tmp);
 	}
 
 	void video_bcast_application::send_aac_config(const stream_client_id_t &src, const stream_client_ptr &client)
