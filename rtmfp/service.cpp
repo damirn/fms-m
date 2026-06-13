@@ -172,9 +172,23 @@ namespace fms
 		return std::optional<session_ptr>();
 	}
 
+	// Called by a session's idle timer (session::handle_timer, after eTimeOut with
+	// no data): the session was already close()d -- which removed it from the
+	// app_manager's connection registry -- so here we just drop it from the service
+	// maps. remove_session covers an *established* session (keyed by sid in
+	// m_sessions); a stalled *half-open* session is never in m_sessions, so also
+	// erase it from m_initial_sessions here or it leaks (was the "stalled initial
+	// sessions" fixme).
+	void service::remove(const session_ptr &s)
+	{
+		remove_session(s->id());
+		auto const j = m_initial_sessions.find(s->end_point());
+		if (j != m_initial_sessions.end() && j->second == s)
+			m_initial_sessions.erase(j);
+	}
+
 	void service::remove_session(std::uint32_t sid)
 	{
-		// fixme: stalled initial sessions should be removed too
 		auto const i = m_sessions.find(sid);
 		if (i != m_sessions.end())
 		{
