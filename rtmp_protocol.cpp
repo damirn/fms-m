@@ -60,6 +60,12 @@ namespace fms
 				return false;
 			}
 
+			// A deserialize_* that could not build a message for this (malformed) body
+			// -- e.g. a Ping whose length is outside {2,6,10,14} -- leaves m_message
+			// null. Drop the message rather than dereferencing a null shared_ptr.
+			if (!m_message)
+				return false;
+
 			m_message->stream_id() = h.stream_id();
 			m_message->channel_id() = h.channel_id();
 			m_message->timestamp() = h.timestamp();

@@ -57,6 +57,15 @@ namespace fms
 				m_framing_error = true;
 				break;
 			}
+			// A header that shrinks message_length below what we've already buffered on
+			// this channel (a new type-0/1 header mid-message) would make the length
+			// subtraction below underflow, clamp to chunk_size, and loop forever --
+			// unbounded buffering that bypasses the eMaxMessageLength guard. Reject it.
+			if (channel->data_size() > h.message_length())
+			{
+				m_framing_error = true;
+				break;
+			}
 			std::uint32_t size = h.message_length() - static_cast<std::uint32_t>(channel->data_size());
 			if (size > m_chunk_size)
 				size = m_chunk_size;

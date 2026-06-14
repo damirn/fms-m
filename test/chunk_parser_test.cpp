@@ -180,6 +180,43 @@ TEST_CASE("chunk parser: oversized message length is rejected (DoS guard)")
 	CHECK(h.messages.empty());
 }
 
+TEST_CASE("chunk parser: a User Control (Ping) with an invalid length must not crash")
+{
+	// deserialize_ping only builds a message for body lengths {2,6,10,14}; any
+	// other length left m_message null and the caller then dereferenced it
+	// (SIGSEGV). A zero-length Ping -- one unauthenticated packet -- must be
+	// dropped gracefully, not crash the server.
+	chunk_stream cs;
+	cs.hdr0(3, 0, 0, rtmp_message::eMessagePing, 0);   // Ping, message_length 0, no body
+
+	parser_harness h;
+	h.feed(cs.bytes);   // must return, not segfault
+
+	CHECK(h.messages.empty());
+	CHECK(h.internals.empty());
+}
+
+TEST_CASE("chunk parser: a header shrinking message_length below buffered data is rejected")
+{
+	// A type-1 header that declares a smaller message_length than the bytes already
+	// accumulated on the channel made `message_length - data_size` underflow, clamp
+	// to chunk_size, and loop forever -- the per-channel buffer grew without bound,
+	// bypassing the eMaxMessageLength DoS guard entirely.
+	chunk_stream cs;
+	auto const c1 = pattern(128, 1);
+	auto const c2 = pattern(128, 2);
+	cs.hdr0(4, 0, 200, VIDEO, 1);   // declare 200 bytes
+	cs.raw(c1.data(), c1.size());   // 128 buffered, message still incomplete
+	cs.hdr1(4, 0, 50, VIDEO);       // shrink to 50 (< 128 already buffered)
+	cs.raw(c2.data(), c2.size());
+
+	parser_harness h;
+	h.feed(cs.bytes);
+
+	CHECK(h.framing_error());
+	CHECK(h.messages.empty());
+}
+
 TEST_CASE("chunk parser: basic-header channel-id encodings (1/2/3 byte)")
 {
 	for (std::uint32_t cid : {5u, 100u, 500u})
