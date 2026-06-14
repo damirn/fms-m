@@ -350,8 +350,27 @@ namespace fms
 		return serialize_chunk_header(to, hdr);
 	}
 
+	bool close_chunk::deserialize(byte_reader &, std::uint16_t)
+	{
+		return true; // no payload
+	}
+
+	std::uint16_t close_chunk::serialize(byte_writer &to)
+	{
+		std::size_t const hdr = to.mark();
+		to.extend(eChunkHeaderSize);   // bodyless: just [type][len=0]
+		return serialize_chunk_header(to, hdr);
+	}
+
 	bool close_ack_chunk::deserialize(byte_reader &, std::uint16_t)
 	{
 		return true; // no payload
+	}
+
+	std::uint16_t close_ack_chunk::serialize(byte_writer &to)
+	{
+		std::size_t const hdr = to.mark();
+		to.extend(eChunkHeaderSize);   // bodyless: just [type][len=0]
+		return serialize_chunk_header(to, hdr);
 	}
 }

@@ -261,3 +261,22 @@ TEST_CASE("rtmfp close_ack: no payload, always succeeds")
 	CHECK(c.deserialize(r, 0));
 	CHECK(c.type() == chunk::eSessionCloseAcknowledgement);
 }
+
+TEST_CASE("rtmfp session-close chunks serialize as bodyless [type][len=0]")
+{
+	byte_writer sc;
+	close_chunk().serialize(sc);
+	CHECK(sc.data()[0] == chunk::eSessionClose);   // 0x0c
+	CHECK(body_of(sc, chunk::eSessionClose).empty());
+
+	byte_writer ack;
+	close_ack_chunk().serialize(ack);
+	CHECK(ack.data()[0] == chunk::eSessionCloseAcknowledgement);   // 0x4c
+	CHECK(body_of(ack, chunk::eSessionCloseAcknowledgement).empty());
+
+	// And the request round-trips back through deserialize.
+	byte_reader r(nullptr, 0);
+	close_chunk c;
+	CHECK(c.deserialize(r, 0));
+	CHECK(c.type() == chunk::eSessionClose);
+}

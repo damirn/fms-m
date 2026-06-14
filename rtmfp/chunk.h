@@ -13,6 +13,7 @@ namespace fms
 		enum type_t
 		{
 			ePing = 0x01,
+			eSessionClose = 0x0c,
 			eForwardedInitiatorHello = 0x0f,
 			eUserData = 0x10,
 			eNextUserData = 0x11,
@@ -581,6 +582,20 @@ namespace fms
 		const std::uint8_t *m_data;
 	};
 
+	// Session Close Request (RFC 7016 sec. 2.3.11): "please close this session".
+	class close_chunk : public chunk
+	{
+	public:
+		close_chunk()
+			: chunk(eSessionClose)
+		{}
+
+		bool deserialize(byte_reader &, std::uint16_t) override;
+		std::uint16_t serialize(byte_writer &) override;
+	};
+
+	// Session Close Acknowledgement (RFC 7016 sec. 2.3.12): sent in reply to a
+	// close request; also accepted as the peer's own close-and-done.
 	class close_ack_chunk : public chunk
 	{
 	public:
@@ -589,9 +604,6 @@ namespace fms
 		{}
 
 		bool deserialize(byte_reader &, std::uint16_t) override;
-		std::uint16_t serialize(byte_writer &) override
-		{
-			return 0;
-		} // not implemented
+		std::uint16_t serialize(byte_writer &) override;
 	};
 }

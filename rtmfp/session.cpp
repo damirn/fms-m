@@ -105,8 +105,21 @@ namespace fms
 			auto *pc = dynamic_cast<ping_chunk *>(c);
 			handle_ping(pc);
 		}
+		else if (c->type() == chunk::eSessionClose)
+		{
+			// Peer asked to close (RFC 7016 sec. 2.3.11): acknowledge and linger so a
+			// retransmitted request is still answered; the idle timer reaps us.
+			if (m_ready_chunk == nullptr)
+			{
+				m_ready_chunk = new close_ack_chunk;
+				m_has_data_ready = true;
+			}
+			if (m_state != eClosed)
+				m_state = eFarCloseLinger;
+		}
 		else if (c->type() == chunk::eSessionCloseAcknowledgement)
 		{
+			// Ack of our own close request, or the peer's close-and-done.
 			close();
 			m_state = eClosed;
 		}
@@ -644,6 +657,19 @@ namespace fms
 		client_session::close();
 	}
 
+	void session::begin_close()
+	{
+		if (m_state != eOpen)
+			return;   // already closing/closed
+		if (m_ready_chunk == nullptr)
+		{
+			m_ready_chunk = new close_chunk;
+			m_has_data_ready = true;
+		}
+		m_state = eNearClose;
+		m_notifier();   // kick a send pass so the SessionClose goes out
+	}
+
 	void session::notify()
 	{
 		boost::asio::post(m_strand, [self = shared_from_this()]() { self->notify_impl(); });
@@ -693,20 +719,32 @@ namespace fms
 
 	void session::handle_timer(const boost::system::error_code &e)
 	{
-		if (!e)
+		if (e)
+			return;
+
+		if (m_did_receive_data && m_state == eOpen)
 		{
-			if (!m_did_receive_data)
-			{
-				close();
-				m_service->remove(shared_from_this());
-			}
-			else
-			{
-				m_did_receive_data = false;
-				m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(eTimeOut)));
-				m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
-			}
+			// Traffic during the last period: keep the session, arm another.
+			m_did_receive_data = false;
+			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(eTimeOut)));
+			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+			return;
 		}
+
+		if (m_state == eOpen)
+		{
+			// Idle: send a courtesy SessionClose and give it a short linger to be
+			// acknowledged before we reap (rather than vanishing on the peer).
+			begin_close();
+			m_did_receive_data = false;
+			m_timer.expires_after(std::chrono::seconds(static_cast<long>(eCloseLinger)));
+			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+			return;
+		}
+
+		// Near/far close linger elapsed (or nothing more to wait for): reap.
+		close();
+		m_service->remove(shared_from_this());
 	}
 
 	void session::arm_alarm()
