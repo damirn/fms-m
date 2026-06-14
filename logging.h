@@ -41,7 +41,7 @@ namespace fms
 		using sink_t = sinks::asynchronous_sink<
 			backend_t,
 			sinks::unbounded_ordering_queue<
-			boost::log::attribute_value_ordering< unsigned int, std::less< unsigned int > >
+			boost::log::attribute_value_ordering< unsigned int, std::less< unsigned int >>
 			>
 		>;
 		using sink_ptr = boost::shared_ptr<sink_t>;

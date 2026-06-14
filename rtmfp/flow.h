@@ -261,7 +261,7 @@ namespace fms
 			return m_next_sn++;
 		}
 
-		vlu_t get_range_ack(std::list<std::pair<vlu_t, vlu_t> > &list)
+		vlu_t get_range_ack(std::list<std::pair<vlu_t, vlu_t>> &list)
 		{
 			return m_seq_manager.get_range_ack(list);
 		}

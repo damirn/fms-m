@@ -269,7 +269,7 @@ namespace fms
 		using flow_id_to_stream_id_map_t = std::map<vlu_t, std::uint32_t>;
 		flow_id_to_stream_id_map_t m_flow_id_to_stream_id;
 
-		using stream_id_to_flow_id_map_t = std::map<std::uint32_t, std::set<flow_ptr> >;
+		using stream_id_to_flow_id_map_t = std::map<std::uint32_t, std::set<flow_ptr>>;
 		stream_id_to_flow_id_map_t m_stream_id_to_flow_id;
 
 		address_list_t m_addresses;
