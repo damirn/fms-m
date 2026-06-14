@@ -424,8 +424,8 @@ namespace fms
 
  		s->sid() = iikc->isid();
 
-		dh2 *d = new dh2;
-		d->generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data());
+		dh2 d;
+		d.generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data());
 
 		std::uint16_t ipk_len = 0;
 		const std::uint8_t *ipk = find_cert_dh_pubkey(iikc->initator_cert(), iikc->cert_len(), 2 /*group we implement*/, ipk_len);
@@ -435,10 +435,10 @@ namespace fms
 			ipk = iikc->initator_cert() + 4;
 			ipk_len = static_cast<std::uint16_t>(iikc->cert_len() - 4);
 		}
-		d->generate_shared_secret(ipk, ipk_len);
+		d.generate_shared_secret(ipk, ipk_len);
 
 		std::uint16_t size;
-		const std::uint8_t *rnonce = d->rnonce(size);
+		const std::uint8_t *rnonce = d.rnonce(size);
 		rikeying_chunk ric(boost::asio::detail::socket_ops::host_to_network_long(s->outgoing_sid()), size, rnonce);
 
 		std::uint16_t const ts = get_timestamp();
@@ -448,7 +448,7 @@ namespace fms
 		ric.serialize(m_serializer->raw_packet());
 		m_serializer->finish_raw_packet(s->sid(), m_parser->get_aes());
 
-		d->generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()), rnonce, size, s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data());
+		d.generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()), rnonce, size, s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data());
 
 		// Enable per-packet session HMAC / sequence numbers (RFC 7016 sec. 4.6) for
 		// this session per the initiator's flags. Our skrc advertised "send on
@@ -470,14 +470,12 @@ namespace fms
 		aes *const sa = s->get_aes();
 		sa->set_crypto_mode(hmac_send, hmac_recv, sseq_send, sseq_recv, rx_hmac_len);
 		if (hmac_send || hmac_recv)
-			d->generate_hmac_keys(sa->enc_key_data(), sa->dec_key_data(), sa->tx_hmac_key(), sa->rx_hmac_key());
+			d.generate_hmac_keys(sa->enc_key_data(), sa->dec_key_data(), sa->tx_hmac_key(), sa->rx_hmac_key());
 
 		s->state() = session::eOpen;
 
 		m_app_manager->register_session(s);
 		write(m_serializer->packet(), m_sender_endpoint);
-
-		delete d;
 	}
 
 	void service::redirect_ihello(ihello_chunk *ic, const std::uint8_t *peer_id)
@@ -509,7 +507,7 @@ namespace fms
 			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(i->second->end_point().port());
 
 			rc->addresses().push_back(a);
-			std::copy(i->second->addresses().begin(), i->second->addresses().end(), std::back_insert_iterator<std::list<address> >(rc->addresses()));
+			std::copy(i->second->addresses().begin(), i->second->addresses().end(), std::back_insert_iterator<std::list<address>>(rc->addresses()));
 			m_queue.emplace(m_sender_endpoint, rc);
 
 			write(m_serializer->packet(), i->second->end_point());
