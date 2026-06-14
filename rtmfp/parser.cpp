@@ -115,6 +115,9 @@ namespace fms
 		case chunk::ePing:
 			c = new ping_chunk;
 			break;
+		case chunk::eSessionClose:
+			c = new close_chunk;
+			break;
 		case chunk::eSessionCloseAcknowledgement:
 			c = new close_ack_chunk;
 			break;

@@ -131,6 +131,11 @@ namespace fms
 		void close() override;
 		void notify() override;
 
+		// Initiate a graceful close (RFC 7016 sec. 2.3.11): queue a SessionClose to
+		// the peer and enter near-close. The peer replies with a close-ack, or the
+		// idle timer reaps us if it has gone away.
+		void begin_close();
+
 		aes *get_aes()
 		{
 			return m_parser->get_aes();
@@ -202,7 +207,7 @@ namespace fms
 		std::uint32_t get_timestamp_ms();
 		std::uint16_t get_timestamp();
 
-		enum { eTimeOut = 90 };
+		enum { eTimeOut = 90, eCloseLinger = 5 };
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
 		void arm_alarm();
