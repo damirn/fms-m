@@ -80,7 +80,7 @@ namespace fms
 		void gracefully_close_connection(std::uint32_t, bool = true);
 		void gracefully_close_connection_with_reason(std::uint32_t, std::uint32_t);
 
-		using amf0_parameter_list_t = std::list<std::pair<std::string, amf0_type_ptr> >;
+		using amf0_parameter_list_t = std::list<std::pair<std::string, amf0_type_ptr>>;
 		using optional_param_list_t = std::optional<amf0_parameter_list_t>;
 
 	protected:

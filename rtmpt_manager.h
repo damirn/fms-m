@@ -69,7 +69,7 @@ namespace fms
 			std::uint8_t m_not_alive{0};
 			boost::asio::ip::address m_address;
 			rtmpt_session_ptr m_session;
-			using unoreder_data_t = std::map<std::uint32_t, std::pair<std::uint8_t *, std::uint16_t> >;
+			using unoreder_data_t = std::map<std::uint32_t, std::pair<std::uint8_t *, std::uint16_t>>;
 			unoreder_data_t m_out_of_order_data;
 		};
 

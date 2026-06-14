@@ -126,7 +126,7 @@ namespace fms
 		std::shared_mutex m_mutex;
 
 		// broadcaster -> subscribers
-		using stream_client_map_t = boost::bimaps::bimap<boost::bimaps::multiset_of<stream_client_id_t>, boost::bimaps::set_of<stream_client_id_t> >;
+		using stream_client_map_t = boost::bimaps::bimap<boost::bimaps::multiset_of<stream_client_id_t>, boost::bimaps::set_of<stream_client_id_t>>;
 		stream_client_map_t m_stream_clients;
 
 		// subscriber -> stream client
@@ -138,7 +138,7 @@ namespace fms
 		streams_map_t m_streams;
 
 		// app client -> streams
-		using client_stream_map_t = std::unordered_map<std::uint32_t, std::set<std::uint32_t> >;
+		using client_stream_map_t = std::unordered_map<std::uint32_t, std::set<std::uint32_t>>;
 		client_stream_map_t m_clients;
 
 		using video_queue_map_t = stream_client_id_map<std::list<rtmp_message_video_data_ptr>>;

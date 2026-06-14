@@ -117,7 +117,7 @@ namespace fms
 			return !m_missing.empty();
 		}
 
-		T get_range_ack(std::list<std::pair<T, T> > &list)
+		T get_range_ack(std::list<std::pair<T, T>> &list)
 		{
 			if (m_missing.empty())
 			{
