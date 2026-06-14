@@ -601,12 +601,11 @@ namespace fms
 				flow_ptr const f = i->second;
 				if (f->should_ack())
 				{
-					std::list<std::pair<vlu_t, vlu_t> > list;
+					std::list<std::pair<vlu_t, vlu_t>> list;
 					vlu_t const high_seq = f->get_range_ack(list);
-					auto *rac = new range_ack_chunk(f->flow_id(), f->advertised_rwnd(), high_seq);
-					rac->ranges() = list;
-					rac->serialize(s->raw_packet());
-					delete rac;
+					range_ack_chunk rac(f->flow_id(), f->advertised_rwnd(), high_seq);
+					rac.ranges() = list;
+					rac.serialize(s->raw_packet());
 					f->should_ack() = false;
 					has_data = true;
 				}
@@ -631,14 +630,13 @@ namespace fms
 				fr->m_sent_abandoned = fr->m_abandoned;
 				fr->m_tsn = m_next_tsn++;
 
-				auto *uc = new user_data_chunk(fr, f->flow_id(), fr->m_seq - fsn); // fixme: redo this
+				user_data_chunk uc(fr, f->flow_id(), fr->m_seq - fsn); // fixme: redo this
 				if (!f->options().m_options.empty()) // set options if not empty
 				{
-					uc->options() = f->options();
+					uc.options() = f->options();
 				}
-				uc->serialize(s->raw_packet());
+				uc.serialize(s->raw_packet());
 				++m_data_packet_count;
-				delete uc;
 				has_data = true;
 				break;
 			}
