@@ -603,7 +603,7 @@ namespace fms
 				{
 					std::list<std::pair<vlu_t, vlu_t> > list;
 					vlu_t const high_seq = f->get_range_ack(list);
-					auto *rac = new range_ack_chunk(f->flow_id(), 0x7f, high_seq);
+					auto *rac = new range_ack_chunk(f->flow_id(), f->advertised_rwnd(), high_seq);
 					rac->ranges() = list;
 					rac->serialize(s->raw_packet());
 					delete rac;

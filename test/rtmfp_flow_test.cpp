@@ -78,3 +78,17 @@ TEST_CASE("rtmfp flow: in_flight_count tracks fragments sent but not yet acked")
 	(*frag)->m_in_flight = true;                      // the session marks it on send
 	CHECK(f.in_flight_count() == 1);
 }
+
+TEST_CASE("rtmfp flow: advertised receive window shrinks as the reassembly backlog grows")
+{
+	flow f(vlu_t{1}, flow::eReceiver);
+	CHECK(f.advertised_rwnd() == flow::eRecvWindowBlocks);   // empty -> full window
+
+	// Buffer some out-of-order fragments (a gap keeps them unreassembled).
+	std::uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+	for (std::uint64_t seq = 2; seq <= 11; ++seq)   // start at 2 -> seq 1 missing
+		f.add_fragment(std::make_shared<fragment>(seq, data, sizeof(data),
+			static_cast<std::uint8_t>(fragment::eMiddle), true));
+	CHECK(f.advertised_rwnd() == flow::eRecvWindowBlocks - f.fragment_count());
+	CHECK(f.advertised_rwnd() < flow::eRecvWindowBlocks);
+}
