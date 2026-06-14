@@ -170,6 +170,17 @@ namespace fms
 		// us otherwise; keeps the send path from stalling before any feedback arrives.
 		enum : std::uint16_t { eDefaultRwnd = 0xffff };
 
+		// The receive window we advertise on a receiving flow: how many more blocks we
+		// can buffer before falling behind. Shrinks toward 0 as our reassembly backlog
+		// grows, giving the peer real send-side backpressure (RFC 7016 sec. 3.6.2.4).
+		enum : std::uint32_t { eRecvWindowBlocks = 127 };
+
+		std::uint32_t advertised_rwnd() const
+		{
+			std::size_t const n = m_fragments.size();
+			return n < eRecvWindowBlocks ? static_cast<std::uint32_t>(eRecvWindowBlocks - n) : 0;
+		}
+
 		const bool &should_ack() const
 		{
 			return m_should_ack;
