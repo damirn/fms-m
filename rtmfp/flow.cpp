@@ -13,6 +13,7 @@ namespace fms
 
 	flow::~flow()
 	{
+		delete[] m_data;   // a reassembly buffer mid-flight at teardown would otherwise leak
 		m_fragments.clear();
 	}
 

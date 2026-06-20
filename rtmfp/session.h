@@ -224,7 +224,7 @@ namespace fms
 		boost::asio::io_context::strand m_strand;
 		state_t m_state{eInitialState};
 
-		chunk *m_ready_chunk;
+		chunk *m_ready_chunk{nullptr};
 		bool m_did_receive_data{false};
 		bool m_has_data_ready{false};
 		std::uint8_t m_data_packet_count{0};   // packets sent since the last ack/alarm
