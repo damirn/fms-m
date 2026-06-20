@@ -19,7 +19,7 @@
 #include "rtmp_application.h"
 #include "stream_client.h"
 #include "stream_registry.h"
-#include "vod_session.h"
+#include "vod_manager.h"
 
 namespace fms
 {
@@ -33,6 +33,11 @@ namespace fms
 
 	class video_bcast_application : public rtmp_application
 	{
+		// VOD playback is a friend so it can drive the RTMP send path (enqueue
+		// frames / status notifies, the app manager, the channel mapping) while
+		// living in its own class. See vod_manager.h.
+		friend class vod_manager;
+
 	public:
 		explicit video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
 
@@ -73,13 +78,6 @@ namespace fms
 		void handle_invoke_fcpublish(const rtmp_message_invoke_ptr&, std::uint32_t);
 		void handle_invoke_fcunpublish(const rtmp_message_invoke_ptr&, std::uint32_t);
 		void handle_invoke_fcsubscribe(const rtmp_message_invoke_ptr&, std::uint32_t);
-
-		// VOD playback of a saved .flv (used when a play target has no live publisher).
-		bool start_vod(std::uint32_t connection_id, const rtmp_message_invoke_ptr&, const std::string &stream_name);
-		void vod_tick(const vod_session_ptr&);
-		void vod_pause(std::uint32_t connection_id, std::uint32_t stream_id, bool pause);
-		void vod_seek(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms);
-		void stop_vod(const stream_client_id_t &);
 
 		void handle_publish_record(const rtmp_message_invoke_ptr&, std::uint32_t, const std::string &);
 
@@ -146,9 +144,9 @@ namespace fms
 		static bool is_remote_stream(const std::string &, std::string &, std::string &);
 		static void spawn_helper(const std::string &, const std::string &);
 
-		// active VOD playbacks, keyed by (connection_id, stream_id)
-		using vod_map_t = std::map<stream_client_id_t, vod_session_ptr>;
-		vod_map_t m_vod;
+		// VOD (video-on-demand) playback of saved .flv files, when a play target has
+		// no live publisher. Owns its own per-play state; shares m_mutex with us.
+		vod_manager m_vod{*this, m_mutex};
 
 		boost::asio::steady_timer m_timer;
 	};

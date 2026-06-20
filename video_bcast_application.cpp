@@ -503,7 +503,7 @@ namespace fms
 			stream_client_id_t const bcaster_id = res ? *found : stream_client_id_t{};
 
 			// No live publisher: if a saved .flv exists, serve it as VOD.
-			if (!res && !is_remote && start_vod(connection_id, invoke, stream_name))
+			if (!res && !is_remote && m_vod.start(connection_id, invoke, stream_name))
 				return;
 
 			add_waiting_client(connection_id, invoke, stream_name);
@@ -757,7 +757,7 @@ namespace fms
 	{
 		rtmp_message_ptr ret;
 		stream_client_id_t const cid = std::make_pair(connection_id, stream_id);
-		stop_vod(cid);   // stop any VOD playback bound to this stream
+		m_vod.stop(cid);   // stop any VOD playback bound to this stream
 
 		// Detach the publisher (if this cid is one) from the registry in one step.
 		stream_registry::broadcaster_teardown td = m_registry.remove_broadcaster(cid);
@@ -799,17 +799,7 @@ namespace fms
 		std::unique_lock const lock(m_mutex);
 
 		// stop any VOD playbacks belonging to this connection
-		for (auto it = m_vod.begin(); it != m_vod.end(); )
-		{
-			if (it->first.first == connection_id)
-			{
-				it->second->m_state = vod_session::eStopped;
-				it->second->m_timer.cancel();
-				it = m_vod.erase(it);
-			}
-			else
-				++it;
-		}
+		m_vod.stop_connection(connection_id);
 
 		for (std::uint32_t const stream : m_registry.take_client(connection_id))
 		{
@@ -1077,158 +1067,6 @@ namespace fms
 		}
 	}
 
-	// ------------------------------------------------------------------ VOD --
-
-	bool video_bcast_application::start_vod(std::uint32_t connection_id, const rtmp_message_invoke_ptr& invoke, const std::string &stream_name)
-	{
-		// caller (handle_invoke_play) holds m_mutex.
-		auto const path = resolve_media_file(config::instance()->flv_folder(), stream_name);
-		if (!path)
-			return false;   // malformed / traversal attempt
-		std::error_code ec;
-		if (!std::filesystem::is_regular_file(*path, ec))
-			return false;   // no such saved file -> fall back to live/waiting
-
-		auto session = std::make_shared<vod_session>(
-			m_app_manager->get_io_context_pool().get_io_context(),
-			connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
-		session->m_reader.open(*path);
-		if (!session->m_reader.is_open())
-			return false;
-
-		// Optional play start offset (3rd play param, in seconds): begin there.
-		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
-		if (params.size() >= 3)
-		{
-			auto it = params.begin();
-			std::advance(it, 2);
-			if ((*it)->type() == amf0_type::eAMF0Number)
-			{
-				double const start = std::dynamic_pointer_cast<amf0_number>(*it)->value();
-				if (start > 0)
-					session->m_reader.seek(static_cast<std::uint32_t>(start * 1000.0));
-			}
-		}
-
-		if (!session->m_reader.read_frame())   // empty / unreadable / seek past end
-			return false;
-		session->m_next = session->m_reader.get_frame();
-
-		m_vod[std::make_pair(connection_id, invoke->stream_id())] = session;
-		m_app_manager->update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, false);
-
-		BOOST_LOG(lg::get()) << "cid: " << connection_id << " VOD playback of '" << stream_name << "'";
-		send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name, true /* recorded */);
-
-		session->m_timer.expires_after(std::chrono::milliseconds(0));
-		session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) vod_tick(session); });
-		return true;
-	}
-
-	void video_bcast_application::vod_tick(const vod_session_ptr& session)
-	{
-		std::unique_lock const lock(m_mutex);
-		if (session->m_state != vod_session::ePlaying)
-			return;
-
-		stream_client_id_t const key = std::make_pair(session->m_connection_id, session->m_stream_id);
-
-		if (!session->m_next)   // end of file reached on the previous tick
-		{
-			// StreamEOF user-control, then the Play.Stop status.
-			rtmp_message_ping_ptr const eof = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingStreamEOF, session->m_stream_id);
-			enqueue_async_message(session->m_connection_id, eof);
-			send_stream_notify(session->m_connection_id, session->m_stream_id,
-				"NetStream.Play.Stop", "Stopped playing " + session->m_stream_name, true);
-			session->m_state = vod_session::eStopped;
-			m_vod.erase(key);
-			return;
-		}
-
-		rtmp_message_ptr const frame = session->m_next;
-		bool const is_video = std::dynamic_pointer_cast<rtmp_message_video_data>(frame) != nullptr;
-		frame->stream_id() = session->m_stream_id;
-		frame->channel_id() = stream_to_channel(session->m_stream_id, is_video ? eVideo : eAudio);
-		std::uint32_t const prev_ts = frame->timestamp();
-
-		enqueue_async_message(session->m_connection_id, frame);
-		notify(session->m_connection_id);
-
-		// read the next frame and pace by its timestamp delta
-		session->m_next = session->m_reader.read_frame() ? session->m_reader.get_frame() : nullptr;
-		std::uint32_t delay = 0;
-		if (session->m_next)
-		{
-			std::uint32_t const nts = session->m_next->timestamp();
-			delay = nts > prev_ts ? nts - prev_ts : 0;
-			if (delay > 10000)   // cap pathological gaps / discontinuities
-				delay = 10000;
-		}
-		session->m_timer.expires_after(std::chrono::milliseconds(delay));
-		session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) vod_tick(session); });
-	}
-
-	void video_bcast_application::vod_pause(std::uint32_t connection_id, std::uint32_t stream_id, bool pause)
-	{
-		std::unique_lock const lock(m_mutex);
-		auto const it = m_vod.find(std::make_pair(connection_id, stream_id));
-		if (it == m_vod.end())
-			return;
-		vod_session_ptr const session = it->second;
-
-		if (pause)
-		{
-			if (session->m_state == vod_session::ePlaying)
-			{
-				session->m_state = vod_session::ePaused;
-				session->m_timer.cancel();
-			}
-			send_stream_notify(connection_id, stream_id, "NetStream.Pause.Notify",
-				"Paused " + session->m_stream_name, true);
-		}
-		else if (session->m_state == vod_session::ePaused)
-		{
-			session->m_state = vod_session::ePlaying;
-			send_stream_notify(connection_id, stream_id, "NetStream.Unpause.Notify",
-				"Unpaused " + session->m_stream_name, true);
-			session->m_timer.expires_after(std::chrono::milliseconds(0));
-			session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) vod_tick(session); });
-		}
-	}
-
-	void video_bcast_application::vod_seek(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms)
-	{
-		std::unique_lock const lock(m_mutex);
-		auto const it = m_vod.find(std::make_pair(connection_id, stream_id));
-		if (it == m_vod.end())
-			return;
-		vod_session_ptr const session = it->second;
-
-		session->m_reader.seek(ms);
-		session->m_next = session->m_reader.read_frame() ? session->m_reader.get_frame() : nullptr;
-
-		send_stream_notify(connection_id, stream_id, "NetStream.Seek.Notify",
-			"Seeking " + std::to_string(ms) + " (" + session->m_stream_name + ")", true);
-
-		if (session->m_state == vod_session::ePlaying)
-		{
-			session->m_timer.cancel();
-			session->m_timer.expires_after(std::chrono::milliseconds(0));
-			session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) vod_tick(session); });
-		}
-	}
-
-	void video_bcast_application::stop_vod(const stream_client_id_t &key)
-	{
-		// caller holds m_mutex.
-		auto const it = m_vod.find(key);
-		if (it == m_vod.end())
-			return;
-		it->second->m_state = vod_session::eStopped;
-		it->second->m_timer.cancel();
-		m_vod.erase(it);
-	}
-
 	// --------------------------------------------------------------- pause/seek --
 
 	void video_bcast_application::handle_invoke_pause(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
@@ -1236,7 +1074,7 @@ namespace fms
 		try
 		{
 			bool const paused = check_bool_value(invoke->parameters());
-			vod_pause(connection_id, invoke->stream_id(), paused);
+			m_vod.pause(connection_id, invoke->stream_id(), paused);
 		}
 		catch (rtmp_illegal_parameter_exception &)
 		{
@@ -1253,7 +1091,7 @@ namespace fms
 		if ((*i)->type() != amf0_type::eAMF0Number)
 			return;
 		double const ms = std::dynamic_pointer_cast<amf0_number>(*i)->value();
-		vod_seek(connection_id, invoke->stream_id(), ms < 0 ? 0u : static_cast<std::uint32_t>(ms));
+		m_vod.seek(connection_id, invoke->stream_id(), ms < 0 ? 0u : static_cast<std::uint32_t>(ms));
 	}
 
 	// ------------------------------------- FMLE/OBS publish handshake verbs --
