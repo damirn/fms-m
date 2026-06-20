@@ -321,3 +321,35 @@ TEST_CASE("amf0 read: byte_reader decodes the documented vectors")
 		CHECK(encode(decode(e)) == e);
 	}
 }
+
+TEST_CASE("amf0_object: copy + merge leaves the original snapshot unchanged (metadata COW)")
+{
+	// video_bcast_application::update_metadata does copy-on-write so a metadata update
+	// never mutates an object a subscriber thread may be serializing. That relies on:
+	// copying an amf0_object and merging into the copy leaves the original untouched.
+	auto const orig = std::make_shared<amf0_object>();
+	orig->add_entry("width", 100.0);
+	orig->add_entry("height", 50.0);
+
+	auto const copy = std::make_shared<amf0_object>(*orig);   // the COW snapshot
+	amf0_object delta;
+	delta.add_entry("width", 200.0);   // change an existing field
+	delta.add_entry("fps", 30.0);      // add a new one
+	copy->merge(delta);
+
+	auto num = [](amf0_object &o, const std::string &name) {
+		auto const i = o.value().find(name);
+		REQUIRE(i != o.value().end());
+		return asNum(i->m_value);
+	};
+
+	// the copy reflects the merge
+	CHECK(copy->value().size() == 3);
+	CHECK(num(*copy, "width") == 200.0);
+	CHECK(num(*copy, "fps") == 30.0);
+
+	// the original is untouched -- a concurrent serialize of it is race-free
+	CHECK(orig->value().size() == 2);
+	CHECK(num(*orig, "width") == 100.0);
+	CHECK(orig->value().find("fps") == orig->value().end());
+}

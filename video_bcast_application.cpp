@@ -702,11 +702,21 @@ namespace fms
 	void video_bcast_application::update_metadata(const stream_client_id_t &cid, const amf0_type_ptr& data)
 	{
 		amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(data);
+		if (!obj)
+			return;
 		auto const i = m_metadata.find(cid);
 		if (i == m_metadata.end())
 			m_metadata[cid] = obj;
 		else
-			m_metadata[cid]->merge(*obj);
+		{
+			// Copy-on-write. send_metadata enqueues a reference to the stored object,
+			// which a subscriber thread may still be serializing on its own io_context;
+			// mutating it in place here (merge) would be a data race. Build a merged
+			// snapshot and swap it in -- the old snapshot stays immutable and valid.
+			amf0_object_ptr const merged = std::make_shared<amf0_object>(*i->second);
+			merged->merge(*obj);
+			i->second = merged;
+		}
 	}
 
 	void video_bcast_application::check_waiting_clients(std::uint32_t bcaster_id, const std::string &stream_name)
