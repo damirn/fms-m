@@ -552,7 +552,7 @@ namespace fms
 			auto const i = m_groups.find(g);
 			if (i == m_groups.end())
 			{
-				g->take_ownership();
+				// g already owns its id (group::deserialize copied it).
 				g->add_member(s);
 				m_groups.insert(g);
 			}

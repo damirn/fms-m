@@ -40,6 +40,10 @@ namespace fms
 				{
 					group_ptr g = std::make_shared<group>(const_cast<std::uint8_t *>(s.read_pos()));
 					g->command() = cmnd;
+					// The id currently points into the caller's packet buffer, which is
+					// freed when parse() returns; copy it so a retained group (any
+					// command) can't dangle. This is the single ownership point.
+					g->take_ownership();
 					return g;
 				}
 			}

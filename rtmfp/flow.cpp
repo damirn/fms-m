@@ -31,7 +31,12 @@ namespace fms
 		flow::vlu_seq_manager::result const ret = m_seq_manager.add_seq(f->m_seq);
 		if (ret != vlu_seq_manager::_eDuplicate)
 		{
-			if (f->m_frag_ctrl == fragment::eWhole && ret != vlu_seq_manager::_eOK)
+			// A whole fragment is a non-owning view into the decrypted packet buffer,
+			// which is freed once parse() returns. Any fragment we retain in m_fragments
+			// must own its bytes -- not only the out-of-order ones. (A `final`-flagged
+			// in-order fragment is retained without being consumed in place, so the old
+			// ret != _eOK condition left it dangling -> use-after-free.)
+			if (f->m_frag_ctrl == fragment::eWhole)
 			{
 				f->take_ownership();
 			}
