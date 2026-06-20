@@ -91,6 +91,12 @@ namespace fms
 	{
 		if (len > 0)
 		{
+			// len is a raw 32-bit wire field; reject one larger than the bytes actually
+			// remaining before allocating, so an 8 MiB message can't request a 4 GiB
+			// new[] (amplification DoS). buffer.read would throw anyway -- but only
+			// after the allocation.
+			if (len > buffer.available())
+				throw buffer_eof_exception();
 			ev->m_size = len;
 			ev->m_data = new std::uint8_t[len];
 			buffer.read(ev->m_data, len);
