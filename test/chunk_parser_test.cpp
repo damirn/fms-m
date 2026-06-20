@@ -180,6 +180,23 @@ TEST_CASE("chunk parser: oversized message length is rejected (DoS guard)")
 	CHECK(h.messages.empty());
 }
 
+TEST_CASE("chunk parser: a zero chunk size is rejected, not a parsing desync")
+{
+	// A client SetChunkSize(0) makes the per-chunk read length degenerate (0 bytes
+	// per chunk); the stream then desyncs and headers get misparsed as payload.
+	// A chunk size below 1 is invalid (RTMP spec) -- flag it and stop.
+	chunk_stream cs;
+	auto const p = pattern(64, 3);
+	cs.message(4, VIDEO, 1, 1000, p);
+
+	parser_harness h;
+	h.set_chunk_size(0);
+	h.feed(cs.bytes);
+
+	CHECK(h.framing_error());
+	CHECK(h.messages.empty());
+}
+
 TEST_CASE("chunk parser: a User Control (Ping) with an invalid length must not crash")
 {
 	// deserialize_ping only builds a message for body lengths {2,6,10,14}; any
