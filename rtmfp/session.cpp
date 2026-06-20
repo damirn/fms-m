@@ -45,12 +45,14 @@ namespace fms
 	session::~session()
 	{
 		delete m_parser;
+		delete m_ready_chunk;   // a queued reply not yet flushed by has_data_to_send
 	};
 
 	bool session::parse(byte_reader &data)
 	{
 		m_has_data_ready = false;
 		m_did_receive_data = true;
+		delete m_ready_chunk;   // free an un-flushed reply before starting a new packet
 		m_ready_chunk = nullptr;
 		return m_parser->parse(data);
 	}

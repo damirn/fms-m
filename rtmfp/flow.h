@@ -319,9 +319,9 @@ namespace fms
 		static const std::uint8_t GC[];
 
 	private:
-		bool m_msg_is_fragmented;
-		std::uint32_t m_msg_len;
-		std::uint8_t *m_data;
+		bool m_msg_is_fragmented{false};
+		std::uint32_t m_msg_len{0};
+		std::uint8_t *m_data{nullptr};   // reassembly buffer; owned between create_message and remove_last_message
 	};
 
 	using flow_ptr = std::shared_ptr<flow>;
