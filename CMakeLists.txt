@@ -95,6 +95,7 @@ set(sourceFiles
   amf0.cpp
   amf3.cpp
   authentication_manager.cpp
+  av_delivery.cpp
   basic_rtmp_connection.cpp
   client_session.cpp
   config.cpp
