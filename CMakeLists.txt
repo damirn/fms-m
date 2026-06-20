@@ -110,6 +110,7 @@ set(sourceFiles
   main.cpp
   mixer.cpp
   random_string.cpp
+  remote_relay.cpp
   rtmfp/aes.cpp
   rtmfp/chunk.cpp
   rtmfp/dh2.cpp

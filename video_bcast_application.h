@@ -141,8 +141,6 @@ namespace fms
 	private:
 		void add_waiting_client(std::uint32_t, const rtmp_message_invoke_ptr&, const std::string &);
 		void update_waiting_client(stream_client_id_t &, bool, bool);
-		static bool is_remote_stream(const std::string &, std::string &, std::string &);
-		static void spawn_helper(const std::string &, const std::string &);
 
 		// VOD (video-on-demand) playback of saved .flv files, when a play target has
 		// no live publisher. Owns its own per-play state; shares m_mutex with us.
