@@ -16,6 +16,7 @@
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/set_of.hpp>
 
+#include "av_delivery.h"
 #include "rtmp_application.h"
 #include "stream_client.h"
 #include "stream_registry.h"
@@ -33,10 +34,12 @@ namespace fms
 
 	class video_bcast_application : public rtmp_application
 	{
-		// VOD playback is a friend so it can drive the RTMP send path (enqueue
-		// frames / status notifies, the app manager, the channel mapping) while
-		// living in its own class. See vod_manager.h.
+		// The VOD playback and live A/V fan-out subsystems are friends so they can
+		// drive the RTMP send path (enqueue frames / status notifies, the connection
+		// lookup, the channel mapping) while living in their own classes. See
+		// vod_manager.h and av_delivery.h.
 		friend class vod_manager;
+		friend class av_delivery;
 
 	public:
 		explicit video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
@@ -99,19 +102,6 @@ namespace fms
 
 		void create_stream_client(const stream_client_id_t &, const stream_client_id_t &, bool);
 
-		void enqueue_video_frame(const rtmp_message_video_data_ptr&, const stream_client_id_t &);
-		void send_video_frame(const stream_client_ptr&, const rtmp_message_video_data_ptr&, const stream_client_id_t &);
-		void send_enqueued_video_frames(const stream_client_id_t &, const rtmp_message_video_data_ptr&, const stream_client_ptr&);
-
-		void send_audio_frame(const rtmp_message_audio_data_ptr&, const stream_client_ptr &, const stream_client_id_t &);
-
-		void send_aac_config(const stream_client_id_t &, const stream_client_ptr &);
-		void send_avc_config(const stream_client_id_t &, const stream_client_ptr &);
-
-		// Enqueue + notify a subscriber, using its cached session to skip the
-		// manager-mutex lookups on the per-frame fan-out path.
-		void deliver_to_subscriber(const stream_client_ptr &, const rtmp_message_ptr &);
-
 		// Reader/writer split: the per-frame data path takes a SHARED lock (it only
 		// reads the map structure and mutates its own bcid's leaf data); control
 		// paths that restructure the maps take EXCLUSIVE. Sound only because the data
@@ -128,6 +118,11 @@ namespace fms
 		// All media-routing state (publishers, subscribers, fan-out index, waiting
 		// clients). The registry is a plain container -- m_mutex above guards it.
 		stream_registry m_registry;
+
+		// Live audio/video fan-out: turns a publisher frame into per-subscriber
+		// copies. Stateless; reads/writes the registry and each stream_client under
+		// the caller's shared lock.
+		av_delivery m_av{*this, m_registry};
 
 		enum { _eTimeout = 1 };
 
