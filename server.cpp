@@ -123,9 +123,14 @@ namespace fms
 		{
 			m_http_connection->start();
 			m_http_connection = m_app_manager->create_http_connection();
-			m_http_acceptor.async_accept(m_http_connection->socket(),
-				[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
 		}
+		// Re-arm unconditionally, exactly like do_accept. A transient accept error
+		// (ECONNABORTED from a peer that RST'd before accept completed, fd pressure,
+		// etc.) must not permanently stop the listener -- issuing the next accept only
+		// on success meant one such error killed the RTMPT/HTTP port for the process
+		// lifetime. During shutdown the io_context is stopped, so this does not spin.
+		m_http_acceptor.async_accept(m_http_connection->socket(),
+			[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
 	}
 
 	void server::create_applications()
