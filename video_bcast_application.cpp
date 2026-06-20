@@ -11,6 +11,7 @@
 #include <memory>
 #include <vector>
 #include <csignal>
+#include <mutex>
 #include <unistd.h>
 #include <utility>
 
@@ -478,18 +479,26 @@ namespace fms
 			args.emplace_back("-s");
 			args.push_back(stream);
 
-			// Launch the helper as a detached child (argv[0] is the executable).
-			// SIGCHLD is ignored so the kernel reaps it — no zombie, no wait().
-			::signal(SIGCHLD, SIG_IGN);
+			// Build argv in the PARENT: between fork() and execvp() a child of a
+			// multithreaded process may call only async-signal-safe functions, so no
+			// allocation (vector/string) is allowed there -- if another thread held the
+			// malloc lock at fork() the child would deadlock. The c_str() pointers stay
+			// valid across fork() (the child gets a copy of `args`).
+			std::vector<char *> argv;
+			argv.reserve(args.size() + 1);
+			for (const std::string &a : args)
+				argv.push_back(const_cast<char *>(a.c_str()));
+			argv.push_back(nullptr);
+
+			// Ignore SIGCHLD once (process-global) so children are auto-reaped -- no
+			// zombie, no wait() -- rather than racily re-setting it from every worker.
+			static std::once_flag sigchld_once;
+			std::call_once(sigchld_once, [] { ::signal(SIGCHLD, SIG_IGN); });
+
 			if (::fork() == 0)
 			{
-				std::vector<char *> argv;
-				argv.reserve(args.size() + 1);
-				for (const std::string &a : args)
-					argv.push_back(const_cast<char *>(a.c_str()));
-				argv.push_back(nullptr);
-				::execvp(argv[0], argv.data());
-				::_exit(127);   // exec failed
+				::execvp(argv[0], argv.data());   // async-signal-safe; no allocation here
+				::_exit(127);                     // exec failed
 			}
 		}
 	}
@@ -726,20 +735,25 @@ namespace fms
 		if (i == m_waiting_clients.end())
 			return;
 
-		std::set<subscriber, subscriber_comp> const wclients = i->second;
+		// The broadcaster is the same for every waiting client; if it isn't up yet,
+		// leave them waiting rather than half-promoting.
+		stream_client_id_t id;
+		if (!get_broadcaster_id(stream_name, id, m_streams))
+			return;
 
-		std::for_each(i->second.begin(), i->second.end(), [&](const subscriber &s)
+		for (const subscriber &s : i->second)
 		{
 			m_app_manager->update_netstream(std::make_pair(s.m_id, s.m_stream_id), stream_name, false);
 			send_publish_notify(s.m_id, s.m_stream_id, stream_name);
-			stream_client_id_t id;
-			if (!get_broadcaster_id(stream_name, id, m_streams))
-				return;
 			stream_client_id_t const cid = std::make_pair(s.m_id, s.m_stream_id);
 			create_stream_client(id, cid, false);
 			m_subscribers[cid]->m_receive_audio = s.m_receive_audio;
 			m_subscribers[cid]->m_receive_video = s.m_receive_video;
-		});
+		}
+
+		// All of them are now real subscribers; drop the waiting entry so a later
+		// (re)publish can't re-promote them and reset their stream_client state.
+		m_waiting_clients.erase(i);
 	}
 
 	bool video_bcast_application::add_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id, streams_map_t &streams)
