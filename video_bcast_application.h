@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <shared_mutex>
 #include <string>
@@ -141,28 +142,27 @@ namespace fms
 		using client_stream_map_t = std::unordered_map<std::uint32_t, std::set<std::uint32_t>>;
 		client_stream_map_t m_clients;
 
-		using video_queue_map_t = stream_client_id_map<std::list<rtmp_message_video_data_ptr>>;
-		video_queue_map_t m_video_queue_map;
+		// All per-broadcaster (publisher) state, created together in add_stream and
+		// destroyed together in close_stream. The data path only ever find()s an
+		// existing entry under the SHARED lock and mutates that entry's own fields --
+		// the map STRUCTURE is changed only under the EXCLUSIVE lock (add_stream pre-
+		// creates the entry, close_stream erases it), so a shared-locked reader never
+		// races an insert/rehash. avc_config/aac_config are the sequence headers, both
+		// written (publisher stores) and read (sent to a joiner) on the data path, so
+		// they are accessed via std::atomic_load/atomic_store on the shared_ptr
+		// (this libc++ toolchain lacks std::atomic<shared_ptr>).
+		struct broadcast_stream
+		{
+			std::list<rtmp_message_video_data_ptr> video_queue;
+			rtmp_message_video_data_ptr avc_config;   // atomic_load/store
+			rtmp_message_audio_data_ptr aac_config;   // atomic_load/store
+			amf0_object_ptr metadata;
+			std::optional<stream_client_id_t> qos_target;   // real stream -> its qos stream
+			std::unique_ptr<flv_writer> flv;                // set only when recording
+		};
 
-		// The AVC/AAC sequence-header slots are both written (publisher stores the
-		// header) and read (sent to a joining subscriber) on the data path under the
-		// SHARED lock, so the slot's shared_ptr must be accessed atomically:
-		// m_mutex serialises map STRUCTURE (insert/erase take the EXCLUSIVE lock;
-		// slots are pre-created in add_stream), std::atomic_load/atomic_store
-		// serialise the slot's CONTENTS. (atomic_load/store on shared_ptr rather
-		// than std::atomic<shared_ptr>, which this libc++ toolchain lacks.)
-		using avc_decoder_config_map_t = stream_client_id_map<rtmp_message_video_data_ptr>;
-		avc_decoder_config_map_t m_avc_config;
-
-		using aac_decoder_config_map_t = stream_client_id_map<rtmp_message_audio_data_ptr>;
-		aac_decoder_config_map_t m_aac_config;
-
-		using metadata_map_t = stream_client_id_map<amf0_object_ptr>;
-		metadata_map_t m_metadata;
-
-		// real stream -> qos stream
-		using qos_map_t = stream_client_id_map<stream_client_id_t>;
-		qos_map_t m_qos_sources;
+		using broadcast_map_t = std::map<stream_client_id_t, broadcast_stream>;
+		broadcast_map_t m_broadcasts;
 
 		enum { _eTimeout = 1 };
 
@@ -212,9 +212,6 @@ namespace fms
 
 		using subscribers_to_stream_name_t = stream_client_id_map<std::string>;
 		subscribers_to_stream_name_t m_subscribers_to_stream;
-
-		using flv_writer_map_t = std::map<stream_client_id_t, std::unique_ptr<flv_writer>>;
-		flv_writer_map_t m_flv_writers;
 
 		// active VOD playbacks, keyed by (connection_id, stream_id)
 		using vod_map_t = std::map<stream_client_id_t, vod_session_ptr>;

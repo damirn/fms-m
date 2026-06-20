@@ -73,15 +73,19 @@ namespace fms
 				c->m_stat_msgs = 0;
 			}
 
-			for (auto & m_qos_source : m_qos_sources)
+			for (auto &bc : m_broadcasts)
 			{
-				stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(m_qos_source.second);
-				stream_client_map_t::left_const_iterator const end = m_stream_clients.left.upper_bound(m_qos_source.second);
+				if (!bc.second.qos_target)
+					continue;
+				stream_client_id_t const &real = bc.first;
+				stream_client_id_t const &qos = *bc.second.qos_target;
+				stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(qos);
+				stream_client_map_t::left_const_iterator const end = m_stream_clients.left.upper_bound(qos);
 				while (begin != end)
 				{
 					const stream_client_id_t &ssid = begin->second;
 					++begin;
-					std::optional<netstream_stats_ptr> stats = m_app_manager->get_stream_stats(m_qos_source.first);
+					std::optional<netstream_stats_ptr> stats = m_app_manager->get_stream_stats(real);
 					if (!stats)
 					{
 						continue;
@@ -211,21 +215,20 @@ namespace fms
 
 		std::shared_lock const lock(m_mutex);
 
-		// Only a registered publisher has pre-created per-bcid slots. Accesses below
-		// go through find() (not operator[]): the keys exist for a registered
-		// stream, and find() is a const op so it doesn't race a concurrent data-path
-		// find() for another stream on the same map (operator[] formally would).
-		// Drop frames for unregistered streams -- they have no subscribers.
-		if (!m_video_queue_map.contains(bcid))
+		// Only a registered publisher has a broadcast_stream slot (pre-created in
+		// add_stream). find() is a const op, so it doesn't race a concurrent data-path
+		// find() for another stream. Drop frames for unregistered streams -- they have
+		// no subscribers. The aac_config slot is written here and read on a joiner's
+		// path, so it is accessed atomically.
+		auto const bit = m_broadcasts.find(bcid);
+		if (bit == m_broadcasts.end())
 			return;
 
 		if (audio->get_codec() == rtmp_message_audio_data::eAAC
 			&& audio->size() > 1
 			&& audio->data()[1] == 0x00)
 		{
-			auto const ac = m_aac_config.find(bcid);
-			if (ac != m_aac_config.end())
-				std::atomic_store(&ac->second, audio);
+			std::atomic_store(&bit->second.aac_config, audio);
 		}
 
 		stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(bcid);
@@ -245,9 +248,8 @@ namespace fms
 			}
 		}
 
-		auto const i = m_flv_writers.find(bcid);
-		if (i != m_flv_writers.end() && audio->size() > 0)
-			i->second->write_audio(reinterpret_cast<char *>(audio->data()), audio->size(), audio->timestamp());
+		if (bit->second.flv && audio->size() > 0)
+			bit->second.flv->write_audio(reinterpret_cast<char *>(audio->data()), audio->size(), audio->timestamp());
 	}
 
 	void video_bcast_application::handle_video_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
@@ -265,19 +267,17 @@ namespace fms
 
 		std::shared_lock const lock(m_mutex);
 
-		// Only a registered publisher has pre-created per-bcid slots (see add_stream);
-		// drop frames for unregistered streams so the hot path never inserts under
-		// the shared lock.
-		if (!m_video_queue_map.contains(bcid))
+		// Only a registered publisher has a broadcast_stream slot (pre-created in
+		// add_stream); drop frames for unregistered streams so the hot path never
+		// inserts under the shared lock.
+		auto const bit = m_broadcasts.find(bcid);
+		if (bit == m_broadcasts.end())
 			return;
 
 		// enqueue video frame for later sending
 		enqueue_video_frame(video, bcid);
 
-		// Hoisted out of the subscriber loop: loop-invariant, and find() (const)
-		// rather than operator[] so it can't race a concurrent data-path lookup.
-		auto const vq = m_video_queue_map.find(bcid);
-		bool const has_data_to_send = vq != m_video_queue_map.end() && !vq->second.empty();
+		bool const has_data_to_send = !bit->second.video_queue.empty();
 
 		stream_client_map_t::left_const_iterator begin = m_stream_clients.left.lower_bound(bcid);
 		stream_client_map_t::left_const_iterator const end = m_stream_clients.left.upper_bound(bcid);
@@ -298,9 +298,8 @@ namespace fms
 			}
 		}
 
-		auto const i = m_flv_writers.find(bcid);
-		if (i != m_flv_writers.end() && video->size() > 2)
-			i->second->write_video(reinterpret_cast<char *>(video->data()), video->size(), video->timestamp());
+		if (bit->second.flv && video->size() > 2)
+			bit->second.flv->write_video(reinterpret_cast<char *>(video->data()), video->size(), video->timestamp());
 	}
 
 	void video_bcast_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &h)
@@ -646,15 +645,15 @@ namespace fms
 					}
 				}
 
-				auto const j = m_flv_writers.find(cid);
-				if (j != m_flv_writers.end())
+				auto const j = m_broadcasts.find(cid);
+				if (j != m_broadcasts.end() && j->second.flv)
 				{
 					byte_writer tmp;
 					amf0_string_ptr const str = std::make_shared<amf0_string>("onMetaData");
 					amf0 a;
 					a.write(tmp, str);
 					a.write(tmp, *i);
-					j->second->write_script((const char *) tmp.data(), tmp.size(), 0);
+					j->second.flv->write_script((const char *) tmp.data(), tmp.size(), 0);
 				}
 			}
 		}
@@ -697,12 +696,12 @@ namespace fms
 
 	void video_bcast_application::send_metadata(std::uint32_t connection_id, std::uint32_t stream_id, const stream_client_id_t &cid)
 	{
-		auto const i = m_metadata.find(cid);
-		if (i != m_metadata.end())
+		auto const i = m_broadcasts.find(cid);
+		if (i != m_broadcasts.end() && i->second.metadata)
 		{
 			rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>("onMetaData");
 			msg->stream_id() = stream_id;
-			msg->parameters().push_back(i->second);
+			msg->parameters().push_back(i->second.metadata);
 			enqueue_async_message(connection_id, msg);
 			notify(connection_id);
 		}
@@ -713,18 +712,21 @@ namespace fms
 		amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(data);
 		if (!obj)
 			return;
-		auto const i = m_metadata.find(cid);
-		if (i == m_metadata.end())
-			m_metadata[cid] = obj;
+		auto const i = m_broadcasts.find(cid);
+		if (i == m_broadcasts.end())
+			return;   // metadata for a stream that isn't published -> nothing to attach it to
+		amf0_object_ptr &slot = i->second.metadata;
+		if (!slot)
+			slot = obj;
 		else
 		{
 			// Copy-on-write. send_metadata enqueues a reference to the stored object,
 			// which a subscriber thread may still be serializing on its own io_context;
 			// mutating it in place here (merge) would be a data race. Build a merged
 			// snapshot and swap it in -- the old snapshot stays immutable and valid.
-			amf0_object_ptr const merged = std::make_shared<amf0_object>(*i->second);
+			amf0_object_ptr const merged = std::make_shared<amf0_object>(*slot);
 			merged->merge(*obj);
-			i->second = merged;
+			slot = merged;
 		}
 	}
 
@@ -765,14 +767,12 @@ namespace fms
 		if (streams.right.find(stream) != streams.right.end())
 			return false;
 		streams.insert(streams_map_t::value_type(id, stream));
-		// Pre-create this publisher's per-bcid slots while we hold the exclusive
-		// lock, so the shared-locked data path only ever hits existing keys and
-		// never inserts (which would rehash a map another stream is reading).
-		// Erased together in close_stream. avc/aac configs start null and are
-		// filled in-place by the first config frame (an existing-key assignment).
-		m_video_queue_map[id];
-		m_avc_config[id];
-		m_aac_config[id];
+		// Pre-create this publisher's state slot while we hold the exclusive lock, so
+		// the shared-locked data path only ever find()s an existing key and never
+		// inserts (which would rehash a map another stream is reading). Erased in
+		// close_stream. video_queue is empty and avc/aac configs start null; they are
+		// filled in-place by the first frames (an existing-entry mutation).
+		m_broadcasts[id];
 		return true;
 	}
 
@@ -784,7 +784,7 @@ namespace fms
 		{
 			std::filesystem::path const flv_name(stream + ".flv");
 			std::filesystem::path const flv_full_name = config::instance()->flv_folder() / flv_name;
-			m_flv_writers[id] = std::make_unique<flv_writer>(flv_full_name.string());
+			m_broadcasts[id].flv = std::make_unique<flv_writer>(flv_full_name.string());
 		}
 		catch (std::runtime_error &)
 		{
@@ -800,7 +800,7 @@ namespace fms
 		if (!add_stream(std::string("QOS!" + stream), connection_id, new_stream_id, m_streams))
 			return false;
 		std::unique_lock const lock(m_mutex);
-		m_qos_sources[std::make_pair(connection_id, stream_id)] = std::make_pair(connection_id, new_stream_id);
+		m_broadcasts[std::make_pair(connection_id, stream_id)].qos_target = std::make_pair(connection_id, new_stream_id);
 		return true;
 	}
 
@@ -855,14 +855,20 @@ namespace fms
 			// if this stream was a part of video call, notify the backend
 			video_call_end_notify(connection_id);
 
-			m_video_queue_map.erase(cid);
-			m_avc_config.erase(cid);
-			m_aac_config.erase(cid);
-			if (m_qos_sources.contains(cid))
+			// Tear down all of this publisher's state in one erase (video queue, avc/aac
+			// configs, metadata, recording). Read the qos link and flush the recording
+			// first, since the entry -- and everything it owns -- goes with the erase.
+			std::optional<stream_client_id_t> qos_target;
+			auto const bit = m_broadcasts.find(cid);
+			if (bit != m_broadcasts.end())
 			{
-				close_stream(m_qos_sources[cid].first, m_qos_sources[cid].second);
-				m_qos_sources.erase(cid);
+				qos_target = bit->second.qos_target;
+				if (bit->second.flv)
+					bit->second.flv->close();
+				m_broadcasts.erase(bit);
 			}
+			if (qos_target)
+				close_stream(qos_target->first, qos_target->second);
 
 			stream_client_map_t::left_iterator begin = m_stream_clients.left.lower_bound(cid);
 			stream_client_map_t::left_iterator const end = m_stream_clients.left.upper_bound(cid);
@@ -881,13 +887,6 @@ namespace fms
 					m_subscribers.erase(cli);
 				}
 			}
-			auto const i = m_flv_writers.find(cid);
-			if (i != m_flv_writers.end())
-			{
-				i->second->close();
-				m_flv_writers.erase(i);   // unique_ptr deletes the writer
-			}
-			m_metadata.erase(cid);
 		}
 		else
 		{
@@ -969,26 +968,27 @@ namespace fms
 
 	void video_bcast_application::enqueue_video_frame(const rtmp_message_video_data_ptr& video, const stream_client_id_t &bcid)
 	{
-		// Slots are pre-created (add_stream) and the caller gated on
-		// m_video_queue_map.contains(bcid), so these find()s always hit; find()
-		// (const) avoids racing a concurrent data-path lookup that operator[] would.
-		auto const vq = m_video_queue_map.find(bcid);
-		if (vq == m_video_queue_map.end())
+		// The slot is pre-created (add_stream) and the caller gated on the broadcast
+		// existing, so this find() always hits; find() (const) avoids racing a
+		// concurrent data-path lookup that operator[] would.
+		auto const bc = m_broadcasts.find(bcid);
+		if (bc == m_broadcasts.end())
 			return;
+		auto &vq = bc->second.video_queue;
 
 		if (video->get_frame_type() == rtmp_message_video_data::eKeyFrame)
 		{
 			if (video->get_codec() == rtmp_message_video_data::eAVC)
 			{
-				auto const ac = m_avc_config.find(bcid);   // "not yet stored" == null value
-				if (ac != m_avc_config.end() && !std::atomic_load(&ac->second) && video->size() > 1 && video->data()[1] == 0)
-					std::atomic_store(&ac->second, video);
+				// "not yet stored" == null value
+				if (!std::atomic_load(&bc->second.avc_config) && video->size() > 1 && video->data()[1] == 0)
+					std::atomic_store(&bc->second.avc_config, video);
 			}
-			vq->second.clear();
-			vq->second.push_back(video);
+			vq.clear();
+			vq.push_back(video);
 		}
-		else if (!vq->second.empty())
-			vq->second.push_back(video);
+		else if (!vq.empty())
+			vq.push_back(video);
 	}
 
 	void video_bcast_application::deliver_to_subscriber(const stream_client_ptr &client, const rtmp_message_ptr &msg)
@@ -1032,8 +1032,8 @@ namespace fms
 			if (!client->m_first_audio_packet_seen) // this is the very first a/v frame we see
 				client->m_start_epoch = video->timestamp();
 
-			auto const vq = m_video_queue_map.find(bcid);
-			std::uint32_t const size = (vq != m_video_queue_map.end()) ? static_cast<std::uint32_t>(vq->second.size()) : 0;
+			auto const vq = m_broadcasts.find(bcid);
+			std::uint32_t const size = (vq != m_broadcasts.end()) ? static_cast<std::uint32_t>(vq->second.video_queue.size()) : 0;
 
 			if (client->m_stream_was_playing && size > 1) // if stream was playing when this client connected, send video frames from the queue
 			{
@@ -1082,8 +1082,8 @@ namespace fms
 
 	void video_bcast_application::send_avc_config(const stream_client_id_t &bcid, const stream_client_ptr &client)
 	{
-		auto const i = m_avc_config.find(bcid);
-		rtmp_message_video_data_ptr const cfg = (i != m_avc_config.end()) ? std::atomic_load(&i->second) : nullptr;
+		auto const i = m_broadcasts.find(bcid);
+		rtmp_message_video_data_ptr const cfg = (i != m_broadcasts.end()) ? std::atomic_load(&i->second.avc_config) : nullptr;
 		if (cfg)   // slot pre-exists; may still be null
 		{
 			rtmp_message_video_data_ptr const conf = std::make_shared<rtmp_message_video_data>(*cfg);
@@ -1096,10 +1096,10 @@ namespace fms
 
 	void video_bcast_application::send_enqueued_video_frames(const stream_client_id_t &bcid, const rtmp_message_video_data_ptr& video, const stream_client_ptr& client)
 	{
-		auto const vq = m_video_queue_map.find(bcid);
-		if (vq == m_video_queue_map.end())
+		auto const vq = m_broadcasts.find(bcid);
+		if (vq == m_broadcasts.end())
 			return;
-		std::list<rtmp_message_video_data_ptr> &list = vq->second;
+		std::list<rtmp_message_video_data_ptr> &list = vq->second.video_queue;
 		std::uint32_t const size = static_cast<std::uint32_t>(list.size());
 
 		send_avc_config(bcid, client);
@@ -1142,8 +1142,8 @@ namespace fms
 
 		if (!client->m_first_audio_packet_seen)
 		{
-			auto const vqs = m_video_queue_map.find(src);
-			bool const has_video_queue = vqs != m_video_queue_map.end() && !vqs->second.empty();
+			auto const vqs = m_broadcasts.find(src);
+			bool const has_video_queue = vqs != m_broadcasts.end() && !vqs->second.video_queue.empty();
 			if (!client->m_receive_audio && has_video_queue && !client->m_key_frame_sent) // we have video frames enqueued, but we haven't sent key frame yet
 				return;
 
@@ -1188,8 +1188,8 @@ namespace fms
 
 	void video_bcast_application::send_aac_config(const stream_client_id_t &src, const stream_client_ptr &client)
 	{
-		auto const i = m_aac_config.find(src);
-		rtmp_message_audio_data_ptr const cfg = (i != m_aac_config.end()) ? std::atomic_load(&i->second) : nullptr;
+		auto const i = m_broadcasts.find(src);
+		rtmp_message_audio_data_ptr const cfg = (i != m_broadcasts.end()) ? std::atomic_load(&i->second.aac_config) : nullptr;
 		if (cfg)   // slot pre-exists; may still be null
 		{
 			rtmp_message_audio_data_ptr const conf = std::make_shared<rtmp_message_audio_data>(*cfg);
