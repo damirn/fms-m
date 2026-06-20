@@ -305,4 +305,10 @@ if(BUILD_CLIENT)
     find_package(Threads REQUIRED)
     target_link_libraries(chunk_parser_test PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
   endif()
+
+  # Audio-mixer PCM framing (pcm_frame.h) -- header-only, no media/speex link needed.
+  add_executable(mixer_tests test/mixer_test.cpp test/test_main.cpp)
+  target_include_directories(mixer_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
+  add_test(NAME mixer_tests COMMAND mixer_tests)
 endif()
