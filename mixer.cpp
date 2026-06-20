@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "mixer.h"
 #include "audio_sink.h"
+#include "pcm_frame.h"
 
 #include <chrono>
 #include <thread>
@@ -35,17 +36,18 @@ namespace fms
 	void simple_mixer::stream_data::fill_frame()
 	{
 		rtmp_message_audio_data_ptr audio_msg;
-		if (!m_queue.try_pop(audio_msg))
+		if (!m_queue.try_pop(audio_msg) || audio_msg->size() == 0)
 		{
-			// no audio frame available; emit silence
+			// no (usable) audio frame available; emit silence
 			std::memset((void *) m_buffer.get(), 0, eBufferSize);
 			return;
 		}
 
 		if (audio_msg->data()[0] == 0x00)
 		{
-			// raw 16-bit PCM payload
-			std::memcpy((void *) m_buffer.get(), (void *) (audio_msg->data() + 1), eBufferSize);
+			// raw 16-bit PCM payload -- copy at most a frame and zero-pad a short one,
+			// so a message shorter than eBufferSize+1 can't drive a heap over-read.
+			pcm_to_frame(m_buffer.get(), eBufferSize, audio_msg->data() + 1, audio_msg->size() - 1);
 		}
 		else
 		{
