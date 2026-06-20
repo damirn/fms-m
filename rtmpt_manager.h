@@ -64,12 +64,22 @@ namespace fms
 			explicit rtmpt_session_data(const boost::asio::ip::address &address)
 				: m_address(address)
 			{}
+			// Free any still-pending out-of-order buffers. They are otherwise deleted
+			// only on the in-order drain path, so a session torn down with a sequence
+			// gap outstanding (remove_session / idle reaper / manager teardown) leaked
+			// every stashed block.
+			~rtmpt_session_data()
+			{
+				for (auto &kv : m_out_of_order_data)
+					delete[] kv.second.first;
+			}
 			std::uint32_t m_sequence{0};
-			std::uint32_t m_connection_id;
+			std::uint32_t m_connection_id{0};
 			std::uint8_t m_not_alive{0};
 			boost::asio::ip::address m_address;
 			rtmpt_session_ptr m_session;
-			using unoreder_data_t = std::map<std::uint32_t, std::pair<std::uint8_t *, std::uint16_t>>;
+			// length is size_t, not uint16_t: a >64 KB body was truncated on replay.
+			using unoreder_data_t = std::map<std::uint32_t, std::pair<std::uint8_t *, std::size_t>>;
 			unoreder_data_t m_out_of_order_data;
 		};
 
@@ -78,6 +88,9 @@ namespace fms
 
 		id_map_t m_ids;
 
-		enum { eIDSize = 16, eTimerInterval = 30 };
+		// eMaxSessions bounds the id table against an unauthenticated /open flood;
+		// eMaxOutOfOrder bounds a single session's out-of-order backlog against a
+		// client that sends ever-increasing sequence numbers and never the next one.
+		enum { eIDSize = 16, eTimerInterval = 30, eMaxSessions = 4096, eMaxOutOfOrder = 64 };
 	};
 }

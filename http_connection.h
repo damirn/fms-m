@@ -38,6 +38,8 @@ namespace fms
 		using request_t = boost::beast::http::request<body_t>;
 		using response_t = boost::beast::http::response<body_t>;
 
+		enum { eIdleTimeout = 60 };   // seconds a connection may wait for a full request
+
 		void do_read();
 		void on_read(const boost::system::error_code &, std::size_t);
 		void handle_request(const request_t &);

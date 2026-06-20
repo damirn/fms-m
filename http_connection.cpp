@@ -32,7 +32,11 @@ namespace fms
 		m_parser.emplace();
 		m_parser->body_limit(16 * 1024 * 1024);
 
-		m_timer.expires_after(std::chrono::seconds(7200));
+		// Bound how long a connection may sit without a full request. RTMPT clients
+		// poll far more often than this; the old 7200 s let a slow-loris peer that
+		// sends nothing (or dribbles headers) tie up an fd + connection for 2 hours.
+		// This read timeout also bounds slow header delivery.
+		m_timer.expires_after(std::chrono::seconds(eIdleTimeout));
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->on_timeout(ec); });
 
 		http::async_read(m_socket, m_buffer, *m_parser,
