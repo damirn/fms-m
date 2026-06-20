@@ -196,7 +196,7 @@ namespace fms
 		buffer.write(m_data.get(), m_size);
 	}
 
-	void rtmp_message_aggregate::deserialize(byte_reader &buffer)
+	void rtmp_message_aggregate::deserialize(byte_reader &buffer, int depth)
 	{
 		bool first = true;
 		std::uint32_t prev_ts = 0;
@@ -233,6 +233,7 @@ namespace fms
 				break;
 
 			rtmp_protocol p;
+			p.set_aggregate_depth(depth);   // a nested aggregate sub-message is bounded
 			if (p.deserialize(buffer, h))
 				m_messages.push_back(p.message());
 			else

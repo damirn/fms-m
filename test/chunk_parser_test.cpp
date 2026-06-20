@@ -217,6 +217,43 @@ TEST_CASE("chunk parser: a header shrinking message_length below buffered data i
 	CHECK(h.messages.empty());
 }
 
+namespace
+{
+	// `levels` back-to-back Aggregate (0x16) sub-message headers -- each is an empty
+	// aggregate whose body is the rest of the buffer, so the aggregate parser recurses
+	// once per header.
+	std::vector<std::uint8_t> nested_aggregate_body(int levels)
+	{
+		std::vector<std::uint8_t> v;
+		v.reserve(static_cast<std::size_t>(levels) * 11);
+		for (int i = 0; i < levels; ++i)
+		{
+			v.push_back(rtmp_message::eMessageAggregate);   // type 0x16
+			v.insert(v.end(), {0, 0, 0});                   // message_length (3 BE) = 0
+			v.insert(v.end(), {0, 0, 0});                   // timestamp (3 BE)
+			v.insert(v.end(), {0, 0, 0, 0});                // stream id (4)
+		}
+		return v;
+	}
+}
+
+TEST_CASE("rtmp aggregate: deeply nested aggregates are bounded, not a stack overflow")
+{
+	// An Aggregate sub-message re-enters the aggregate parser; with no depth cap,
+	// ~payload/11 nested 0x16 headers recurse until the stack overflows (remote
+	// SIGSEGV). Parsing a deep nest must return, not crash.
+	auto const body = nested_aggregate_body(40000);
+
+	rtmp_header h;
+	h.message_type() = rtmp_message::eMessageAggregate;
+	h.message_length() = static_cast<std::uint32_t>(body.size());
+	byte_reader r(body.data(), body.size());
+
+	rtmp_protocol p;
+	try { p.deserialize(r, h); } catch (...) {}   // bounded parse; eof on unwind is fine
+	CHECK(true);   // reaching here means the recursion was bounded
+}
+
 TEST_CASE("chunk parser: basic-header channel-id encodings (1/2/3 byte)")
 {
 	for (std::uint32_t cid : {5u, 100u, 500u})

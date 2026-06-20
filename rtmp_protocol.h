@@ -21,6 +21,10 @@ namespace fms
 
 		bool deserialize(byte_reader &, rtmp_header &);
 
+		// Aggregate nesting depth of this parser (0 = top level). Set on the parser
+		// used to decode an aggregate's sub-messages so nested aggregates are bounded.
+		void set_aggregate_depth(int d) { m_aggregate_depth = d; }
+
 		void serialize(byte_writer &, const rtmp_message_ptr&, rtmp_header &, rtmp_header &);
 
 		rtmp_message_ptr message()
@@ -59,8 +63,13 @@ namespace fms
 		void deserialize_aggregate(byte_reader &, std::uint32_t);
 
 		enum { eChunkSize = 128 };
+		// Aggregate messages nest in practice at depth 1 (a flat list of A/V/data
+		// sub-messages); deeper nesting is only an attack, so cap it well below any
+		// stack-overflow risk.
+		enum { eMaxAggregateDepth = 4 };
 
 		std::uint16_t m_chunk_size;
+		int m_aggregate_depth{0};
 		rtmp_message_ptr m_message;
 	};
 }

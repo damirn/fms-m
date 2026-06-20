@@ -655,7 +655,8 @@ namespace fms
 			, m_ts(ts)
 		{}
 
-		void deserialize(byte_reader &) override;
+		void deserialize(byte_reader &b) override { deserialize(b, 1); }
+		void deserialize(byte_reader &, int depth);   // depth = this aggregate's nesting level
 
 		void serialize(byte_writer &) override;
 

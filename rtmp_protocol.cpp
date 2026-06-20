@@ -239,8 +239,13 @@ namespace fms
 
 	void rtmp_protocol::deserialize_aggregate(byte_reader &buffer, std::uint32_t ts)
 	{
+		// Bound nesting: a sub-message that is itself an aggregate re-enters here. Past
+		// the cap, leave m_message null so deserialize() returns false and the caller
+		// skips this sub-message instead of recursing until the stack overflows.
+		if (m_aggregate_depth >= eMaxAggregateDepth)
+			return;
 		rtmp_message_aggregate_ptr const msg = std::make_shared<rtmp_message_aggregate>(ts);
-		msg->deserialize(buffer);
+		msg->deserialize(buffer, m_aggregate_depth + 1);
 		m_message = msg;
 	}
 
