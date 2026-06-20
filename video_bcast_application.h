@@ -18,6 +18,7 @@
 
 #include "rtmp_application.h"
 #include "stream_client.h"
+#include "stream_registry.h"
 #include "vod_session.h"
 
 namespace fms
@@ -116,7 +117,7 @@ namespace fms
 		// Reader/writer split: the per-frame data path takes a SHARED lock (it only
 		// reads the map structure and mutates its own bcid's leaf data); control
 		// paths that restructure the maps take EXCLUSIVE. Sound only because the data
-		// path never inserts -- add_stream pre-creates each publisher's per-bcid slots.
+		// path never inserts -- add_broadcaster pre-creates each publisher's per-bcid slots.
 		//
 		// LOCK ORDER: this mutex is always acquired BEFORE rtmp_app_manager::m_mutex
 		// (the data path and handle_timer take m_mutex, then call into the manager's
@@ -126,51 +127,14 @@ namespace fms
 		// design). Inverting this would deadlock.
 		std::shared_mutex m_mutex;
 
-		// broadcaster -> subscribers
-		using stream_client_map_t = boost::bimaps::bimap<boost::bimaps::multiset_of<stream_client_id_t>, boost::bimaps::set_of<stream_client_id_t>>;
-		stream_client_map_t m_stream_clients;
-
-		// subscriber -> stream client
-		using subscriber_map_t = stream_client_id_map<stream_client_ptr>;
-		subscriber_map_t m_subscribers;
-
-		// broadcaster -> stream name
-		using streams_map_t = boost::bimaps::bimap<stream_client_id_t, std::string>;
-		streams_map_t m_streams;
-
-		// app client -> streams
-		using client_stream_map_t = std::unordered_map<std::uint32_t, std::set<std::uint32_t>>;
-		client_stream_map_t m_clients;
-
-		// All per-broadcaster (publisher) state, created together in add_stream and
-		// destroyed together in close_stream. The data path only ever find()s an
-		// existing entry under the SHARED lock and mutates that entry's own fields --
-		// the map STRUCTURE is changed only under the EXCLUSIVE lock (add_stream pre-
-		// creates the entry, close_stream erases it), so a shared-locked reader never
-		// races an insert/rehash. avc_config/aac_config are the sequence headers, both
-		// written (publisher stores) and read (sent to a joiner) on the data path, so
-		// they are accessed via std::atomic_load/atomic_store on the shared_ptr
-		// (this libc++ toolchain lacks std::atomic<shared_ptr>).
-		struct broadcast_stream
-		{
-			std::list<rtmp_message_video_data_ptr> video_queue;
-			rtmp_message_video_data_ptr avc_config;   // atomic_load/store
-			rtmp_message_audio_data_ptr aac_config;   // atomic_load/store
-			amf0_object_ptr metadata;
-			std::optional<stream_client_id_t> qos_target;   // real stream -> its qos stream
-			std::unique_ptr<flv_writer> flv;                // set only when recording
-		};
-
-		using broadcast_map_t = std::map<stream_client_id_t, broadcast_stream>;
-		broadcast_map_t m_broadcasts;
+		// All media-routing state (publishers, subscribers, fan-out index, waiting
+		// clients). The registry is a plain container -- m_mutex above guards it.
+		stream_registry m_registry;
 
 		enum { _eTimeout = 1 };
 
-		bool add_stream(const std::string &, std::uint32_t, std::uint32_t, streams_map_t &);
 		bool add_recording_stream(const std::string &, std::uint32_t, std::uint32_t);
 		bool add_qos_stream(const std::string &, std::uint32_t, std::uint32_t);
-
-		static bool get_broadcaster_id(const std::string &, stream_client_id_t &, streams_map_t &);
 
 		virtual void add_publisher_to_app_instance(std::uint32_t) {}
 		virtual void video_call_end_notify(std::uint32_t) {}
@@ -181,37 +145,6 @@ namespace fms
 		void update_waiting_client(stream_client_id_t &, bool, bool);
 		static bool is_remote_stream(const std::string &, std::string &, std::string &);
 		static void spawn_helper(const std::string &, const std::string &);
-
-		struct subscriber
-		{
-			subscriber(std::uint32_t id, std::uint32_t stream_id, std::uint32_t channel_id)
-				: m_id(id)
-				, m_stream_id(stream_id)
-				, m_channel_id(channel_id)
-				 
-			{}
-			std::uint32_t m_id;
-			std::uint32_t m_stream_id;
-			std::uint32_t m_channel_id;
-			bool m_receive_video{true};
-			bool m_receive_audio{true};
-		};
-
-		struct subscriber_comp
-		{
-			bool operator() (const subscriber &a, const subscriber &b) const
-			{
-				// tuple order: ANDing two `<` isn't a strict weak ordering (std::set UB)
-				return std::tie(a.m_id, a.m_stream_id) < std::tie(b.m_id, b.m_stream_id);
-			}
-		};
-
-		// stream name -> subscriber
-		using waiting_client_map_t = std::unordered_map<std::string, std::set<subscriber, subscriber_comp>>;
-		waiting_client_map_t m_waiting_clients;
-
-		using subscribers_to_stream_name_t = stream_client_id_map<std::string>;
-		subscribers_to_stream_name_t m_subscribers_to_stream;
 
 		// active VOD playbacks, keyed by (connection_id, stream_id)
 		using vod_map_t = std::map<stream_client_id_t, vod_session_ptr>;

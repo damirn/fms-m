@@ -133,6 +133,7 @@ set(sourceFiles
   server.cpp
   so_manager.cpp
   speex_codec.cpp
+  stream_registry.cpp
   util.cpp
   video_bcast_application.cpp
   video_call_application.cpp)
