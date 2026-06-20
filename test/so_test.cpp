@@ -12,6 +12,7 @@
 
 #include "so_manager.h"
 #include "rtmp_so_message.h"
+#include "byte_reader.h"
 #include "amf0_types.h"
 
 using namespace fms;
@@ -218,4 +219,29 @@ TEST_CASE("so_manager: Release returns false and removes the client from fan-out
 	sk.recs.clear();
 	do_change(sm, "obj", 1, "k", "v");
 	CHECK(sk.recs.empty());
+}
+
+TEST_CASE("SharedObject: an over-long SendMessage length is rejected before allocating")
+{
+	// A SendMessage event carries a raw 32-bit length. Declaring 4 GiB in an 8 MiB
+	// message used to drive new[len] before any bounds check (amplification DoS);
+	// the length must be validated against the remaining bytes first.
+	std::vector<std::uint8_t> buf;
+	auto be32 = [&](std::uint32_t v) {
+		buf.push_back(static_cast<std::uint8_t>(v >> 24));
+		buf.push_back(static_cast<std::uint8_t>(v >> 16));
+		buf.push_back(static_cast<std::uint8_t>(v >> 8));
+		buf.push_back(static_cast<std::uint8_t>(v));
+	};
+	buf.push_back(0); buf.push_back(0);   // name: empty short string
+	be32(0);                              // version
+	be32(0);                              // flags
+	be32(0);                              // unknown (skipped)
+	buf.push_back(SO::eSendMessage);      // event type
+	be32(0xFFFFFFFFu);                    // claimed length: 4 GiB
+	buf.push_back(1); buf.push_back(2); buf.push_back(3);   // ...but only 3 bytes follow
+
+	byte_reader r(buf.data(), buf.size());
+	SO so;
+	CHECK_THROWS_AS(so.deserialize(r), buffer_eof_exception);   // rejected, no giant alloc
 }
