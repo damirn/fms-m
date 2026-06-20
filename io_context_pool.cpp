@@ -43,10 +43,11 @@ namespace fms
 
 	boost::asio::io_context &io_context_pool::get_io_context()
 	{
-		// Use a round-robin scheme to choose the next io_context to use.
-		boost::asio::io_context &ctx = *m_io_contexts[m_next_io_context];
-		if (++m_next_io_context == m_io_contexts.size())
-			m_next_io_context = 0;
-		return ctx;
+		// Round-robin, race-free: one atomic increment, then reduce mod pool size.
+		// The old read-then-conditional-reset could hand two threads the same index,
+		// or momentarily leave the counter == size() so another thread indexed out of
+		// bounds.
+		std::size_t const idx = m_next_io_context.fetch_add(1, std::memory_order_relaxed) % m_io_contexts.size();
+		return *m_io_contexts[idx];
 	}
 }
