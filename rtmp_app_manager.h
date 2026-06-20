@@ -50,6 +50,7 @@ namespace fms
 		std::uint32_t reserve_connection_id();
 
 		http_connection_ptr create_http_connection();
+		http_connection_ptr create_http_connection(boost::asio::io_context &);
 		void delete_http_connection(std::uint32_t);
 
 		client_session_ptr get_connection(std::uint32_t);
@@ -101,7 +102,7 @@ namespace fms
 		void handle_timer(const boost::system::error_code &);
 
 		io_context_pool &m_io_context_pool;
-		std::uint32_t m_connection_counter{0};
+		std::uint32_t m_connection_counter{1};   // id 0 is a reserved "no connection" sentinel
 
 		using app_map_t = std::map<std::string, std::unique_ptr<rtmp_application>>;
 		app_map_t m_apps;

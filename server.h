@@ -49,17 +49,12 @@ namespace fms
 		// Initialize RTMFP service
 		void init_rtmfp_service();
 
-		// Arm the next RTMP accept (async_accept -> socket, then adopt).
+		// Arm the next accept (async_accept -> socket, then adopt) for each listener.
 		void do_accept();
-
-		// Handle completion of an asynchronous accept operation.
-		void handle_http_accept(const boost::system::error_code &);
+		void do_http_accept();
 
 		// Create RTMP applications
 		void create_applications();
-
-		// Create initial connections
-		void create_connections();
 
 		// The pool of io_context objects used to perform asynchronous operations.
 		io_context_pool m_io_context_pool;
@@ -75,8 +70,6 @@ namespace fms
 		// clients observe the TCP close as NetConnection.Connect.Closed.
 		boost::asio::signal_set m_signals;
 
- 		// The next HTTP connection to be accepted.
- 		http_connection_ptr m_http_connection;
 		std::unique_ptr<rtmp_app_manager> m_app_manager;
 		std::unique_ptr<service> m_rtmfp_service;
 	};

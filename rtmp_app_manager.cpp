@@ -74,8 +74,13 @@ namespace fms
 
 	http_connection_ptr rtmp_app_manager::create_http_connection()
 	{
+		return create_http_connection(m_io_context_pool.get_io_context());
+	}
+
+	http_connection_ptr rtmp_app_manager::create_http_connection(boost::asio::io_context &io)
+	{
 		std::unique_lock const lock(m_mutex);
-		http_connection_ptr tmp = std::make_shared<http_connection>(m_connection_counter, m_io_context_pool.get_io_context(), this, m_rtmpt_manager.get());
+		http_connection_ptr tmp = std::make_shared<http_connection>(m_connection_counter, io, this, m_rtmpt_manager.get());
 		m_http_conns[m_connection_counter++] = tmp;
 		return tmp;
 	}

@@ -93,8 +93,7 @@ namespace fms
 			throw server_exception(err.c_str());
 		}
 		m_http_acceptor.listen();
-		m_http_acceptor.async_accept(m_http_connection->socket(),
-			[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
+		do_http_accept();
 	}
 
 	void server::do_accept()
@@ -117,20 +116,24 @@ namespace fms
 		});
 	}
 
-	void server::handle_http_accept(const boost::system::error_code& e)
+	void server::do_http_accept()
 	{
-		if (!e)
+		// Same shape as do_accept: accept onto a specific io_context and receive the
+		// ready socket, build the http_connection on that same context, and adopt the
+		// socket -- so the socket and its owner never straddle io_contexts (a data race
+		// under --threads > 1). Re-armed unconditionally so a transient accept error
+		// (ECONNABORTED, fd pressure) can't permanently stop the listener.
+		boost::asio::io_context &io = m_io_context_pool.get_io_context();
+		m_http_acceptor.async_accept(io, [this, iop = &io](const boost::system::error_code &ec, boost::asio::ip::tcp::socket sock)
 		{
-			m_http_connection->start();
-			m_http_connection = m_app_manager->create_http_connection();
-		}
-		// Re-arm unconditionally, exactly like do_accept. A transient accept error
-		// (ECONNABORTED from a peer that RST'd before accept completed, fd pressure,
-		// etc.) must not permanently stop the listener -- issuing the next accept only
-		// on success meant one such error killed the RTMPT/HTTP port for the process
-		// lifetime. During shutdown the io_context is stopped, so this does not spin.
-		m_http_acceptor.async_accept(m_http_connection->socket(),
-			[this](const boost::system::error_code &ec) { handle_http_accept(ec); });
+			if (!ec)
+			{
+				http_connection_ptr const conn = m_app_manager->create_http_connection(*iop);
+				conn->adopt_socket(std::move(sock));
+				conn->start();
+			}
+			do_http_accept();
+		});
 	}
 
 	void server::create_applications()
@@ -143,15 +146,9 @@ namespace fms
 		m_app_manager->register_rtmp_app(new video_call_application(m_app_manager.get()));
 	}
 
-	void server::create_connections()
-	{
-		m_http_connection = m_app_manager->create_http_connection();
-	}
-
 	void server::init(const std::string &address)
 	{
 		create_applications();
-		create_connections();
 		init_acceptors(address);
 		init_rtmfp_service();
 	}

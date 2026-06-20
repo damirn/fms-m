@@ -33,6 +33,13 @@ namespace fms
 			return m_socket;
 		}
 
+		// Adopt a socket accepted on this connection's own io_context, so the socket
+		// and its owner never straddle io_contexts (like rtmp_connection).
+		void adopt_socket(boost::asio::ip::tcp::socket &&s)
+		{
+			m_socket = std::move(s);
+		}
+
 	private:
 		using body_t = boost::beast::http::vector_body<std::uint8_t>;
 		using request_t = boost::beast::http::request<body_t>;
