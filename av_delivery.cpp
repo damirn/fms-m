@@ -6,6 +6,8 @@
 #include <list>
 #include <memory>
 
+#include "amf0.h"
+#include "byte_writer.h"
 #include "client_session.h"
 #include "flv_writer.h"
 #include "stream_registry.h"
@@ -71,6 +73,65 @@ namespace fms
 
 		if (bs->flv && video->size() > 2)
 			bs->flv->write_video(reinterpret_cast<char *>(video->data()), video->size(), video->timestamp());
+	}
+
+	void av_delivery::route_metadata(const amf0_type_ptr &meta, const stream_client_id_t &cid)
+	{
+		// caller holds the shared lock.
+		update_metadata(cid, meta);
+
+		// send metadata to subscribers
+		m_registry.for_each_subscriber(cid, [&](const stream_client_id_t &, const stream_client_ptr &client)
+		{
+			send_metadata(client->m_connection_id, client->m_stream_id, cid);
+		});
+
+		stream_registry::broadcast_stream *const b = m_registry.find_broadcast(cid);
+		if (b && b->flv)
+		{
+			byte_writer tmp;
+			amf0_string_ptr const str = std::make_shared<amf0_string>("onMetaData");
+			amf0 a;
+			a.write(tmp, str);
+			a.write(tmp, meta);
+			b->flv->write_script((const char *) tmp.data(), tmp.size(), 0);
+		}
+	}
+
+	void av_delivery::send_metadata(std::uint32_t connection_id, std::uint32_t stream_id, const stream_client_id_t &cid)
+	{
+		stream_registry::broadcast_stream *const bs = m_registry.find_broadcast(cid);
+		if (bs && bs->metadata)
+		{
+			rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>("onMetaData");
+			msg->stream_id() = stream_id;
+			msg->parameters().push_back(bs->metadata);
+			m_app.enqueue_async_message(connection_id, msg);
+			m_app.notify(connection_id);
+		}
+	}
+
+	void av_delivery::update_metadata(const stream_client_id_t &cid, const amf0_type_ptr &data)
+	{
+		amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(data);
+		if (!obj)
+			return;
+		stream_registry::broadcast_stream *const bs = m_registry.find_broadcast(cid);
+		if (!bs)
+			return;   // metadata for a stream that isn't published -> nothing to attach it to
+		amf0_object_ptr &slot = bs->metadata;
+		if (!slot)
+			slot = obj;
+		else
+		{
+			// Copy-on-write. send_metadata enqueues a reference to the stored object,
+			// which a subscriber thread may still be serializing on its own io_context;
+			// mutating it in place here (merge) would be a data race. Build a merged
+			// snapshot and swap it in -- the old snapshot stays immutable and valid.
+			amf0_object_ptr const merged = std::make_shared<amf0_object>(*slot);
+			merged->merge(*obj);
+			slot = merged;
+		}
 	}
 
 	void av_delivery::enqueue_video_frame(const rtmp_message_video_data_ptr &video, const stream_client_id_t &bcid)

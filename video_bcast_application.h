@@ -91,8 +91,6 @@ namespace fms
 		void handle_notify_clear_data_frame(const rtmp_message_notify_ptr&, std::uint32_t);
 		rtmp_message_ptr send_stream_notify(std::uint32_t, std::uint32_t, const std::string &, const std::string &, bool);
 		void send_publish_notify(std::uint32_t, std::uint32_t, const std::string &);
-		void send_metadata(std::uint32_t, std::uint32_t, const stream_client_id_t &);
-		void update_metadata(const stream_client_id_t &, const amf0_type_ptr&);
 		void check_waiting_clients(std::uint32_t, const std::string &);
 		static bool check_bool_value(rtmp_message_invoke::parameters_list_t &);
 

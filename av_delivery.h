@@ -1,5 +1,6 @@
 #pragma once
 
+#include "amf0_types.h"     // amf0_type_ptr
 #include "rtmp_message.h"   // rtmp_message_ptr, rtmp_message_audio/video_data_ptr
 #include "stats.h"          // stream_client_id_t
 #include "stream_client.h"  // stream_client_ptr
@@ -13,7 +14,8 @@ namespace fms
 	// delivers a per-subscriber copy to each of that publisher's subscribers. It
 	// handles sequence-header (AVC/AAC config) priming, the keyframe-gated join, the
 	// enqueued-frame backlog for a subscriber that joined mid-GOP, per-subscriber
-	// timestamp rebasing, and the recording (flv) write.
+	// timestamp rebasing, stream-metadata (onMetaData) fan-out, and the recording
+	// (flv) write.
 	//
 	// Stateless of itself: all mutable state lives in the broadcast_stream (reached
 	// through the registry) and in each stream_client. route_audio/route_video are
@@ -38,6 +40,15 @@ namespace fms
 		// the application's shared_mutex; `bcid` is the publisher (broadcaster) id.
 		void route_video(const rtmp_message_video_data_ptr &video, const stream_client_id_t &bcid);
 
+		// Fan a publisher's stream metadata (onMetaData) out to its subscribers,
+		// merge it into the stored snapshot, and write it to the recording if any.
+		// Caller holds the application's shared_mutex; `cid` is the publisher id.
+		void route_metadata(const amf0_type_ptr &meta, const stream_client_id_t &cid);
+
+		// Send the stored onMetaData for publisher `cid` to one subscriber
+		// connection. Caller holds the application's shared_mutex.
+		void send_metadata(std::uint32_t connection_id, std::uint32_t stream_id, const stream_client_id_t &cid);
+
 	private:
 		void enqueue_video_frame(const rtmp_message_video_data_ptr &video, const stream_client_id_t &bcid);
 		void send_video_frame(const stream_client_ptr &client, const rtmp_message_video_data_ptr &video, const stream_client_id_t &bcid);
@@ -45,6 +56,9 @@ namespace fms
 		void send_avc_config(const stream_client_id_t &bcid, const stream_client_ptr &client);
 		void send_audio_frame(const rtmp_message_audio_data_ptr &audio, const stream_client_ptr &client, const stream_client_id_t &src);
 		void send_aac_config(const stream_client_id_t &src, const stream_client_ptr &client);
+
+		// Merge `data` into publisher `cid`'s stored metadata (copy-on-write).
+		void update_metadata(const stream_client_id_t &cid, const amf0_type_ptr &data);
 
 		// Enqueue + notify a subscriber, using its cached session to skip the
 		// manager-mutex lookups on the per-frame fan-out path.

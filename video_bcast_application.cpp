@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "video_bcast_application.h"
-#include "byte_writer.h"
 #include "client_session.h"
 #include "config.h"
 #include "flv_writer.h"
@@ -394,7 +393,7 @@ namespace fms
 			}
 			send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
 			if (res)
-				send_metadata(connection_id, invoke->stream_id(), bcaster_id);
+				m_av.send_metadata(connection_id, invoke->stream_id(), bcaster_id);
 		}
 		catch (rtmp_illegal_parameter_exception &e)
 		{
@@ -463,24 +462,7 @@ namespace fms
 					return;
 				stream_client_id_t const cid = std::make_pair(connection_id, msg->stream_id());
 				std::unique_lock const lock(m_mutex);
-				update_metadata(cid, *i);
-
-				// send metadata to subscribers
-				m_registry.for_each_subscriber(cid, [&](const stream_client_id_t &, const stream_client_ptr &client)
-				{
-					send_metadata(client->m_connection_id, client->m_stream_id, cid);
-				});
-
-				stream_registry::broadcast_stream *const b = m_registry.find_broadcast(cid);
-				if (b && b->flv)
-				{
-					byte_writer tmp;
-					amf0_string_ptr const str = std::make_shared<amf0_string>("onMetaData");
-					amf0 a;
-					a.write(tmp, str);
-					a.write(tmp, *i);
-					b->flv->write_script((const char *) tmp.data(), tmp.size(), 0);
-				}
+				m_av.route_metadata(*i, cid);
 			}
 		}
 	}
@@ -518,42 +500,6 @@ namespace fms
 		static const std::string code("NetStream.Play.PublishNotify");
 		const std::string desc(stream_name + " is now published.");
 		send_stream_notify(connection_id, stream_id, code, desc, true);
-	}
-
-	void video_bcast_application::send_metadata(std::uint32_t connection_id, std::uint32_t stream_id, const stream_client_id_t &cid)
-	{
-		stream_registry::broadcast_stream *const bs = m_registry.find_broadcast(cid);
-		if (bs && bs->metadata)
-		{
-			rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>("onMetaData");
-			msg->stream_id() = stream_id;
-			msg->parameters().push_back(bs->metadata);
-			enqueue_async_message(connection_id, msg);
-			notify(connection_id);
-		}
-	}
-
-	void video_bcast_application::update_metadata(const stream_client_id_t &cid, const amf0_type_ptr& data)
-	{
-		amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(data);
-		if (!obj)
-			return;
-		stream_registry::broadcast_stream *const bs = m_registry.find_broadcast(cid);
-		if (!bs)
-			return;   // metadata for a stream that isn't published -> nothing to attach it to
-		amf0_object_ptr &slot = bs->metadata;
-		if (!slot)
-			slot = obj;
-		else
-		{
-			// Copy-on-write. send_metadata enqueues a reference to the stored object,
-			// which a subscriber thread may still be serializing on its own io_context;
-			// mutating it in place here (merge) would be a data race. Build a merged
-			// snapshot and swap it in -- the old snapshot stays immutable and valid.
-			amf0_object_ptr const merged = std::make_shared<amf0_object>(*slot);
-			merged->merge(*obj);
-			slot = merged;
-		}
 	}
 
 	void video_bcast_application::check_waiting_clients(std::uint32_t bcaster_id, const std::string &stream_name)
