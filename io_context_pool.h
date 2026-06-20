@@ -2,6 +2,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -32,7 +33,9 @@ namespace fms
 		/// The work guards that keep the io_contexts running.
 		std::vector<work_guard> m_work;
 
-		/// The next io_context to use for a connection.
-		std::size_t m_next_io_context{0};
+		/// The next io_context to use for a connection. Atomic: get_io_context() is
+		/// called concurrently from multiple io threads (accept handlers, VOD start,
+		/// RTMPT session creation).
+		std::atomic<std::size_t> m_next_io_context{0};
 	};
 }
