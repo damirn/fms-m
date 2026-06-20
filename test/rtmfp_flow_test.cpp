@@ -4,10 +4,13 @@
 
 #include "doctest.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "flow.h"
+#include "group.h"
 
 using namespace fms;
 
@@ -77,6 +80,51 @@ TEST_CASE("rtmfp flow: in_flight_count tracks fragments sent but not yet acked")
 	REQUIRE(frag);
 	(*frag)->m_in_flight = true;                      // the session marks it on send
 	CHECK(f.in_flight_count() == 1);
+}
+
+TEST_CASE("rtmfp flow: a buffered whole fragment copies its data (no dangle into the packet buffer)")
+{
+	// Receiving fragments are zero-copy views into the decrypted packet buffer, which
+	// is freed when parse() returns. A whole fragment retained in the flow (e.g. a
+	// `final`-flagged one that is not consumed in place) must take a private copy or
+	// its m_data dangles into freed memory -> use-after-free on a later message_data().
+	std::vector<std::uint8_t> pkt = {10, 20, 30, 40, 50, 60, 70, 80};
+
+	flow f(vlu_t{1}, flow::eReceiver);
+	// whole, in-order, non-owning view into pkt -- exactly how handle_user_data builds it
+	auto const frag = std::make_shared<fragment>(vlu_t{1}, pkt.data(),
+		static_cast<std::uint16_t>(pkt.size()), static_cast<std::uint8_t>(fragment::eWhole));
+	f.add_fragment(frag);
+
+	// The packet buffer is gone / reused: scribble it.
+	std::fill(pkt.begin(), pkt.end(), std::uint8_t{0xEE});
+
+	std::uint32_t len = 0;
+	const std::uint8_t *data = f.message_data(len);
+	REQUIRE(data != nullptr);
+	REQUIRE(len == pkt.size());
+	CHECK(data[0] == 10);   // original bytes, not the 0xEE scribble
+	CHECK(data[7] == 80);
+}
+
+TEST_CASE("rtmfp group: deserialize copies the group id (no dangle into the packet buffer)")
+{
+	// group::deserialize built the group with a non-owning id pointing into the
+	// decrypted packet buffer; a non-join membership message was then retained in
+	// m_group_membership with that id dangling -> use-after-free on any later
+	// item compare. The parsed group must own its 32-byte id.
+	std::vector<std::uint8_t> buf = {0x01, item::eIDLength + 1, 0x15};   // command, size, type
+	for (std::uint8_t i = 0; i < item::eIDLength; ++i)
+		buf.push_back(static_cast<std::uint8_t>(i + 1));
+
+	byte_reader r(buf.data(), buf.size());
+	group_ptr const g = group::deserialize(r);
+	REQUIRE(g);
+
+	std::fill(buf.begin(), buf.end(), std::uint8_t{0xEE});   // packet buffer reused
+
+	CHECK(g->id()[0] == 1);                          // original id, not the scribble
+	CHECK(g->id()[item::eIDLength - 1] == item::eIDLength);
 }
 
 TEST_CASE("rtmfp flow: advertised receive window shrinks as the reassembly backlog grows")
