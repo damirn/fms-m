@@ -50,6 +50,15 @@ namespace fms
 			else
 				channel = m_channel_manager->get_channel(m_channel_id);
 
+			// A client SetChunkSize below 1 is invalid (RTMP spec). Left unchecked it
+			// makes the per-chunk read length degenerate to 0, so the stream desyncs
+			// and headers get misparsed as payload. Reject it outright.
+			if (m_chunk_size == 0)
+			{
+				m_framing_error = true;
+				break;
+			}
+
 			const rtmp_header &h = channel->received_header();
 			if (h.message_length() > eMaxMessageLength)
 			{
