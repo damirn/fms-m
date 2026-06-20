@@ -18,6 +18,15 @@ namespace fms
 	{
 		std::unique_lock const lock(m_mutex);
 
+		// Bound the session table against an unauthenticated /open flood; refuse before
+		// allocating an rtmpt_session (which registers in the app manager) so a reject
+		// leaves nothing behind. Idle sessions are reaped by handle_timer.
+		if (m_ids.size() >= eMaxSessions)
+		{
+			id.clear();
+			return;
+		}
+
 		rtmpt_session_ptr const session = m_app_manager->create_rtmpt_session();
 		id = create_id(remote.address(), session);
 		session->cid() = id;
@@ -74,9 +83,16 @@ namespace fms
 		}
 		else
 		{
-			auto *data = new std::uint8_t[input.size()];
-			std::memcpy(data, input.data(), input.size());
-			i->second->m_out_of_order_data[seq] = std::make_pair(data, input.size());
+			// Stash out-of-order data for later, in-order replay -- but bounded, so a
+			// client that never sends the expected sequence can't grow this without
+			// limit (memory DoS). Over the cap we drop the excess and just poll.
+			if (i->second->m_out_of_order_data.size() < eMaxOutOfOrder &&
+				i->second->m_out_of_order_data.find(seq) == i->second->m_out_of_order_data.end())
+			{
+				auto *data = new std::uint8_t[input.size()];
+				std::memcpy(data, input.data(), input.size());
+				i->second->m_out_of_order_data[seq] = std::make_pair(data, input.size());
+			}
 			i->second->m_session->serialize_poll_time(output);
 		}
 
