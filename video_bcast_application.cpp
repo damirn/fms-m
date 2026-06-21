@@ -103,77 +103,66 @@ namespace fms
 		if (invoke.get() == nullptr)
 			return false;
 
-		if (invoke->function()->value() == invoke_functions::create_stream)
+		const std::string &fn = invoke->function()->value();
+
+		if (fn == invoke_functions::create_stream)
 		{
 			handle_invoke_create_stream(invoke, connection_id, result);
 			return true;
 		}
-
-		if (invoke->function()->value() == invoke_functions::close_stream)
+		if (fn == invoke_functions::close_stream)
 		{
 			handle_invoke_close_stream(invoke, connection_id, result);
 			return true;
 		}
-
-		if (invoke->function()->value() == invoke_functions::publish)
+		if (fn == invoke_functions::publish)
 		{
 			handle_invoke_publish(invoke, connection_id, result);
 			return true;
 		}
-
-		if (invoke->function()->value() == invoke_functions::play)
+		if (fn == invoke_functions::play)
 		{
 			handle_invoke_play(invoke, connection_id);
 			return boost::indeterminate;
 		}
-
-		if (invoke->function()->value() == invoke_functions::receive_audio)
+		if (fn == invoke_functions::receive_audio)
 		{
 			handle_invoke_receive_audio(invoke, connection_id);
 			return false;
 		}
-
-		if (invoke->function()->value() == invoke_functions::receive_video)
+		if (fn == invoke_functions::receive_video)
 		{
 			handle_invoke_receive_video(invoke, connection_id);
 			return false;
 		}
-
-		if (invoke->function()->value() == invoke_functions::delete_stream)
+		if (fn == invoke_functions::delete_stream)
 			return false;
-
-		if (invoke->function()->value() == invoke_functions::pause ||
-		    invoke->function()->value() == invoke_functions::pause_raw)
+		if (fn == invoke_functions::pause || fn == invoke_functions::pause_raw)
 		{
 			handle_invoke_pause(invoke, connection_id);
 			return false;
 		}
-
-		if (invoke->function()->value() == invoke_functions::seek)
+		if (fn == invoke_functions::seek)
 		{
 			handle_invoke_seek(invoke, connection_id);
 			return false;
 		}
-
-		if (invoke->function()->value() == invoke_functions::release_stream)
+		if (fn == invoke_functions::release_stream)
 		{
 			handle_invoke_release_stream(invoke, connection_id);
 			return false;
 		}
-
-		if (invoke->function()->value() == invoke_functions::fcpublish)
+		if (fn == invoke_functions::fcpublish)
 		{
 			handle_invoke_fcpublish(invoke, connection_id);
 			return false;
 		}
-
-		if (invoke->function()->value() == invoke_functions::fcunpublish)
+		if (fn == invoke_functions::fcunpublish)
 		{
 			handle_invoke_fcunpublish(invoke, connection_id);
 			return false;
 		}
-
-		if (invoke->function()->value() == invoke_functions::fcsubscribe)
+		if (fn == invoke_functions::fcsubscribe)
 		{
 			handle_invoke_fcsubscribe(invoke, connection_id);
 			return false;
@@ -683,8 +672,10 @@ namespace fms
 
 	// ------------------------------------- FMLE/OBS publish handshake verbs --
 
-	void video_bcast_application::handle_invoke_release_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
+	void video_bcast_application::send_result_ack(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
+		// A bare _result(null, undefined) acknowledging the invoke's transaction --
+		// what releaseStream / FCUnpublish / FCSubscribe all reply with.
 		double const txn = invoke->invoke_id() ? invoke->invoke_id()->value() : 0.0;
 		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>(invoke_functions::result, txn);
 		res->channel_id() = invoke->channel_id();
@@ -693,6 +684,11 @@ namespace fms
 		res->add_parameter(std::make_shared<amf0_undefined>());
 		enqueue_async_message(connection_id, res);
 		notify(connection_id);
+	}
+
+	void video_bcast_application::handle_invoke_release_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
+	{
+		send_result_ack(invoke, connection_id);
 	}
 
 	void video_bcast_application::handle_invoke_fcpublish(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
@@ -723,26 +719,12 @@ namespace fms
 
 	void video_bcast_application::handle_invoke_fcunpublish(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
-		double const txn = invoke->invoke_id() ? invoke->invoke_id()->value() : 0.0;
-		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>(invoke_functions::result, txn);
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
-		res->add_parameter(std::make_shared<amf0_null>());
-		res->add_parameter(std::make_shared<amf0_undefined>());
-		enqueue_async_message(connection_id, res);
-		notify(connection_id);
+		send_result_ack(invoke, connection_id);
 	}
 
 	void video_bcast_application::handle_invoke_fcsubscribe(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
-		double const txn = invoke->invoke_id() ? invoke->invoke_id()->value() : 0.0;
-		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>(invoke_functions::result, txn);
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
-		res->add_parameter(std::make_shared<amf0_null>());
-		res->add_parameter(std::make_shared<amf0_undefined>());
-		enqueue_async_message(connection_id, res);
-		notify(connection_id);
+		send_result_ack(invoke, connection_id);
 	}
 
 }
