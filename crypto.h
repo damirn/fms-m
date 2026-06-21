@@ -25,7 +25,7 @@ namespace fms
 	// deprecated RC4_KEY; rc4_crypt works in place (in may equal out). Both
 	// return false on failure and fail closed (rc4_crypt zeroes the output) so
 	// a crypto error can never leave plaintext on a connection meant to be RTMPE.
-	bool init_RC4_encryption(const std::uint8_t *, const std::uint8_t *, const std::uint8_t *, EVP_CIPHER_CTX *, EVP_CIPHER_CTX *);
+	bool init_rc4_encryption(const std::uint8_t *, const std::uint8_t *, const std::uint8_t *, EVP_CIPHER_CTX *, EVP_CIPHER_CTX *);
 	bool rc4_crypt(EVP_CIPHER_CTX *, std::size_t, const std::uint8_t *, std::uint8_t *);
 
 	std::string sha256(const std::string &);

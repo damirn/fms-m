@@ -76,14 +76,14 @@ namespace fms
 		return true;
 	}
 
-	bool init_RC4_encryption(const std::uint8_t *secretKey, const std::uint8_t *pubKeyIn, const std::uint8_t *pubKeyOut,
-		EVP_CIPHER_CTX *rc4keyIn, EVP_CIPHER_CTX *rc4keyOut)
+	bool init_rc4_encryption(const std::uint8_t *secret_key, const std::uint8_t *pub_key_in, const std::uint8_t *pub_key_out,
+		EVP_CIPHER_CTX *rc4_key_in, EVP_CIPHER_CTX *rc4_key_out)
 	{
 			std::uint8_t digest[SHA256_DIGEST_LENGTH];
 
-			if (HMAC_SHA256(pubKeyIn, 128, secretKey, 128, digest) == 0 || !rc4_init(rc4keyOut, digest))
+			if (HMAC_SHA256(pub_key_in, 128, secret_key, 128, digest) == 0 || !rc4_init(rc4_key_out, digest))
 				return false;
-			if (HMAC_SHA256(pubKeyOut, 128, secretKey, 128, digest) == 0 || !rc4_init(rc4keyIn, digest))
+			if (HMAC_SHA256(pub_key_out, 128, secret_key, 128, digest) == 0 || !rc4_init(rc4_key_in, digest))
 				return false;
 			return true;
 	}
