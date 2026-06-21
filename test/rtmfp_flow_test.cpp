@@ -107,6 +107,33 @@ TEST_CASE("rtmfp flow: a buffered whole fragment copies its data (no dangle into
 	CHECK(data[7] == 80);
 }
 
+TEST_CASE("rtmfp flow: take_ownership on an already-owning fragment is a no-op (no leak)")
+{
+	// The sending path (add_and_fragment_data) builds whole fragments that already
+	// own a private heap copy; add_fragment then calls take_ownership on every whole
+	// fragment. take_ownership used to unconditionally allocate a fresh buffer and
+	// reassign m_data, orphaning the original -> a per-fragment heap leak. For an
+	// already-owning fragment it must leave the buffer untouched.
+	std::uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+	fragment owning(vlu_t{1}, data, sizeof(data), static_cast<std::uint8_t>(fragment::eWhole), true /* make_copy */);
+	const std::uint8_t *const buf_before = owning.m_data;   // its private copy
+
+	owning.take_ownership();
+
+	CHECK(owning.m_data == buf_before);   // same buffer -> nothing orphaned
+	CHECK(owning.m_data_owner);
+	CHECK(owning.m_data[0] == 1);
+	CHECK(owning.m_data[7] == 8);
+
+	// A non-owning view still copies out (and starts owning).
+	fragment view(vlu_t{2}, data, sizeof(data), static_cast<std::uint8_t>(fragment::eWhole), false);
+	CHECK_FALSE(view.m_data_owner);
+	view.take_ownership();
+	CHECK(view.m_data_owner);
+	CHECK(view.m_data != data);           // copied off the caller's buffer
+	CHECK(view.m_data[0] == 1);
+}
+
 TEST_CASE("rtmfp group: deserialize copies the group id (no dangle into the packet buffer)")
 {
 	// group::deserialize built the group with a non-owning id pointing into the
