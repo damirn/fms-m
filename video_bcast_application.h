@@ -82,6 +82,10 @@ namespace fms
 		void handle_invoke_fcunpublish(const rtmp_message_invoke_ptr&, std::uint32_t);
 		void handle_invoke_fcsubscribe(const rtmp_message_invoke_ptr&, std::uint32_t);
 
+		// The shared _result(null, undefined) transaction ack for the verbs above
+		// that carry no payload (releaseStream / FCUnpublish / FCSubscribe).
+		void send_result_ack(const rtmp_message_invoke_ptr&, std::uint32_t);
+
 		void handle_publish_record(const rtmp_message_invoke_ptr&, std::uint32_t, const std::string &);
 
 		void handle_invoke_receive_audio(const rtmp_message_invoke_ptr&, std::uint32_t);
