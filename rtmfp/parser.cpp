@@ -92,7 +92,6 @@ namespace fms
 		switch (type)
 		{
 		case chunk::eInitiatorHello:
-			// fixme: check internal state first
 			c = new ihello_chunk;
 			break;
 		case chunk::eInitiatorInitialKeying:
