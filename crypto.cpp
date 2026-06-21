@@ -95,7 +95,7 @@ namespace fms
 		std::ostringstream tmp;
 		tmp << std::hex;
 		for (unsigned char const i : hash)
-			tmp << std::setw(2) << std::setfill('0') << (std::uint16_t)i;
+			tmp << std::setw(2) << std::setfill('0') << static_cast<std::uint16_t>(i);
 		return tmp.str();
 	}
 }

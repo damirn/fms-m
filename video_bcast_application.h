@@ -1,24 +1,13 @@
 #pragma once
 
-#include <list>
-#include <map>
-#include <memory>
-#include <mutex>
-#include <optional>
-#include <set>
+#include <cstdint>
 #include <shared_mutex>
 #include <string>
-#include <tuple>
-#include <unordered_map>
 
 #include <boost/asio.hpp>
-#include <boost/bimap/bimap.hpp>
-#include <boost/bimap/multiset_of.hpp>
-#include <boost/bimap/set_of.hpp>
 
 #include "av_delivery.h"
 #include "rtmp_application.h"
-#include "stream_client.h"
 #include "stream_registry.h"
 #include "vod_manager.h"
 
@@ -133,7 +122,6 @@ namespace fms
 
 		virtual void add_publisher_to_app_instance(std::uint32_t) {}
 		virtual void video_call_end_notify(std::uint32_t) {}
-
 
 	private:
 		void add_waiting_client(std::uint32_t, const rtmp_message_invoke_ptr&, const std::string &);

@@ -2,9 +2,10 @@
 
 #include <cstdint>
 #include <map>
-#include <memory>
 #include <shared_mutex>
 #include <string>
+
+#include <boost/noncopyable.hpp>
 
 #include "rtmp_message.h"   // rtmp_message_ptr, rtmp_message_invoke_ptr
 #include "stats.h"          // stream_client_id_t
@@ -27,7 +28,7 @@ namespace fms
 	// locking split as the routing state: start()/stop() are caller-locked (they run
 	// inside handle_invoke_play / close paths that already hold the lock), while
 	// tick()/pause()/seek() take the lock themselves.
-	class vod_manager
+	class vod_manager : boost::noncopyable
 	{
 	public:
 		vod_manager(video_bcast_application &app, std::shared_mutex &mutex)

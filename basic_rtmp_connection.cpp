@@ -303,7 +303,7 @@ namespace fms
 		std::ostringstream tmp;
 		tmp << std::hex;
 		for (int i = 0; i < SHA256_DIGEST_LENGTH / 2; ++i)
-			tmp << std::setw(2) << std::setfill('0') << (int)hash[i];
+			tmp << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
 
 		m_sid = tmp.str();
 

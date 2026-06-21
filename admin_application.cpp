@@ -532,7 +532,7 @@ namespace fms
 			obj->add_entry("cid", data->m_id);
 			obj->add_entry("ip", cd->m_ip);
 			obj->add_entry("port", cd->m_port);
-			obj->add_entry("status", (std::uint32_t)data->m_status);
+			obj->add_entry("status", static_cast<std::uint32_t>(data->m_status));
 			obj->add_entry("reason", data->m_reason);
 			obj->add_entry("user", data->m_username);
 			obj->add_entry("time", to_simple_string(data->m_time));
@@ -557,7 +557,7 @@ namespace fms
 		obj->add_entry("sid", data->m_sid);
 		obj->add_entry("cid", data->m_id);
 		obj->add_entry("time", to_simple_string(data->m_time));
-		obj->add_entry("status", (std::uint32_t)data->m_status);
+		obj->add_entry("status", static_cast<std::uint32_t>(data->m_status));
 
 		res->add_parameter(obj);
 

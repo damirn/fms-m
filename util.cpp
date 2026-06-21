@@ -34,7 +34,7 @@ namespace fms
 
 	void hexdump(std::ostream &s, void *ptr, int buflen)
 	{
-		unsigned char  const*buf = (unsigned char*)ptr;
+		unsigned char const *buf = static_cast<unsigned char *>(ptr);
 		int i;
 		int j;
 		s << std::hex << std::setfill('0');

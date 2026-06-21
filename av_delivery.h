@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/noncopyable.hpp>
+
 #include "amf0_types.h"     // amf0_type_ptr
 #include "rtmp_message.h"   // rtmp_message_ptr, rtmp_message_audio/video_data_ptr
 #include "stats.h"          // stream_client_id_t
@@ -23,7 +25,7 @@ namespace fms
 	// calling in. The delivery primitives (enqueue / notify / connection lookup /
 	// channel mapping) belong to the owning application, which av_delivery reaches
 	// as a friend.
-	class av_delivery
+	class av_delivery : boost::noncopyable
 	{
 	public:
 		av_delivery(video_bcast_application &app, stream_registry &registry)

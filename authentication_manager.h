@@ -15,7 +15,7 @@ namespace fms
 {
 	class authentication_plugin;
 
-	class authentication_manager : private boost::noncopyable
+	class authentication_manager : boost::noncopyable
 	{
 	public:
 		authentication_manager();

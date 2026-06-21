@@ -16,7 +16,7 @@ namespace fms
 
 	BOOST_LOG_GLOBAL_LOGGER(lg, src::logger_mt)
 
-	class logging : private boost::noncopyable
+	class logging : boost::noncopyable
 	{
 	public:
 		logging()= default;

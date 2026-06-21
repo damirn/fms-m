@@ -9,7 +9,7 @@
 namespace fms
 {
 	/// A pool of io_context objects.
-	class io_context_pool : private boost::noncopyable
+	class io_context_pool : boost::noncopyable
 	{
 	public:
 		/// Construct the io_context pool.
