@@ -57,8 +57,8 @@ namespace fms
 			// path into the shared netstream stats -- once/second, under the lock we
 			// already hold, so the hot path takes no manager mutex for stats. Every
 			// live subscriber is covered (registry subscribers), so drift/delay/bytes stay
-			// current for the admin app; drift/delay is now sampled per-second from
-			// the last frame's timestamp rather than per-frame (a QoS-report metric).
+			// current for the admin app; drift/delay is sampled per-second from the
+			// last frame's timestamp (a QoS-report metric).
 			m_registry.for_each_subscriber_all([&](const stream_client_id_t &id, const stream_client_ptr &c)
 			{
 				if (c->m_stat_msgs == 0)

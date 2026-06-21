@@ -196,8 +196,7 @@ namespace fms
 	// app_manager's connection registry -- so here we just drop it from the service
 	// maps. remove_session covers an *established* session (keyed by sid in
 	// m_sessions); a stalled *half-open* session is never in m_sessions, so also
-	// erase it from m_initial_sessions here or it leaks (was the "stalled initial
-	// sessions" fixme).
+	// erase it from m_initial_sessions here or it leaks.
 	void service::remove(const session_ptr &s)
 	{
 		remove_session(s->id());

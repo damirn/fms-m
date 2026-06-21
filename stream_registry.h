@@ -24,8 +24,7 @@ namespace fms
 
 	// Owns the media-routing state of a broadcast application: the live publishers
 	// (broadcast_stream), their subscribers, the fan-out index, and the clients
-	// waiting for a not-yet-live stream. Pulled out of video_bcast_application so the
-	// routing has one home and a named API instead of a dozen parallel maps.
+	// waiting for a not-yet-live stream. Gives that state one home with a named API.
 	//
 	// NOT thread-safe on its own: the owning application holds a single shared_mutex
 	// (shared on the per-frame data path, exclusive on the control paths) and every
