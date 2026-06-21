@@ -35,7 +35,7 @@ namespace fms
 		, m_app_name(app_name)
 		, m_invoke_id(100000)
 	{
-		m_so_manager = new so_manager([this](std::uint32_t client, const rtmp_message_ptr &msg)
+		m_so_manager = std::make_unique<so_manager>([this](std::uint32_t client, const rtmp_message_ptr &msg)
 		{
 			enqueue_async_message(client, msg);
 			notify(client);
@@ -47,10 +47,9 @@ namespace fms
 		}
 	}
 
-	rtmp_application::~rtmp_application()
-	{
-		delete m_so_manager;
-	}
+	// Out-of-line (so_manager complete here) so unique_ptr<so_manager>'s dtor
+	// instantiates against the full type.
+	rtmp_application::~rtmp_application() = default;
 
 	boost::tribool rtmp_application::handle_message(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
@@ -106,9 +105,7 @@ namespace fms
 		lock.unlock();
 
 		std::unique_lock const lock2(m_delay_mutex);
-		auto const j = m_delays.find(conn_id);
-		if (j != m_delays.end())
-			m_delays.erase(j);
+		m_delays.erase(conn_id);
 	}
 
 	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_ptr& msg, bool urgent /* = false */)
@@ -709,8 +706,8 @@ namespace fms
 	std::uint32_t rtmp_application::get_delay(std::uint32_t connetion_id)
 	{
 		std::unique_lock const lock(m_delay_mutex);
-		if (m_delays.contains(connetion_id))
-			return m_delays[connetion_id];
+		if (auto const i = m_delays.find(connetion_id); i != m_delays.end())
+			return i->second;
 		return 0;
 	}
 
