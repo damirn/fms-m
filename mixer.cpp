@@ -39,7 +39,7 @@ namespace fms
 		if (!m_queue.try_pop(audio_msg) || audio_msg->size() == 0)
 		{
 			// no (usable) audio frame available; emit silence
-			std::memset((void *) m_buffer.get(), 0, eBufferSize);
+			std::memset(static_cast<void *>(m_buffer.get()), 0, eBufferSize);
 			return;
 		}
 
@@ -77,7 +77,7 @@ namespace fms
 			{
 				rtmp_message_audio_data_ptr const audio = std::make_shared<rtmp_message_audio_data>(size + 1);
 				audio->data()[0] = 0x00;
-				std::memcpy((void *)(audio->data() + 1), (void *) data, size);
+				std::memcpy(static_cast<void *>(audio->data() + 1), static_cast<const void *>(data), size);
 				i->second->m_queue.push(audio);
 			}
 		}

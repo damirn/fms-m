@@ -94,7 +94,7 @@ namespace fms
 			amf0 a;
 			a.write(tmp, str);
 			a.write(tmp, meta);
-			b->flv->write_script((const char *) tmp.data(), tmp.size(), 0);
+			b->flv->write_script(reinterpret_cast<const char *>(tmp.data()), tmp.size(), 0);
 		}
 	}
 

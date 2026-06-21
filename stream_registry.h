@@ -11,6 +11,7 @@
 #include <boost/bimap/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/set_of.hpp>
+#include <boost/noncopyable.hpp>
 
 #include "amf0_types.h"
 #include "rtmp_message.h"
@@ -30,7 +31,7 @@ namespace fms
 	// (shared on the per-frame data path, exclusive on the control paths) and every
 	// method here assumes the caller holds it appropriately. The mutex stays in the
 	// application because it is shared with subclass state (video_call_application).
-	class stream_registry
+	class stream_registry : boost::noncopyable
 	{
 	public:
 		// Out-of-line (defined in stream_registry.cpp) so broadcast_stream's

@@ -187,7 +187,6 @@ namespace fms
 			f = i->second;
 			flow_sanity_check(f, ndc->should_abandon());
 
-
 			fragment_ptr const frag = std::make_shared<fragment>(m_next_seq, ndc->user_data(), ndc->user_data_len(), ndc->frag_ctl());
 			++m_next_seq;
 			if (!ndc->should_abandon() && f->state() == flow::eOpen)

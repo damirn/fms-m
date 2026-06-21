@@ -180,7 +180,7 @@ namespace fms
 			amf0_string_ptr const key = std::make_shared<amf0_string>();
 			read_short_string(buffer, key, true);
 			amf0_type_ptr const val(read(buffer));
-			value->add_entry((std::string) *key, val);
+			value->add_entry(static_cast<std::string>(*key), val);
 		}
 		buffer.skip(3);
 

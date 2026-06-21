@@ -31,7 +31,7 @@ namespace fms
 				return false;
 
 			std::uint8_t c;
-			m_f.read((char *)&c, 1);
+			m_f.read(reinterpret_cast<char *>(&c), 1);
 
 			std::uint32_t const size = read_uint32_3();
 			std::uint32_t const ts = read_uint32_3();
@@ -42,14 +42,14 @@ namespace fms
 			if (c == 0x08)
 			{
 				fms::rtmp_message_audio_data_ptr const audio = std::make_shared<fms::rtmp_message_audio_data>(size);
-				m_f.read((char *)audio->data(), size);
+				m_f.read(reinterpret_cast<char *>(audio->data()), size);
 				m_frame = audio;
 			}
 			else if (c == 0x09)
 			{
 				// allocate the full 24-bit tag size (was truncated to 16 bits -> heap overflow)
 				fms::rtmp_message_video_data_ptr const video = std::make_shared<fms::rtmp_message_video_data>(size);
-				m_f.read((char *)video->data(), size);
+				m_f.read(reinterpret_cast<char *>(video->data()), size);
 				m_frame = video;
 			}
 			else
@@ -111,7 +111,7 @@ namespace fms
 
 		for (std::uint8_t i = 0; i < 3; ++i)
 		{
-			m_f.read((char *)&b, 1);
+			m_f.read(reinterpret_cast<char *>(&b), 1);
 			tmp <<= 8;
 			tmp |= b;
 		}
@@ -125,7 +125,7 @@ namespace fms
 
 		for (std::uint8_t i = 0; i < 4; ++i)
 		{
-			m_f.read((char *)&b, 1);
+			m_f.read(reinterpret_cast<char *>(&b), 1);
 			tmp <<= 8;
 			tmp |= b;
 		}

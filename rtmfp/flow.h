@@ -25,8 +25,9 @@ namespace fms
 			}
 			else
 			{
-				m_data = new std::uint8_t[m_data_len];
-				std::memcpy((void *)m_data, data, m_data_len);
+				std::uint8_t *const buf = new std::uint8_t[m_data_len];
+				std::memcpy(buf, data, m_data_len);
+				m_data = buf;
 				m_data_owner = true;
 			}
 		}
@@ -45,9 +46,10 @@ namespace fms
 
 		void take_ownership()
 		{
-			const std::uint8_t *tmp = m_data;
-			m_data = new std::uint8_t[m_data_len];
-			std::memcpy((void *)m_data, tmp, m_data_len);
+			const std::uint8_t *const tmp = m_data;
+			std::uint8_t *const buf = new std::uint8_t[m_data_len];
+			std::memcpy(buf, tmp, m_data_len);
+			m_data = buf;
 			m_data_owner = true;
 		}
 
