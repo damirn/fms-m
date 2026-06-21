@@ -164,7 +164,7 @@ namespace fms
 		// lock-free refcount check, so subsequent frames skip both manager-mutex
 		// lookups (has_connection in enqueue, get_connection in notify). The cache
 		// self-heals: if the session went away, lock() fails and we re-look-up (or
-		// drop the frame if the subscriber is truly gone -- same as the old guards).
+		// drop the frame if the subscriber is truly gone).
 		client_session_ptr s = client->m_session.lock();
 		if (!s)
 		{

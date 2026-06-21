@@ -21,13 +21,13 @@ namespace fms
 	// each session with its own steady_timer, pacing frames by their timestamp
 	// deltas.
 	//
-	// Pulled out of video_bcast_application, which still owns the RTMP send path:
-	// vod_manager calls back into the application (as a friend) to enqueue frames
-	// and status messages and to reach the app manager / io_context. Not thread-safe
-	// on its own -- it shares the application's shared_mutex and follows the same
-	// locking split as the routing state: start()/stop() are caller-locked (they run
-	// inside handle_invoke_play / close paths that already hold the lock), while
-	// tick()/pause()/seek() take the lock themselves.
+	// The RTMP send path stays on video_bcast_application, so vod_manager calls back
+	// into it (as a friend) to enqueue frames and status messages and to reach the
+	// app manager / io_context. Not thread-safe on its own -- it shares the
+	// application's shared_mutex and follows the same locking split as the routing
+	// state: start()/stop() are caller-locked (they run inside handle_invoke_play /
+	// close paths that already hold the lock), while tick()/pause()/seek() take the
+	// lock themselves.
 	class vod_manager : boost::noncopyable
 	{
 	public:
