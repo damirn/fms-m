@@ -63,9 +63,9 @@ namespace
 	amf0_type_ptr Str(const std::string &v) { return std::make_shared<amf0_string>(v); }
 	amf0_type_ptr Bl(bool v) { return std::make_shared<amf0_boolean>(v); }
 
-	double asNum(const amf0_type_ptr &v) { return std::dynamic_pointer_cast<amf0_number>(v)->value(); }
-	std::string asStr(const amf0_type_ptr &v) { return std::dynamic_pointer_cast<amf0_string>(v)->value(); }
-	bool asBool(const amf0_type_ptr &v) { return std::dynamic_pointer_cast<amf0_boolean>(v)->value(); }
+	double asNum(const amf0_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf0_number>(v); REQUIRE(p); return p->value(); }
+	std::string asStr(const amf0_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf0_string>(v); REQUIRE(p); return p->value(); }
+	bool asBool(const amf0_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf0_boolean>(v); REQUIRE(p); return p->value(); }
 }
 
 // ---------------------------------------------------------------------------

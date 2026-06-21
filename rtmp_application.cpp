@@ -430,8 +430,6 @@ namespace fms
 
 	void rtmp_application::handle_bytes_read(rtmp_message_ptr)
 	{
-//		rtmp_message_bytes_read_ptr br = std::dynamic_pointer_cast<rtmp_message_bytes_read>(msg);
-//		std::cout << "client sent bytes read with " << br->bytes_read() << " ch: " << msg->channel_id() << " st: " << msg->stream_id() << std::endl;
 	}
 
 	void rtmp_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
@@ -450,14 +448,10 @@ namespace fms
 //		std::cout << "ping type: " << ping->get_type();
 		if (ping->get_type() == rtmp_message_ping::ePingResponse)
 		{
-//			std::cout << " timestamp: " << ping->get_value();
 			std::uint32_t const delay = get_timestamp(connection_id) - ping->get_value();
-//			std::cout << " delta: " << delay;
 			std::unique_lock const lock(m_delay_mutex);
 			m_delays[connection_id] = delay;
 		}
-
-//		std::cout << std::endl;
 	}
 
 	boost::tribool rtmp_application::handle_invoke_connect(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, rtmp_message_ptr &res)

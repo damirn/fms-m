@@ -114,7 +114,6 @@ namespace fms
 	{
 		if (!m_msg_is_fragmented) // we had a whole fragment
 		{
-			//			m_last_ack_seq = m_fragments.begin()->second->m_seq;
 			m_fragments.erase(m_fragments.begin());
 		}
 		else

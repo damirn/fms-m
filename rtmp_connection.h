@@ -45,19 +45,10 @@ namespace fms
 
 		void perform_hand_shake(std::size_t);
 
-		// Handle completion of a read operation for packet reading.
 		void handle_read_packet(const boost::system::error_code &, std::size_t);
-
-		// Handle completion of a read operation for packet reading.
 		void handle_write_packet(const boost::system::error_code &, std::size_t);
-
-		// Sends new request for data
 		void read_data();
-
-		// Handle completion of a write operation for hand shake.
 		void write_hand_shake_block();
-
-		// Handle completion of a write operation for hand shake.
 		void write_hand_shake_block2();
 
 		// Handle completion of a read operation for hand shake reply.

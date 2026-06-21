@@ -4,10 +4,6 @@
 
 namespace fms
 {
-	//
-	// reserved_for_header - size in bytes reserved for header
-	//
-
 	speex_codec::speex_codec(std::uint16_t reserved_for_header /* = 1 */)
 		: audio_codec(reserved_for_header)
 		 

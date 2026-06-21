@@ -126,11 +126,9 @@ namespace fms
 		read();
 	}
 
-	void service::handle_send_to(const boost::system::error_code &e, size_t bytes_sent)
+	void service::handle_send_to(const boost::system::error_code &, size_t)
 	{
 		m_write_in_progress = false;
-//		std::cout << "Error code: " << e.value();
-//		std::cout << " Sent " << bytes_sent << " bytes" << std::endl;
 		if (!m_read_in_progress)
 			read();
 		if (m_queue.empty())

@@ -142,8 +142,8 @@ namespace
 		}
 	};
 
-	constexpr std::uint8_t AUDIO = rtmp_message::eMessageAudioData;   // 8
-	constexpr std::uint8_t VIDEO = rtmp_message::eMessageVideoData;   // 9
+	constexpr std::uint8_t AUDIO = rtmp_message::eMessageAudioData;
+	constexpr std::uint8_t VIDEO = rtmp_message::eMessageVideoData;
 }
 
 TEST_CASE("chunk parser: single small message, one chunk")
@@ -451,10 +451,6 @@ TEST_CASE("chunk parser: Abort (type 2) discards the partial message on a chunk 
 }
 
 // ------------------------- Phase 1: byte_reader + try_deserialize -----------
-
-namespace
-{
-}
 
 TEST_CASE("byte_reader: endianness, bounds, and no-advance-on-failure")
 {

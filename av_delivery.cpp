@@ -57,7 +57,6 @@ namespace fms
 		if (!bs)
 			return;
 
-		// enqueue video frame for later sending
 		enqueue_video_frame(video, bcid);
 
 		bool const has_data_to_send = !bs->video_queue.empty();
@@ -80,7 +79,6 @@ namespace fms
 		// caller holds the shared lock.
 		update_metadata(cid, meta);
 
-		// send metadata to subscribers
 		m_registry.for_each_subscriber(cid, [&](const stream_client_id_t &, const stream_client_ptr &client)
 		{
 			send_metadata(client->m_connection_id, client->m_stream_id, cid);

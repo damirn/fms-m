@@ -144,7 +144,6 @@ namespace fms
 
 		flow_sanity_check(f, udc->should_abandon());
 
-//		std::cout << "seq id " << udc->seq_number() << " flow id " << f->flow_id();
 		fragment_ptr const frag = std::make_shared<fragment>(udc->seq_number(), udc->user_data(), udc->user_data_len(), udc->frag_ctl());
 		if (!udc->should_abandon() && f->state() == flow::eOpen)
 		{
@@ -160,8 +159,6 @@ namespace fms
 		}
 
 		f->add_sequences_until(udc->forward_seq_number());
-
-		// if there are now seq gaps in f, set m_ack_now to true
 
 		// check for final flag
 		if (!udc->is_final())
@@ -286,7 +283,6 @@ namespace fms
 	flow_ptr session::create_sending_flow(const option_list &options)
 	{
 		flow_ptr f = std::make_shared<flow>(m_next_flow_id, flow::eSender);
-		//f->options() = options;
 		f->options().m_options.insert(f->options().m_options.end(), options.m_options.begin(), options.m_options.end());
 		m_sending_flows[m_next_flow_id] = f;
 		++m_next_flow_id;
