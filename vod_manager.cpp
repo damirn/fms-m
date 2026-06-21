@@ -168,16 +168,13 @@ namespace fms
 	void vod_manager::stop_connection(std::uint32_t connection_id)
 	{
 		// caller holds m_mutex.
-		for (auto it = m_vod.begin(); it != m_vod.end(); )
+		std::erase_if(m_vod, [connection_id](auto &kv)
 		{
-			if (it->first.first == connection_id)
-			{
-				it->second->m_state = vod_session::eStopped;
-				it->second->m_timer.cancel();
-				it = m_vod.erase(it);
-			}
-			else
-				++it;
-		}
+			if (kv.first.first != connection_id)
+				return false;
+			kv.second->m_state = vod_session::eStopped;
+			kv.second->m_timer.cancel();
+			return true;
+		});
 	}
 }

@@ -39,8 +39,8 @@ namespace fms
 
 	rtmp_application *rtmp_app_manager::get_app_by_name(const std::string &app_name)
 	{
-		if (m_apps.contains(app_name))
-			return m_apps[app_name].get();
+		if (auto const i = m_apps.find(app_name); i != m_apps.end())
+			return i->second.get();
 		return nullptr;
 	}
 
@@ -88,9 +88,7 @@ namespace fms
 	void rtmp_app_manager::delete_http_connection(std::uint32_t id)
 	{
 		std::unique_lock const lock(m_mutex);
-		auto const i = m_http_conns.find(id);
-		if (i != m_http_conns.end())
-			m_http_conns.erase(i);
+		m_http_conns.erase(id);
 	}
 
 	client_session_ptr rtmp_app_manager::get_connection(std::uint32_t conn_id)

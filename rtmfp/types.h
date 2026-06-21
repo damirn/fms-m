@@ -83,7 +83,7 @@ namespace fms
 		bool deserialize(byte_reader &);
 		std::uint16_t serialize(byte_writer &) const;
 
-		const bool is_marker() const
+		bool is_marker() const
 		{
 			return (m_len == 0);
 		}

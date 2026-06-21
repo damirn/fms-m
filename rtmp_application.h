@@ -171,7 +171,7 @@ namespace fms
 
 		random_string m_rnd_string;
 
-		so_manager *m_so_manager;
+		std::unique_ptr<so_manager> m_so_manager;
 
 		struct result_handler;
 		using result_handler_ptr = std::shared_ptr<result_handler>;

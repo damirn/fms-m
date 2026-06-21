@@ -60,7 +60,6 @@ namespace fms
 
 	void client_session::unreserve_stream_id(std::uint32_t stream_id)
 	{
-		if (m_stream_ids.contains(stream_id))
-			m_stream_ids.erase(stream_id);
+		m_stream_ids.erase(stream_id);
 	}
 }

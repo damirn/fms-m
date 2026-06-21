@@ -16,7 +16,7 @@ namespace fms
 		std::uint8_t *decode(char *, std::uint8_t *, std::uint8_t, std::uint32_t &) override;
 
 		// returns frame size in bytes
-		const std::int32_t frame_size() const
+		std::int32_t frame_size() const
 		{
 			return m_frame_size * sizeof(std::uint16_t);
 		}
