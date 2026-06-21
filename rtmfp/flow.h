@@ -46,9 +46,10 @@ namespace fms
 
 		void take_ownership()
 		{
-			const std::uint8_t *const tmp = m_data;
+			if (m_data_owner)
+				return;   // already owns a private heap copy -- reassigning would leak it
 			std::uint8_t *const buf = new std::uint8_t[m_data_len];
-			std::memcpy(buf, tmp, m_data_len);
+			std::memcpy(buf, m_data, m_data_len);
 			m_data = buf;
 			m_data_owner = true;
 		}
