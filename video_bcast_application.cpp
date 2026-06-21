@@ -566,7 +566,7 @@ namespace fms
 	{
 		rtmp_message_ptr ret;
 		stream_client_id_t const cid = std::make_pair(connection_id, stream_id);
-		m_vod.stop(cid);   // stop any VOD playback bound to this stream
+		m_vod.stop(cid);
 
 		// Detach the publisher (if this cid is one) from the registry in one step.
 		stream_registry::broadcaster_teardown td = m_registry.remove_broadcaster(cid);
@@ -607,7 +607,6 @@ namespace fms
 		m_app_manager->delete_netstreams(connection_id);
 		std::unique_lock const lock(m_mutex);
 
-		// stop any VOD playbacks belonging to this connection
 		m_vod.stop_connection(connection_id);
 
 		for (std::uint32_t const stream : m_registry.take_client(connection_id))

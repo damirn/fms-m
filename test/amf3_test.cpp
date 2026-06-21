@@ -69,9 +69,9 @@ namespace
 	amf3_type_ptr S(const std::string &v) { return std::make_shared<amf3_string_type>(v); }
 	amf3_type_ptr Bool(bool b) { return std::make_shared<amf3_empty_type>(b ? amf3_type::eAMF3True : amf3_type::eAMF3False); }
 
-	std::uint32_t asInt(const amf3_type_ptr &v) { return std::dynamic_pointer_cast<amf3_integer_type>(v)->value(); }
-	double asDbl(const amf3_type_ptr &v) { return std::dynamic_pointer_cast<amf3_double_type>(v)->value(); }
-	std::string asStr(const amf3_type_ptr &v) { return std::dynamic_pointer_cast<amf3_string_type>(v)->value(); }
+	std::uint32_t asInt(const amf3_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf3_integer_type>(v); REQUIRE(p); return p->value(); }
+	double asDbl(const amf3_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf3_double_type>(v); REQUIRE(p); return p->value(); }
+	std::string asStr(const amf3_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf3_string_type>(v); REQUIRE(p); return p->value(); }
 }
 
 // ---------------------------------------------------------------------------
