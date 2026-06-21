@@ -169,13 +169,11 @@ namespace fms
 			handle_flow_message(f);
 			return true;
 		}
-		
-					f->add_sequences_until(udc->seq_number());
-			m_ack_now = true;
-			return true;
-	
-		// fixme: remove this and the associated flow
-		return false;
+
+		// final fragment: catch the flow's sequence up and ack now.
+		f->add_sequences_until(udc->seq_number());
+		m_ack_now = true;
+		return true;
 	}
 
 	bool session::handle_next_user_data(next_user_data_chunk *ndc)
@@ -206,7 +204,10 @@ namespace fms
 		auto const i = m_sending_flows.find(rac->flow_id());
 		if (i == m_sending_flows.end())
 		{
-			return false; // fixme: rethink return
+			// A range-ack for a flow we no longer have (already completed/closed) is a
+			// stale but benign ack, not a malformed chunk -- return true so the rest of
+			// the packet's chunks are still processed (a false aborts parse_chunks).
+			return true;
 		}
 		i->second->clear_options();
 
@@ -294,10 +295,10 @@ namespace fms
 
 	flow_ptr session::create_associated_sending_flow(const vlu_t &flow_id, const vlu_t &stream_id)
 	{
-		static const std::uint8_t meta_data[] = { 0x54, 0x43, 0x04 }; // fixme: use flow::TC here
 		option_list opts;
 		byte_writer tmp;
-		tmp.write(meta_data, sizeof(meta_data));
+		tmp.write(flow::TC, 2);       // "TC" flow-metadata signature (matched in flow::metadata)
+		tmp << std::uint8_t{0x04};    // metadata type byte
 		tmp.write_vlu(stream_id);
 		opts.create_option(option::eMetadata, tmp.data(), static_cast<std::uint16_t>(tmp.size()));
 		// The initiator (rtmfp-cpp/librtmfp) only accepts return flows opened on its
@@ -467,7 +468,10 @@ namespace fms
 					j->second->add_and_fragment_data(temp.data(), static_cast<std::uint32_t>(temp.size()));
 				}
 			}
-			// fixme: if this is not new group, but an existing one, send data on the flow associated with 'f'
+			// NOTE: only the initial join is wired here. An update to an already-known
+			// group re-sends the full member list on the same sending flow rather than a
+			// delta on the flow associated with f. P2P NetGroups are otherwise
+			// unexercised (no test path), so this is left as-is deliberately.
 		}
 	}
 
@@ -631,7 +635,7 @@ namespace fms
 				fr->m_sent_abandoned = fr->m_abandoned;
 				fr->m_tsn = m_next_tsn++;
 
-				user_data_chunk uc(fr, f->flow_id(), fr->m_seq - fsn); // fixme: redo this
+				user_data_chunk uc(fr, f->flow_id(), fr->m_seq - fsn);
 				if (!f->options().m_options.empty()) // set options if not empty
 				{
 					uc.options() = f->options();
@@ -703,7 +707,7 @@ namespace fms
 			std::string const port = std::string(addr, i + 1);
 			address a;
 			boost::asio::ip::address_v4 const ad = boost::asio::ip::make_address_v4(ip);
-			a.m_type = 0x01; // fixme: replace with enum
+			a.m_type = eAddressOriginLocal;
 			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(ad.to_uint());
 			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(static_cast<std::uint16_t>(std::stoul(port)));
 			m_addresses.push_back(a);

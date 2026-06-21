@@ -491,7 +491,7 @@ namespace fms
 			m_serializer->prepare_raw_packet(h, i->second->get_aes());
 
 			address a;
-			a.m_type = 0x02; // fixme: replace with enum
+			a.m_type = eAddressOriginReported;   // the initiator's address as we saw it
 			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(m_sender_endpoint.address().to_v4().to_uint());
 			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(m_sender_endpoint.port());
 

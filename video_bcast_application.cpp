@@ -472,7 +472,7 @@ namespace fms
 		obj->add_entry("level", "status");
 		obj->add_entry("code", code);
 		obj->add_entry("description", description);
-		obj->add_entry("clientid", 1.0f); // fixme: client_id
+		obj->add_entry("clientid", static_cast<double>(connection_id));
 
 		result->add_parameter(obj);
 

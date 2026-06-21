@@ -13,6 +13,17 @@ namespace fms
 {
 	using vlu_t = std::uint64_t;
 
+	// RFC 7016 sec. 2.3.6 address flags byte (address::m_type): the low bits carry
+	// the origin of the address; the top bit (unused here -- we are IPv4 only) would
+	// flag an IPv6 family.
+	enum address_origin : std::uint8_t
+	{
+		eAddressOriginUnknown  = 0x00,
+		eAddressOriginLocal    = 0x01,   // an address we advertise for ourselves
+		eAddressOriginReported = 0x02,   // reflexive: a peer's address as we observed it
+		eAddressOriginRelay    = 0x03,
+	};
+
 #pragma pack(push)
 #pragma pack(1)
 
