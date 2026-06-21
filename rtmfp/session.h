@@ -234,15 +234,15 @@ namespace fms
 		enum { ePad0 = 0, ePadff = 0xff };
 
 		// rtt stuff
-		std::uint16_t m_ts_rx;
-		std::uint16_t m_ts_echo_tx;
-		std::uint16_t m_ts_tx;
-		std::uint16_t m_ts_echo_rx;
+		std::uint16_t m_ts_rx{0};
+		std::uint16_t m_ts_echo_tx{0};
+		std::uint16_t m_ts_tx{0};
+		std::uint16_t m_ts_echo_rx{0};
 		std::chrono::system_clock::time_point m_ts_rx_time;
-		std::chrono::system_clock::duration m_srtt;
-		std::chrono::system_clock::duration m_rttvar;
-		std::chrono::system_clock::duration m_mrto;
-		std::chrono::system_clock::duration m_erto;
+		std::chrono::system_clock::duration m_srtt{};
+		std::chrono::system_clock::duration m_rttvar{};
+		std::chrono::system_clock::duration m_mrto{};
+		std::chrono::system_clock::duration m_erto{};
 		bool m_should_include_ts_echo;
 
 		std::uint32_t m_outstanding_bytes;

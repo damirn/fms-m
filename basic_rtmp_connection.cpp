@@ -179,7 +179,7 @@ namespace fms
 			std::uint8_t *server_sig = m_tmp_buff.data() + 1;
 
 			server_sig[-1] = magic;
-			*reinterpret_cast<std::uint32_t *>(server_sig) = 0x00; // timestamp
+			std::memset(server_sig, 0, 4);   // timestamp (4 bytes, unaligned offset)
 
 			server_sig[4] = 0x03; // server version
 			server_sig[5] = 0x05;

@@ -289,7 +289,7 @@ namespace fms
 		const std::uint8_t *create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
 
 		vlu_t m_flow_id;
-		vlu_t m_stream_id;
+		vlu_t m_stream_id{0};
 		vlu_t m_assoc_flow_id;
 		role_t m_role;
 		usage_t m_usage;

@@ -92,7 +92,7 @@ namespace fms
 		enum { eEncodingAMF0, eEncodingAMF3 };
 
 		std::uint32_t m_bytes_read_notify{eAckSize};
-		std::uint32_t m_win_ack;
+		std::uint32_t m_win_ack{eAckSize};
 
 		bool m_write_in_progress{false};
 

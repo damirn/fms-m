@@ -129,15 +129,14 @@ namespace fms
 	{
 		// sanity check (3.6.3.1)
 		std::optional<option_ptr> opt = options().get_option(option::eMetadata);
-		if (opt)
-		{
-					}
 		if (opt && (*opt)->m_value_len >= 2)
 		{
 			if (std::memcmp((*opt)->m_value, TC, 2) == 0)
 				m_stream_id = get_stream_id_from_option(*opt);
 			else if (std::memcmp((*opt)->m_value, GC, 2) == 0)
 				m_type = eNetGroup;
+			else
+				state() = flow::eRejected;   // unknown metadata signature
 		}
 		else
 			state() = flow::eRejected;

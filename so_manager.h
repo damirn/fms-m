@@ -55,7 +55,7 @@ namespace fms
 
 		using so_map_t = std::map<std::string, so_data_ptr>;
 		so_map_t m_so_map;
-		bool m_new_message;
+		bool m_new_message{false};
 		std::mutex m_mutex;
 
 		std::optional<so_data_ptr> find_so(const rtmp_message_shared_object_ptr&);

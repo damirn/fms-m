@@ -30,6 +30,6 @@ namespace fms
 
 		authentication_plugin *m_auth_plugin;
 		bool m_plugin_loaded;
-		destroy m_destroy;
+		destroy m_destroy{nullptr};
 	};
 }
