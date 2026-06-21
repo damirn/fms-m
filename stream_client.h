@@ -26,8 +26,8 @@ namespace fms
 		bool m_video_sent_from_queue{false};
 		std::uint32_t m_video_epoch{0};
 		std::uint32_t m_audio_epoch{0};
-		std::uint32_t m_video_time;
-		std::uint32_t m_audio_time;
+		std::uint32_t m_video_time{0};
+		std::uint32_t m_audio_time{0};
 		std::uint32_t m_start_epoch{0};
 
 		// Cached subscriber session, populated lazily on the first fan-out frame so

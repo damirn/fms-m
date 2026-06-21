@@ -29,12 +29,20 @@ namespace fms
 	void aes::decrypt(byte_reader &from, byte_writer &to)
 	{
 		to.clear();
+		std::size_t const n = from.available();
+		// CBC with padding off: the ciphertext must be block-aligned, else
+		// EVP_CipherUpdate emits fewer bytes than we reserve and leaves an
+		// indeterminate tail. Reject a non-aligned length -- `to` stays empty and the
+		// parser drops the packet.
+		if (n == 0 || n % 16 != 0)
+			return;
 		int outlen1 = 0;
 		EVP_CipherInit_ex(m_decrypt_ctx, EVP_aes_128_cbc(), nullptr, m_dec_key_data, m_iv, 0);
 		EVP_CIPHER_CTX_set_padding(m_decrypt_ctx, 0);
-		// ciphertext is block-aligned and padding is off, so plaintext == its size
-		std::uint8_t *dst = to.extend(from.available());
-		EVP_CipherUpdate(m_decrypt_ctx, dst, &outlen1, from.read_pos(), static_cast<int>(from.available()));
+		// padding off + block-aligned input, so plaintext == ciphertext size
+		std::uint8_t *dst = to.extend(n);
+		if (EVP_CipherUpdate(m_decrypt_ctx, dst, &outlen1, from.read_pos(), static_cast<int>(n)) != 1)
+			to.clear();
 	}
 
 	void aes::encrypt(byte_writer &from, byte_writer &to)

@@ -262,10 +262,10 @@ namespace fms
 
 	protected:
 		std::uint8_t m_elements;
-		std::uint16_t m_value1;
-		std::uint32_t m_value2;
-		std::uint32_t m_value3;
-		std::uint32_t m_value4;
+		std::uint16_t m_value1{0};
+		std::uint32_t m_value2{0};
+		std::uint32_t m_value3{0};
+		std::uint32_t m_value4{0};
 	};
 
 	using rtmp_message_ping_ptr = std::shared_ptr<rtmp_message_ping>;

@@ -81,8 +81,11 @@ namespace fms
 			std::advance(porti, 1);
 			std::string::const_iterator slashi = std::find(porti, uri.end(), '/');
 			ret.m_port = std::string(porti, slashi);
-			std::advance(slashi, 1);
-			ret.m_path = std::string(slashi, uri.end());
+			if (slashi != uri.end())
+			{
+				std::advance(slashi, 1);
+				ret.m_path = std::string(slashi, uri.end());
+			}
 		}
 		else
 		{

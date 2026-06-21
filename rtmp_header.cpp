@@ -184,7 +184,7 @@ namespace fms
 			a = static_cast<std::uint8_t>(m_channel_id);
 			buffer << a;
 		}
-		else if (m_channel_id <= 320)
+		else if (m_channel_id <= 319)
 		{
 			a = 0;
 			buffer << a;
@@ -225,7 +225,7 @@ namespace fms
 			a |= 0x40;
 			buffer << a;
 		}
-		else if (m_channel_id <= 320)
+		else if (m_channel_id <= 319)
 		{
 			a = 0x40;
 			buffer << a;
@@ -266,7 +266,7 @@ namespace fms
 			a |= 0x80;
 			buffer << a;
 		}
-		else if (m_channel_id <= 320)
+		else if (m_channel_id <= 319)
 		{
 			a = 0x80;
 			buffer << a;
@@ -301,7 +301,7 @@ namespace fms
 			a |= 0xc0;
 			buffer << a;
 		}
-		else if (m_channel_id <= 320)
+		else if (m_channel_id <= 319)
 		{
 			a = 0xc0;
 			buffer << a;

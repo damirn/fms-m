@@ -37,7 +37,7 @@ namespace fms::remote_relay
 			std::string::size_type pos = remote_srv.find(scss);
 			if (pos == std::string::npos)
 				return;
-			pos += sizeof(scss);
+			pos += sizeof(scss) - 1;   // skip "://" (sizeof includes the NUL)
 			pos = remote_srv.find('/', pos);
 			if (pos == std::string::npos)
 				return;

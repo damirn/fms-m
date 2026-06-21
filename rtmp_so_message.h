@@ -87,7 +87,7 @@ namespace fms
 			amf0_string_ptr m_name;
 			amf0_type_ptr m_value;
 			std::uint8_t *m_data;
-			std::uint32_t m_size;
+			std::uint32_t m_size{0};
 		};
 
 		using event_ptr = std::shared_ptr<event>;

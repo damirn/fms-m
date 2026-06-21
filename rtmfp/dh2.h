@@ -42,12 +42,12 @@ namespace fms
 
 		enum { eAESKeySize = 0x20, eKeySize = 0x80 };
 		static const std::uint8_t m_dh_key[eKeySize];
-		EVP_PKEY *m_pkey;
-		int m_pub_key_size;
-		std::uint8_t *m_pub_key;
-		int m_shared_secret_size;
-		std::uint8_t *m_shared_secret;
-		std::uint8_t *m_rnonce;
-		std::uint16_t m_rnonce_size;
+		EVP_PKEY *m_pkey{nullptr};
+		int m_pub_key_size{0};
+		std::uint8_t *m_pub_key{nullptr};
+		int m_shared_secret_size{0};
+		std::uint8_t *m_shared_secret{nullptr};
+		std::uint8_t *m_rnonce{nullptr};
+		std::uint16_t m_rnonce_size{0};
 	};
 }

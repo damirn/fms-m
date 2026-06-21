@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "io_context_pool.h"
+#include "logging.h"
 
 #include <stdexcept>
 #include <thread>
@@ -27,7 +28,24 @@ namespace fms
 		// Create a pool of threads to run all of the io_contexts.
 		std::vector<std::thread> threads;
 		for (auto &ctx : m_io_contexts)
-			threads.emplace_back([c = ctx.get()] { c->run(); });
+			threads.emplace_back([c = ctx.get()] {
+				// Backstop: an exception escaping a completion handler must not take the
+				// whole (multi-connection) server down. Drop that handler and keep the
+				// io_context running; run() only re-enters after an escape, so this does
+				// not busy-loop in normal operation.
+				for (;;)
+				{
+					try
+					{
+						c->run();
+						return;
+					}
+					catch (const std::exception &e)
+					{
+						BOOST_LOG(lg::get()) << "unhandled exception in io_context handler: " << e.what();
+					}
+				}
+			});
 
 		// Wait for all threads in the pool to exit.
 		for (auto &t : threads)

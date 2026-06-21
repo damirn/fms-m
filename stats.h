@@ -53,7 +53,7 @@ namespace fms
 		{}
 		std::uint32_t m_client;
 		std::string m_name;
-		bool m_is_published;
+		bool m_is_published{false};
 		std::uint32_t m_bytes{0};
 		std::uint32_t m_messages{0};
 		std::uint32_t m_messages_dropped{0};

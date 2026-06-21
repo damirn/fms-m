@@ -28,6 +28,8 @@ namespace fms
 
 	void rtmp_message_notify_amf3::deserialize(byte_reader &buffer)
 	{
+		if (buffer.available() == 0)
+			return;
 		std::uint8_t const type = *(buffer.read_pos());
 		if (type == 0x00)
 		{
@@ -45,6 +47,8 @@ namespace fms
 
 	void rtmp_message_invoke_amf3::deserialize(byte_reader &buffer)
 	{
+		if (buffer.available() == 0)
+			return;
 		std::uint8_t const type = *(buffer.read_pos());
 		if (type == 0x00)
 		{

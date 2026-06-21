@@ -2,6 +2,7 @@
 #include "crypto.h"
 
 #include <cstring>
+#include <iomanip>
 #include <sstream>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>

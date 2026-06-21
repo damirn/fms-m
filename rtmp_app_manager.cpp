@@ -179,6 +179,8 @@ namespace fms
 
 		if (invoke->function()->value() == "connect")
 		{
+			if (invoke->parameters().empty())
+				return false;
 			amf0_object_ptr const object = std::dynamic_pointer_cast<amf0_object>(invoke->parameters().front());
 			if (object.get() == nullptr)
 				return false;

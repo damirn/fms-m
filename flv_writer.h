@@ -42,7 +42,7 @@ namespace fms
 		std::uint32_t m_prev_audio_ts{0};
 		std::uint32_t m_video_ts{0};
 		std::uint32_t m_prev_video_ts{0};
-		std::uint32_t m_start_epoch;
+		std::uint32_t m_start_epoch{0};
 		bool m_first_audio_frame{true};
 		bool m_first_video_frame{true};
 

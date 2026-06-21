@@ -334,7 +334,10 @@ namespace fms
 		}
 		else
 		{
-			client->m_audio_time += audio->timestamp() - client->m_audio_epoch;
+			// Guard a backwards timestamp so the unsigned accumulator can't underflow
+			// (mirrors the video path).
+			std::int32_t const t = audio->timestamp() - client->m_audio_epoch;
+			client->m_audio_time += t >= 0 ? t : 0;
 			tmp->timestamp() = client->m_audio_time;
 			client->m_audio_epoch = audio->timestamp();
 		}
