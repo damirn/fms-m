@@ -46,7 +46,7 @@ namespace
 		return out;
 	}
 
-	void isEqual(const bytes &expected, const amf0_type_ptr &v)
+	void is_equal(const bytes &expected, const amf0_type_ptr &v)
 	{
 		CHECK(encode(v) == expected);
 	}
@@ -59,13 +59,13 @@ namespace
 		CHECK(b1 == b2);
 	}
 
-	amf0_type_ptr Num(double v) { return std::make_shared<amf0_number>(v); }
-	amf0_type_ptr Str(const std::string &v) { return std::make_shared<amf0_string>(v); }
-	amf0_type_ptr Bl(bool v) { return std::make_shared<amf0_boolean>(v); }
+	amf0_type_ptr mk_num(double v) { return std::make_shared<amf0_number>(v); }
+	amf0_type_ptr mk_str(const std::string &v) { return std::make_shared<amf0_string>(v); }
+	amf0_type_ptr mk_bool(bool v) { return std::make_shared<amf0_boolean>(v); }
 
-	double asNum(const amf0_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf0_number>(v); REQUIRE(p); return p->value(); }
-	std::string asStr(const amf0_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf0_string>(v); REQUIRE(p); return p->value(); }
-	bool asBool(const amf0_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf0_boolean>(v); REQUIRE(p); return p->value(); }
+	double as_num(const amf0_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf0_number>(v); REQUIRE(p); return p->value(); }
+	std::string as_str(const amf0_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf0_string>(v); REQUIRE(p); return p->value(); }
+	bool as_bool(const amf0_type_ptr &v) { auto p = std::dynamic_pointer_cast<amf0_boolean>(v); REQUIRE(p); return p->value(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -73,40 +73,40 @@ namespace
 // ---------------------------------------------------------------------------
 TEST_CASE("number: 8-byte big-endian double")
 {
-	isEqual(hx("00 3f f8 00 00 00 00 00 00"), Num(1.5));
-	isEqual(hx("00 40 45 00 00 00 00 00 00"), Num(42.0));
-	CHECK(asNum(decode(hx("00 3f f8 00 00 00 00 00 00"))) == 1.5);
+	is_equal(hx("00 3f f8 00 00 00 00 00 00"), mk_num(1.5));
+	is_equal(hx("00 40 45 00 00 00 00 00 00"), mk_num(42.0));
+	CHECK(as_num(decode(hx("00 3f f8 00 00 00 00 00 00"))) == 1.5);
 	for (double v : { 0.0, -2.0, 3.141592653589793, 1e300 })
-		roundtrip(Num(v));
+		roundtrip(mk_num(v));
 }
 
 TEST_CASE("boolean")
 {
-	isEqual(hx("01 01"), Bl(true));
-	isEqual(hx("01 00"), Bl(false));
-	CHECK(asBool(decode(hx("01 01"))) == true);
-	CHECK(asBool(decode(hx("01 00"))) == false);
+	is_equal(hx("01 01"), mk_bool(true));
+	is_equal(hx("01 00"), mk_bool(false));
+	CHECK(as_bool(decode(hx("01 01"))) == true);
+	CHECK(as_bool(decode(hx("01 00"))) == false);
 }
 
 TEST_CASE("string (short, u16 length)")
 {
-	isEqual(hx("02 00 00"), Str(""));
-	isEqual(hx("02 00 03 66 6f 6f"), Str("foo"));
-	CHECK(asStr(decode(hx("02 00 03 66 6f 6f"))) == "foo");
-	roundtrip(Str("a longer string with more bytes"));
+	is_equal(hx("02 00 00"), mk_str(""));
+	is_equal(hx("02 00 03 66 6f 6f"), mk_str("foo"));
+	CHECK(as_str(decode(hx("02 00 03 66 6f 6f"))) == "foo");
+	roundtrip(mk_str("a longer string with more bytes"));
 }
 
 TEST_CASE("null and undefined")
 {
-	isEqual(hx("05"), std::make_shared<amf0_null>());
-	isEqual(hx("06"), std::make_shared<amf0_undefined>());
+	is_equal(hx("05"), std::make_shared<amf0_null>());
+	is_equal(hx("06"), std::make_shared<amf0_undefined>());
 	CHECK(decode(hx("05"))->type() == amf0_type::eAMF0Null);
 	CHECK(decode(hx("06"))->type() == amf0_type::eAMF0Undefined);
 }
 
 TEST_CASE("unsupported")
 {
-	isEqual(hx("0d"), std::make_shared<amf0_unsupported>());
+	is_equal(hx("0d"), std::make_shared<amf0_unsupported>());
 	CHECK(decode(hx("0d"))->type() == amf0_type::eAMF0Unsupported);
 }
 
@@ -116,7 +116,7 @@ TEST_CASE("unsupported")
 TEST_CASE("date: double ms + zero timezone")
 {
 	// marker 0b, 8-byte double 1000.0, s16 timezone 0
-	isEqual(hx("0b 40 8f 40 00 00 00 00 00 00 00"), std::make_shared<amf0_date>(1000.0));
+	is_equal(hx("0b 40 8f 40 00 00 00 00 00 00 00"), std::make_shared<amf0_date>(1000.0));
 	auto d = std::dynamic_pointer_cast<amf0_date>(decode(hx("0b 40 8f 40 00 00 00 00 00 00 00")));
 	REQUIRE(d);
 	CHECK(d->value() == 1000.0);
@@ -127,7 +127,7 @@ TEST_CASE("long string (u32 length)")
 {
 	auto ls = std::make_shared<amf0_long_string>(
 		reinterpret_cast<const std::uint8_t *>("hi"), 2);
-	isEqual(hx("0c 00 00 00 02 68 69"), ls);
+	is_equal(hx("0c 00 00 00 02 68 69"), ls);
 	auto got = std::dynamic_pointer_cast<amf0_long_string>(decode(hx("0c 00 00 00 02 68 69")));
 	REQUIRE(got);
 	CHECK(got->size() == 2);
@@ -136,7 +136,7 @@ TEST_CASE("long string (u32 length)")
 
 TEST_CASE("xml document (u32 length)")
 {
-	isEqual(hx("0f 00 00 00 04 3c 78 2f 3e"), std::make_shared<amf0_xml_document>("<x/>"));
+	is_equal(hx("0f 00 00 00 04 3c 78 2f 3e"), std::make_shared<amf0_xml_document>("<x/>"));
 	auto x = std::dynamic_pointer_cast<amf0_xml_document>(decode(hx("0f 00 00 00 04 3c 78 2f 3e")));
 	REQUIRE(x);
 	CHECK(x->value() == "<x/>");
@@ -151,26 +151,26 @@ TEST_CASE("object: key/value pairs + object-end")
 	auto obj = std::make_shared<amf0_object>();
 	obj->add_entry("k", 42.0);
 	// 03 | key "k"=00 01 6b | number 42=00 4045.. | end 00 00 09
-	isEqual(hx("03 00 01 6b 00 40 45 00 00 00 00 00 00 00 00 09"), obj);
+	is_equal(hx("03 00 01 6b 00 40 45 00 00 00 00 00 00 00 00 09"), obj);
 
 	auto got = std::dynamic_pointer_cast<amf0_object>(decode(encode(obj)));
 	REQUIRE(got);
-	CHECK(asNum(got->get("k")) == 42.0);
+	CHECK(as_num(got->get("k")) == 42.0);
 	roundtrip(obj);
 }
 
 TEST_CASE("ecma (mixed) array")
 {
 	auto arr = std::make_shared<amf0_ecma_array>();
-	arr->add_entry("a", Bl(true));
+	arr->add_entry("a", mk_bool(true));
 	// 08 | count 00000001 | key "a"=0001 61 | bool true=01 01 | end 00 00 09
-	isEqual(hx("08 00 00 00 01 00 01 61 01 01 00 00 09"), arr);
+	is_equal(hx("08 00 00 00 01 00 01 61 01 01 00 00 09"), arr);
 
 	auto got = std::dynamic_pointer_cast<amf0_ecma_array>(decode(hx("08 00 00 00 01 00 01 61 01 01 00 00 09")));
 	REQUIRE(got);
 	REQUIRE(got->value().size() == 1);
 	CHECK(got->value().front().first == "a");
-	CHECK(asBool(got->value().front().second) == true);
+	CHECK(as_bool(got->value().front().second) == true);
 }
 
 TEST_CASE("strict array")
@@ -179,13 +179,13 @@ TEST_CASE("strict array")
 	arr->add_entry(1.0);
 	arr->add_entry(std::string("x"));
 	// 0a | count 00000002 | number 1.0 | string "x"
-	isEqual(hx("0a 00 00 00 02 00 3f f0 00 00 00 00 00 00 02 00 01 78"), arr);
+	is_equal(hx("0a 00 00 00 02 00 3f f0 00 00 00 00 00 00 02 00 01 78"), arr);
 
 	auto got = std::dynamic_pointer_cast<amf0_strict_array>(decode(encode(arr)));
 	REQUIRE(got);
 	REQUIRE(got->value().size() == 2);
-	CHECK(asNum(got->value().front()) == 1.0);
-	CHECK(asStr(got->value().back()) == "x");
+	CHECK(as_num(got->value().front()) == 1.0);
+	CHECK(as_str(got->value().back()) == "x");
 }
 
 TEST_CASE("typed object: class name + object body")
@@ -193,12 +193,12 @@ TEST_CASE("typed object: class name + object body")
 	auto obj = std::make_shared<amf0_typed_object>("F");
 	obj->add_entry("n", 1.0);
 	// 10 | classname "F"=0001 46 | key "n"=0001 6e | number 1.0 | end 00 00 09
-	isEqual(hx("10 00 01 46 00 01 6e 00 3f f0 00 00 00 00 00 00 00 00 09"), obj);
+	is_equal(hx("10 00 01 46 00 01 6e 00 3f f0 00 00 00 00 00 00 00 00 09"), obj);
 
 	auto got = std::dynamic_pointer_cast<amf0_typed_object>(decode(encode(obj)));
 	REQUIRE(got);
 	CHECK(got->class_name() == "F");
-	CHECK(asNum(got->get("n")) == 1.0);
+	CHECK(as_num(got->get("n")) == 1.0);
 	roundtrip(obj);
 }
 
@@ -233,7 +233,7 @@ TEST_CASE("amf3 container (avmplus switch)")
 	CHECK(inner->value() == 5u);
 
 	auto cont = std::make_shared<amf0_amf3_container>(std::make_shared<amf3_integer_type>(5u));
-	isEqual(hx("11 04 05"), cont);
+	is_equal(hx("11 04 05"), cont);
 }
 
 // ---------------------------------------------------------------------------
@@ -241,9 +241,9 @@ TEST_CASE("amf3 container (avmplus switch)")
 // ---------------------------------------------------------------------------
 TEST_CASE("deserialization vectors: every handled AMF0 type")
 {
-	CHECK(asNum(decode(hx("00 3f f8 00 00 00 00 00 00"))) == 1.5);         // number
-	CHECK(asBool(decode(hx("01 01"))) == true);                            // boolean
-	CHECK(asStr(decode(hx("02 00 03 66 6f 6f"))) == "foo");                // string
+	CHECK(as_num(decode(hx("00 3f f8 00 00 00 00 00 00"))) == 1.5);         // number
+	CHECK(as_bool(decode(hx("01 01"))) == true);                            // boolean
+	CHECK(as_str(decode(hx("02 00 03 66 6f 6f"))) == "foo");                // string
 	CHECK(decode(hx("03 00 00 09"))->type() == amf0_type::eAMF0Object);    // object (empty)
 	CHECK(decode(hx("05"))->type() == amf0_type::eAMF0Null);               // null
 	CHECK(decode(hx("06"))->type() == amf0_type::eAMF0Undefined);          // undefined
@@ -340,7 +340,7 @@ TEST_CASE("amf0_object: copy + merge leaves the original snapshot unchanged (met
 	auto num = [](amf0_object &o, const std::string &name) {
 		auto const i = o.value().find(name);
 		REQUIRE(i != o.value().end());
-		return asNum(i->m_value);
+		return as_num(i->m_value);
 	};
 
 	// the copy reflects the merge

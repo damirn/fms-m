@@ -9,13 +9,13 @@
 
 namespace
 {
-	const int kSignBit = 0x80;
-	const int kQuantMask = 0x0F;
-	const int kSegShift = 4;
-	const int kSegMask = 0x70;
+	constexpr int sign_bit = 0x80;
+	constexpr int quant_mask = 0x0F;
+	constexpr int seg_shift = 4;
+	constexpr int seg_mask = 0x70;
 
-	const short kSegAEnd[8] = { 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF };
-	const short kSegUEnd[8] = { 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF };
+	constexpr short seg_a_end[8] = { 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF };
+	constexpr short seg_u_end[8] = { 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF };
 
 	short segment_search(short value, const short *table, short size)
 	{
@@ -42,15 +42,15 @@ namespace
 			pcm_val = -pcm_val - 1;
 		}
 
-		seg = segment_search(pcm_val, kSegAEnd, 8);
+		seg = segment_search(pcm_val, seg_a_end, 8);
 		if (seg >= 8)
 			return static_cast<std::uint8_t>(0x7F ^ mask);
 
-		aval = static_cast<std::uint8_t>(seg << kSegShift);
+		aval = static_cast<std::uint8_t>(seg << seg_shift);
 		if (seg < 2)
-			aval |= (pcm_val >> 1) & kQuantMask;
+			aval |= (pcm_val >> 1) & quant_mask;
 		else
-			aval |= (pcm_val >> seg) & kQuantMask;
+			aval |= (pcm_val >> seg) & quant_mask;
 		return static_cast<std::uint8_t>(aval ^ mask);
 	}
 
@@ -60,8 +60,8 @@ namespace
 		short seg;
 
 		a_val ^= 0x55;
-		t = (a_val & kQuantMask) << 4;
-		seg = (static_cast<short>(a_val) & kSegMask) >> kSegShift;
+		t = (a_val & quant_mask) << 4;
+		seg = (static_cast<short>(a_val) & seg_mask) >> seg_shift;
 		switch (seg)
 		{
 		case 0:
@@ -74,11 +74,11 @@ namespace
 			t += 0x108;
 			t <<= seg - 1;
 		}
-		return (a_val & kSignBit) ? t : -t;
+		return (a_val & sign_bit) ? t : -t;
 	}
 
-	const int kBias = 0x84;
-	const int kClip = 8159;
+	constexpr int bias = 0x84;
+	constexpr int clip = 8159;
 
 	std::uint8_t linear2ulaw(short pcm_val)
 	{
@@ -95,11 +95,11 @@ namespace
 		else
 			mask = 0xFF;
 
-		if (pcm_val > kClip)
-			pcm_val = kClip;
-		pcm_val += (kBias >> 2);
+		if (pcm_val > clip)
+			pcm_val = clip;
+		pcm_val += (bias >> 2);
 
-		seg = segment_search(pcm_val, kSegUEnd, 8);
+		seg = segment_search(pcm_val, seg_u_end, 8);
 		if (seg >= 8)
 			return static_cast<std::uint8_t>(0x7F ^ mask);
 
@@ -112,9 +112,9 @@ namespace
 		short t;
 
 		u_val = ~u_val;
-		t = ((u_val & kQuantMask) << 3) + kBias;
-		t <<= (static_cast<unsigned>(u_val) & kSegMask) >> kSegShift;
-		return (u_val & kSignBit) ? (kBias - t) : (t - kBias);
+		t = ((u_val & quant_mask) << 3) + bias;
+		t <<= (static_cast<unsigned>(u_val) & seg_mask) >> seg_shift;
+		return (u_val & sign_bit) ? (bias - t) : (t - bias);
 	}
 }
 

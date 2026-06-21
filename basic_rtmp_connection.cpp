@@ -314,7 +314,7 @@ namespace fms
 			mydh.copy_shared_key(shared_key, 128);
 			m_key_in = EVP_CIPHER_CTX_new();
 			m_key_out = EVP_CIPHER_CTX_new();
-			if (!init_RC4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out))
+			if (!init_rc4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out))
 				return false;   // fail closed rather than ship cleartext
 
 			// update keys
