@@ -133,7 +133,11 @@ namespace fms
 		flow_ptr f;
 		auto const i = m_receiving_flows.find(udc->flow_id());
 		if (i == m_receiving_flows.end())
+		{
+			if (m_receiving_flows.size() >= eMaxReceivingFlows)
+				return true;   // per-session flow cap reached: drop this chunk, don't grow
 			f = create_receiving_flow(udc);
+		}
 		else
 			f = i->second;
 

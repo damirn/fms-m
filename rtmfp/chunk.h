@@ -3,6 +3,7 @@
 #include "types.h"
 
 #include <cstdint>
+#include <vector>
 #include <memory>
 
 namespace fms
@@ -565,10 +566,11 @@ namespace fms
 	class ping_reply_chunk : public chunk
 	{
 	public:
+		// `data` points into the decrypted packet buffer, which is freed when
+		// parse() returns -- long before this reply is serialized. Own a copy.
 		ping_reply_chunk(const std::uint8_t *data, const std::uint16_t &data_len)
 			: chunk(ePingReply)
-			, m_data_len(data_len)
-			, m_data(data)
+			, m_data(data, data + data_len)
 		{}
 
 		bool deserialize(byte_reader &, std::uint16_t) override
@@ -578,8 +580,7 @@ namespace fms
 		std::uint16_t serialize(byte_writer &) override;
 
 	protected:
-		std::uint16_t m_data_len;
-		const std::uint8_t *m_data;
+		std::vector<std::uint8_t> m_data;
 	};
 
 	// Session Close Request (RFC 7016 sec. 2.3.11): "please close this session".

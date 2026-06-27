@@ -345,7 +345,7 @@ namespace fms
 		std::size_t const hdr = to.mark();
 		to.extend(eChunkHeaderSize);
 
-		to.write(m_data, m_data_len);
+		to.write(m_data.data(), static_cast<std::uint16_t>(m_data.size()));
 
 		return serialize_chunk_header(to, hdr);
 	}
