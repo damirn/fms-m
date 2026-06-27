@@ -604,7 +604,7 @@ namespace fms
 			m_ready_chunk->serialize(s->raw_packet());
 			delete m_ready_chunk;
 			m_ready_chunk = nullptr;
-			s->finish_raw_packet(m_sid, m_parser->get_aes());
+			s->finish_raw_packet(m_session_id, m_parser->get_aes());
 
 			m_has_data_ready = false;
 			arm_alarm();
@@ -669,7 +669,7 @@ namespace fms
 		}
 		if (has_data)
 		{
-			s->finish_raw_packet(m_sid, m_parser->get_aes());
+			s->finish_raw_packet(m_session_id, m_parser->get_aes());
 			arm_alarm();
 		}
 

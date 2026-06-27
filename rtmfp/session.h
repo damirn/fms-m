@@ -70,14 +70,14 @@ namespace fms
 
 		bool parse(byte_reader &);
 
-		const std::uint32_t &sid() const
+		const std::uint32_t &session_id() const
 		{
-			return m_sid;
+			return m_session_id;
 		}
 
-		std::uint32_t &sid()
+		std::uint32_t &session_id()
 		{
-			return m_sid;
+			return m_session_id;
 		}
 
 		const std::uint8_t *peer_id_data() const
@@ -204,8 +204,6 @@ namespace fms
 		void initialize_ts_flags();
 		void calculate_ts(const header &);
 		void serialize_header(serializer *);
-		std::uint32_t get_timestamp_ms();
-		std::uint16_t get_timestamp();
 
 		enum { eTimeOut = 90, eCloseLinger = 5 };
 
@@ -220,7 +218,7 @@ namespace fms
 
 		service *m_service;
 		parser *m_parser;
-		std::uint32_t m_sid{0};
+		std::uint32_t m_session_id{0};
 		std::uint32_t m_outgoing_sid;
 		item m_peer_id;
 		boost::asio::ip::udp::endpoint m_endpoint;

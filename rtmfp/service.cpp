@@ -420,7 +420,7 @@ namespace fms
 		s->notifier() = [this]() { notify(); };
 		m_initial_sessions[m_sender_endpoint] = s;
 
- 		s->sid() = iikc->isid();
+ 		s->session_id() = iikc->isid();
 
 		dh2 d;
 		d.generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data());
@@ -444,7 +444,7 @@ namespace fms
 		m_serializer->prepare_raw_packet(h, m_parser->get_aes());
 
 		ric.serialize(m_serializer->raw_packet());
-		m_serializer->finish_raw_packet(s->sid(), m_parser->get_aes());
+		m_serializer->finish_raw_packet(s->session_id(), m_parser->get_aes());
 
 		d.generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()), rnonce, size, s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data());
 
@@ -496,7 +496,7 @@ namespace fms
 
 			fihello_chunk fi(static_cast<std::uint16_t>(ic->epd_len()), ic->epd(), a, ic->tag_len(), ic->tag());
 			fi.serialize(m_serializer->raw_packet());
-			m_serializer->finish_raw_packet(i->second->sid(), i->second->get_aes());
+			m_serializer->finish_raw_packet(i->second->session_id(), i->second->get_aes());
 
 			auto *rc = new redirect_chunk(ic->tag_len(), ic->tag());
 			boost::asio::ip::address_v4 const tmp = i->second->end_point().address().to_v4();
