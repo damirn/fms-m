@@ -208,6 +208,11 @@ namespace fms
 		std::uint16_t get_timestamp();
 
 		enum { eTimeOut = 90, eCloseLinger = 5 };
+
+		// Cap receiving flows per session: a peer that completed the handshake could
+		// otherwise open one flow per distinct flow_id without bound and exhaust
+		// memory. No legitimate session comes near this.
+		enum : std::size_t { eMaxReceivingFlows = 1024 };
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
 		void arm_alarm();
@@ -243,7 +248,7 @@ namespace fms
 		std::chrono::system_clock::duration m_rttvar{};
 		std::chrono::system_clock::duration m_mrto{};
 		std::chrono::system_clock::duration m_erto{};
-		bool m_should_include_ts_echo;
+		bool m_should_include_ts_echo{false};
 
 		std::uint32_t m_outstanding_bytes;
 		std::uint32_t m_rx_data_packets{0};

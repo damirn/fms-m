@@ -185,9 +185,9 @@ namespace fms
 
 			amf0_object::value_type &map = object->value();
 			amf0_object::value_type::iterator const i = map.find("app");
-			if (i != map.end())
+			amf0_string_ptr const app_name = i != map.end() ? std::dynamic_pointer_cast<amf0_string>(i->m_value) : nullptr;
+			if (app_name)
 			{
-				amf0_string_ptr const app_name = std::dynamic_pointer_cast<amf0_string>(i->m_value);
 				for (auto & m_app : m_apps)
 				{
 					std::string instance;

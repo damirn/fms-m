@@ -280,3 +280,25 @@ TEST_CASE("rtmfp session-close chunks serialize as bodyless [type][len=0]")
 	CHECK(c.deserialize(r, 0));
 	CHECK(c.type() == chunk::eSessionClose);
 }
+
+TEST_CASE("rtmfp ping_reply_chunk copies its payload (no dangle into the freed packet buffer)")
+{
+	// The ping payload pointer handed to ping_reply_chunk points into the decrypted
+	// packet buffer, which is freed when parse() returns -- long before the reply is
+	// serialized. The chunk must own a copy, or serialize() reads freed heap.
+	std::vector<std::uint8_t> pkt = {0x11, 0x22, 0x33, 0x44};
+	ping_reply_chunk reply(pkt.data(), static_cast<std::uint16_t>(pkt.size()));
+
+	std::fill(pkt.begin(), pkt.end(), std::uint8_t{0xEE});   // packet buffer gone / reused
+
+	byte_writer out;
+	reply.serialize(out);
+
+	// serialized layout is [3-byte chunk header][payload]; the payload must be the
+	// original bytes, not the 0xEE scribble.
+	REQUIRE(out.size() == 3 + pkt.size());
+	CHECK(out.data()[3] == 0x11);
+	CHECK(out.data()[4] == 0x22);
+	CHECK(out.data()[5] == 0x33);
+	CHECK(out.data()[6] == 0x44);
+}
