@@ -122,6 +122,7 @@ set(sourceFiles
   rtmfp/service.cpp
   rtmfp/session.cpp
   rtmfp/types.cpp
+  netstream_stats_registry.cpp
   rtmp_app_manager.cpp
   rtmp_application.cpp
   rtmp_connection.cpp

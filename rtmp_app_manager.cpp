@@ -17,13 +17,10 @@ namespace fms
 {
 	rtmp_app_manager::rtmp_app_manager(io_context_pool &io_pool)
 		: m_io_context_pool(io_pool)
-		, 
-		 m_io_context(io_pool.get_io_context())
-		, m_timer(m_io_context)
+		, m_stats(io_pool.get_io_context())
 	{
 		m_rtmpt_manager = std::make_unique<rtmpt_manager>(this);
 		m_fake_app = std::make_unique<fake_application>(this);
-		start_timer();
 	}
 
 	// Out-of-line (not =default in the header) so the unique_ptr members'
@@ -35,7 +32,7 @@ namespace fms
 		// An app that observes netstream lifecycle/QoS (the admin app) registers via
 		// the interface -- the manager never names the concrete app type.
 		if (auto *obs = dynamic_cast<netstream_observer *>(app))
-			m_observer = obs;
+			m_stats.set_observer(obs);
 		m_apps[app->app_name()] = std::unique_ptr<rtmp_application>(app);
 	}
 
@@ -336,9 +333,7 @@ namespace fms
 
 	void rtmp_app_manager::list_streams(netstream_list_t &streams)
 	{
-		std::unique_lock const lock(m_mutex);
-		for (auto & m_netstream_stat : m_netstream_stats)
-			streams.push_back(m_netstream_stat.second);
+		m_stats.list(streams);
 	}
 
 	void rtmp_app_manager::get_queue_stats(queue_stats_list_t &list)
@@ -347,106 +342,41 @@ namespace fms
 			m_app.second->get_queue_stats(list);
 	}
 
+	// Thin delegators onto the netstream stats registry; the store, its mutex, and the
+	// QoS timer all live there now.
 	void rtmp_app_manager::create_netstream(const stream_client_id_t &id)
 	{
-		std::unique_lock const lock(m_mutex);
-		netstream_stats_ptr const stats = std::make_shared<netstream_stats>(id.first);
-		m_netstream_stats[id] = stats;
+		m_stats.create(id);
 	}
 
 	void rtmp_app_manager::delete_netstream(const stream_client_id_t &id)
 	{
-		std::unique_lock lock(m_mutex);
-		auto const i = m_netstream_stats.find(id);
-		if (i != m_netstream_stats.end())
-		{
-			netstream_stats_ptr const data = i->second;
-			m_netstream_stats.erase(i);
-			lock.unlock();
-			if (m_observer)
-				m_observer->send_stream_deleted_notify(data);
-		}
+		m_stats.remove(id);
 	}
 
 	void rtmp_app_manager::delete_netstreams(std::uint32_t connection_id)
 	{
-		std::unique_lock lock(m_mutex);
-		netstream_list_t list;
-		for (auto i = m_netstream_stats.begin(); i != m_netstream_stats.end(); )
-		{
-			if (i->first.first == connection_id)
-			{
-				list.push_back(i->second);
-				i = m_netstream_stats.erase(i);
-			}
-			else
-				++i;
-		}
-		lock.unlock();
-		if (m_observer)
-			for (auto & i : list)
-				m_observer->send_stream_deleted_notify(i);
+		m_stats.remove_all(connection_id);
 	}
 
 	void rtmp_app_manager::update_netstream(const stream_client_id_t &id, const std::string &name, bool is_publish)
 	{
-		std::unique_lock lock(m_mutex);
-		auto const i = m_netstream_stats.find(id);
-		if (i != m_netstream_stats.end())
-		{
-			i->second->m_name = name;
-			i->second->m_is_published = is_publish;
-			lock.unlock();
-			if (m_observer && name.find("QOS!") != 0) // QOS streams are of no interest to admin app
-				m_observer->send_new_stream_notify(i->second);
-		}
+		m_stats.update(id, name, is_publish);
 	}
 
 	void rtmp_app_manager::update_netstream_stats(const stream_client_id_t &id, std::uint32_t bytes, std::uint32_t msgs, std::uint32_t ts)
 	{
-		std::shared_lock const lock(m_mutex);   // find + mutate own stats object (single writer per key)
-		auto const i = m_netstream_stats.find(id);
-		if (i != m_netstream_stats.end())
-		{
-			if (i->second->m_messages == 0)
-			{
-				i->second->m_start_streaming_time = std::chrono::system_clock::now();
-				i->second->m_ts = ts;
-			}
-			else
-			{
-				std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
-				std::chrono::system_clock::duration const td = std::chrono::milliseconds(ts) - std::chrono::milliseconds(i->second->m_ts);
-				std::chrono::system_clock::time_point const calculated_ts = i->second->m_start_streaming_time + td;
-				std::chrono::system_clock::duration delta = now - calculated_ts + std::chrono::milliseconds(i->second->m_drift);
-				if (delta < std::chrono::system_clock::duration::zero())
-				{
-					delta = -delta;
-					i->second->m_drift = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
-				}
-				else
-					i->second->m_delay = static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(delta).count());
-			}
-			i->second->m_messages += msgs;
-			i->second->m_bytes += bytes;
-		}
+		m_stats.update_stats(id, bytes, msgs, ts);
 	}
 
 	void rtmp_app_manager::add_dropped_messages_for_netstream(const stream_client_id_t &id, std::size_t size)
 	{
-		std::unique_lock const lock(m_mutex);
-		auto const i = m_netstream_stats.find(id);
-		if (i != m_netstream_stats.end())
-			i->second->m_messages_dropped += size;
+		m_stats.add_dropped(id, size);
 	}
 
 	std::optional<netstream_stats_ptr> rtmp_app_manager::get_stream_stats(const stream_client_id_t &id)
 	{
-		std::unique_lock const lock(m_mutex);
-		auto const i = m_netstream_stats.find(id);
-		if (i != m_netstream_stats.end())
-			return std::optional<netstream_stats_ptr>(i->second);
-		return std::optional<netstream_stats_ptr>();
+		return m_stats.get(id);
 	}
 
 	bool rtmp_app_manager::check_application_name(const std::string &app_name, const std::string &app, std::string &instance)
@@ -461,41 +391,6 @@ namespace fms
 		}
 
 		return false;
-	}
-
-	void rtmp_app_manager::start_timer()
-	{
-		m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eTimeout)));
-		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
-	}
-
-	void rtmp_app_manager::handle_timer(const boost::system::error_code &e)
-	{
-		if (!e)
-		{
-			if (m_observer && m_observer->has_active_clients())
-			{
-				std::unique_lock lock(m_mutex);
-				netstream_stats_map_t tmp;
-				std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
-				for (auto & m_netstream_stat : m_netstream_stats)
-				{
-					if (m_netstream_stat.second->m_name.find("QOS!") != 0)
-					{
-						netstream_stats_ptr const stats = std::make_shared<netstream_stats>(*(m_netstream_stat.second));
-						std::chrono::system_clock::duration const td = now - stats->m_start_streaming_time;
-						std::uint32_t kbps = 0;
-						if (std::chrono::duration_cast<std::chrono::seconds>(td).count() != 0)
-							kbps = stats->m_bytes / std::chrono::duration_cast<std::chrono::seconds>(td).count();
-						stats->m_kbps = kbps;
-						tmp[m_netstream_stat.first] = stats;
-					}
-				}
-				lock.unlock();
-				m_observer->send_qos_data(tmp);
-			}
-		}
-		start_timer();
 	}
 
 }
