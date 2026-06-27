@@ -30,7 +30,7 @@ namespace fms
 		void close() override;
 		void post_close() override;
 
-		boost::asio::io_context &io_context()
+		boost::asio::io_context &io_context() const
 		{
 			return m_io_context;
 		}

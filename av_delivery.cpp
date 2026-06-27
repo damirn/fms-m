@@ -9,7 +9,6 @@
 #include "stream_registry.h"
 
 #include <atomic>
-#include <cstdint>
 #include <list>
 #include <memory>
 
