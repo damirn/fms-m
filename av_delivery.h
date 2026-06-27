@@ -5,6 +5,8 @@
 #include "stats.h"          // stream_client_id_t
 #include "stream_client.h"  // stream_client_ptr
 
+#include <cstdint>
+
 #include <boost/noncopyable.hpp>
 
 namespace fms
