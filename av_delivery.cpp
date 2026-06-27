@@ -290,6 +290,11 @@ namespace fms
 			tmp2->channel_id() = video_bcast_application::stream_to_channel(client->m_stream_id, video_bcast_application::eVideo);
 			tmp2->timestamp() = 0;
 			m_app.enqueue_async_message(client->m_connection_id, tmp2);
+			// Count the GOP burst in the subscriber's stats too, or the QoS timer
+			// undercounts a mid-GOP joiner's bytes/messages.
+			client->m_stat_bytes += tmp2->size();
+			++client->m_stat_msgs;
+			client->m_stat_last_ts = tmp2->timestamp();
 			++it;
 		}
 		m_app.enqueue_async_message(client->m_connection_id, info_msg2);
@@ -304,11 +309,6 @@ namespace fms
 
 		if (!client->m_first_audio_packet_seen)
 		{
-			stream_registry::broadcast_stream *const bsrc = m_registry.find_broadcast(src);
-			bool const has_video_queue = bsrc && !bsrc->video_queue.empty();
-			if (!client->m_receive_audio && has_video_queue && !client->m_key_frame_sent) // we have video frames enqueued, but we haven't sent key frame yet
-				return;
-
 			send_aac_config(src, client);
 
 			if (!client->m_first_video_packet_seen) // this is the very first a/v frame we see

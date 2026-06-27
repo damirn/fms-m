@@ -23,8 +23,13 @@ namespace fms
 
 	void rtmpt_session::start()
 	{
-		// arm handshake timer
-		arm_hs_timer();
+		// Intentionally no timers. An RTMPT session is driven synchronously by HTTP
+		// requests (rtmpt_manager::handle_data, under the manager's mutex), but its
+		// inherited io_context is a DIFFERENT pool thread than the HTTP connection's.
+		// Arming basic_rtmp_connection's ping/handshake timers here would fire their
+		// callbacks on that other thread, racing handle_data over both the timer
+		// objects and the session state. Idle/stalled sessions are reaped by the
+		// rtmpt_manager not-alive timer instead.
 	}
 
 	void rtmpt_session::close()
@@ -160,7 +165,7 @@ namespace fms
 			if (!check_hand_shake_response(input))
 				return false;
 			m_sstate = eCSReadCommands;
-			arm_timer();
+			// no arm_timer(): see start() -- an RTMPT session runs no cross-thread timers
 			if (!input.empty())
 				return handle_data(input, output);
 			

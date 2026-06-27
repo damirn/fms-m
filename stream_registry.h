@@ -115,6 +115,10 @@ namespace fms
 		void add_subscriber(const stream_client_id_t &broadcaster, const stream_client_id_t &sub, const stream_client_ptr &client)
 		{
 			m_subscribers[sub] = client;
+			// Drop any prior mapping for `sub` first: on a re-play without an
+			// intervening closeStream, the bimap's unique right side would otherwise
+			// silently keep the stale broadcaster and misroute frames.
+			m_stream_clients.right.erase(sub);
 			m_stream_clients.insert(stream_client_map_t::value_type(broadcaster, sub));
 		}
 
@@ -179,6 +183,15 @@ namespace fms
 		// ---- app clients (connection id -> its stream ids) --------------------
 
 		void add_client_stream(std::uint32_t conn, std::uint32_t stream) { m_clients[conn].insert(stream); }
+
+		// Forget one stream of a connection (explicit closeStream), so connection
+		// teardown doesn't re-close an already-closed stream.
+		void remove_client_stream(std::uint32_t conn, std::uint32_t stream)
+		{
+			auto const i = m_clients.find(conn);
+			if (i != m_clients.end())
+				i->second.erase(stream);
+		}
 
 		// The streams this connection owns; also removes the client entry.
 		std::set<std::uint32_t> take_client(std::uint32_t conn)
