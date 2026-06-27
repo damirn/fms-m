@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include "netstream_observer.h"
 #include "rtmp_application.h"
 #include "stats.h"
 
@@ -24,7 +25,7 @@ namespace fms
 	};
 	using auth_status_data_ptr = std::shared_ptr<auth_status_data>;
 
-	class admin_application : public rtmp_application
+	class admin_application : public rtmp_application, public netstream_observer
 	{
 	public:
 		explicit admin_application(rtmp_app_manager *app_manager)
@@ -33,11 +34,11 @@ namespace fms
 			init();
 		}
 
-		bool has_active_clients();
+		bool has_active_clients() override;
 
-		void send_new_stream_notify(const netstream_stats_ptr&);
-		void send_stream_deleted_notify(const netstream_stats_ptr&);
-		void send_qos_data(netstream_stats_map_t &);
+		void send_new_stream_notify(const netstream_stats_ptr&) override;
+		void send_stream_deleted_notify(const netstream_stats_ptr&) override;
+		void send_qos_data(netstream_stats_map_t &) override;
 
 		void send_auth_status(const auth_status_data_ptr&);
 		void send_disconnect_notify(const auth_status_data_ptr&);

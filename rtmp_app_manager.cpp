@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "rtmp_app_manager.h"
-#include "admin_application.h"
+#include "netstream_observer.h"
 #include "client_session.h"
 #include "config.h"
 #include "fake_application.h"
@@ -32,8 +32,10 @@ namespace fms
 
 	void rtmp_app_manager::register_rtmp_app(rtmp_application *app)
 	{
-		if (app->app_name() == "admin")
-			m_admin_app = dynamic_cast<admin_application *>(app);
+		// An app that observes netstream lifecycle/QoS (the admin app) registers via
+		// the interface -- the manager never names the concrete app type.
+		if (auto *obs = dynamic_cast<netstream_observer *>(app))
+			m_observer = obs;
 		m_apps[app->app_name()] = std::unique_ptr<rtmp_application>(app);
 	}
 
@@ -361,8 +363,8 @@ namespace fms
 			netstream_stats_ptr const data = i->second;
 			m_netstream_stats.erase(i);
 			lock.unlock();
-			if (m_admin_app)
-				m_admin_app->send_stream_deleted_notify(data);
+			if (m_observer)
+				m_observer->send_stream_deleted_notify(data);
 		}
 	}
 
@@ -381,9 +383,9 @@ namespace fms
 				++i;
 		}
 		lock.unlock();
-		if (m_admin_app)
+		if (m_observer)
 			for (auto & i : list)
-				m_admin_app->send_stream_deleted_notify(i);
+				m_observer->send_stream_deleted_notify(i);
 	}
 
 	void rtmp_app_manager::update_netstream(const stream_client_id_t &id, const std::string &name, bool is_publish)
@@ -395,8 +397,8 @@ namespace fms
 			i->second->m_name = name;
 			i->second->m_is_published = is_publish;
 			lock.unlock();
-			if (m_admin_app && name.find("QOS!") != 0) // QOS streams are of no interest to admin app
-				m_admin_app->send_new_stream_notify(i->second);
+			if (m_observer && name.find("QOS!") != 0) // QOS streams are of no interest to admin app
+				m_observer->send_new_stream_notify(i->second);
 		}
 	}
 
@@ -471,7 +473,7 @@ namespace fms
 	{
 		if (!e)
 		{
-			if (m_admin_app && m_admin_app->has_active_clients())
+			if (m_observer && m_observer->has_active_clients())
 			{
 				std::unique_lock lock(m_mutex);
 				netstream_stats_map_t tmp;
@@ -490,7 +492,7 @@ namespace fms
 					}
 				}
 				lock.unlock();
-				m_admin_app->send_qos_data(tmp);
+				m_observer->send_qos_data(tmp);
 			}
 		}
 		start_timer();
