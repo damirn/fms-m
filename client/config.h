@@ -58,6 +58,12 @@ public:
 		return m_no_output;
 	}
 
+	// publish with type "record" (server saves the stream to an FLV) instead of "live"
+	bool record() const
+	{
+		return m_record;
+	}
+
 	const std::list<std::string> &stream_list() const
 	{
 		return m_stream_list;
@@ -82,6 +88,7 @@ protected:
 	std::uint32_t m_publish_wait_time;
 	bool m_send_only_audio{false};
 	bool m_no_output{false};
+	bool m_record{false};
 	std::list<std::string> m_stream_list;
 
 private:

@@ -677,8 +677,8 @@ namespace fms::rtmp_client
 
 		if (ns->get_role() == net_stream::ePublishing)
 		{
-			amf0_string_ptr const live = std::make_shared<amf0_string>("live");
-			p->add_parameter(live);
+			amf0_string_ptr const type = std::make_shared<amf0_string>(ns->is_record() ? "record" : "live");
+			p->add_parameter(type);
 		}
 		else
 		{

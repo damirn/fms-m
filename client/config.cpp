@@ -49,6 +49,7 @@ void config::create_description()
 		("output-file,o", boost::program_options::value<std::string>(&m_output_file), "output FLV file")
 		("output-file-prefix,p", boost::program_options::value<std::string>(&m_output_file_prefix), "output FLV file prefix when in 'conference' mode")
 		("no-output,n", "don't write FLV file(s)")
+		("record,R", "publish with type 'record' (server saves an FLV) instead of 'live'")
 		("stream,s", boost::program_options::value<std::string>(&m_stream_name)->default_value("mystream"), "stream name to use")
 		("stream-list,l", boost::program_options::value<std::string>(&m_stream_list_str), "comma separated list of streams to play when in 'conference' mode")
 		("publish-wait-time,w", boost::program_options::value<std::uint32_t>(&m_publish_wait_time)->default_value(0), "publish wait time in ms")
@@ -93,6 +94,9 @@ bool config::check_params()
 
 	if (m_vm.count("no-output") == 1)
 		m_no_output = true;
+
+	if (m_vm.count("record") == 1)
+		m_record = true;
 
 	if (m_command == "conference")
 	{
