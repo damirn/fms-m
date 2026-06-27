@@ -1,9 +1,10 @@
 #include "pch.h"
 #include "config.h"
 
-#include <iostream>
-#include <fstream>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <thread>
 
 namespace fms
 {
@@ -84,9 +85,15 @@ namespace fms
 			if (!parse_config_file())
 				return false;
 
-		if (m_threads > 32)
+		// Cap at the CPU core count: with one thread per io_context (see
+		// io_context_pool), more I/O threads than cores just oversubscribes. Fall back
+		// to a fixed ceiling when the core count can't be determined.
+		const unsigned int cores = std::thread::hardware_concurrency();
+		const std::uint32_t max_threads = cores != 0 ? cores : 32;
+		if (m_threads > max_threads)
 		{
-			std::cout << "Usage of " << m_threads << " threads is not wise!" << std::endl;
+			std::cout << "Usage of " << m_threads << " I/O threads is not wise (max "
+			          << max_threads << (cores != 0 ? ", the CPU core count" : "") << ")!" << std::endl;
 			return false;
 		}
 
