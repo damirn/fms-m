@@ -328,8 +328,7 @@ namespace fms
 
 		template <typename T> bool get(const std::string &field, T &value)
 		{
-			value_type::iterator const i = m_value.get<1>().find(field);
-			if (i != end())
+			if (auto const i = m_value.get<1>().find(field); i != end())
 			{
 				try
 				{
@@ -373,8 +372,7 @@ namespace fms
 		{
 			for (const auto & i : obj)
 			{
-				iterator const j = m_value.get<1>().find(i.m_name);
-				if (j == end())
+				if (auto const j = m_value.get<1>().find(i.m_name); j == end())
 					m_value.push_back(i);
 				else
 					m_value.get<1>().modify(j, change_value(i.m_value));
