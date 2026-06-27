@@ -5,6 +5,7 @@
 #include "rtmp_app_manager.h"
 #include "rtmp_application.h"
 #include "rtmp_header.h"
+#include "rtmp_message.h"
 #include "rtmp_protocol.h"
 #include "crypto.h"
 
@@ -15,7 +16,8 @@ namespace fms
 		, m_socket(io_context)
 		, m_rto_timer(io_context)
 		, m_wto_timer(io_context)
-		 
+		, m_hs_timer(io_context)
+		, m_timer(io_context)
 	{}
 
 	rtmp_connection::~rtmp_connection()
@@ -31,10 +33,48 @@ namespace fms
 			m_state = eStateClosing;
 			m_rto_timer.cancel();
 			m_wto_timer.cancel();
+			m_timer.cancel();
 			BOOST_LOG(lg::get()) << "Closing socket for cid: " << m_id;
 			m_socket.close();
 			basic_rtmp_connection::close();
 		}
+	}
+
+	void rtmp_connection::arm_hs_timer()
+	{
+		// arm the handshake-timeout timer
+		m_hs_timer.expires_after(std::chrono::seconds(static_cast<long>(eHandShakeTimeout)));
+		m_hs_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_hs_timer(ec); });
+	}
+
+	void rtmp_connection::arm_timer()
+	{
+		m_timer.expires_after(std::chrono::seconds(static_cast<long>(ePingInterval)));
+		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+	}
+
+	void rtmp_connection::handle_timer(const boost::system::error_code &e)
+	{
+		if (!e)
+		{
+			if (m_app == nullptr)
+			{
+				close();
+				return;
+			}
+			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(ePingInterval)));
+			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+
+			rtmp_message_ping_ptr const msg = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingRequest, get_timestamp());
+			m_app->enqueue_async_message(m_id, msg);
+			notify();
+		}
+	}
+
+	void rtmp_connection::handle_hs_timer(const boost::system::error_code &e)
+	{
+		if (!e)
+			close();
 	}
 
 	void rtmp_connection::start()

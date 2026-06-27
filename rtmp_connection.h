@@ -73,12 +73,29 @@ namespace fms
 		// Handle write timeout
 		void handle_wto(const boost::system::error_code &);
 
+		// Liveness timers -- only the socket transport runs them (the RTMPT tunnel is
+		// reaped by the manager instead). arm_hs_timer bounds the handshake; arm_timer
+		// drives the periodic ping.
+		void arm_hs_timer();
+		void arm_timer();
+		void handle_timer(const boost::system::error_code &);
+		void handle_hs_timer(const boost::system::error_code &);
+
+		// Cancel the handshake-timeout timer once the peer's response validates.
+		void on_handshake_complete() override { m_hs_timer.cancel(); }
+
 		// Socket for the connection.
 		boost::asio::ip::tcp::socket m_socket;
 
 		// Timers for read/write timeouts
 		boost::asio::steady_timer m_rto_timer;
 		boost::asio::steady_timer m_wto_timer;
+
+		// Timer bounding the handshake, and the periodic ping timer.
+		boost::asio::steady_timer m_hs_timer;
+		boost::asio::steady_timer m_timer;
+
+		enum { eHandShakeTimeout = 5, ePingInterval = 30 };
 
 	private:
 		std::shared_ptr<rtmp_connection> shared_from_this()
