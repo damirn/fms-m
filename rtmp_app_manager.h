@@ -13,6 +13,7 @@
 
 #include "http_connection.h"
 #include "io_context_pool.h"
+#include "netstream_stats_registry.h"
 #include "rtmp_connection.h"
 #include "rtmpt_session.h"
 #include "stats.h"
@@ -22,7 +23,6 @@ namespace fms
 	class client_session;
 	using client_session_ptr = std::shared_ptr<client_session>;
 
-	class netstream_observer;
 	class fake_application;
 	class rtmp_application;
 	class rtmp_header;
@@ -96,8 +96,6 @@ namespace fms
 
 	protected:
 		static bool check_application_name(const std::string &, const std::string &, std::string &);
-		void start_timer();
-		void handle_timer(const boost::system::error_code &);
 
 		io_context_pool &m_io_context_pool;
 		std::uint32_t m_connection_counter{1};   // id 0 is a reserved "no connection" sentinel
@@ -105,8 +103,6 @@ namespace fms
 		using app_map_t = std::map<std::string, std::unique_ptr<rtmp_application>>;
 		app_map_t m_apps;
 
-		// non-owning observer: the admin app is owned by m_apps
-		netstream_observer *m_observer{nullptr};
 		std::unique_ptr<fake_application> m_fake_app;
 
 		using connection_map_t = std::unordered_map<std::uint32_t, client_session_ptr>;
@@ -117,16 +113,13 @@ namespace fms
 
 		std::unique_ptr<rtmpt_manager> m_rtmpt_manager;
 
-		// Reader/writer split: the hot reads (get_connection / has_connection /
-		// get_app_instance) and update_netstream_stats take a SHARED lock; structural
-		// changes and admin stats readers take EXCLUSIVE. update_netstream_stats
-		// mutating under the shared lock is safe -- each netstream's stats has a
-		// single writer and the exclusive admin readers never overlap it.
+		// Reader/writer split for the connection map: the hot reads (get_connection /
+		// has_connection / get_app_instance) take a SHARED lock; structural changes and
+		// admin readers take EXCLUSIVE. The netstream-stats store has its own mutex,
+		// inside m_stats -- it never needs to be held together with this one.
 		std::shared_mutex m_mutex;
-		netstream_stats_map_t m_netstream_stats;
 
-		boost::asio::io_context &m_io_context;
-		boost::asio::steady_timer m_timer;
-		enum { _eTimeout = 5 };
+		// per-netstream stats store + QoS-gather timer (see netstream_stats_registry)
+		netstream_stats_registry m_stats;
 	};
 }
