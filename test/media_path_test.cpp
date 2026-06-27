@@ -1,5 +1,4 @@
 #include "doctest.h"
-
 #include "media_path.h"
 
 #include <filesystem>

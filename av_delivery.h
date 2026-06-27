@@ -1,11 +1,11 @@
 #pragma once
 
-#include <boost/noncopyable.hpp>
-
 #include "amf0_types.h"     // amf0_type_ptr
 #include "rtmp_message.h"   // rtmp_message_ptr, rtmp_message_audio/video_data_ptr
 #include "stats.h"          // stream_client_id_t
 #include "stream_client.h"  // stream_client_ptr
+
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

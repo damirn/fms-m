@@ -1,11 +1,11 @@
 #pragma once
 
-#include "byte_writer.h"
 #include "amf3_types.h"
+#include "byte_writer.h"
 
 #include <cstdint>
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace fms

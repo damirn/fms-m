@@ -6,20 +6,19 @@
 // per-subscriber timestamp rebasing, receive_video/audio gating, channel mapping,
 // and onMetaData fan-out -- with no server, socket, or io_context.
 
-#include "doctest.h"
-
-#include <cstdint>
-#include <memory>
-#include <vector>
-
 #include "av_delivery.h"
 #include "channel_map.h"
 #include "client_session.h"
+#include "doctest.h"
 #include "flv_writer.h"
 #include "media_host.h"
 #include "rtmp_message.h"
 #include "stream_client.h"
 #include "stream_registry.h"
+
+#include <cstdint>
+#include <memory>
+#include <vector>
 
 // client_session.o references these two; the fan-out path never drives close/stats,
 // so stub them here rather than link the whole app manager.

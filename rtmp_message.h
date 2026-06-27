@@ -1,12 +1,12 @@
 #pragma once
 
+#include "amf0.h"
+#include "amf0_types.h"
+
 #include <list>
 #include <memory>
 #include <string>
 #include <utility>
-
-#include "amf0_types.h"
-#include "amf0.h"
 
 namespace fms
 {

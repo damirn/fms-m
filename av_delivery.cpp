@@ -1,18 +1,17 @@
 #include "pch.h"
 #include "av_delivery.h"
+#include "amf0.h"
+#include "byte_writer.h"
+#include "channel_map.h"
+#include "client_session.h"
+#include "flv_writer.h"
+#include "media_host.h"
+#include "stream_registry.h"
 
 #include <atomic>
 #include <cstdint>
 #include <list>
 #include <memory>
-
-#include "amf0.h"
-#include "byte_writer.h"
-#include "client_session.h"
-#include "flv_writer.h"
-#include "stream_registry.h"
-#include "channel_map.h"
-#include "media_host.h"
 
 namespace fms
 {

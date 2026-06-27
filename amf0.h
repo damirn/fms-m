@@ -1,7 +1,7 @@
 #pragma once
 
-#include "byte_writer.h"
 #include "amf0_types.h"
+#include "byte_writer.h"
 
 #include <stdexcept>
 #include <vector>

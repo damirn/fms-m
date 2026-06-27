@@ -1,7 +1,7 @@
 #include "pch.h"
+#include "amf3.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
-#include "amf3.h"
 
 #include <cstring>
 

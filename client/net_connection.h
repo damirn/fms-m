@@ -1,5 +1,9 @@
 #pragma once
 
+#include "net_client.h"
+#include "rtmp_message.h"
+#include "rtmp_raw_data.h"
+
 #include <list>
 #include <map>
 #include <memory>
@@ -10,10 +14,6 @@
 
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
-
-#include "net_client.h"
-#include "rtmp_message.h"
-#include "rtmp_raw_data.h"
 
 namespace fms::rtmp_client
 {

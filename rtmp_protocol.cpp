@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "rtmp_protocol.h"
-#include "rtmp_header.h"
-#include "rtmp_so_message.h"
+#include "amf3.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
-#include "amf3.h"
+#include "rtmp_header.h"
+#include "rtmp_so_message.h"
 
 namespace fms
 {

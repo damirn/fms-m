@@ -1,7 +1,8 @@
 #pragma once
 
-#include <boost/noncopyable.hpp>
 #include <memory>
+
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

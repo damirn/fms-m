@@ -1,13 +1,13 @@
 #pragma once
 
 #include <string>
-#include <boost/noncopyable.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
 
 #include <boost/log/common.hpp>
 #include <boost/log/sinks.hpp>
 #include <boost/log/sources/logger.hpp>
 #include <boost/log/utility/record_ordering.hpp>
+#include <boost/noncopyable.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
 
 namespace fms
 {

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "random_string.h"
+#include "rtmpt_session.h"
+
 #include <map>
 #include <memory>
 #include <mutex>
@@ -8,9 +11,6 @@
 
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
-
-#include "rtmpt_session.h"
-#include "random_string.h"
 
 namespace fms
 {

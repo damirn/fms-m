@@ -5,11 +5,12 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <boost/multi_index_container.hpp>
+
 #include <boost/multi_index/indexed_by.hpp>
 #include <boost/multi_index/member.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/sequenced_index.hpp>
+#include <boost/multi_index_container.hpp>
 
 namespace fms
 {

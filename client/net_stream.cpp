@@ -1,8 +1,7 @@
 #include "pch.h"
-
+#include "net_stream.h"
 #include "amf0.h"
 #include "net_connection.h"
-#include "net_stream.h"
 
 namespace fms::rtmp_client
 {

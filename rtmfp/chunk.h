@@ -3,8 +3,8 @@
 #include "types.h"
 
 #include <cstdint>
-#include <vector>
 #include <memory>
+#include <vector>
 
 namespace fms
 {

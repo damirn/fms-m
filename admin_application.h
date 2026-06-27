@@ -1,12 +1,13 @@
 #pragma once
 
+#include "netstream_observer.h"
+#include "rtmp_application.h"
+#include "stats.h"
+
 #include <chrono>
 #include <functional>
 #include <map>
 #include <memory>
-#include "netstream_observer.h"
-#include "rtmp_application.h"
-#include "stats.h"
 
 namespace fms
 {

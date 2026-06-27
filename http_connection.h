@@ -1,14 +1,14 @@
 #pragma once
 
-#include <boost/asio.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/http.hpp>
-#include <boost/noncopyable.hpp>
-
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
+
+#include <boost/asio.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

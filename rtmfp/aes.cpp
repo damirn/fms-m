@@ -2,8 +2,9 @@
 #include "aes.h"
 
 #include <cstring>
-#include <openssl/hmac.h>
+
 #include <openssl/crypto.h>
+#include <openssl/hmac.h>
 
 namespace fms
 {

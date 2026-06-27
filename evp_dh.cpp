@@ -2,6 +2,7 @@
 #include "evp_dh.h"
 
 #include <stdexcept>
+
 #include <openssl/bn.h>
 #include <openssl/core_names.h>
 #include <openssl/dh.h>

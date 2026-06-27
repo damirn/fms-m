@@ -1,12 +1,12 @@
 #pragma once
 
+#include "rtmp_message.h"
+
 #include <memory>
 #include <string>
 #include <utility>
 
 #include <boost/noncopyable.hpp>
-
-#include "rtmp_message.h"
 
 namespace fms::rtmp_client
 {

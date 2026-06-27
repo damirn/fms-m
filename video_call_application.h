@@ -1,11 +1,11 @@
 #pragma once
 
+#include "video_bcast_application.h"
+
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
-
-#include "video_bcast_application.h"
 
 namespace fms
 {

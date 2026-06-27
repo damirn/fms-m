@@ -1,5 +1,7 @@
 #pragma once
 
+#include "stats.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -10,8 +12,6 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/system/error_code.hpp>
-
-#include "stats.h"
 
 namespace fms
 {

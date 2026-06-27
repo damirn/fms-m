@@ -1,9 +1,10 @@
 #pragma once
 
-#include <queue>
-#include <boost/noncopyable.hpp>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <queue>
+
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

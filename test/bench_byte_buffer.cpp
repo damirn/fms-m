@@ -8,8 +8,8 @@
 // Not a correctness test; run it by hand when touching the input buffer:
 //   cmake --build build --target bench_byte_buffer && ./build/bench_byte_buffer
 
-#include "byte_writer.h"
 #include "byte_reader.h"
+#include "byte_writer.h"
 
 #include <chrono>
 #include <cstdint>

@@ -2,6 +2,7 @@
 #include "random_string.h"
 
 #include <stdexcept>
+
 #include <openssl/rand.h>
 
 namespace fms

@@ -1,5 +1,10 @@
 #pragma once
 
+#include "amf0_types.h"
+#include "rtmp_message.h"
+#include "stats.h"          // stream_client_id_t, stream_client_id_map
+#include "stream_client.h"
+
 #include <list>
 #include <map>
 #include <optional>
@@ -12,11 +17,6 @@
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/set_of.hpp>
 #include <boost/noncopyable.hpp>
-
-#include "amf0_types.h"
-#include "rtmp_message.h"
-#include "stats.h"          // stream_client_id_t, stream_client_id_map
-#include "stream_client.h"
 
 namespace fms
 {

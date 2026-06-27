@@ -1,10 +1,11 @@
 #pragma once
 
-#include <boost/noncopyable.hpp>
+#include "rtmp_channel.h"
+
 #include <memory>
 #include <unordered_map>
 
-#include "rtmp_channel.h"
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

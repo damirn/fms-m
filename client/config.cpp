@@ -1,8 +1,7 @@
 #include "pch.h"
+#include "config.h"
 
 #include <boost/algorithm/string.hpp>
-
-#include "config.h"
 
 static const char version[] = "0.1.1";
 

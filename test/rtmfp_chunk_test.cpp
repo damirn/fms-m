@@ -11,15 +11,14 @@
 // fragment-control fields uninitialised, so the source chunk is always built by
 // deserializing a hand-crafted (canonical-VLU) body rather than that ctor.
 
+#include "byte_reader.h"
+#include "byte_writer.h"
 #include "doctest.h"
+#include "rtmfp/chunk.h"
 
 #include <cstdint>
 #include <cstring>
 #include <vector>
-
-#include "byte_reader.h"
-#include "byte_writer.h"
-#include "rtmfp/chunk.h"
 
 using namespace fms;
 

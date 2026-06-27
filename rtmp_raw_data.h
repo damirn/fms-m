@@ -1,9 +1,10 @@
 #pragma once
 
-#include <memory>
-#include <boost/logic/tribool.hpp>
-
 #include "byte_reader.h"
+
+#include <memory>
+
+#include <boost/logic/tribool.hpp>
 
 namespace fms
 {

@@ -1,7 +1,6 @@
 #include "pch.h"
-
-#include "config.h"
 #include "nc_event_handler.h"
+#include "config.h"
 
 namespace fms::rtmp_client
 {

@@ -2,22 +2,20 @@
 // bytes in, messages out. The harness feeds a std::vector<uint8_t> (optionally in
 // fragments, to exercise the partial-message path) and records the emitted messages.
 
-#include "doctest.h"
-
-#include <exception>
-
-#include <algorithm>
-#include <cstdint>
-#include <cstring>
-#include <vector>
-
 #include "byte_reader.h"
 #include "byte_writer.h"
+#include "doctest.h"
 #include "rtmp_channel.h"
 #include "rtmp_header.h"
 #include "rtmp_message.h"
 #include "rtmp_protocol.h"
 #include "rtmp_raw_data.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <exception>
+#include <vector>
 
 using namespace fms;
 

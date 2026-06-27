@@ -1,12 +1,12 @@
 #pragma once
 
+#include "flv_reader.h"
+
 #include <cstdint>
 #include <memory>
 #include <string>
 
 #include <boost/asio/steady_timer.hpp>
-
-#include "flv_reader.h"
 
 namespace fms
 {

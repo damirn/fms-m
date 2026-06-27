@@ -7,8 +7,8 @@
 //       -I. -I<boost-include> test/fuzz_run.cpp amf3.cpp -o fuzz_run && ./fuzz_run
 //
 #include "amf0.h"
-#include "byte_reader.h"
 #include "amf3.h"
+#include "byte_reader.h"
 
 #include <cstdint>
 #include <cstdio>

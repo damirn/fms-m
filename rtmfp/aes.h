@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstdint>
-
 #include "byte_reader.h"
 #include "byte_writer.h"
+
+#include <cstdint>
 
 #include <openssl/evp.h>
 

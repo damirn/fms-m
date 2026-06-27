@@ -1,14 +1,14 @@
 #pragma once
 
-#include <boost/beast/core.hpp>
-#include <boost/beast/http.hpp>
+#include "net_client.h"
 
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include "net_client.h"
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
 
 namespace fms::rtmp_client
 {

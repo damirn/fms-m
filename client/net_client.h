@@ -1,13 +1,13 @@
 #pragma once
 
+#include "byte_writer.h"
+
 #include <memory>
 #include <string>
 #include <utility>
 
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
-
-#include "byte_writer.h"
 
 namespace fms::rtmp_client
 {

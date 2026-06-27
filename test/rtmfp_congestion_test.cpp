@@ -1,9 +1,8 @@
 // Tests for the RTMFP congestion window (rtmfp/congestion_window.h): slow-start,
 // congestion avoidance, multiplicative decrease on loss, and timeout collapse.
 
-#include "doctest.h"
-
 #include "congestion_window.h"
+#include "doctest.h"
 
 using namespace fms;
 

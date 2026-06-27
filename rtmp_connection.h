@@ -1,9 +1,9 @@
 #pragma once
 
-#include <boost/noncopyable.hpp>
-
 #include "basic_rtmp_connection.h"
 #include "byte_writer.h"
+
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

@@ -1,11 +1,11 @@
 #pragma once
 
+#include "net_connection.h"
+#include "ns_event_handler.h"
+
 #include <list>
 #include <string>
 #include <utility>
-
-#include "net_connection.h"
-#include "ns_event_handler.h"
 
 namespace fms::rtmp_client
 {

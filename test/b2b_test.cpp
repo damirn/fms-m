@@ -4,29 +4,25 @@
 // rtmpdump / network guesswork — both ends are ours and fully observable.
 
 #include "doctest.h"
-
-#include <exception>
-
-#include <boost/asio.hpp>
-
-#include <chrono>
-#include <cstdint>
-#include <functional>
-#include <string>
-#include <thread>
-#include <vector>
-
-#include <fcntl.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
-#include <filesystem>
-#include <fstream>
-
 #include "flv_reader.h"
 #include "net_connection.h"
 #include "net_stream.h"
+
+#include <chrono>
+#include <cstdint>
+#include <exception>
+#include <fcntl.h>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <signal.h>
+#include <string>
+#include <sys/wait.h>
+#include <thread>
+#include <unistd.h>
+#include <vector>
+
+#include <boost/asio.hpp>
 
 namespace fs = std::filesystem;
 using namespace fms::rtmp_client;

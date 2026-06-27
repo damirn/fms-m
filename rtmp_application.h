@@ -1,5 +1,10 @@
 #pragma once
 
+#include "random_string.h"
+#include "rtmp_app_manager.h"
+#include "rtmp_message.h"
+#include "stats.h"
+
 #include <atomic>
 #include <list>
 #include <memory>
@@ -9,13 +14,8 @@
 #include <unordered_map>
 #include <utility>
 
-#include <boost/noncopyable.hpp>
 #include <boost/logic/tribool.hpp>
-
-#include "random_string.h"
-#include "rtmp_app_manager.h"
-#include "rtmp_message.h"
-#include "stats.h"
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

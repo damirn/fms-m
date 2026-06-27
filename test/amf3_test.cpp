@@ -1,7 +1,6 @@
-#include "doctest.h"
-
 #include "amf3.h"
 #include "byte_reader.h"
+#include "doctest.h"
 
 #include <cmath>
 #include <cstdint>

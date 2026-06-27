@@ -3,12 +3,11 @@
 // without the secret nor replayed from a different endpoint -- the return-
 // routability / anti-DoS property (RFC 7016 sec. 2.3.4).
 
+#include "cookie.h"
 #include "doctest.h"
 
 #include <cstdint>
 #include <cstring>
-
-#include "cookie.h"
 
 using namespace fms;
 
