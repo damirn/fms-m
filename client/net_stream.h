@@ -103,6 +103,17 @@ namespace fms::rtmp_client
 			return m_role;
 		}
 
+		// When publishing, send type "record" (server saves an FLV) instead of "live".
+		void set_record(bool r)
+		{
+			m_record = r;
+		}
+
+		bool is_record() const
+		{
+			return m_record;
+		}
+
 		net_stream_event_handler &event_handler()
 		{
 			return m_event_handler;
@@ -125,6 +136,7 @@ namespace fms::rtmp_client
 		net_stream_event_handler &m_event_handler;
 
 		role m_role{eIdle};
+		bool m_record{false};
 
 		std::string m_stream_name;
 		std::uint32_t m_id;

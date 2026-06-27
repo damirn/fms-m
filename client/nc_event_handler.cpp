@@ -16,7 +16,10 @@ namespace fms::rtmp_client
 			if (cmd == "play")
 				ns->play(config::instance()->stream_name());
 			else if (cmd == "publish" || cmd == "conference")
+			{
+				ns->set_record(config::instance()->record());
 				ns->publish(config::instance()->stream_name());
+			}
 			if (cmd == "conference")
 				create_conference_streams();
 		}
