@@ -167,14 +167,9 @@ namespace fms
 		client_session_ptr s = client->m_session.lock();
 		if (!s)
 		{
-			try
-			{
-				s = m_host.connection(client->m_connection_id);
-			}
-			catch (const std::exception &)
-			{
+			s = m_host.connection(client->m_connection_id);
+			if (!s)
 				return;   // subscriber gone
-			}
 			client->m_session = s;
 		}
 		m_host.enqueue_unchecked(client->m_connection_id, msg);

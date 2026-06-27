@@ -100,6 +100,13 @@ namespace fms
 		throw std::runtime_error("No such connection");
 	}
 
+	client_session_ptr rtmp_app_manager::get_connection_opt(std::uint32_t conn_id)
+	{
+		std::shared_lock const lock(m_mutex);
+		auto const i = m_connections.find(conn_id);
+		return i != m_connections.end() ? i->second : nullptr;
+	}
+
 	const std::string &rtmp_app_manager::get_app_instance(std::uint32_t conn_id)
 	{
 		std::shared_lock const lock(m_mutex);

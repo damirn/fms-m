@@ -113,6 +113,12 @@ namespace fms
 			return m_app_manager->get_connection(connection_id);
 		}
 
+		// Non-throwing: nullptr when the connection is gone.
+		client_session_ptr get_connection_opt(std::uint32_t connection_id)
+		{
+			return m_app_manager->get_connection_opt(connection_id);
+		}
+
 		const std::string &get_app_instance(std::uint32_t connection_id) const
 		{
 			return m_app_manager->get_app_instance(connection_id);
