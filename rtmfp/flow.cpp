@@ -150,6 +150,10 @@ namespace fms
 
 	vlu_t flow::get_stream_id_from_option(const option_ptr& opt)
 	{
+		// "TC" signature (2) + type byte (1) + at least one VLU byte. A shorter value
+		// would make skip(3)/read_vlu throw and drop the whole packet.
+		if (opt->m_value_len < 4)
+			return 0;
 		byte_reader tmp(opt->m_value, opt->m_value_len);
 		tmp.skip(3);
 		return tmp.read_vlu();

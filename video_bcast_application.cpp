@@ -233,6 +233,7 @@ namespace fms
 		rtmp_application::close_stream(invoke, connection_id);
 		std::unique_lock const lock(m_mutex);
 		res = close_stream(connection_id, invoke->stream_id());
+		m_registry.remove_client_stream(connection_id, invoke->stream_id());
 	}
 
 	void video_bcast_application::handle_invoke_publish(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
