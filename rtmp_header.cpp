@@ -317,6 +317,17 @@ namespace fms
 			b = static_cast<std::uint16_t>(m_channel_id - 64);   // 3-byte basic header: (csid - 64), little-endian
 			buffer << b;
 		}
+
+		// A type-3 continuation of a message whose timestamp is in the extended range
+		// (>= 0xFFFFFF) repeats the 4-byte extended timestamp on every chunk -- our
+		// reader (and FFmpeg/nginx) consume it. Match the value the first chunk wrote:
+		// absolute for a type-0 message, delta for type-1/2.
+		std::uint32_t const ts = (m_header_type == eHeaderNew) ? m_timestamp : m_ts_delta_write;
+		if (ts >= 0x00ffffff)
+		{
+			std::uint32_t const ext = boost::asio::detail::socket_ops::host_to_network_long(ts);
+			buffer << ext;
+		}
 	}
 
 }

@@ -48,6 +48,10 @@ namespace fms
 
 		void close() override;
 
+		// True once the tunneled RTMP handshake is done and commands are flowing. The
+		// manager uses this to reap a session that keeps polling but never handshakes.
+		bool handshake_complete() const { return m_sstate == eCSReadCommands; }
+
 		boost::tribool handle_data(byte_writer &, byte_writer &);
 		void serialize_result(byte_writer &);
 

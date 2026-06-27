@@ -76,6 +76,7 @@ namespace fms
 					break;
 				input.write(j->second.first, j->second.second);
 				delete[] j->second.first;
+				i->second->m_ooo_bytes -= j->second.second;
 				i->second->m_out_of_order_data.erase(j);
 				i->second->m_sequence++;
 			}
@@ -87,11 +88,13 @@ namespace fms
 			// client that never sends the expected sequence can't grow this without
 			// limit (memory DoS). Over the cap we drop the excess and just poll.
 			if (i->second->m_out_of_order_data.size() < eMaxOutOfOrder &&
+				i->second->m_ooo_bytes + input.size() <= eMaxOutOfOrderBytes &&
 				i->second->m_out_of_order_data.find(seq) == i->second->m_out_of_order_data.end())
 			{
 				auto *data = new std::uint8_t[input.size()];
 				std::memcpy(data, input.data(), input.size());
 				i->second->m_out_of_order_data[seq] = std::make_pair(data, input.size());
+				i->second->m_ooo_bytes += input.size();
 			}
 			i->second->m_session->serialize_poll_time(output);
 		}
@@ -158,7 +161,12 @@ namespace fms
 			std::unique_lock const lock(m_mutex);
 			for (auto i = m_ids.begin(); i != m_ids.end(); )
 			{
-				if (i->second->m_not_alive > 3)
+				// Idle reaping (polling resets m_not_alive), OR a session that keeps
+				// polling but never finishes the tunneled handshake (m_open_ticks is not
+				// reset by polling) -- the latter replaces the per-session handshake timer.
+				bool const idle_dead = i->second->m_not_alive > 3;
+				bool const handshake_stalled = !i->second->m_session->handshake_complete() && i->second->m_open_ticks >= 1;
+				if (idle_dead || handshake_stalled)
 				{
 					i->second->m_session->close();
 					i = m_ids.erase(i);
@@ -166,6 +174,7 @@ namespace fms
 				else
 				{
 					i->second->m_not_alive++;
+					i->second->m_open_ticks++;
 					++i;
 				}
 			}

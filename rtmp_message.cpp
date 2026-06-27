@@ -210,12 +210,17 @@ namespace fms
 		{
 			rtmp_header h;
 			std::uint8_t c;
-			std::uint32_t t;
 			buffer >> c;
 
 			h.message_type() = c;
 			h.message_length() = buffer.read_uint32_3();
-			std::uint32_t const ts = buffer.read_uint32_3();
+			// FLV tag header: Timestamp(3) + TimestampExtended(1) high byte, then a
+			// 3-byte StreamID (always 0). The old code read the ext byte as part of a
+			// 4-byte stream id, dropping the high timestamp bits and garbling the id.
+			std::uint32_t ts = buffer.read_uint32_3();
+			std::uint8_t ts_ext = 0;
+			buffer >> ts_ext;
+			ts |= static_cast<std::uint32_t>(ts_ext) << 24;
 			if (first)
 			{
 				first = false;
@@ -228,8 +233,7 @@ namespace fms
 				prev_calc_ts = h.timestamp();
 				prev_ts = ts;
 			}
-			buffer >> t;
-			h.stream_id() = boost::asio::detail::socket_ops::network_to_host_long(t);
+			h.stream_id() = buffer.read_uint32_3();
 
 			// a sub-message can't be longer than what's left of the aggregate;
 			// stop on a bogus length instead of over-allocating / over-reading
