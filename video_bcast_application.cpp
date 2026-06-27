@@ -60,7 +60,7 @@ namespace fms
 
 	client_session_ptr video_bcast_application::connection(std::uint32_t conn)
 	{
-		return get_connection(conn);
+		return get_connection_opt(conn);
 	}
 
 	void video_bcast_application::send_play_start(std::uint32_t conn, std::uint32_t stream, std::uint32_t channel, const std::string &name, bool recorded)

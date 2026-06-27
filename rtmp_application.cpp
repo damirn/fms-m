@@ -522,13 +522,6 @@ namespace fms
 	void rtmp_application::close_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
 		m_app_manager->delete_netstream(std::make_pair(connection_id, invoke->stream_id()));
-		try
-		{
-			client_session_ptr const conn = get_connection(connection_id);
-			//conn->unreserve_stream_id(invoke->stream_id());
-		}
-		catch (std::runtime_error &)
-		{}
 	}
 
 	void rtmp_application::create_connect_messages(std::uint32_t connection_id, optional_param_list_t param /* = optional_param_list_t() */)
@@ -674,27 +667,15 @@ namespace fms
 
 	void rtmp_application::notify(std::uint32_t connection_id)
 	{
-		try
-		{
-			client_session_ptr const conn = get_connection(connection_id);
+		if (client_session_ptr const conn = get_connection_opt(connection_id))
 			conn->notify();
-		}
-		catch(std::exception &e)
-		{
-		}
 	}
 
 	std::uint32_t rtmp_application::get_timestamp(std::uint32_t connection_id)
 	{
-		try
-		{
-			client_session_ptr const conn = get_connection(connection_id);
+		if (client_session_ptr const conn = get_connection_opt(connection_id))
 			return conn->get_timestamp();
-		}
-		catch(std::exception &)
-		{
-			return 0;
-		}
+		return 0;
 	}
 
 	std::uint32_t rtmp_application::get_delay(std::uint32_t connetion_id)

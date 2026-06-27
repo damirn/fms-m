@@ -26,7 +26,7 @@ namespace fms
 		virtual void enqueue_unchecked(std::uint32_t conn, const rtmp_message_ptr &msg) = 0;
 		virtual void notify_connection(std::uint32_t conn) = 0;
 
-		// The subscriber's session, for caching (weak_ptr). May throw if it is gone.
+		// The subscriber's session, for caching (weak_ptr). nullptr if it is gone.
 		virtual client_session_ptr connection(std::uint32_t conn) = 0;
 
 		// Status-message helpers used by VOD playback.

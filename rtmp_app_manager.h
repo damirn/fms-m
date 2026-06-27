@@ -54,6 +54,9 @@ namespace fms
 		void delete_http_connection(std::uint32_t);
 
 		client_session_ptr get_connection(std::uint32_t);
+		// Non-throwing lookup: nullptr when the connection is gone (an ordinary miss
+		// on the fan-out / notify paths, not an error).
+		client_session_ptr get_connection_opt(std::uint32_t);
 		const std::string &get_app_instance(std::uint32_t);
 		bool has_connection(std::uint32_t);
 		void delete_connection(std::uint32_t);
