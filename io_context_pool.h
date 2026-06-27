@@ -1,10 +1,11 @@
 #pragma once
 
-#include <boost/asio.hpp>
-#include <boost/noncopyable.hpp>
 #include <atomic>
 #include <memory>
 #include <vector>
+
+#include <boost/asio.hpp>
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

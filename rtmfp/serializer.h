@@ -3,6 +3,7 @@
 #include "byte_writer.h"
 
 #include <cstdint>
+
 #include <boost/noncopyable.hpp>
 
 namespace fms

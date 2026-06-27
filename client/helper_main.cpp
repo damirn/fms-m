@@ -12,14 +12,13 @@
 // play attempt), and it exits when the source ends.
 
 #include "pch.h"
+#include "net_connection.h"
+#include "net_stream.h"
+#include "rtmp_message.h"
 
 #include <iostream>
 
 #include <boost/program_options.hpp>
-
-#include "net_connection.h"
-#include "net_stream.h"
-#include "rtmp_message.h"
 
 namespace po = boost::program_options;
 

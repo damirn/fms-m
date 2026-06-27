@@ -5,16 +5,15 @@
 // deserializers must reject, never over-read. Scoped to the codecs that link with
 // Boost headers only (no aes / crypto / session stack), like amf_tests.
 
+#include "byte_reader.h"
+#include "byte_writer.h"
 #include "doctest.h"
+#include "rtmfp/header.h"
+#include "rtmfp/types.h"
 
 #include <cstdint>
 #include <cstring>
 #include <vector>
-
-#include "byte_reader.h"
-#include "byte_writer.h"
-#include "rtmfp/types.h"
-#include "rtmfp/header.h"
 
 using namespace fms;
 

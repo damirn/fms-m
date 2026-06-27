@@ -1,13 +1,13 @@
 #pragma once
 
-#include <boost/noncopyable.hpp>
-#include <boost/logic/tribool.hpp>
+#include "basic_rtmp_connection.h"
+#include "byte_writer.h"
 
 #include <list>
 #include <string>
 
-#include "basic_rtmp_connection.h"
-#include "byte_writer.h"
+#include <boost/logic/tribool.hpp>
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

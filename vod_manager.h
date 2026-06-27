@@ -1,15 +1,15 @@
 #pragma once
 
+#include "rtmp_message.h"   // rtmp_message_ptr, rtmp_message_invoke_ptr
+#include "stats.h"          // stream_client_id_t
+#include "vod_session.h"
+
 #include <cstdint>
 #include <map>
 #include <shared_mutex>
 #include <string>
 
 #include <boost/noncopyable.hpp>
-
-#include "rtmp_message.h"   // rtmp_message_ptr, rtmp_message_invoke_ptr
-#include "stats.h"          // stream_client_id_t
-#include "vod_session.h"
 
 namespace fms
 {

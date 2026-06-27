@@ -3,14 +3,13 @@
 // (RFC 7016 sec. 3.4). At the cap the flow is rejected and its buffer dropped.
 
 #include "doctest.h"
+#include "flow.h"
+#include "group.h"
 
 #include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <vector>
-
-#include "flow.h"
-#include "group.h"
 
 using namespace fms;
 

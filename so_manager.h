@@ -1,5 +1,7 @@
 #pragma once
 
+#include "rtmp_so_message.h"
+
 #include <functional>
 #include <map>
 #include <memory>
@@ -11,8 +13,6 @@
 #include <vector>
 
 #include <boost/noncopyable.hpp>
-
-#include "rtmp_so_message.h"
 
 namespace fms
 {

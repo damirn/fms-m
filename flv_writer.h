@@ -1,12 +1,12 @@
 #pragma once
 
+#include "audio_sink.h"
+#include "video_sink.h"
+
 #include <fstream>
 #include <string>
 
 #include <boost/noncopyable.hpp>
-
-#include "audio_sink.h"
-#include "video_sink.h"
 
 namespace fms
 {

@@ -4,12 +4,11 @@
 // whenever a client sent a short LinearPCM payload. pcm_to_frame bounds the copy.
 
 #include "doctest.h"
+#include "pcm_frame.h"
 
 #include <cstdint>
 #include <cstring>
 #include <vector>
-
-#include "pcm_frame.h"
 
 using namespace fms;
 

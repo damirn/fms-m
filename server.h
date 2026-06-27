@@ -1,12 +1,13 @@
 #pragma once
 
+#include "io_context_pool.h"
+
 #include <memory>
-#include <string>
 #include <stdexcept>
+#include <string>
+
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
-
-#include "io_context_pool.h"
 
 namespace fms
 {

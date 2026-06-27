@@ -3,17 +3,16 @@
 // sink is injected (delivery_fn), so these drive handle_so() with crafted SO
 // messages and a recording sink -- no rtmp_application/server needed.
 
+#include "amf0_types.h"
+#include "byte_reader.h"
 #include "doctest.h"
+#include "rtmp_so_message.h"
+#include "so_manager.h"
 
 #include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
-
-#include "so_manager.h"
-#include "rtmp_so_message.h"
-#include "byte_reader.h"
-#include "amf0_types.h"
 
 using namespace fms;
 using SO = rtmp_message_shared_object;

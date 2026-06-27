@@ -1,10 +1,11 @@
 #pragma once
 
+#include "rtmp_message.h"
+
 #include <fstream>
 #include <string>
-#include <boost/noncopyable.hpp>
 
-#include "rtmp_message.h"
+#include <boost/noncopyable.hpp>
 
 namespace fms
 {

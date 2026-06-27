@@ -3,14 +3,13 @@
 // odd-length payloads, which session sequence numbers make common), the
 // anti-replay sequence window, and the packet-HMAC compute/verify round trip.
 
+#include "aes.h"
 #include "doctest.h"
+#include "parser.h"
 
 #include <cstdint>
 #include <cstring>
 #include <vector>
-
-#include "parser.h"
-#include "aes.h"
 
 using namespace fms;
 

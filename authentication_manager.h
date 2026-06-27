@@ -1,12 +1,13 @@
 #pragma once
 
-#include <string>
+#include "authentication_plugin.h"
+
 #include <functional>
 #include <memory>
+#include <string>
+
 #include <boost/logic/tribool.hpp>
 #include <boost/noncopyable.hpp>
-
-#include "authentication_plugin.h"
 
 using create = fms::authentication_plugin *(*)();
 using destroy = void *(*)(fms::authentication_plugin *);

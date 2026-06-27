@@ -1,9 +1,9 @@
 #pragma once
 
-#include <memory>
-
-#include "rtmp_header.h"
 #include "byte_writer.h"
+#include "rtmp_header.h"
+
+#include <memory>
 
 namespace fms
 {

@@ -1,13 +1,11 @@
 #include "pch.h"
 #include "remote_relay.h"
+#include "config.h"
 
 #include <csignal>
 #include <mutex>
-#include <vector>
-
 #include <unistd.h>
-
-#include "config.h"
+#include <vector>
 
 namespace fms::remote_relay
 {

@@ -1,13 +1,13 @@
 #pragma once
 
+#include "client_session.h"   // client_session_ptr
+#include "rtmp_message.h"     // rtmp_message_ptr
+#include "stats.h"            // stream_client_id_t
+
 #include <cstdint>
 #include <string>
 
 #include <boost/asio/io_context.hpp>
-
-#include "rtmp_message.h"     // rtmp_message_ptr
-#include "client_session.h"   // client_session_ptr
-#include "stats.h"            // stream_client_id_t
 
 namespace fms
 {

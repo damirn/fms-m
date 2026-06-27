@@ -1,9 +1,9 @@
 #pragma once
 
+#include "buffer_eof.h"
+
 #include <cstdint>
 #include <cstring>
-
-#include "buffer_eof.h"
 
 namespace fms
 {

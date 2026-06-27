@@ -1,19 +1,19 @@
 #include "pch.h"
 #include "logging.h"
 
-#include <stdexcept>
-#include <iostream>
 #include <fstream>
 #include <functional>
-#include <boost/ref.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/thread/barrier.hpp>
+#include <iostream>
+#include <stdexcept>
 
+#include <boost/core/null_deleter.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/log/attributes.hpp>
 #include <boost/log/expressions.hpp>
-#include <boost/core/null_deleter.hpp>
+#include <boost/ref.hpp>
 #include <boost/smart_ptr/make_shared.hpp>
+#include <boost/thread/barrier.hpp>
+#include <boost/thread/thread.hpp>
 
 namespace attrs = boost::log::attributes;
 namespace expr = boost::log::expressions;

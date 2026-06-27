@@ -1,5 +1,9 @@
 #pragma once
 
+#include "queue.h"
+#include "rtmp_message.h"
+#include "speex_codec.h"
+
 #include <atomic>
 #include <map>
 #include <memory>
@@ -7,10 +11,6 @@
 #include <thread>
 
 #include <boost/noncopyable.hpp>
-
-#include "queue.h"
-#include "rtmp_message.h"
-#include "speex_codec.h"
 
 namespace fms
 {

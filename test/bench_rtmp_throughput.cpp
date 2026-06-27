@@ -15,9 +15,9 @@
 // is sampled over a mid-run window, after a warmup, so ramp-up is excluded.
 // Not a correctness test -- run by hand.
 
-#include <exception>
-
-#include <boost/asio.hpp>
+#include "net_connection.h"
+#include "net_stream.h"
+#include "rtmp_message.h"
 
 #include <algorithm>
 #include <atomic>
@@ -26,20 +26,18 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <memory>
-#include <string>
-#include <thread>
-#include <vector>
-
+#include <exception>
 #include <fcntl.h>
+#include <memory>
 #include <signal.h>
+#include <string>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <thread>
 #include <unistd.h>
+#include <vector>
 
-#include "net_connection.h"
-#include "net_stream.h"
-#include "rtmp_message.h"
+#include <boost/asio.hpp>
 
 using namespace fms::rtmp_client;
 using clk = std::chrono::steady_clock;

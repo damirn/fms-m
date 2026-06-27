@@ -1,9 +1,8 @@
 #include "pch.h"
-
-#include <iostream>
-
 #include "config.h"
 #include "nc_event_handler.h"
+
+#include <iostream>
 
 int main(int argc, char *argv[])
 {

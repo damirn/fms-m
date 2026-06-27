@@ -6,8 +6,8 @@
 #include <cstdint>
 #include <cstring>
 #include <list>
-#include <optional>
 #include <memory>
+#include <optional>
 
 namespace fms
 {

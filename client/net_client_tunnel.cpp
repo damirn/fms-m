@@ -1,5 +1,4 @@
 #include "pch.h"
-
 #include "net_client_tunnel.h"
 
 namespace beast = boost::beast;

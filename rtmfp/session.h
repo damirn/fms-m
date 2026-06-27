@@ -1,10 +1,10 @@
 #pragma once
 
+#include "byte_reader.h"
 #include "client_session.h"
 #include "congestion_window.h"
 #include "parser.h"
 #include "types.h"
-#include "byte_reader.h"
 
 #include <chrono>
 #include <cstdint>
