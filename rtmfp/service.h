@@ -86,6 +86,10 @@ namespace fms
 
 		std::chrono::system_clock::time_point m_start;
 
+		// These session/group maps carry no lock: the service is pinned to a single
+		// io_context (see server::init_rtmfp_service) and every access runs on that
+		// one thread. This depends on io_context_pool's "one thread per io_context"
+		// contract -- see io_context_pool.h.
 		using endpoint_to_session_map_t = std::map<boost::asio::ip::udp::endpoint, session_ptr>;
 		endpoint_to_session_map_t m_initial_sessions;
 

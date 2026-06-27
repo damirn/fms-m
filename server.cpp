@@ -155,6 +155,9 @@ namespace fms
 
 	void server::init_rtmfp_service()
 	{
+		// Pin the whole RTMFP service to ONE io_context. Its session/group maps are
+		// lock-free and rely on every packet being handled on that single thread (the
+		// "one thread per io_context" contract -- see io_context_pool.h).
 		m_rtmfp_service = std::make_unique<service>(m_io_context_pool.get_io_context(), config::instance()->rtmpf_port(), m_app_manager.get());
 	}
 }

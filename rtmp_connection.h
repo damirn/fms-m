@@ -113,6 +113,10 @@ namespace fms
 			eStateReadPackets,
 			eStateClosing
 		};
+		// Unsynchronised: this connection is pinned to one io_context, so m_state,
+		// m_write_in_progress and the buffers below are only ever touched by that one
+		// thread (io_context_pool.h "one thread per io_context"). Cross-thread teardown
+		// hops back via post_close().
 		connection_states m_state{eStateReadHS};
 
 		// Buffers for incoming data.

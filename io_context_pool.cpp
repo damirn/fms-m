@@ -25,7 +25,10 @@ namespace fms
 
 	void io_context_pool::run()
 	{
-		// Create a pool of threads to run all of the io_contexts.
+		// Exactly ONE thread per io_context -- this loop is the guarantor of the
+		// "one thread per io_context" concurrency contract documented on the class.
+		// Do not run any io_context on more than one thread: the connection and RTMFP
+		// code is lock-free precisely because each context is single-threaded.
 		std::vector<std::thread> threads;
 		for (auto &ctx : m_io_contexts)
 			threads.emplace_back([c = ctx.get()] {
