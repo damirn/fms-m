@@ -623,6 +623,7 @@ namespace fms
 					has_data = true;
 				}
 			}
+			m_ack_now = false;   // one-shot: re-armed by the next inbound data chunk
 		}
 		for (i = m_sending_flows.begin(); i != m_sending_flows.end(); ++i)
 		{

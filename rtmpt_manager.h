@@ -74,13 +74,16 @@ namespace fms
 					delete[] kv.second.first;
 			}
 			std::uint32_t m_sequence{0};
-			std::uint32_t m_connection_id{0};
 			std::uint8_t m_not_alive{0};
+			// Reaper ticks since /open, NEVER reset by polling (unlike m_not_alive) --
+			// so a session that polls but never completes the handshake still ages out.
+			std::uint8_t m_open_ticks{0};
 			boost::asio::ip::address m_address;
 			rtmpt_session_ptr m_session;
 			// length is size_t, not uint16_t: a >64 KB body was truncated on replay.
 			using unoreder_data_t = std::map<std::uint32_t, std::pair<std::uint8_t *, std::size_t>>;
 			unoreder_data_t m_out_of_order_data;
+			std::size_t m_ooo_bytes{0};   // total bytes stashed above, capped (not just count)
 		};
 
 		using rtmpt_session_data_ptr = std::shared_ptr<rtmpt_session_data>;
@@ -92,5 +95,6 @@ namespace fms
 		// eMaxOutOfOrder bounds a single session's out-of-order backlog against a
 		// client that sends ever-increasing sequence numbers and never the next one.
 		enum { eIDSize = 16, eTimerInterval = 30, eMaxSessions = 4096, eMaxOutOfOrder = 64 };
+		enum : std::size_t { eMaxOutOfOrderBytes = 4u * 1024 * 1024 };   // aggregate byte cap
 	};
 }

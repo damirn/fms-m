@@ -148,7 +148,7 @@ namespace fms
 		m_response.keep_alive(true);
 		m_response.set(http::field::cache_control, "no-cache");
 		m_response.set(http::field::server, m_rtmpt_manager->version());
-		m_response.set(http::field::content_type, "image/png");   // RTMPT convention (defeats caching proxies)
+		m_response.set(http::field::content_type, "application/x-fcs");   // the RTMPT response type (FMS); no-cache above defeats proxies
 		m_response.body() = std::move(body);
 		m_response.prepare_payload();   // sets Content-Length
 
