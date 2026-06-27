@@ -32,7 +32,7 @@ namespace fms
 			m_app = app;
 		}
 
-		rtmp_application *get_app()
+		rtmp_application *get_app() const
 		{
 			return m_app;
 		}
