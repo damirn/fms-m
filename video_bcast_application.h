@@ -7,6 +7,7 @@
 #include <boost/asio.hpp>
 
 #include "av_delivery.h"
+#include "media_host.h"
 #include "rtmp_application.h"
 #include "stream_registry.h"
 #include "vod_manager.h"
@@ -21,15 +22,10 @@ namespace fms
 		extern const char delete_stream[];
 	}
 
-	class video_bcast_application : public rtmp_application
+	// Implements media_host so the av_delivery / vod_manager collaborators drive the
+	// RTMP send path through that narrow interface rather than as friends.
+	class video_bcast_application : public rtmp_application, public media_host
 	{
-		// The VOD playback and live A/V fan-out subsystems are friends so they can
-		// drive the RTMP send path (enqueue frames / status notifies, the connection
-		// lookup, the channel mapping) while living in their own classes. See
-		// vod_manager.h and av_delivery.h.
-		friend class vod_manager;
-		friend class av_delivery;
-
 	public:
 		explicit video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
 
@@ -124,6 +120,16 @@ namespace fms
 		virtual void video_call_end_notify(std::uint32_t) {}
 
 	private:
+		// media_host: forward the send path to our rtmp_application base / manager.
+		void enqueue(std::uint32_t conn, const rtmp_message_ptr &msg) override;
+		void enqueue_unchecked(std::uint32_t conn, const rtmp_message_ptr &msg) override;
+		void notify_connection(std::uint32_t conn) override;
+		client_session_ptr connection(std::uint32_t conn) override;
+		void send_play_start(std::uint32_t conn, std::uint32_t stream, std::uint32_t channel, const std::string &name, bool recorded) override;
+		void send_status(std::uint32_t conn, std::uint32_t stream, const std::string &code, const std::string &desc, bool enqueue) override;
+		boost::asio::io_context &io_context() override;
+		void update_netstream(const stream_client_id_t &id, const std::string &name, bool publishing) override;
+
 		void add_waiting_client(std::uint32_t, const rtmp_message_invoke_ptr&, const std::string &);
 		void update_waiting_client(stream_client_id_t &, bool, bool);
 

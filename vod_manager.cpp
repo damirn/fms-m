@@ -7,11 +7,11 @@
 #include <utility>
 
 #include "amf0_types.h"
+#include "channel_map.h"
 #include "config.h"
 #include "logging.h"
+#include "media_host.h"
 #include "media_path.h"
-#include "rtmp_app_manager.h"
-#include "video_bcast_application.h"
 
 namespace fms
 {
@@ -26,7 +26,7 @@ namespace fms
 			return false;   // no such saved file -> fall back to live/waiting
 
 		auto session = std::make_shared<vod_session>(
-			m_app.m_app_manager->get_io_context_pool().get_io_context(),
+			m_host.io_context(),
 			connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
 		session->m_reader.open(*path);
 		if (!session->m_reader.is_open())
@@ -51,10 +51,10 @@ namespace fms
 		session->m_next = session->m_reader.get_frame();
 
 		m_vod[std::make_pair(connection_id, invoke->stream_id())] = session;
-		m_app.m_app_manager->update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, false);
+		m_host.update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, false);
 
 		BOOST_LOG(lg::get()) << "cid: " << connection_id << " VOD playback of '" << stream_name << "'";
-		m_app.send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name, true /* recorded */);
+		m_host.send_play_start(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name, true /* recorded */);
 
 		session->m_timer.expires_after(std::chrono::milliseconds(0));
 		session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) tick(session); });
@@ -73,8 +73,8 @@ namespace fms
 		{
 			// StreamEOF user-control, then the Play.Stop status.
 			rtmp_message_ping_ptr const eof = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingStreamEOF, session->m_stream_id);
-			m_app.enqueue_async_message(session->m_connection_id, eof);
-			m_app.send_stream_notify(session->m_connection_id, session->m_stream_id,
+			m_host.enqueue(session->m_connection_id, eof);
+			m_host.send_status(session->m_connection_id, session->m_stream_id,
 				"NetStream.Play.Stop", "Stopped playing " + session->m_stream_name, true);
 			session->m_state = vod_session::eStopped;
 			m_vod.erase(key);
@@ -84,11 +84,11 @@ namespace fms
 		rtmp_message_ptr const frame = session->m_next;
 		bool const is_video = std::dynamic_pointer_cast<rtmp_message_video_data>(frame) != nullptr;
 		frame->stream_id() = session->m_stream_id;
-		frame->channel_id() = video_bcast_application::stream_to_channel(session->m_stream_id, is_video ? video_bcast_application::eVideo : video_bcast_application::eAudio);
+		frame->channel_id() = stream_to_channel(session->m_stream_id, is_video ? eVideo : eAudio);
 		std::uint32_t const prev_ts = frame->timestamp();
 
-		m_app.enqueue_async_message(session->m_connection_id, frame);
-		m_app.notify(session->m_connection_id);
+		m_host.enqueue(session->m_connection_id, frame);
+		m_host.notify_connection(session->m_connection_id);
 
 		// read the next frame and pace by its timestamp delta
 		session->m_next = session->m_reader.read_frame() ? session->m_reader.get_frame() : nullptr;
@@ -119,13 +119,13 @@ namespace fms
 				session->m_state = vod_session::ePaused;
 				session->m_timer.cancel();
 			}
-			m_app.send_stream_notify(connection_id, stream_id, "NetStream.Pause.Notify",
+			m_host.send_status(connection_id, stream_id, "NetStream.Pause.Notify",
 				"Paused " + session->m_stream_name, true);
 		}
 		else if (session->m_state == vod_session::ePaused)
 		{
 			session->m_state = vod_session::ePlaying;
-			m_app.send_stream_notify(connection_id, stream_id, "NetStream.Unpause.Notify",
+			m_host.send_status(connection_id, stream_id, "NetStream.Unpause.Notify",
 				"Unpaused " + session->m_stream_name, true);
 			session->m_timer.expires_after(std::chrono::milliseconds(0));
 			session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) tick(session); });
@@ -143,7 +143,7 @@ namespace fms
 		session->m_reader.seek(ms);
 		session->m_next = session->m_reader.read_frame() ? session->m_reader.get_frame() : nullptr;
 
-		m_app.send_stream_notify(connection_id, stream_id, "NetStream.Seek.Notify",
+		m_host.send_status(connection_id, stream_id, "NetStream.Seek.Notify",
 			"Seeking " + std::to_string(ms) + " (" + session->m_stream_name + ")", true);
 
 		if (session->m_state == vod_session::ePlaying)

@@ -41,6 +41,48 @@ namespace fms
 
 	video_bcast_application::~video_bcast_application() = default;
 
+	// ---- media_host: the send path av_delivery / vod_manager drive through ----
+
+	void video_bcast_application::enqueue(std::uint32_t conn, const rtmp_message_ptr &msg)
+	{
+		enqueue_async_message(conn, msg);
+	}
+
+	void video_bcast_application::enqueue_unchecked(std::uint32_t conn, const rtmp_message_ptr &msg)
+	{
+		enqueue_async_message_unchecked(conn, msg);
+	}
+
+	void video_bcast_application::notify_connection(std::uint32_t conn)
+	{
+		notify(conn);
+	}
+
+	client_session_ptr video_bcast_application::connection(std::uint32_t conn)
+	{
+		return get_connection(conn);
+	}
+
+	void video_bcast_application::send_play_start(std::uint32_t conn, std::uint32_t stream, std::uint32_t channel, const std::string &name, bool recorded)
+	{
+		send_play_start_messages(conn, stream, channel, name, recorded);
+	}
+
+	void video_bcast_application::send_status(std::uint32_t conn, std::uint32_t stream, const std::string &code, const std::string &desc, bool enqueue)
+	{
+		send_stream_notify(conn, stream, code, desc, enqueue);
+	}
+
+	boost::asio::io_context &video_bcast_application::io_context()
+	{
+		return m_app_manager->get_io_context_pool().get_io_context();
+	}
+
+	void video_bcast_application::update_netstream(const stream_client_id_t &id, const std::string &name, bool publishing)
+	{
+		m_app_manager->update_netstream(id, name, publishing);
+	}
+
 	void video_bcast_application::delete_connection(std::uint32_t connection_id, const std::string &app_instance)
 	{
 		rtmp_application::delete_connection(connection_id, app_instance);
