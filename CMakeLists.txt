@@ -207,6 +207,19 @@ if(BUILD_AMF_TESTS)
   endif()
   add_test(NAME rtmfp_tests COMMAND rtmfp_tests)
 
+  # av_delivery unit tests: the live A/V fan-out (keyframe join, config priming,
+  # timestamp rebasing, metadata) driven through a recording media_host -- no
+  # server, socket, or io_context (the payoff of injecting media_host).
+  add_executable(av_delivery_test
+    test/test_main.cpp test/av_delivery_test.cpp
+    av_delivery.cpp stream_registry.cpp rtmp_message.cpp rtmp_header.cpp
+    rtmp_protocol.cpp rtmp_so_message.cpp client_session.cpp amf0.cpp amf3.cpp flv_writer.cpp)
+  if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(av_delivery_test Threads::Threads)
+  endif()
+  add_test(NAME av_delivery_test COMMAND av_delivery_test)
+
   # Manual throughput benchmark for byte_writer's input-buffer role (not a test).
   # Always built optimized (with asserts off) so the numbers are meaningful even
   # in an otherwise-Debug configure.
