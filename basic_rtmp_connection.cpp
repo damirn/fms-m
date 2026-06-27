@@ -16,8 +16,6 @@ namespace fms
 	basic_rtmp_connection::basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager)
 		: client_session(id, app_manager)
 		, m_io_context(io_context)
-		, m_hs_timer(io_context)
-		, m_timer(io_context)
 	{}
 
 	basic_rtmp_connection::~basic_rtmp_connection()
@@ -28,7 +26,6 @@ namespace fms
 
 	void basic_rtmp_connection::close()
 	{
-		m_timer.cancel();
 		client_session::close();
 	}
 
@@ -51,43 +48,6 @@ namespace fms
 			notify();
 			//std::cout << "Sending bytes read: " << m_bytes_read << " bytes." << std::endl;
 		}
-	}
-
-	void basic_rtmp_connection::arm_hs_timer()
-	{
-		// arm timeout timer
-		m_hs_timer.expires_after(std::chrono::seconds(static_cast<long>(eHandShakeTimeout)));
-		m_hs_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_hs_timer(ec); });
-	}
-
-	void basic_rtmp_connection::arm_timer()
-	{
-		m_timer.expires_after(std::chrono::seconds(static_cast<long>(ePingInterval)));
-		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
-	}
-
-	void basic_rtmp_connection::handle_timer(const boost::system::error_code &e)
-	{
-		if (!e)
-		{
-			if (m_app == nullptr)
-			{
-				close();
-				return;
-			}
-			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(ePingInterval)));
-			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
-
-			rtmp_message_ping_ptr const msg = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingRequest, get_timestamp());
-			m_app->enqueue_async_message(m_id, msg);
-			notify();
-		}
-	}
-
-	void basic_rtmp_connection::handle_hs_timer(const boost::system::error_code &e)
-	{
-		if (!e)
-			close();
 	}
 
 	void basic_rtmp_connection::handle_message(rtmp_channel_ptr channel, rtmp_message_ptr msg)
@@ -155,7 +115,7 @@ namespace fms
 		if (valid)
 		{
 			buffer.consume(eHandShakeSize);
-			m_hs_timer.cancel();
+			on_handshake_complete();
 			return true;
 		}
 

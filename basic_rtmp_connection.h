@@ -46,12 +46,10 @@ namespace fms
 		}
 
 	protected:
-		// Handle ping timer
-		void handle_timer(const boost::system::error_code &);
-		void handle_hs_timer(const boost::system::error_code &);
-
-		void arm_hs_timer();
-		void arm_timer();
+		// Called once the peer's handshake response has validated. The socket
+		// transport overrides it to cancel its handshake-timeout timer; the tunnelled
+		// (RTMPT) transport, which runs no timers, leaves it a no-op.
+		virtual void on_handshake_complete() {}
 
 		// Handle decoded message
 		void handle_message(rtmp_channel_ptr, rtmp_message_ptr) override;
@@ -79,16 +77,9 @@ namespace fms
 
 		boost::asio::io_context &m_io_context;
 
-		// Timer for handshake
-		boost::asio::steady_timer m_hs_timer;
-
-		// Timer for ping
-		boost::asio::steady_timer m_timer;
-
 		enum { eHandShakeHeaderSize = 8, eHandShakeSize = 1536 };
 		enum { ePlainMagic = 0x03, eCryptoMagic = 0x06 };
 		enum { eAckSize = 2500000 };
-		enum { eHandShakeTimeout = 5, ePingInterval = 30 };
 		enum { eEncodingAMF0, eEncodingAMF3 };
 
 		std::uint32_t m_bytes_read_notify{eAckSize};
