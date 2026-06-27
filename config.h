@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+
 #include <boost/noncopyable.hpp>
 #include <boost/program_options.hpp>
 
@@ -108,7 +109,7 @@ namespace fms
 			return m_password_file;
 		}
 
-		static const char *version_string() ;
+		static const char *version_string();
 
 	protected:
 		void create_description();
