@@ -135,21 +135,33 @@ namespace fms
 			if (m_elements >= 3)
 			{
 				buffer >> m_value3;
+				m_value3 = boost::asio::detail::socket_ops::network_to_host_long(m_value3);
 				if (m_elements >= 4)
+				{
 					buffer >> m_value4;
+					m_value4 = boost::asio::detail::socket_ops::network_to_host_long(m_value4);
+				}
 			}
 		}
 	}
 
 	void rtmp_message_ping::serialize(byte_writer &buffer)
 	{
-		std::uint16_t v1 = boost::asio::detail::socket_ops::host_to_network_short(m_value1);
-		std::uint32_t v2 = boost::asio::detail::socket_ops::host_to_network_long(m_value2);
+		// User-control fields are big-endian; mirror deserialize exactly and emit as
+		// many elements as the event carries. (The old code handled only == 3, so a
+		// 4-element event silently serialized as 2.)
+		std::uint16_t const v1 = boost::asio::detail::socket_ops::host_to_network_short(m_value1);
+		std::uint32_t const v2 = boost::asio::detail::socket_ops::host_to_network_long(m_value2);
 		buffer << v1 << v2;
-		if (m_elements == 3)
+		if (m_elements >= 3)
 		{
-			v2 = boost::asio::detail::socket_ops::host_to_network_long(m_value3);
-			buffer << v2;
+			std::uint32_t const v3 = boost::asio::detail::socket_ops::host_to_network_long(m_value3);
+			buffer << v3;
+			if (m_elements >= 4)
+			{
+				std::uint32_t const v4 = boost::asio::detail::socket_ops::host_to_network_long(m_value4);
+				buffer << v4;
+			}
 		}
 	}
 
