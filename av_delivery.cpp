@@ -11,7 +11,8 @@
 #include "client_session.h"
 #include "flv_writer.h"
 #include "stream_registry.h"
-#include "video_bcast_application.h"
+#include "channel_map.h"
+#include "media_host.h"
 
 namespace fms
 {
@@ -104,8 +105,8 @@ namespace fms
 			rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>("onMetaData");
 			msg->stream_id() = stream_id;
 			msg->parameters().push_back(bs->metadata);
-			m_app.enqueue_async_message(connection_id, msg);
-			m_app.notify(connection_id);
+			m_host.enqueue(connection_id, msg);
+			m_host.notify_connection(connection_id);
 		}
 	}
 
@@ -168,7 +169,7 @@ namespace fms
 		{
 			try
 			{
-				s = m_app.get_connection(client->m_connection_id);
+				s = m_host.connection(client->m_connection_id);
 			}
 			catch (const std::exception &)
 			{
@@ -176,7 +177,7 @@ namespace fms
 			}
 			client->m_session = s;
 		}
-		m_app.enqueue_async_message_unchecked(client->m_connection_id, msg);
+		m_host.enqueue_unchecked(client->m_connection_id, msg);
 		s->notify();
 	}
 
@@ -186,7 +187,7 @@ namespace fms
 
 		rtmp_message_video_data_ptr const tmp = std::make_shared<rtmp_message_video_data>(*video);
 		tmp->stream_id() = client->m_stream_id;
-		tmp->channel_id() = video_bcast_application::stream_to_channel(client->m_stream_id, video_bcast_application::eVideo);
+		tmp->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 
 		if (!client->m_first_video_packet_seen)
 		{
@@ -251,8 +252,8 @@ namespace fms
 			rtmp_message_video_data_ptr const conf = std::make_shared<rtmp_message_video_data>(*cfg);
 			conf->timestamp() = 0;
 			conf->stream_id() = client->m_stream_id;
-			conf->channel_id() = video_bcast_application::stream_to_channel(client->m_stream_id, video_bcast_application::eVideo);
-			m_app.enqueue_async_message(client->m_connection_id, conf);
+			conf->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
+			m_host.enqueue(client->m_connection_id, conf);
 		}
 	}
 
@@ -272,24 +273,24 @@ namespace fms
 		info_msg->data()[1] = 0x00;
 		info_msg->timestamp() = 0;
 		info_msg->stream_id() = client->m_stream_id;
-		info_msg->channel_id() = video_bcast_application::stream_to_channel(client->m_stream_id, video_bcast_application::eVideo);
-		m_app.enqueue_async_message(client->m_connection_id, info_msg);
+		info_msg->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
+		m_host.enqueue(client->m_connection_id, info_msg);
 
 		rtmp_message_video_data_ptr const info_msg2 = std::make_shared<rtmp_message_video_data>(2);
 		info_msg2->data()[0] = tag;
 		info_msg2->data()[1] = 0x01;
 		info_msg2->timestamp() = 0;
 		info_msg2->stream_id() = client->m_stream_id;
-		info_msg2->channel_id() = video_bcast_application::stream_to_channel(client->m_stream_id, video_bcast_application::eVideo);
+		info_msg2->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 
 		auto it = list.begin();
 		for (std::uint32_t cnt = 0; cnt < size; ++cnt)
 		{
 			rtmp_message_video_data_ptr const tmp2 = std::make_shared<rtmp_message_video_data>(**it);
 			tmp2->stream_id() = client->m_stream_id;
-			tmp2->channel_id() = video_bcast_application::stream_to_channel(client->m_stream_id, video_bcast_application::eVideo);
+			tmp2->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
 			tmp2->timestamp() = 0;
-			m_app.enqueue_async_message(client->m_connection_id, tmp2);
+			m_host.enqueue(client->m_connection_id, tmp2);
 			// Count the GOP burst in the subscriber's stats too, or the QoS timer
 			// undercounts a mid-GOP joiner's bytes/messages.
 			client->m_stat_bytes += tmp2->size();
@@ -297,15 +298,15 @@ namespace fms
 			client->m_stat_last_ts = tmp2->timestamp();
 			++it;
 		}
-		m_app.enqueue_async_message(client->m_connection_id, info_msg2);
-		m_app.notify(client->m_connection_id);
+		m_host.enqueue(client->m_connection_id, info_msg2);
+		m_host.notify_connection(client->m_connection_id);
 	}
 
 	void av_delivery::send_audio_frame(const rtmp_message_audio_data_ptr &audio, const stream_client_ptr &client, const stream_client_id_t &src)
 	{
 		rtmp_message_audio_data_ptr const tmp = std::make_shared<rtmp_message_audio_data>(*audio);
 		tmp->stream_id() = client->m_stream_id;
-		tmp->channel_id() = video_bcast_application::stream_to_channel(client->m_stream_id, video_bcast_application::eAudio);
+		tmp->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
 
 		if (!client->m_first_audio_packet_seen)
 		{
@@ -326,9 +327,9 @@ namespace fms
 
 			rtmp_message_audio_data_ptr const tmp2 = std::make_shared<rtmp_message_audio_data>();
 			tmp2->stream_id() = client->m_stream_id;
-			tmp2->channel_id() = video_bcast_application::stream_to_channel(client->m_stream_id, video_bcast_application::eAudio);
+			tmp2->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
 			tmp2->timestamp() = start_time;
-			m_app.enqueue_async_message(client->m_connection_id, tmp2);
+			m_host.enqueue(client->m_connection_id, tmp2);
 		}
 		else
 		{
@@ -358,8 +359,8 @@ namespace fms
 			rtmp_message_audio_data_ptr const conf = std::make_shared<rtmp_message_audio_data>(*cfg);
 			conf->timestamp() = 0;
 			conf->stream_id() = client->m_stream_id;
-			conf->channel_id() = video_bcast_application::stream_to_channel(client->m_stream_id, video_bcast_application::eAudio);
-			m_app.enqueue_async_message(client->m_connection_id, conf);
+			conf->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
+			m_host.enqueue(client->m_connection_id, conf);
 		}
 	}
 }

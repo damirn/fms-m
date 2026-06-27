@@ -13,7 +13,7 @@
 
 namespace fms
 {
-	class video_bcast_application;
+	class media_host;
 
 	// Video-on-demand playback. When a play target has no live publisher but a
 	// saved .flv exists on disk, this serves that file as a timed stream to the one
@@ -21,9 +21,9 @@ namespace fms
 	// each session with its own steady_timer, pacing frames by their timestamp
 	// deltas.
 	//
-	// The RTMP send path stays on video_bcast_application, so vod_manager calls back
-	// into it (as a friend) to enqueue frames and status messages and to reach the
-	// app manager / io_context. Not thread-safe on its own -- it shares the
+	// The RTMP send path is reached through an injected media_host (enqueue frames
+	// and status messages, the app manager / io_context). Not thread-safe on its own
+	// -- it shares the
 	// application's shared_mutex and follows the same locking split as the routing
 	// state: start()/stop() are caller-locked (they run inside handle_invoke_play /
 	// close paths that already hold the lock), while tick()/pause()/seek() take the
@@ -31,8 +31,8 @@ namespace fms
 	class vod_manager : boost::noncopyable
 	{
 	public:
-		vod_manager(video_bcast_application &app, std::shared_mutex &mutex)
-			: m_app(app), m_mutex(mutex)
+		vod_manager(media_host &host, std::shared_mutex &mutex)
+			: m_host(host), m_mutex(mutex)
 		{}
 
 		// Try to begin VOD for (connection_id, stream_id). Caller holds m_mutex.
@@ -55,7 +55,7 @@ namespace fms
 		// Emit the next frame of `session` and re-arm its timer for the frame after.
 		void tick(const vod_session_ptr &session);
 
-		video_bcast_application &m_app;
+		media_host &m_host;
 		std::shared_mutex &m_mutex;
 
 		// active VOD playbacks, keyed by (connection_id, stream_id)

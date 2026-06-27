@@ -120,27 +120,6 @@ namespace fms
 
 		std::uint32_t get_delay(std::uint32_t);
 
-		enum data_type { eData, eVideo, eAudio, eControl = 4 };
-		static std::uint32_t stream_to_channel(std::uint32_t stream_id, data_type type)
-		{
-			if (stream_id == 0)
-			{
-				if (type == eControl)
-					return 3;
-				return 2;
-			}
-			std::uint32_t const channel = 4 + ((stream_id - 1) * 5);
-			if (type == eData)
-				return channel;
-			if (type == eVideo)
-				return channel + 1;
-			if (type == eAudio)
-				return channel + 2;
-			if (type == eControl)
-				return channel + 4;
-			return channel; // never reached
-		}
-
 		static rtmp_message_invoke_ptr create_error_status(std::uint32_t, std::uint32_t, const char *);
 
 		rtmp_app_manager *m_app_manager;

@@ -10,7 +10,7 @@
 namespace fms
 {
 	class stream_registry;
-	class video_bcast_application;
+	class media_host;
 
 	// The live audio/video fan-out path: takes a frame from a publisher and
 	// delivers a per-subscriber copy to each of that publisher's subscribers. It
@@ -22,14 +22,13 @@ namespace fms
 	// Stateless of itself: all mutable state lives in the broadcast_stream (reached
 	// through the registry) and in each stream_client. route_audio/route_video are
 	// caller-locked -- the RTMP handler takes the application's shared_mutex before
-	// calling in. The delivery primitives (enqueue / notify / connection lookup /
-	// channel mapping) belong to the owning application, which av_delivery reaches
-	// as a friend.
+	// calling in. The delivery primitives (enqueue / notify / connection lookup) come
+	// from the injected media_host; the channel mapping is the free stream_to_channel.
 	class av_delivery : boost::noncopyable
 	{
 	public:
-		av_delivery(video_bcast_application &app, stream_registry &registry)
-			: m_app(app), m_registry(registry)
+		av_delivery(media_host &host, stream_registry &registry)
+			: m_host(host), m_registry(registry)
 		{}
 
 		// Fan a publisher audio frame out to its subscribers, store the AAC sequence
@@ -66,7 +65,7 @@ namespace fms
 		// manager-mutex lookups on the per-frame fan-out path.
 		void deliver_to_subscriber(const stream_client_ptr &client, const rtmp_message_ptr &msg);
 
-		video_bcast_application &m_app;
+		media_host &m_host;
 		stream_registry &m_registry;
 	};
 }

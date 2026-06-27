@@ -50,7 +50,9 @@ namespace fms::rtmp_client
 	public:
 		net_connection(boost::asio::io_context &, net_connection_event_handler &, bool);
 
-		friend class net_stream;
+		// Called by net_stream to open its RTMP stream on this connection.
+		void add_net_stream(const net_stream_ptr&);
+		void create_stream(const net_stream_ptr&);
 
 		void connect(const std::string &);
 		void connect(const std::string &, const amf0_type_ptr&);
@@ -136,10 +138,6 @@ namespace fms::rtmp_client
 		}
 
 		void send_named_command(const char *command, const std::string &name);
-
-		void add_net_stream(const net_stream_ptr&);
-
-		void create_stream(const net_stream_ptr&);
 
 		class create_stream_result_handler : public result_handler
 		{
