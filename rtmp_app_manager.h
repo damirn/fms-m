@@ -22,7 +22,7 @@ namespace fms
 	class client_session;
 	using client_session_ptr = std::shared_ptr<client_session>;
 
-	class admin_application;
+	class netstream_observer;
 	class fake_application;
 	class rtmp_application;
 	class rtmp_header;
@@ -94,11 +94,6 @@ namespace fms
 		void add_dropped_messages_for_netstream(const stream_client_id_t &, std::size_t);
 		std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &);
 
-		admin_application *get_admin_app() const
-		{
-			return m_admin_app;
-		}
-
 	protected:
 		static bool check_application_name(const std::string &, const std::string &, std::string &);
 		void start_timer();
@@ -111,7 +106,7 @@ namespace fms
 		app_map_t m_apps;
 
 		// non-owning observer: the admin app is owned by m_apps
-		admin_application *m_admin_app{nullptr};
+		netstream_observer *m_observer{nullptr};
 		std::unique_ptr<fake_application> m_fake_app;
 
 		using connection_map_t = std::unordered_map<std::uint32_t, client_session_ptr>;
