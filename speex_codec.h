@@ -6,7 +6,7 @@
 
 namespace fms
 {
-	class speex_codec : public audio_codec
+	class speex_codec final : public audio_codec
 	{
 	public:
 		explicit speex_codec(std::uint16_t = 1);

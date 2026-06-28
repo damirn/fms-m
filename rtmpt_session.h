@@ -26,7 +26,7 @@ namespace fms
 
 		// Pull transport: there is no socket to flush to. Async messages queued for
 		// this session are drained on the next /idle or /send poll (handle_results),
-		// so a notify is a no-op rather than a push.
+		// so notify is a no-op rather than a push.
 		void notify() override {}
 
 		const std::string &cid() const

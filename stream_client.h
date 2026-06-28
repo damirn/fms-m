@@ -12,7 +12,6 @@ namespace fms
 			: m_connection_id(connection_id)
 			, m_stream_id(stream_id)
 			, m_stream_was_playing(stream_was_playing)
-			 
 		{}
 
 		std::uint32_t m_connection_id;
