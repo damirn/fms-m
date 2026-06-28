@@ -153,7 +153,8 @@ namespace fms
 
 	/**
 	* peeks RTMP channel from the input buffer
-	* @param buffer - input buffer
+	* @param r
+	* @param channel
 	* @returns RTMP channel
 	* @note might throw an exception if there's no enough data in the buffer
 	*/

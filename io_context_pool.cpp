@@ -8,7 +8,6 @@
 namespace fms
 {
 	io_context_pool::io_context_pool(std::size_t pool_size)
-		 
 	{
 		if (pool_size == 0)
 			throw std::runtime_error("io_context_pool size is 0");

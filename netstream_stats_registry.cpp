@@ -110,7 +110,7 @@ namespace fms
 		std::unique_lock const lock(m_mutex);
 		auto const i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
-			return std::optional<netstream_stats_ptr>(i->second);
+			return std::optional(i->second);
 		return std::optional<netstream_stats_ptr>();
 	}
 

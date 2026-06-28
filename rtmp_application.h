@@ -175,7 +175,7 @@ namespace fms
 
 		using result_handlers_t = std::unordered_map<std::uint32_t, result_handler_ptr>;
 
-		struct bwcheck_result_handler : public result_handler
+		struct bwcheck_result_handler : result_handler
 		{
 			bwcheck_result_handler(std::uint32_t id, callback_t f)
 				: result_handler(id, std::move(f))
