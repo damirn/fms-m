@@ -6,7 +6,6 @@ namespace fms
 {
 	speex_codec::speex_codec(std::uint16_t reserved_for_header /* = 1 */)
 		: audio_codec(reserved_for_header)
-		 
 	{
 		init_decoder();
 		init_encoder();
@@ -36,7 +35,6 @@ namespace fms
 		enc_size = speex_bits_write(&m_enc_bits, reinterpret_cast<char *>(enc_buff + m_reserved_for_header), m_frame_size);
 		enc_size += m_reserved_for_header;
 
-		//std::cout << "Speex encode: " << enc_size << std::endl;
 		return enc_buff;
 	}
 
