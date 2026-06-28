@@ -8,7 +8,7 @@
 namespace fms
 {
 	// Represents a single connection from a client.
-	class rtmp_connection : public basic_rtmp_connection, private boost::noncopyable
+	class rtmp_connection : public basic_rtmp_connection, boost::noncopyable
 	{
 	public:
 		// Construct a connection with the given io_context.
@@ -21,7 +21,7 @@ namespace fms
 
 		void notify() override
 		{
-			boost::asio::post(m_io_context, [self = shared_from_this()]() { self->handle_notify(); });
+			boost::asio::post(m_io_context, [self = shared_self()]() { self->handle_notify(); });
 		}
 
 		void close() override;
@@ -53,9 +53,6 @@ namespace fms
 
 		// Handle completion of a read operation for hand shake reply.
 		void read_hand_shake_response();
-
-		// Handle completion of a write operation.
-		void handle_write(const boost::system::error_code &);
 
 		// Handle application's result
 		void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr) override;
@@ -98,9 +95,11 @@ namespace fms
 		enum { eHandShakeTimeout = 5, ePingInterval = 30 };
 
 	private:
-		std::shared_ptr<rtmp_connection> shared_from_this()
+		// Typed convenience over the base's shared_from_this() (named distinctly so it
+		// doesn't hide enable_shared_from_this<basic_rtmp_connection>::shared_from_this).
+		std::shared_ptr<rtmp_connection> shared_self()
 		{
-			return std::static_pointer_cast<rtmp_connection>(basic_rtmp_connection::shared_from_this());
+			return std::static_pointer_cast<rtmp_connection>(shared_from_this());
 		}
 
 		enum connection_states

@@ -96,11 +96,6 @@ namespace fms
 		static std::uint8_t m_poll_time[];
 
 	private:
-		std::shared_ptr<rtmpt_session> shared_from_this()
-		{
-			return std::static_pointer_cast<rtmpt_session>(basic_rtmp_connection::shared_from_this());
-		}
-
 		byte_writer m_remaining_data;
 	};
 

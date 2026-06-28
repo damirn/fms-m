@@ -25,7 +25,7 @@ namespace fms
 		m_pkey = evp_dh_keygen(P1024, sizeof(P1024), 2);
 	}
 
-	void dh::uninit()
+	void dh::deinit()
 	{
 		if (m_pkey != nullptr)
 			EVP_PKEY_free(m_pkey);

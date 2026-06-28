@@ -16,7 +16,7 @@ namespace fms
 
 		~dh()
 		{
-			uninit();
+			deinit();
 			delete[] m_shared_key;
 		}
 
@@ -27,7 +27,7 @@ namespace fms
 
 	protected:
 		void init();
-		void uninit();
+		void deinit();
 
 		EVP_PKEY *m_pkey{nullptr};
 		std::uint8_t *m_shared_key{nullptr};
