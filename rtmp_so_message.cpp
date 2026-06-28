@@ -105,17 +105,16 @@ namespace fms
 
 	void rtmp_message_shared_object::serialize_event(byte_writer &buffer, event_ptr &ev)
 	{
-		static std::uint32_t zero = 0;
+		static constexpr std::uint32_t zero = 0;
 
 		buffer << ev->m_type;
 		if (ev->m_type == eUseSuccess || ev->m_type == eClear)
 			buffer << zero;
 		else if (ev->m_type == eSendMessage)
 		{
-			std::uint32_t size = boost::asio::detail::socket_ops::host_to_network_long(ev->m_size);
+			std::uint32_t const size = boost::asio::detail::socket_ops::host_to_network_long(ev->m_size);
 			buffer << size;
 			buffer.write(ev->m_data, ev->m_size);
-			return;
 		}
 		else
 		{
