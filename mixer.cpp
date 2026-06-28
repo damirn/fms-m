@@ -105,7 +105,7 @@ namespace fms
 
 	mixer::~mixer()
 	{
-		uninit();   // m_sink freed by its unique_ptr
+		deinit();   // m_sink freed by its unique_ptr
 	}
 
 	void mixer::init()
@@ -120,7 +120,7 @@ namespace fms
 		m_thread = std::thread(&mixer::run_loop, this);
 	}
 
-	void mixer::uninit()
+	void mixer::deinit()
 	{
 		if (m_running)
 		{

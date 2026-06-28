@@ -44,13 +44,13 @@ namespace fms
 	{
 		// arm the handshake-timeout timer
 		m_hs_timer.expires_after(std::chrono::seconds(static_cast<long>(eHandShakeTimeout)));
-		m_hs_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_hs_timer(ec); });
+		m_hs_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_hs_timer(ec); });
 	}
 
 	void rtmp_connection::arm_timer()
 	{
 		m_timer.expires_after(std::chrono::seconds(static_cast<long>(ePingInterval)));
-		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+		m_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 	}
 
 	void rtmp_connection::handle_timer(const boost::system::error_code &e)
@@ -63,7 +63,7 @@ namespace fms
 				return;
 			}
 			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(ePingInterval)));
-			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+			m_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 
 			rtmp_message_ping_ptr const msg = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingRequest, get_timestamp());
 			m_app->enqueue_async_message(m_id, msg);
@@ -86,7 +86,7 @@ namespace fms
 		// io-objects are NOT thread-safe. That corrupts the reactor's timer_queue
 		// and crashes in timer cancel (or silently breaks the RTMPE session).
 		// Hop onto our own context first so the timer is only ever touched there.
-		boost::asio::post(m_io_context, [self = shared_from_this()]()
+		boost::asio::post(m_io_context, [self = shared_self()]()
 		{
 			// cache the peer endpoint on our own thread so the admin thread never
 			// calls remote_endpoint() on our socket
@@ -202,11 +202,11 @@ namespace fms
 	void rtmp_connection::read_data()
 	{
 		m_rto_timer.expires_after(std::chrono::seconds(2 * ePingInterval));
-		m_rto_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_rto(ec); });
+		m_rto_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_rto(ec); });
 
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
 			boost::asio::transfer_at_least(1),
-			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_read_packet(ec, bytes); });
+			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_read_packet(ec, bytes); });
 	}
 
 	void rtmp_connection::handle_app_result(rtmp_channel_ptr channel, rtmp_message_ptr result)
@@ -260,7 +260,7 @@ namespace fms
 	{
 		boost::asio::async_write(m_socket,
 			boost::asio::buffer(m_tmp_buff, eHandShakeSize + 1),
-			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
+			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
 	void rtmp_connection::write_hand_shake_block2()
@@ -269,7 +269,7 @@ namespace fms
 		// buffer must stay put while this async_write is in flight; the processed
 		// C0+C1 are dropped in read_hand_shake_response, once this write is done.
 		boost::asio::async_write(m_socket, boost::asio::buffer(m_buffer.data() + 1, eHandShakeSize),
-			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
+			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
 	void rtmp_connection::read_hand_shake_response()
@@ -277,7 +277,7 @@ namespace fms
 		m_buffer.consume(eHandShakeSize + 1);   // drop the now-sent C0+C1
 		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
 			boost::asio::transfer_at_least(eHandShakeSize),
-			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
+			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
 	void rtmp_connection::serialize_message(const rtmp_message_ptr& result, const rtmp_channel_ptr& channel)
@@ -300,14 +300,14 @@ namespace fms
 	{
 		m_write_in_progress = true;
 		m_wto_timer.expires_after(std::chrono::seconds(2 * ePingInterval));
-		m_wto_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_wto(ec); });
+		m_wto_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_wto(ec); });
 
 		// encrypt outgoing data if needed
 		if (m_key_out != nullptr && !m_output_buffer.empty())
 			rc4_crypt(m_key_out, m_output_buffer.size(), m_output_buffer.data(), m_output_buffer.data());
 
 		boost::asio::async_write(m_socket, boost::asio::buffer(m_output_buffer.data(), m_output_buffer.size()),
-			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write_packet(ec, bytes); });
+			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write_packet(ec, bytes); });
 	}
 
 	void rtmp_connection::perform_hand_shake(std::size_t bytes_transferred)

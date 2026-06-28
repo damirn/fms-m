@@ -31,7 +31,7 @@ namespace fms
 		}
 
 		virtual void init() = 0;
-		virtual void uninit() = 0;
+		virtual void deinit() = 0;
 
 		virtual void add_source_stream(std::uint32_t);
 		virtual void remove_source_stream(std::uint32_t);
@@ -79,7 +79,7 @@ namespace fms
 		~mixer() override;
 
 		void init() override;
-		void uninit() override;
+		void deinit() override;
 
 	protected:
 		// Timer thread: sums every source's PCM frame, speex-encodes the

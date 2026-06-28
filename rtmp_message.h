@@ -109,7 +109,7 @@ namespace fms
 
 	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
 
-	class rtmp_message_chunk_size : public rtmp_message
+	class rtmp_message_chunk_size final : public rtmp_message
 	{
 	public:
 		rtmp_message_chunk_size()
@@ -142,7 +142,7 @@ namespace fms
 	// Protocol control message (type 2): tells the peer to discard a partially
 	// received message on the given chunk stream. The payload is the 4-byte
 	// chunk-stream id whose in-progress reassembly should be dropped.
-	class rtmp_message_abort : public rtmp_message
+	class rtmp_message_abort final : public rtmp_message
 	{
 	public:
 		rtmp_message_abort()
@@ -171,7 +171,7 @@ namespace fms
 
 	using rtmp_message_abort_ptr = std::shared_ptr<rtmp_message_abort>;
 
-	class rtmp_message_bytes_read : public rtmp_message
+	class rtmp_message_bytes_read final : public rtmp_message
 	{
 	public:
 		rtmp_message_bytes_read()
@@ -201,7 +201,7 @@ namespace fms
 
 	using rtmp_message_bytes_read_ptr = std::shared_ptr<rtmp_message_bytes_read>;
 
-	class rtmp_message_ping : public rtmp_message
+	class rtmp_message_ping final : public rtmp_message
 	{
 	public:
 		enum ping_type
@@ -270,7 +270,7 @@ namespace fms
 
 	using rtmp_message_ping_ptr = std::shared_ptr<rtmp_message_ping>;
 
-	class rtmp_message_window_acknowledgement_size : public rtmp_message
+	class rtmp_message_window_acknowledgement_size final : public rtmp_message
 	{
 	public:
 		rtmp_message_window_acknowledgement_size()
@@ -300,17 +300,17 @@ namespace fms
 
 	using rtmp_message_window_acknowledgement_size_ptr = std::shared_ptr<rtmp_message_window_acknowledgement_size>;
 
-	class rtmp_message_set_peer_bandwidth : public rtmp_message
+	class rtmp_message_set_peer_bandwidth final : public rtmp_message
 	{
 	public:
 		rtmp_message_set_peer_bandwidth()
 			: rtmp_message(eMessageSetPeerBandwidth)
 		{}
 
-		rtmp_message_set_peer_bandwidth(std::uint32_t size, std::uint8_t type)
+		rtmp_message_set_peer_bandwidth(std::uint32_t size, std::uint8_t limit_type)
 			: rtmp_message(eMessageSetPeerBandwidth)
 			, m_size(size)
-			, m_type(type)
+			, m_type(limit_type)
 		{
 			m_channel_id = 2;
 			m_stream_id = 0;
@@ -326,7 +326,9 @@ namespace fms
 			return m_size;
 		}
 
-		const std::uint8_t &type() const
+		// RTMP Set Peer Bandwidth limit type: 0 = hard, 1 = soft, 2 = dynamic.
+		// (Named distinctly so it doesn't hide the base rtmp_message::type().)
+		const std::uint8_t &limit_type() const
 		{
 			return m_type;
 		}
@@ -338,7 +340,7 @@ namespace fms
 
 	using rtmp_message_set_peer_bandwidth_ptr = std::shared_ptr<rtmp_message_set_peer_bandwidth>;
 
-	class rtmp_message_audio_data : public rtmp_message
+	class rtmp_message_audio_data final : public rtmp_message
 	{
 	public:
 		rtmp_message_audio_data()
@@ -426,7 +428,7 @@ namespace fms
 
 	using rtmp_message_audio_data_ptr = std::shared_ptr<rtmp_message_audio_data>;
 
-	class rtmp_message_video_data : public rtmp_message
+	class rtmp_message_video_data final : public rtmp_message
 	{
 	public:
 		explicit rtmp_message_video_data(std::uint32_t size)
@@ -545,7 +547,7 @@ namespace fms
 
 	using rtmp_message_notify_ptr = std::shared_ptr<rtmp_message_notify>;
 
-	class rtmp_message_notify_amf3 : public rtmp_message_notify
+	class rtmp_message_notify_amf3 final : public rtmp_message_notify
 	{
 	public:
 		rtmp_message_notify_amf3()
@@ -619,7 +621,7 @@ namespace fms
 		amf0_number_ptr m_invoke_id;
 	};
 
-	class rtmp_message_invoke_amf3 : public rtmp_message_invoke
+	class rtmp_message_invoke_amf3 final : public rtmp_message_invoke
 	{
 	public:
 		rtmp_message_invoke_amf3()
@@ -647,7 +649,7 @@ namespace fms
 
 	using rtmp_message_invoke_amf3_ptr = std::shared_ptr<rtmp_message_invoke_amf3>;
 
-	class rtmp_message_aggregate : public rtmp_message
+	class rtmp_message_aggregate final : public rtmp_message
 	{
 	public:
 		explicit rtmp_message_aggregate(std::uint32_t ts)
@@ -674,7 +676,7 @@ namespace fms
 	using rtmp_message_aggregate_ptr = std::shared_ptr<rtmp_message_aggregate>;
 
 	// fake RTMP message, used internally by the server to signal socket closure
-	class rtmp_message_close : public rtmp_message
+	class rtmp_message_close final : public rtmp_message
 	{
 	public:
 		rtmp_message_close()
