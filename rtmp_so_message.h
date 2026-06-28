@@ -6,7 +6,7 @@
 
 namespace fms
 {
-	class rtmp_message_shared_object : public rtmp_message
+	class rtmp_message_shared_object final : public rtmp_message
 	{
 	public:
 		rtmp_message_shared_object()

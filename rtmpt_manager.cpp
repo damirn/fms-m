@@ -89,7 +89,7 @@ namespace fms
 			// limit (memory DoS). Over the cap we drop the excess and just poll.
 			if (i->second->m_out_of_order_data.size() < eMaxOutOfOrder &&
 				i->second->m_ooo_bytes + input.size() <= eMaxOutOfOrderBytes &&
-				i->second->m_out_of_order_data.find(seq) == i->second->m_out_of_order_data.end())
+				!i->second->m_out_of_order_data.contains(seq))
 			{
 				auto *data = new std::uint8_t[input.size()];
 				std::memcpy(data, input.data(), input.size());
