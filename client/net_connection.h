@@ -106,7 +106,6 @@ namespace fms::rtmp_client
 	protected:
 		void prepare_handshake();
 		void write_signed_c2(const std::uint8_t *s1);   // FP9 signed C2 from the received S1
-		static std::uint32_t digest_offset(const std::uint8_t *buf, std::uint8_t scheme);
 		void send_connect_invoke();
 
 		void read_data(std::size_t = 1);

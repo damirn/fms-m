@@ -5,6 +5,7 @@
 #include "crypto.h"
 #include "net_client_tunnel.h"
 #include "net_stream.h"
+#include "rtmp_handshake.h"
 #include "rtmp_message.h"
 #include "rtmp_protocol.h"
 #include "util.h"
@@ -343,15 +344,6 @@ namespace fms::rtmp_client
 		send_message(std::make_shared<rtmp_message_chunk_size>(n));
 	}
 
-	std::uint32_t net_connection::digest_offset(const std::uint8_t *buf, std::uint8_t scheme)
-	{
-		// Mirrors the server's get_digest_offest: the 32-byte digest sits at a
-		// position derived from four bytes of C1/S1, differing by scheme.
-		if (scheme == 0)
-			return (buf[8] + buf[9] + buf[10] + buf[11]) % 728 + 12;
-		return (buf[772] + buf[773] + buf[774] + buf[775]) % 728 + 776;   // scheme 1
-	}
-
 	void net_connection::prepare_handshake()
 	{
 		std::uint8_t *data = m_output_buffer->extend(eHandshakeSize + 1);
@@ -364,22 +356,18 @@ namespace fms::rtmp_client
 		{
 			// A non-zero version signals the FP9 (digest) handshake to the server.
 			c1[4] = 0x80; c1[5] = 0x00; c1[6] = 0x07; c1[7] = 0x02;   // "128.0.7.2"
-			for (int i = 8; i < eHandshakeSize; ++i)
-				c1[i] = static_cast<std::uint8_t>(std::rand());
+			if (!rtmp_handshake::fill_random(c1 + 8, eHandshakeSize - 8))
+				return;   // no CSPRNG -> don't ship a predictable handshake
 
-			// digest = HMAC-SHA256(C1 with the 32 digest bytes removed, FP_key[0:30])
-			std::uint32_t const off = digest_offset(c1, m_hs_scheme);
-			std::uint8_t buff[eHandshakeSize - SHA256_DIGEST_LENGTH];
-			std::memcpy(buff, c1, off);
-			std::memcpy(buff + off, c1 + off + SHA256_DIGEST_LENGTH, eHandshakeSize - off - SHA256_DIGEST_LENGTH);
-			HMAC_SHA256(buff, eHandshakeSize - SHA256_DIGEST_LENGTH, genuine_keys::FP_key, 30, c1 + off);
+			// digest = HMAC-SHA256(C1 with the 32 digest bytes removed, FP_key[0:30]),
+			// written into C1 at the scheme's digest offset.
+			std::uint32_t const off = rtmp_handshake::digest_offset(c1, m_hs_scheme);
+			rtmp_handshake::compute_digest(c1, off, genuine_keys::FP_key, 30, c1 + off);
 		}
 		else
 		{
 			std::memset(c1 + 4, 0, 4);       // version = 0 -> simple handshake
-			std::uint32_t *p = reinterpret_cast<std::uint32_t *>(c1 + 8);  // NOLINT(misc-const-correctness) written through below
-			for (int i = 2; i < eHandshakeSize / 4; ++i)
-				*p++ = std::rand();
+			(void)rtmp_handshake::fill_random(c1 + 8, eHandshakeSize - 8);
 		}
 	}
 
@@ -389,11 +377,11 @@ namespace fms::rtmp_client
 		// C2 = 1504 random bytes + HMAC(those bytes, key). The server verifies this
 		// in check_hand_shake_response.
 		std::uint8_t *c2 = m_output_buffer->extend(eHandshakeSize);
-		std::uint32_t const off = digest_offset(s1, m_hs_scheme);
+		std::uint32_t const off = rtmp_handshake::digest_offset(s1, m_hs_scheme);
 		std::uint8_t key[SHA256_DIGEST_LENGTH];
 		HMAC_SHA256(s1 + off, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, key);
-		for (int i = 0; i < eHandshakeSize - SHA256_DIGEST_LENGTH; ++i)
-			c2[i] = static_cast<std::uint8_t>(std::rand());
+		if (!rtmp_handshake::fill_random(c2, eHandshakeSize - SHA256_DIGEST_LENGTH))
+			return;
 		HMAC_SHA256(c2, eHandshakeSize - SHA256_DIGEST_LENGTH, key, SHA256_DIGEST_LENGTH, c2 + eHandshakeSize - SHA256_DIGEST_LENGTH);
 	}
 
