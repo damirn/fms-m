@@ -2,7 +2,7 @@
 #include "video_bcast_application.h"
 #include "client_session.h"
 #include "config.h"
-#include "flv_writer.h"
+#include "stream_recorder.h"
 #include "logging.h"
 #include "remote_relay.h"
 
@@ -569,7 +569,7 @@ namespace fms
 		{
 			std::filesystem::path const flv_name(stream + ".flv");
 			std::filesystem::path const flv_full_name = config::instance()->flv_folder() / flv_name;
-			b->flv = std::make_unique<flv_writer>(flv_full_name.string());
+			b->recorder = std::make_unique<stream_recorder>(flv_full_name.string());
 		}
 		catch (std::runtime_error &)
 		{
@@ -622,8 +622,8 @@ namespace fms
 			// if this stream was a part of video call, notify the backend
 			video_call_end_notify(connection_id);
 
-			if (td.flv)
-				td.flv->close();   // flush the recording
+			if (td.recorder)
+				td.recorder->close();   // flush the recording
 			if (td.qos_target)
 				close_stream(td.qos_target->first, td.qos_target->second);
 
