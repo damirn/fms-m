@@ -21,6 +21,7 @@ namespace fms
 		m_rtmpt_manager = std::make_unique<rtmpt_manager>(this);
 		m_fake_app = std::make_unique<fake_application>(this);
 		m_router.emplace(m_apps, *m_fake_app);
+		m_conn_registry.emplace(*this, m_io_context_pool, *m_rtmpt_manager);
 	}
 
 	// Out-of-line (not =default in the header) so the unique_ptr members'
@@ -43,130 +44,22 @@ namespace fms
 		return nullptr;
 	}
 
-	rtmp_connection_ptr rtmp_app_manager::create_connection(boost::asio::io_context &io)
-	{
-		std::unique_lock const lock(m_mutex);
-		rtmp_connection_ptr tmp = std::make_shared<rtmp_connection>(m_connection_counter, io, this);
-		m_connections[m_connection_counter++] = tmp;
-		return tmp;
-	}
-
-	rtmpt_session_ptr rtmp_app_manager::create_rtmpt_session()
-	{
-		std::unique_lock const lock(m_mutex);
-		rtmpt_session_ptr tmp = std::make_shared<rtmpt_session>(m_connection_counter, m_io_context_pool.get_io_context(), this);
-		m_connections[m_connection_counter++] = tmp;
-		return tmp;
-	}
-
-	void rtmp_app_manager::register_session(const client_session_ptr& s)
-	{
-		std::unique_lock const lock(m_mutex);
-		m_connections[s->id()] = s;
-	}
-
-	std::uint32_t rtmp_app_manager::reserve_connection_id()
-	{
-		std::unique_lock const lock(m_mutex);
-		return m_connection_counter++;
-	}
-
-	http_connection_ptr rtmp_app_manager::create_http_connection()
-	{
-		return create_http_connection(m_io_context_pool.get_io_context());
-	}
-
-	http_connection_ptr rtmp_app_manager::create_http_connection(boost::asio::io_context &io)
-	{
-		std::unique_lock const lock(m_mutex);
-		http_connection_ptr tmp = std::make_shared<http_connection>(m_connection_counter, io, this, m_rtmpt_manager.get());
-		m_http_conns[m_connection_counter++] = tmp;
-		return tmp;
-	}
-
-	void rtmp_app_manager::delete_http_connection(std::uint32_t id)
-	{
-		std::unique_lock const lock(m_mutex);
-		m_http_conns.erase(id);
-	}
-
-	client_session_ptr rtmp_app_manager::get_connection(std::uint32_t conn_id)
-	{
-		std::shared_lock const lock(m_mutex);
-		auto const i = m_connections.find(conn_id);
-		if (i != m_connections.end())
-			return i->second;
-		throw std::runtime_error("No such connection");
-	}
-
-	client_session_ptr rtmp_app_manager::get_connection_opt(std::uint32_t conn_id)
-	{
-		std::shared_lock const lock(m_mutex);
-		auto const i = m_connections.find(conn_id);
-		return i != m_connections.end() ? i->second : nullptr;
-	}
-
-	const std::string &rtmp_app_manager::get_app_instance(std::uint32_t conn_id)
-	{
-		std::shared_lock const lock(m_mutex);
-		auto const i = m_connections.find(conn_id);
-		if (i != m_connections.end())
-			return i->second->app_instance();
-		throw std::runtime_error("No such connection");
-	}
-
-	bool rtmp_app_manager::has_connection(std::uint32_t conn_id)
-	{
-		std::shared_lock const lock(m_mutex);
-		auto const i = m_connections.find(conn_id);
-		return i != m_connections.end();
-	}
-
-	void rtmp_app_manager::delete_connection(std::uint32_t conn_id)
-	{
-		std::unique_lock lock(m_mutex);
-		auto const i = m_connections.find(conn_id);
-		if (i != m_connections.end())
-		{
-			client_session_ptr const conn = i->second;
-			m_connections.erase(i);
-			lock.unlock();
-			if (conn->get_app() != nullptr)
-			{
-				conn->get_app()->delete_connection_by_cid(conn_id, conn->sid());
-				conn->get_app()->delete_connection(conn_id, conn->app_instance());
-			}
-		}
-	}
-
-	void rtmp_app_manager::destroy_connection(std::uint32_t conn_id)
-	{
-		std::unique_lock lock(m_mutex);
-		auto const i = m_connections.find(conn_id);
-		if (i != m_connections.end())
-		{
-			client_session_ptr const conn = i->second;
-			lock.unlock();
-			conn->post_close();   // close on the connection's own io_context, not ours
-		}
-	}
-
-	void rtmp_app_manager::set_encoding_for_connection(std::uint32_t conn_id, bool is_amf3)
-	{
-		std::unique_lock const lock(m_mutex);
-		auto const i = m_connections.find(conn_id);
-		if (i != m_connections.end())
-			i->second->uses_amf3_encoding() = is_amf3;
-	}
-
-	bool rtmp_app_manager::is_amf3_encoding(std::uint32_t conn_id)
-	{
-		std::unique_lock const lock(m_mutex);
-		auto const i = m_connections.find(conn_id);
-		if (i != m_connections.end())
-			return i->second->uses_amf3_encoding();
-		return false;
-	}
+	// ---- connection registry: thin delegators onto m_conn_registry --------------
+	rtmp_connection_ptr rtmp_app_manager::create_connection(boost::asio::io_context &io) { return m_conn_registry->create_connection(io); }
+	rtmpt_session_ptr rtmp_app_manager::create_rtmpt_session() { return m_conn_registry->create_rtmpt_session(); }
+	void rtmp_app_manager::register_session(const client_session_ptr& s) { m_conn_registry->register_session(s); }
+	std::uint32_t rtmp_app_manager::reserve_connection_id() { return m_conn_registry->reserve_connection_id(); }
+	http_connection_ptr rtmp_app_manager::create_http_connection() { return m_conn_registry->create_http_connection(); }
+	http_connection_ptr rtmp_app_manager::create_http_connection(boost::asio::io_context &io) { return m_conn_registry->create_http_connection(io); }
+	void rtmp_app_manager::delete_http_connection(std::uint32_t id) { m_conn_registry->delete_http_connection(id); }
+	client_session_ptr rtmp_app_manager::get_connection(std::uint32_t conn_id) { return m_conn_registry->get_connection(conn_id); }
+	client_session_ptr rtmp_app_manager::get_connection_opt(std::uint32_t conn_id) { return m_conn_registry->get_connection_opt(conn_id); }
+	const std::string &rtmp_app_manager::get_app_instance(std::uint32_t conn_id) { return m_conn_registry->get_app_instance(conn_id); }
+	bool rtmp_app_manager::has_connection(std::uint32_t conn_id) { return m_conn_registry->has_connection(conn_id); }
+	void rtmp_app_manager::delete_connection(std::uint32_t conn_id) { m_conn_registry->delete_connection(conn_id); }
+	void rtmp_app_manager::destroy_connection(std::uint32_t conn_id) { m_conn_registry->destroy_connection(conn_id); }
+	void rtmp_app_manager::set_encoding_for_connection(std::uint32_t conn_id, bool is_amf3) { m_conn_registry->set_encoding_for_connection(conn_id, is_amf3); }
+	bool rtmp_app_manager::is_amf3_encoding(std::uint32_t conn_id) { return m_conn_registry->is_amf3_encoding(conn_id); }
 
 	boost::tribool rtmp_app_manager::handle_message(const rtmp_message_ptr& msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &res)
 	{
@@ -196,65 +89,9 @@ namespace fms
 			list.push_back(m_app.second->app_name());
 	}
 
-	void rtmp_app_manager::list_clients(client_list_t &list)
-	{
-		std::unique_lock const lock(m_mutex);
-		for (auto & m_connection : m_connections)
-		{
-			client_data_ptr const data = get_client_data_impl(m_connection.first);
-			if (data.get() != nullptr)
-				list.push_back(data);
-		}
-	}
-
-	client_data_ptr rtmp_app_manager::get_client_data(std::uint32_t connection_id)
-	{
-		std::unique_lock const lock(m_mutex);
-		return get_client_data_impl(connection_id);
-	}
-
-	client_data_ptr rtmp_app_manager::get_client_data_impl(std::uint32_t connection_id)
-	{
-		auto const i = m_connections.find(connection_id);
-		if (i != m_connections.end())
-		{
-			client_data_ptr client = std::make_shared<client_data>();
-			client->m_id = i->second->id();
-			client->m_sid = i->second->sid();
-			client->m_create_time = i->second->create_time();
-			client->m_username = i->second->username();
-
-			if (i->second->get_app() != nullptr)
-				client->m_app = i->second->get_app()->app_name();
-			else
-				return client_data_ptr();
-
-			// Transport descriptors come from client_session virtuals, so the manager
-			// never downcasts to a concrete session type. (rtmp uses the endpoint cached
-			// on the connection's own thread; rtmpt/rtmfp expose their own address.)
-			client->m_ip = i->second->remote_address();
-			client->m_port = i->second->remote_port();
-			client->m_protocol = i->second->protocol_name();
-			return client;
-		}
-		return client_data_ptr();
-	}
-
-	bool rtmp_app_manager::get_client_stats(std::uint32_t cid, client_stats &stats)
-	{
-		std::unique_lock const lock(m_mutex);
-		auto const i = m_connections.find(cid);
-		if (i != m_connections.end())
-		{
-			stats.m_bytes_read = i->second->get_bytes_read();
-			stats.m_bytes_written = i->second->get_bytes_written();
-			stats.m_online_time = i->second->get_timestamp();
-			stats.m_messages_read = i->second->get_messages_read();
-			stats.m_messages_written = i->second->get_messages_written();
-			return true;
-		}
-		return false;
-	}
+	void rtmp_app_manager::list_clients(client_list_t &list) { m_conn_registry->list_clients(list); }
+	client_data_ptr rtmp_app_manager::get_client_data(std::uint32_t connection_id) { return m_conn_registry->get_client_data(connection_id); }
+	bool rtmp_app_manager::get_client_stats(std::uint32_t cid, client_stats &stats) { return m_conn_registry->get_client_stats(cid, stats); }
 
 	std::optional<app_stats> rtmp_app_manager::get_app_stats(const std::string &app)
 	{
