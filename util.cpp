@@ -20,18 +20,6 @@ namespace fms
 		return os.str();
 	}
 
-	void *memmem(char *s1, int l1, char *s2, int l2)
-	{
-		if (!l2) return s1;
-		while (l1 >= l2) {
-			l1--;
-			if (!std::memcmp(s1,s2,l2))
-				return s1;
-			s1++;
-		}
-		return nullptr;
-	}
-
 	void hexdump(std::ostream &s, void *ptr, int buflen)
 	{
 		unsigned char const *buf = static_cast<unsigned char *>(ptr);
