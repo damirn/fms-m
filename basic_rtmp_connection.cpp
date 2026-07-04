@@ -6,6 +6,7 @@
 #include "rtmp_app_manager.h"
 #include "rtmp_application.h"
 #include "rtmp_channel.h"
+#include "rtmp_handshake.h"
 #include "rtmp_message.h"
 
 #include <openssl/rand.h>
@@ -146,7 +147,7 @@ namespace fms
 			server_sig[6] = 0x02;
 			server_sig[7] = 0x01;
 
-			if (RAND_bytes(server_sig + 8, eHandShakeSize - 8) != 1)   // CSPRNG filler (was unseeded rand())
+			if (!rtmp_handshake::fill_random(server_sig + 8, eHandShakeSize - 8))
 			{
 				close();   // no usable randomness -> refuse the handshake
 				return false;
@@ -158,17 +159,14 @@ namespace fms
 				return false;
 			}
 
+			// Sign S1: digest = HMAC(S1 with its 32 digest bytes removed, FMS_key[0:36]),
+			// written back into S1 at the digest offset.
 			std::uint32_t const server_digest_offset = get_digest_offest(server_sig, m_validation_scheme);
-			auto *tmp = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
-			std::memcpy(tmp, server_sig, server_digest_offset);
-			std::memcpy(tmp + server_digest_offset, server_sig + server_digest_offset + SHA256_DIGEST_LENGTH, eHandShakeSize - server_digest_offset - SHA256_DIGEST_LENGTH);
+			rtmp_handshake::compute_digest(server_sig, server_digest_offset, genuine_keys::FMS_key, 36, server_sig + server_digest_offset);
 
+			// Sign S2 (the response to C1): key = HMAC(client's C1 digest, FMS_key), then
+			// HMAC over C1[0:1504] with that key, stored where the client will verify it.
 			std::uint8_t tmp_hash[SHA256_DIGEST_LENGTH];
-			HMAC_SHA256(tmp, eHandShakeSize - SHA256_DIGEST_LENGTH, genuine_keys::FMS_key, 36, tmp_hash);
-			delete[] tmp;
-
-			std::memcpy(server_sig + server_digest_offset, tmp_hash, SHA256_DIGEST_LENGTH);
-
 			std::uint32_t const key_challenge_offset = get_digest_offest(client_sig, m_validation_scheme);
 			HMAC_SHA256(client_sig + key_challenge_offset, SHA256_DIGEST_LENGTH, genuine_keys::FMS_key, genuine_keys::FMS_key_len, tmp_hash);
 			HMAC_SHA256(client_sig, eHandShakeSize - SHA256_DIGEST_LENGTH, tmp_hash, SHA256_DIGEST_LENGTH, client_sig + eHandShakeSize - SHA256_DIGEST_LENGTH);
@@ -178,74 +176,26 @@ namespace fms
 
 	std::uint32_t basic_rtmp_connection::get_digest_offest(std::uint8_t *buffer, std::uint8_t scheme)
 	{
-		std::uint32_t offset = 0;
-
-		if (scheme == 0)
-		{
-			offset = buffer[8] + buffer[9] + buffer[10] + buffer[11];
-			offset = offset % 728;
-			offset = offset + 12;
-		}
-		else if (scheme == 1)
-		{
-			offset = buffer[772] + buffer[773] + buffer[774] + buffer[775];
-			offset = offset % 728;
-			offset = offset + 776;
-		}
-		return offset;
+		return rtmp_handshake::digest_offset(buffer, scheme);
 	}
 
 	std::uint32_t basic_rtmp_connection::get_dh_offest(std::uint8_t *buffer, std::uint8_t scheme)
 	{
-		std::uint32_t offset = 0;
-
-		if (scheme == 0)
-		{
-			offset = buffer[1532] + buffer[1533] + buffer[1534] + buffer[1535];
-			offset = offset % 632;
-			offset = offset + 772;
-		}
-		else if (scheme == 1)
-		{
-			offset = buffer[768] + buffer[769] + buffer[770] + buffer[771];
-			offset = offset % 632;
-			offset = offset + 8;
-		}
-		return offset;
+		return rtmp_handshake::dh_offset(buffer, scheme);
 	}
 
 	bool basic_rtmp_connection::validate_client(std::uint8_t *data)
 	{
-		if (validate_client_scheme(data, 1))
-		{
-			m_validation_scheme = 1;
-			return true;
-		}
-		if (validate_client_scheme(data, 0))
-		{
-			m_validation_scheme = 0;
-			return true;
-		}
-		return false;
+		int const scheme = rtmp_handshake::detect_scheme(data, genuine_keys::FP_key, 30);
+		if (scheme < 0)
+			return false;
+		m_validation_scheme = static_cast<std::uint8_t>(scheme);
+		return true;
 	}
 
 	bool basic_rtmp_connection::validate_client_scheme(std::uint8_t *client_sig, std::uint8_t scheme)
 	{
-		std::uint32_t const offset = get_digest_offest(client_sig, scheme);
-
-		auto *buff = new std::uint8_t[eHandShakeSize - SHA256_DIGEST_LENGTH];
-		std::memcpy(buff, client_sig, offset);
-		std::memcpy(buff + offset, client_sig + offset + SHA256_DIGEST_LENGTH, eHandShakeSize - offset - SHA256_DIGEST_LENGTH);
-
-		std::uint8_t hash[SHA256_DIGEST_LENGTH];
-		HMAC_SHA256(buff, eHandShakeSize - SHA256_DIGEST_LENGTH, genuine_keys::FP_key, 30, hash);
-		bool ret = false;
-		if (std::memcmp(hash, client_sig + offset, SHA256_DIGEST_LENGTH) == 0)
-			ret = true;
-
-		delete[] buff;
-
-		return ret;
+		return rtmp_handshake::validate_digest(client_sig, scheme, genuine_keys::FP_key, 30);
 	}
 
 	bool basic_rtmp_connection::create_keys(std::uint8_t *client_sig, std::uint8_t *server_sig)
