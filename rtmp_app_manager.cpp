@@ -20,6 +20,7 @@ namespace fms
 	{
 		m_rtmpt_manager = std::make_unique<rtmpt_manager>(this);
 		m_fake_app = std::make_unique<fake_application>(this);
+		m_router.emplace(m_apps, *m_fake_app);
 	}
 
 	// Out-of-line (not =default in the header) so the unique_ptr members'
@@ -180,55 +181,11 @@ namespace fms
 		if (invoke.get() == nullptr)
 			return false;
 
+		// The only message the manager itself routes is the initial `connect`; once an
+		// app is selected the connection's app handles everything. Delegate the connect
+		// parsing + app selection to the router.
 		if (invoke->function()->value() == "connect")
-		{
-			if (invoke->parameters().empty())
-				return false;
-			amf0_object_ptr const object = std::dynamic_pointer_cast<amf0_object>(invoke->parameters().front());
-			if (object.get() == nullptr)
-				return false;
-
-			amf0_object::value_type &map = object->value();
-			amf0_object::value_type::iterator const i = map.find("app");
-			amf0_string_ptr const app_name = i != map.end() ? std::dynamic_pointer_cast<amf0_string>(i->m_value) : nullptr;
-			if (app_name)
-			{
-				for (auto & m_app : m_apps)
-				{
-					std::string instance;
-					if (check_application_name(app_name->value(), m_app.first, instance))
-					{
-						BOOST_LOG(lg::get()) << "cid: " << connection_id << " connecting to " << app_name->value();
-						client_session_ptr const conn = get_connection(connection_id);
-						conn->set_app(m_app.second.get());
-						conn->app_instance() = instance;
-						return m_app.second->handle_message(msg, connection_id, header, res);
-					}
-				}
-				BOOST_LOG(lg::get()) << "cid: " << connection_id << " connecting to " << app_name->value() << " which is an unknown app";
-			}
-			client_session_ptr const conn = get_connection(connection_id);
-			conn->set_app(m_fake_app.get());
-
-			// we don't have requested app
-			rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("_error", 1.0f);
-			result->channel_id() = header.channel_id();
-
-			amf0_null_ptr const null = std::make_shared<amf0_null>();
-			result->add_parameter(null);
-
-			amf0_object_ptr const obj = std::make_shared<amf0_object>();
-			obj->add_entry("level", "error");
-			obj->add_entry("code", "NetConnection.Connect.InvalidApp");
-			obj->add_entry("description", "No such application.");
-
-			result->add_parameter(obj);
-			res = result;
-
-			m_fake_app->enqueue_async_message(connection_id, result);
-			m_fake_app->gracefully_close_connection(connection_id);
-			return false;
-		}
+			return m_router->route(invoke, connection_id, get_connection(connection_id), header, res);
 
 		return false;
 	}
@@ -353,20 +310,6 @@ namespace fms
 	std::optional<netstream_stats_ptr> rtmp_app_manager::get_stream_stats(const stream_client_id_t &id)
 	{
 		return m_stats.get(id);
-	}
-
-	bool rtmp_app_manager::check_application_name(const std::string &app_name, const std::string &app, std::string &instance)
-	{
-		std::size_t const pos = app_name.find('/');
-		std::string const name = std::string(app_name, 0, pos);
-		if (name == app)
-		{
-			if (pos != std::string::npos)
-				instance = std::string(app_name, pos + 1);
-			return true;
-		}
-
-		return false;
 	}
 
 }
