@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "stream_registry.h"
-#include "flv_writer.h"   // complete type: broadcast_stream's unique_ptr<flv_writer> dtor
+#include "stream_recorder.h"   // complete type: broadcast_stream's unique_ptr<stream_recorder> dtor
 
 namespace fms
 {
@@ -31,7 +31,7 @@ namespace fms
 		if (bi != m_broadcasts.end())
 		{
 			out.qos_target = bi->second.qos_target;
-			out.flv = std::move(bi->second.flv);
+			out.recorder = std::move(bi->second.recorder);
 			m_broadcasts.erase(bi);
 		}
 

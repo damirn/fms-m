@@ -1,10 +1,8 @@
 #include "pch.h"
 #include "av_delivery.h"
-#include "amf0.h"
-#include "byte_writer.h"
 #include "channel_map.h"
 #include "client_session.h"
-#include "flv_writer.h"
+#include "stream_recorder.h"
 #include "media_host.h"
 #include "stream_registry.h"
 
@@ -41,8 +39,8 @@ namespace fms
 			send_audio_frame(audio, client, bcid);
 		});
 
-		if (bs->flv && audio->size() > 0)
-			bs->flv->write_audio(reinterpret_cast<char *>(audio->data()), audio->size(), audio->timestamp());
+		if (bs->recorder)
+			bs->recorder->record_audio(audio);
 	}
 
 	void av_delivery::route_video(const rtmp_message_video_data_ptr &video, const stream_client_id_t &bcid)
@@ -69,8 +67,8 @@ namespace fms
 			send_video_frame(client, video, bcid);
 		});
 
-		if (bs->flv && video->size() > 2)
-			bs->flv->write_video(reinterpret_cast<char *>(video->data()), video->size(), video->timestamp());
+		if (bs->recorder)
+			bs->recorder->record_video(video);
 	}
 
 	void av_delivery::route_metadata(const amf0_type_ptr &meta, const stream_client_id_t &cid)
@@ -84,15 +82,8 @@ namespace fms
 		});
 
 		stream_registry::broadcast_stream *const b = m_registry.find_broadcast(cid);
-		if (b && b->flv)
-		{
-			byte_writer tmp;
-			amf0_string_ptr const str = std::make_shared<amf0_string>("onMetaData");
-			amf0 a;
-			a.write(tmp, str);
-			a.write(tmp, meta);
-			b->flv->write_script(reinterpret_cast<const char *>(tmp.data()), tmp.size(), 0);
-		}
+		if (b && b->recorder)
+			b->recorder->record_metadata(meta);
 	}
 
 	void av_delivery::send_metadata(std::uint32_t connection_id, std::uint32_t stream_id, const stream_client_id_t &cid)

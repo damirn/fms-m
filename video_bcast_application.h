@@ -2,6 +2,7 @@
 
 #include "av_delivery.h"
 #include "media_host.h"
+#include "qos_reporter.h"
 #include "rtmp_application.h"
 #include "stream_registry.h"
 #include "vod_manager.h"
@@ -14,7 +15,7 @@
 namespace fms
 {
 	class mixer;
-	class flv_writer;
+	class stream_recorder;
 
 	namespace invoke_functions
 	{
@@ -28,8 +29,8 @@ namespace fms
 	public:
 		explicit video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
 
-		// Out-of-line so the m_flv_writers unique_ptr dtor is instantiated in the
-		// .cpp, where flv_writer is a complete type.
+		// Out-of-line so the registry's stream_recorder unique_ptr dtors are instantiated in the
+		// .cpp, where stream_recorder is a complete type.
 		~video_bcast_application() override;
 
 		void delete_connection(std::uint32_t, const std::string & = "") override;
@@ -108,6 +109,10 @@ namespace fms
 		// copies. Stateless; reads/writes the registry and each stream_client under
 		// the caller's shared lock.
 		av_delivery m_av{*this, m_registry};
+
+		// Once-a-second QoS gather (per-subscriber stats flush + onQOS notify), driven
+		// by handle_timer under the lock.
+		qos_reporter m_qos{*this, m_registry, m_app_manager};
 
 		enum { _eTimeout = 1 };
 
