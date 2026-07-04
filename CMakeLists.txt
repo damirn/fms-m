@@ -128,6 +128,7 @@ set(sourceFiles
   rtmp_app_manager.cpp
   rtmp_application.cpp
   rtmp_connection.cpp
+  rtmp_handshake.cpp
   rtmp_header.cpp
   rtmp_message.cpp
   rtmp_protocol.cpp
@@ -271,7 +272,7 @@ endif()
 option(BUILD_CLIENT "Build the RTMP client tool" ON)
 if(BUILD_CLIENT)
   add_library(fms_media_client STATIC
-    amf0.cpp amf3.cpp crypto.cpp flv_reader.cpp flv_writer.cpp rtmp_header.cpp
+    amf0.cpp amf3.cpp crypto.cpp flv_reader.cpp flv_writer.cpp rtmp_handshake.cpp rtmp_header.cpp
     rtmp_message.cpp rtmp_protocol.cpp rtmp_raw_data.cpp rtmp_so_message.cpp util.cpp)
   target_include_directories(fms_media_client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp)
