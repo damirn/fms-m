@@ -1,5 +1,6 @@
 #pragma once
 
+#include "connect_router.h"
 #include "http_connection.h"
 #include "io_context_pool.h"
 #include "netstream_stats_registry.h"
@@ -95,8 +96,6 @@ namespace fms
 		std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &);
 
 	protected:
-		static bool check_application_name(const std::string &, const std::string &, std::string &);
-
 		io_context_pool &m_io_context_pool;
 		std::uint32_t m_connection_counter{1};   // id 0 is a reserved "no connection" sentinel
 
@@ -104,6 +103,10 @@ namespace fms
 		app_map_t m_apps;
 
 		std::unique_ptr<fake_application> m_fake_app;
+
+		// Routes a `connect` invoke to the app it names (or rejects it). Emplaced in the
+		// ctor once m_apps + m_fake_app exist; handle_message delegates the connect case.
+		std::optional<connect_router> m_router;
 
 		using connection_map_t = std::unordered_map<std::uint32_t, client_session_ptr>;
 		connection_map_t m_connections;
