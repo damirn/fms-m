@@ -14,7 +14,7 @@
 
 namespace fms
 {
-	class amf0_illegal_cast : public std::exception
+	class amf0_illegal_cast final : public std::exception
 	{
 	public:
 		const char *what() const throw() override
@@ -80,7 +80,7 @@ namespace fms
 
 	using amf0_type_ptr = std::shared_ptr<amf0_type>;
 
-	class amf0_boolean : public amf0_type
+	class amf0_boolean final : public amf0_type
 	{
 	public:
 		amf0_boolean()
@@ -112,7 +112,7 @@ namespace fms
 
 	using amf0_boolean_ptr = std::shared_ptr<amf0_boolean>;
 
-	class amf0_number : public amf0_type
+	class amf0_number final : public amf0_type
 	{
 	public:
 		amf0_number()
@@ -142,7 +142,7 @@ namespace fms
 
 	using amf0_number_ptr = std::shared_ptr<amf0_number>;
 
-	class amf0_string : public amf0_type
+	class amf0_string final : public amf0_type
 	{
 	public:
 		amf0_string()
@@ -384,7 +384,7 @@ namespace fms
 
 	using amf0_object_ptr = std::shared_ptr<amf0_object>;
 
-	class amf0_null : public amf0_type
+	class amf0_null final : public amf0_type
 	{
 	public:
 		amf0_null()
@@ -394,7 +394,7 @@ namespace fms
 
 	using amf0_null_ptr = std::shared_ptr<amf0_null>;
 
-	class amf0_undefined : public amf0_type
+	class amf0_undefined final : public amf0_type
 	{
 	public:
 		amf0_undefined()
@@ -404,7 +404,7 @@ namespace fms
 
 	using amf0_undefined_ptr = std::shared_ptr<amf0_undefined>;
 
-	class amf0_ecma_array : public amf0_type
+	class amf0_ecma_array final : public amf0_type
 	{
 	public:
 		using entry = std::pair<std::string, amf0_type_ptr>;
@@ -442,7 +442,7 @@ namespace fms
 
 	using amf0_ecma_array_ptr = std::shared_ptr<amf0_ecma_array>;
 
-	class amf0_strict_array : public amf0_type
+	class amf0_strict_array final : public amf0_type
 	{
 	public:
 		using array_t = std::list<amf0_type_ptr>;
@@ -479,7 +479,7 @@ namespace fms
 
 	using amf0_strict_array_ptr = std::shared_ptr<amf0_strict_array>;
 
-	class amf0_long_string : public amf0_type
+	class amf0_long_string final : public amf0_type
 	{
 	public:
 		amf0_long_string()
@@ -519,7 +519,7 @@ namespace fms
 
 	// ms since the UNIX epoch (UTC); AMF0 also carries a timezone that is defined
 	// to always be 0 and is not preserved.
-	class amf0_date : public amf0_type
+	class amf0_date final : public amf0_type
 	{
 	public:
 		amf0_date()
@@ -555,7 +555,7 @@ namespace fms
 	using amf0_date_ptr = std::shared_ptr<amf0_date>;
 
 	// XML document flattened to a UTF-8 string (u32-length prefixed on the wire).
-	class amf0_xml_document : public amf0_type
+	class amf0_xml_document final : public amf0_type
 	{
 	public:
 		amf0_xml_document()
@@ -591,7 +591,7 @@ namespace fms
 	using amf0_xml_document_ptr = std::shared_ptr<amf0_xml_document>;
 
 	// A typed object is an object body prefixed with a (u16-length) class name.
-	class amf0_typed_object : public amf0_object
+	class amf0_typed_object final : public amf0_object
 	{
 	public:
 		amf0_typed_object()
@@ -619,7 +619,7 @@ namespace fms
 	using amf0_typed_object_ptr = std::shared_ptr<amf0_typed_object>;
 
 	// The "unsupported" marker: a value the sender could not serialize. No payload.
-	class amf0_unsupported : public amf0_type
+	class amf0_unsupported final : public amf0_type
 	{
 	public:
 		amf0_unsupported()
@@ -632,7 +632,7 @@ namespace fms
 	class amf3_type;
 	using amf3_type_ptr = std::shared_ptr<amf3_type>;
 
-	class amf0_amf3_container : public amf0_type
+	class amf0_amf3_container final : public amf0_type
 	{
 	public:
 		amf0_amf3_container()
