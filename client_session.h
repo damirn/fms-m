@@ -127,6 +127,13 @@ namespace fms
 			m_endpoint_ready.store(true, std::memory_order_release);
 		}
 
+		// Transport description for the admin/stats path -- overridden per transport so
+		// the manager never has to downcast to the concrete session type. Defaults suit
+		// the direct RTMP socket (address cached via set_remote_endpoint on its thread).
+		virtual std::string protocol_name() const { return "rtmp"; }
+		virtual std::string remote_address() const { return remote_endpoint_string(); }
+		virtual std::uint16_t remote_port() const { return 0; }
+
 	protected:
 		// session id
 		std::uint32_t m_id;

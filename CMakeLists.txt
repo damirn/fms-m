@@ -99,6 +99,8 @@ set(sourceFiles
   basic_rtmp_connection.cpp
   client_session.cpp
   config.cpp
+  connect_router.cpp
+  connection_registry.cpp
   crypto.cpp
   dh.cpp
   evp_dh.cpp

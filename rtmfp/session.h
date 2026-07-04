@@ -110,6 +110,10 @@ namespace fms
 			return m_endpoint;
 		}
 
+		std::string protocol_name() const override { return "rtmfp"; }
+		std::string remote_address() const override { return m_endpoint.address().to_string(); }
+		std::uint16_t remote_port() const override { return m_endpoint.port(); }
+
 		const bool &ack_now() const
 		{
 			return m_ack_now;
