@@ -21,7 +21,7 @@
 
 namespace fms
 {
-	class flv_writer;
+	class stream_recorder;
 
 	// Owns the media-routing state of a broadcast application: the live publishers
 	// (broadcast_stream), their subscribers, the fan-out index, and the clients
@@ -61,7 +61,7 @@ namespace fms
 		[[nodiscard]] shared_guard lock_shared() { return shared_guard(m_mutex); }
 
 		// Out-of-line (defined in stream_registry.cpp) so broadcast_stream's
-		// unique_ptr<flv_writer> is destroyed where flv_writer is complete.
+		// unique_ptr<stream_recorder> is destroyed where stream_recorder is complete.
 		~stream_registry();
 		// All per-broadcaster (publisher) state, created together and destroyed
 		// together. The data path only ever find()s an existing entry and mutates its
@@ -75,7 +75,7 @@ namespace fms
 			rtmp_message_audio_data_ptr aac_config;   // atomic_load/store
 			amf0_object_ptr metadata;
 			std::optional<stream_client_id_t> qos_target;   // real stream -> its qos stream
-			std::unique_ptr<flv_writer> flv;                // set only when recording
+			std::unique_ptr<stream_recorder> recorder;                // set only when recording (owns the flv_writer)
 		};
 
 		// A client waiting for a stream that has no publisher yet.
@@ -96,7 +96,7 @@ namespace fms
 		// Register a publisher's stream; false if the id or name is already taken.
 		// Pre-creates the broadcast_stream slot so the data path never inserts.
 		// Defined in stream_registry.cpp (constructing broadcast_stream instantiates
-		// its unique_ptr<flv_writer>, which needs flv_writer complete).
+		// its unique_ptr<stream_recorder>, which needs stream_recorder complete).
 		bool add_broadcaster(const stream_client_id_t &id, const std::string &name, const exclusive_guard &);
 
 		broadcast_stream *find_broadcast(const stream_client_id_t &id)
@@ -121,12 +121,12 @@ namespace fms
 			bool was_broadcaster{false};
 			std::string name;
 			std::optional<stream_client_id_t> qos_target;
-			std::unique_ptr<flv_writer> flv;
+			std::unique_ptr<stream_recorder> recorder;
 			std::vector<stream_client_id_t> subscribers;
 		};
 
 		// Erase the publisher and detach its subscribers in one step. Defined in
-		// stream_registry.cpp (erasing the broadcast destroys its flv_writer).
+		// stream_registry.cpp (erasing the broadcast destroys its recorder).
 		broadcaster_teardown remove_broadcaster(const stream_client_id_t &id, const exclusive_guard &);
 
 		// fn(const stream_client_id_t &bcid, broadcast_stream &)

@@ -136,6 +136,8 @@ set(sourceFiles
   server.cpp
   so_manager.cpp
   speex_codec.cpp
+  qos_reporter.cpp
+  stream_recorder.cpp
   stream_registry.cpp
   util.cpp
   vod_manager.cpp
@@ -213,7 +215,7 @@ if(BUILD_AMF_TESTS)
   # server, socket, or io_context (the payoff of injecting media_host).
   add_executable(av_delivery_test
     test/test_main.cpp test/av_delivery_test.cpp
-    av_delivery.cpp stream_registry.cpp rtmp_message.cpp rtmp_header.cpp
+    av_delivery.cpp stream_registry.cpp stream_recorder.cpp rtmp_message.cpp rtmp_header.cpp
     rtmp_protocol.cpp rtmp_so_message.cpp client_session.cpp amf0.cpp amf3.cpp flv_writer.cpp)
   if(NOT APPLE)
     find_package(Threads REQUIRED)

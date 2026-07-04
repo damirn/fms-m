@@ -10,7 +10,7 @@
 #include "channel_map.h"
 #include "client_session.h"
 #include "doctest.h"
-#include "flv_writer.h"
+#include "stream_recorder.h"
 #include "media_host.h"
 #include "rtmp_message.h"
 #include "stream_client.h"
