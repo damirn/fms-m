@@ -10,7 +10,7 @@
 
 namespace fms
 {
-	class amf3_illegal_cast : public std::exception
+	class amf3_illegal_cast final : public std::exception
 	{
 	public:
 		const char *what() const throw() override
@@ -71,7 +71,7 @@ namespace fms
 
 	using amf3_type_ptr = std::shared_ptr<amf3_type>;
 
-	class amf3_empty_type : public amf3_type
+	class amf3_empty_type final : public amf3_type
 	{
 	public:
 		explicit amf3_empty_type(etype t)
@@ -81,7 +81,7 @@ namespace fms
 
 	using amf3_empty_type_ptr = std::shared_ptr<amf3_empty_type>;
 
-	class amf3_integer_type : public amf3_type
+	class amf3_integer_type final : public amf3_type
 	{
 	public:
 		amf3_integer_type()
@@ -109,7 +109,7 @@ namespace fms
 
 	using amf3_integer_type_ptr = std::shared_ptr<amf3_integer_type>;
 
-	class amf3_double_type : public amf3_type
+	class amf3_double_type final : public amf3_type
 	{
 	public:
 		amf3_double_type()
@@ -145,7 +145,7 @@ namespace fms
 
 	using amf3_double_type_ptr = std::shared_ptr<amf3_double_type>;
 
-	class amf3_string_type : public amf3_type
+	class amf3_string_type final : public amf3_type
 	{
 	public:
 		amf3_string_type()
@@ -184,7 +184,7 @@ namespace fms
 
 	// XML (eAMF3XML) and legacy XMLDocument (eAMF3XMLDoc) are both flattened to a
 	// UTF-8 string on the wire; the marker distinguishes them.
-	class amf3_xml_type : public amf3_type
+	class amf3_xml_type final : public amf3_type
 	{
 	public:
 		explicit amf3_xml_type(etype t)
@@ -219,7 +219,7 @@ namespace fms
 
 	using amf3_xml_type_ptr = std::shared_ptr<amf3_xml_type>;
 
-	class amf3_date_type : public amf3_type
+	class amf3_date_type final : public amf3_type
 	{
 	public:
 		amf3_date_type()
@@ -255,7 +255,7 @@ namespace fms
 
 	using amf3_date_type_ptr = std::shared_ptr<amf3_date_type>;
 
-	class amf3_bytearray_type : public amf3_type
+	class amf3_bytearray_type final : public amf3_type
 	{
 	public:
 		amf3_bytearray_type()
@@ -328,7 +328,7 @@ namespace fms
 		}
 	}
 
-	class amf3_object_type : public amf3_type
+	class amf3_object_type final : public amf3_type
 	{
 	public:
 		amf3_object_type()
@@ -386,7 +386,7 @@ namespace fms
 
 	// ActionScript Array: a dense (ordinal) portion plus an associative
 	// (string-keyed / ECMA) portion.
-	class amf3_array_type : public amf3_type
+	class amf3_array_type final : public amf3_type
 	{
 	public:
 		amf3_array_type()

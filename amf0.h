@@ -10,7 +10,8 @@ namespace fms
 {
 	class byte_reader;
 	class byte_writer;
-	class amf0_read_exception : public std::runtime_error
+
+	class amf0_read_exception final : public std::runtime_error
 	{
 	public:
 		amf0_read_exception()
