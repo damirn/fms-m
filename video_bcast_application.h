@@ -7,7 +7,6 @@
 #include "vod_manager.h"
 
 #include <cstdint>
-#include <shared_mutex>
 #include <string>
 
 #include <boost/asio.hpp>
@@ -83,27 +82,26 @@ namespace fms
 		void check_waiting_clients(std::uint32_t, const std::string &);
 		static bool check_bool_value(rtmp_message_invoke::parameters_list_t &);
 
-		rtmp_message_ptr close_stream(std::uint32_t, std::uint32_t = 0);
+		rtmp_message_ptr close_stream(std::uint32_t, std::uint32_t, const stream_registry::exclusive_guard &);
 		void notify_client(std::uint32_t, std::uint32_t, const std::string &);
 		void remove_client(std::uint32_t);
 
-		void create_stream_client(const stream_client_id_t &, const stream_client_id_t &, bool);
-
-		// Reader/writer split: the per-frame data path takes a SHARED lock (it only
-		// reads the map structure and mutates its own bcid's leaf data); control
-		// paths that restructure the maps take EXCLUSIVE. Sound only because the data
-		// path never inserts -- add_broadcaster pre-creates each publisher's per-bcid slots.
-		//
-		// LOCK ORDER: this mutex is always acquired BEFORE rtmp_app_manager::m_mutex
-		// (the data path and handle_timer take m_mutex, then call into the manager's
-		// update_netstream_stats/get_stream_stats/get_connection). Never take them in
-		// the reverse order -- no manager method may call back into the app while
-		// holding rtmp_app_manager::m_mutex (delete_connection unlocks first, by
-		// design). Inverting this would deadlock.
-		std::shared_mutex m_mutex;
+		void create_stream_client(const stream_client_id_t &, const stream_client_id_t &, bool, const stream_registry::exclusive_guard &);
 
 		// All media-routing state (publishers, subscribers, fan-out index, waiting
-		// clients). The registry is a plain container -- m_mutex above guards it.
+		// clients) AND the lock guarding it: the registry owns the media-routing
+		// shared_mutex and hands it out via lock_shared()/lock_exclusive(). The
+		// per-frame data path takes a SHARED lock (it only reads the map structure and
+		// mutates its own bcid's leaf data); control paths that restructure the maps
+		// take EXCLUSIVE (and must pass the exclusive_guard to every mutating call --
+		// the registry enforces that at compile time). The owning app's VOD and
+		// call-instance state ride in the same critical-section domain (same lock).
+		//
+		// LOCK ORDER: this lock is always acquired BEFORE rtmp_app_manager::m_mutex
+		// (the data path and handle_timer take it, then call into the manager's
+		// update_netstream_stats/get_stream_stats/get_connection). Never the reverse --
+		// no manager method may call back into the app while holding
+		// rtmp_app_manager::m_mutex (delete_connection unlocks first, by design).
 		stream_registry m_registry;
 
 		// Live audio/video fan-out: turns a publisher frame into per-subscriber
@@ -130,12 +128,12 @@ namespace fms
 		boost::asio::io_context &io_context() override;
 		void update_netstream(const stream_client_id_t &id, const std::string &name, bool publishing) override;
 
-		void add_waiting_client(std::uint32_t, const rtmp_message_invoke_ptr&, const std::string &);
-		void update_waiting_client(stream_client_id_t &, bool, bool);
+		void add_waiting_client(std::uint32_t, const rtmp_message_invoke_ptr&, const std::string &, const stream_registry::exclusive_guard &);
+		void update_waiting_client(stream_client_id_t &, bool, bool, const stream_registry::exclusive_guard &);
 
 		// VOD (video-on-demand) playback of saved .flv files, when a play target has
-		// no live publisher. Owns its own per-play state; shares m_mutex with us.
-		vod_manager m_vod{*this, m_mutex};
+		// no live publisher. Owns its own per-play state; shares the registry's lock.
+		vod_manager m_vod{*this, m_registry};
 
 		boost::asio::steady_timer m_timer;
 	};

@@ -117,9 +117,10 @@ namespace
 
 		explicit fixture(bool was_playing = false)
 		{
-			reg.add_broadcaster(bcid, "s");
+			auto const g = reg.lock_exclusive();
+			reg.add_broadcaster(bcid, "s", g);
 			sub = std::make_shared<stream_client>(2, 5, was_playing);
-			reg.add_subscriber(bcid, stream_client_id_t{2, 5}, sub);
+			reg.add_subscriber(bcid, stream_client_id_t{2, 5}, sub, g);
 			host.session = std::make_shared<fake_session>(2);
 			sub->m_session = host.session;   // pre-cache so deliver uses it directly
 		}
@@ -127,7 +128,8 @@ namespace
 		stream_client_ptr add_subscriber(std::uint32_t conn, std::uint32_t stream, bool was_playing = false)
 		{
 			auto c = std::make_shared<stream_client>(conn, stream, was_playing);
-			reg.add_subscriber(bcid, stream_client_id_t{conn, stream}, c);
+			auto const g = reg.lock_exclusive();
+			reg.add_subscriber(bcid, stream_client_id_t{conn, stream}, c, g);
 			c->m_session = host.session;
 			return c;
 		}

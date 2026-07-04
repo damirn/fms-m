@@ -6,7 +6,7 @@ namespace fms
 {
 	stream_registry::~stream_registry() = default;
 
-	bool stream_registry::add_broadcaster(const stream_client_id_t &id, const std::string &name)
+	bool stream_registry::add_broadcaster(const stream_client_id_t &id, const std::string &name, const exclusive_guard &)
 	{
 		if (m_streams.left.find(id) != m_streams.left.end())
 			return false;
@@ -17,7 +17,7 @@ namespace fms
 		return true;
 	}
 
-	stream_registry::broadcaster_teardown stream_registry::remove_broadcaster(const stream_client_id_t &id)
+	stream_registry::broadcaster_teardown stream_registry::remove_broadcaster(const stream_client_id_t &id, const exclusive_guard &)
 	{
 		broadcaster_teardown out;
 		auto const si = m_streams.left.find(id);
