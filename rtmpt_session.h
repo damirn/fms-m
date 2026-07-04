@@ -49,6 +49,9 @@ namespace fms
 			return m_address;
 		}
 
+		std::string protocol_name() const override { return "rtmpt"; }
+		std::string remote_address() const override { return m_address.to_string(); }
+
 		void close() override;
 
 		// True once the tunneled RTMP handshake is done and commands are flowing. The

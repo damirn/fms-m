@@ -11,7 +11,6 @@
 #include "rtmp_message.h"
 #include "rtmpt_manager.h"
 #include "rtmpt_session.h"
-#include "session.h"
 
 namespace fms
 {
@@ -273,35 +272,12 @@ namespace fms
 			else
 				return client_data_ptr();
 
-			rtmp_connection_ptr const conn = std::dynamic_pointer_cast<rtmp_connection>(i->second);
-			if (conn.get() != nullptr)
-			{
-				// use the endpoint cached on the connection's thread instead of
-				// calling remote_endpoint() on its socket from the admin thread
-				client->m_ip = conn->remote_endpoint_string();
-				client->m_port = 0;
-				client->m_protocol = "rtmp";
-			}
-			else
-			{
-				rtmpt_session_ptr const conn = std::dynamic_pointer_cast<rtmpt_session>(i->second);
-				if (conn.get() != nullptr)
-				{
-					client->m_ip = conn->address().to_string();
-					client->m_port = 0;
-					client->m_protocol = "rtmpt";
-				}
-				else
-				{
-					session_ptr const conn = std::dynamic_pointer_cast<session>(i->second);
-					if (conn.get() != nullptr)
-					{
-						client->m_ip = conn->end_point().address().to_string();
-						client->m_port = conn->end_point().port();
-						client->m_protocol = "rtmfp";
-					}
-				}
-			}
+			// Transport descriptors come from client_session virtuals, so the manager
+			// never downcasts to a concrete session type. (rtmp uses the endpoint cached
+			// on the connection's own thread; rtmpt/rtmfp expose their own address.)
+			client->m_ip = i->second->remote_address();
+			client->m_port = i->second->remote_port();
+			client->m_protocol = i->second->protocol_name();
 			return client;
 		}
 		return client_data_ptr();
