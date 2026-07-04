@@ -35,12 +35,16 @@ namespace fms
 
 	void rtmpt_manager::remove_session(const std::string &id)
 	{
-		std::unique_lock const lock(m_mutex);
-		auto const i = m_ids.find(id);
-		if (i == m_ids.end())
-			return;
-		rtmpt_session_data_ptr const session = i->second;
-		m_ids.erase(i);
+		rtmpt_session_data_ptr session;
+		{
+			std::unique_lock const lock(m_mutex);
+			auto const i = m_ids.find(id);
+			if (i == m_ids.end())
+				return;
+			session = i->second;
+			m_ids.erase(i);
+		}
+		std::lock_guard const s(session->m_session_mutex);   // serialize with in-flight handle_data
 		session->m_session->close();
 	}
 
@@ -60,71 +64,95 @@ namespace fms
 
 	std::uint32_t rtmpt_manager::handle_data(const std::string &cid, std::uint32_t seq, byte_writer &input, byte_writer &output)
 	{
-		std::unique_lock const lock(m_mutex);
-		auto const i = m_ids.find(cid);
-		if (i == m_ids.end())
-			return 0;
-		i->second->m_not_alive = 0;
-		if (i->second->m_sequence == seq)
+		rtmpt_session_data_ptr sd;
+		bool in_order = false;
 		{
-			i->second->m_sequence++;
-			rtmpt_session_data::unoreder_data_t::iterator j;
-			while (true)
+			// Global lock: the id table + this session's SEQUENCING state (m_sequence /
+			// out-of-order stash / liveness). Fast; released before the slow session work.
+			std::unique_lock const lock(m_mutex);
+			auto const i = m_ids.find(cid);
+			if (i == m_ids.end())
+				return 0;
+			sd = i->second;
+			sd->m_not_alive = 0;
+			if (sd->m_sequence == seq)
 			{
-				j = i->second->m_out_of_order_data.find(i->second->m_sequence);
-				if (j == i->second->m_out_of_order_data.end())
-					break;
-				input.write(j->second.first, j->second.second);
-				delete[] j->second.first;
-				i->second->m_ooo_bytes -= j->second.second;
-				i->second->m_out_of_order_data.erase(j);
-				i->second->m_sequence++;
+				sd->m_sequence++;
+				rtmpt_session_data::unoreder_data_t::iterator j;
+				while (true)
+				{
+					j = sd->m_out_of_order_data.find(sd->m_sequence);
+					if (j == sd->m_out_of_order_data.end())
+						break;
+					input.write(j->second.first, j->second.second);
+					delete[] j->second.first;
+					sd->m_ooo_bytes -= j->second.second;
+					sd->m_out_of_order_data.erase(j);
+					sd->m_sequence++;
+				}
+				in_order = true;
 			}
-			i->second->m_session->handle_data(input, output);
-		}
-		else
-		{
-			// Stash out-of-order data for later, in-order replay -- but bounded, so a
-			// client that never sends the expected sequence can't grow this without
-			// limit (memory DoS). Over the cap we drop the excess and just poll.
-			if (i->second->m_out_of_order_data.size() < eMaxOutOfOrder &&
-				i->second->m_ooo_bytes + input.size() <= eMaxOutOfOrderBytes &&
-				!i->second->m_out_of_order_data.contains(seq))
+			else
 			{
-				auto *data = new std::uint8_t[input.size()];
-				std::memcpy(data, input.data(), input.size());
-				i->second->m_out_of_order_data[seq] = std::make_pair(data, input.size());
-				i->second->m_ooo_bytes += input.size();
+				// Stash out-of-order data for later, in-order replay -- but bounded, so a
+				// client that never sends the expected sequence can't grow this without
+				// limit (memory DoS). Over the cap we drop the excess and just poll.
+				if (sd->m_out_of_order_data.size() < eMaxOutOfOrder &&
+					sd->m_ooo_bytes + input.size() <= eMaxOutOfOrderBytes &&
+					!sd->m_out_of_order_data.contains(seq))
+				{
+					auto *data = new std::uint8_t[input.size()];
+					std::memcpy(data, input.data(), input.size());
+					sd->m_out_of_order_data[seq] = std::make_pair(data, input.size());
+					sd->m_ooo_bytes += input.size();
+				}
 			}
-			i->second->m_session->serialize_poll_time(output);
 		}
 
+		// Per-session lock only: run the parse / dispatch / serialize (the slow work) so
+		// a busy session no longer stalls every other tunnelled client. `sd` keeps the
+		// session alive even if a concurrent remove/reap erases it from the table.
+		std::lock_guard const s(sd->m_session_mutex);
+		if (in_order)
+			sd->m_session->handle_data(input, output);
+		else
+			sd->m_session->serialize_poll_time(output);
 		return output.size();
 	}
 
 	std::uint32_t rtmpt_manager::serialize_result(const std::string &cid, std::uint32_t seq, byte_writer &buffer)
 	{
-		std::unique_lock const lock(m_mutex);
-		auto const i = m_ids.find(cid);
-		if (i == m_ids.end())
-			return 0;
-		i->second->m_not_alive = 0;
-		if (i->second->m_sequence == seq)
-			i->second->m_sequence++;
-		i->second->m_session->serialize_result(buffer);
+		rtmpt_session_data_ptr sd;
+		{
+			std::unique_lock const lock(m_mutex);
+			auto const i = m_ids.find(cid);
+			if (i == m_ids.end())
+				return 0;
+			sd = i->second;
+			sd->m_not_alive = 0;
+			if (sd->m_sequence == seq)
+				sd->m_sequence++;
+		}
+		std::lock_guard const s(sd->m_session_mutex);
+		sd->m_session->serialize_result(buffer);
 		return buffer.size();
 	}
 
 	void rtmpt_manager::update_stats(const std::string &id, std::uint32_t bytes_transferred, bool is_inbound)
 	{
-		std::unique_lock const lock(m_mutex);
-		auto const i = m_ids.find(id);
-		if (i == m_ids.end())
-			return;
+		rtmpt_session_data_ptr sd;
+		{
+			std::unique_lock const lock(m_mutex);
+			auto const i = m_ids.find(id);
+			if (i == m_ids.end())
+				return;
+			sd = i->second;
+		}
+		std::lock_guard const s(sd->m_session_mutex);
 		if (is_inbound)
-			i->second->m_session->handle_bytes_read(bytes_transferred);
+			sd->m_session->handle_bytes_read(bytes_transferred);
 		else
-			i->second->m_session->handle_bytes_written(bytes_transferred);
+			sd->m_session->handle_bytes_written(bytes_transferred);
 	}
 
 	std::string rtmpt_manager::create_id(const boost::asio::ip::address &address, const rtmpt_session_ptr& session)
@@ -164,13 +192,19 @@ namespace fms
 				// Idle reaping (polling resets m_not_alive), OR a session that keeps
 				// polling but never finishes the tunneled handshake (m_open_ticks is not
 				// reset by polling) -- the latter replaces the per-session handshake timer.
-				bool const idle_dead = i->second->m_not_alive > 3;
-				bool const handshake_stalled = !i->second->m_session->handshake_complete() && i->second->m_open_ticks >= 1;
-				if (idle_dead || handshake_stalled)
+				// m_not_alive/m_open_ticks are guarded by the global lock (held here);
+				// handshake_complete()/close() touch session state -> per-session lock
+				// (global-then-per-session, the same order remove_session uses).
+				bool dead = i->second->m_not_alive > 3;
 				{
-					i->second->m_session->close();
-					i = m_ids.erase(i);
+					std::lock_guard const s(i->second->m_session_mutex);
+					if (!dead && !i->second->m_session->handshake_complete() && i->second->m_open_ticks >= 1)
+						dead = true;
+					if (dead)
+						i->second->m_session->close();
 				}
+				if (dead)
+					i = m_ids.erase(i);
 				else
 				{
 					i->second->m_not_alive++;
