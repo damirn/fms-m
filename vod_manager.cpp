@@ -6,6 +6,7 @@
 #include "logging.h"
 #include "media_host.h"
 #include "media_path.h"
+#include "stream_registry.h"
 
 #include <chrono>
 #include <filesystem>
@@ -16,7 +17,7 @@ namespace fms
 {
 	bool vod_manager::start(std::uint32_t connection_id, const rtmp_message_invoke_ptr &invoke, const std::string &stream_name)
 	{
-		// caller (handle_invoke_play) holds m_mutex.
+		// caller (handle_invoke_play) holds the registry lock.
 		auto const path = resolve_media_file(config::instance()->flv_folder(), stream_name);
 		if (!path)
 			return false;   // malformed / traversal attempt
@@ -62,7 +63,7 @@ namespace fms
 
 	void vod_manager::tick(const vod_session_ptr &session)
 	{
-		std::unique_lock const lock(m_mutex);
+		auto const lock = m_registry.lock_exclusive();
 		if (session->m_state != vod_session::ePlaying)
 			return;
 
@@ -105,7 +106,7 @@ namespace fms
 
 	void vod_manager::pause(std::uint32_t connection_id, std::uint32_t stream_id, bool pause)
 	{
-		std::unique_lock const lock(m_mutex);
+		auto const lock = m_registry.lock_exclusive();
 		auto const it = m_vod.find(std::make_pair(connection_id, stream_id));
 		if (it == m_vod.end())
 			return;
@@ -133,7 +134,7 @@ namespace fms
 
 	void vod_manager::seek(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms)
 	{
-		std::unique_lock const lock(m_mutex);
+		auto const lock = m_registry.lock_exclusive();
 		auto const it = m_vod.find(std::make_pair(connection_id, stream_id));
 		if (it == m_vod.end())
 			return;
@@ -155,7 +156,7 @@ namespace fms
 
 	void vod_manager::stop(const stream_client_id_t &key)
 	{
-		// caller holds m_mutex.
+		// caller holds the registry lock.
 		auto const it = m_vod.find(key);
 		if (it == m_vod.end())
 			return;
@@ -166,7 +167,7 @@ namespace fms
 
 	void vod_manager::stop_connection(std::uint32_t connection_id)
 	{
-		// caller holds m_mutex.
+		// caller holds the registry lock.
 		std::erase_if(m_vod, [connection_id](auto &kv)
 		{
 			if (kv.first.first != connection_id)

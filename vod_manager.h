@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <map>
-#include <shared_mutex>
 #include <string>
 
 #include <boost/noncopyable.hpp>
@@ -14,6 +13,7 @@
 namespace fms
 {
 	class media_host;
+	class stream_registry;
 
 	// Video-on-demand playback. When a play target has no live publisher but a
 	// saved .flv exists on disk, this serves that file as a timed stream to the one
@@ -23,19 +23,18 @@ namespace fms
 	//
 	// The RTMP send path is reached through an injected media_host (enqueue frames
 	// and status messages, the app manager / io_context). Not thread-safe on its own
-	// -- it shares the
-	// application's shared_mutex and follows the same locking split as the routing
-	// state: start()/stop() are caller-locked (they run inside handle_invoke_play /
-	// close paths that already hold the lock), while tick()/pause()/seek() take the
-	// lock themselves.
+	// -- it shares the stream_registry's media-routing lock and follows the same
+	// locking split as the routing state: start()/stop() are caller-locked (they run
+	// inside handle_invoke_play / close paths that already hold the lock), while
+	// tick()/pause()/seek() take the lock themselves via the registry.
 	class vod_manager : boost::noncopyable
 	{
 	public:
-		vod_manager(media_host &host, std::shared_mutex &mutex)
-			: m_host(host), m_mutex(mutex)
+		vod_manager(media_host &host, stream_registry &registry)
+			: m_host(host), m_registry(registry)
 		{}
 
-		// Try to begin VOD for (connection_id, stream_id). Caller holds m_mutex.
+		// Try to begin VOD for (connection_id, stream_id). Caller holds the lock.
 		// Returns false when there is no such saved file (or it is malformed / a
 		// traversal attempt / unreadable), so the caller can fall back to the
 		// live/waiting path.
@@ -44,11 +43,11 @@ namespace fms
 		void pause(std::uint32_t connection_id, std::uint32_t stream_id, bool pause);
 		void seek(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms);
 
-		// Stop and drop the playback for `key`, if any. Caller holds m_mutex.
+		// Stop and drop the playback for `key`, if any. Caller holds the lock.
 		void stop(const stream_client_id_t &key);
 
 		// Stop and drop every playback belonging to `connection_id` (the client is
-		// going away). Caller holds m_mutex.
+		// going away). Caller holds the lock.
 		void stop_connection(std::uint32_t connection_id);
 
 	private:
@@ -56,7 +55,7 @@ namespace fms
 		void tick(const vod_session_ptr &session);
 
 		media_host &m_host;
-		std::shared_mutex &m_mutex;
+		stream_registry &m_registry;
 
 		// active VOD playbacks, keyed by (connection_id, stream_id)
 		std::map<stream_client_id_t, vod_session_ptr> m_vod;
