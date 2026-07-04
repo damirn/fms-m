@@ -136,6 +136,7 @@ set(sourceFiles
   server.cpp
   so_manager.cpp
   speex_codec.cpp
+  qos_reporter.cpp
   stream_recorder.cpp
   stream_registry.cpp
   util.cpp
