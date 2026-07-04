@@ -15,7 +15,7 @@
 namespace fms
 {
 	class mixer;
-	class flv_writer;
+	class stream_recorder;
 
 	namespace invoke_functions
 	{
@@ -29,8 +29,8 @@ namespace fms
 	public:
 		explicit video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
 
-		// Out-of-line so the m_flv_writers unique_ptr dtor is instantiated in the
-		// .cpp, where flv_writer is a complete type.
+		// Out-of-line so the registry's stream_recorder unique_ptr dtors are instantiated in the
+		// .cpp, where stream_recorder is a complete type.
 		~video_bcast_application() override;
 
 		void delete_connection(std::uint32_t, const std::string & = "") override;
