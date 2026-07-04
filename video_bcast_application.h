@@ -2,6 +2,7 @@
 
 #include "av_delivery.h"
 #include "media_host.h"
+#include "qos_reporter.h"
 #include "rtmp_application.h"
 #include "stream_registry.h"
 #include "vod_manager.h"
@@ -110,6 +111,10 @@ namespace fms
 		// copies. Stateless; reads/writes the registry and each stream_client under
 		// the caller's shared lock.
 		av_delivery m_av{*this, m_registry};
+
+		// Once-a-second QoS gather (per-subscriber stats flush + onQOS notify), driven
+		// by handle_timer under the lock.
+		qos_reporter m_qos{*this, m_registry, m_app_manager};
 
 		enum { _eTimeout = 1 };
 
