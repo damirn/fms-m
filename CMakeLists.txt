@@ -311,6 +311,21 @@ if(BUILD_CLIENT)
   target_compile_definitions(b2b_test PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
   add_dependencies(b2b_test ${PROJECT_NAME})
 
+  # Interop matrix vs the reference clients (rtmpdump + ffmpeg): drives the real
+  # server over RTMP/RTMPT and asserts both the media (ffprobe) and the RTMP
+  # user-control events the client receives (rtmpdump -z). Registered only when the
+  # tools are on PATH -- it degrades to a skip elsewhere (e.g. CI without them).
+  find_program(RTMPDUMP_EXE rtmpdump)
+  find_program(FFMPEG_EXE ffmpeg)
+  find_program(FFPROBE_EXE ffprobe)
+  if(RTMPDUMP_EXE AND FFMPEG_EXE AND FFPROBE_EXE)
+    add_test(NAME interop
+      COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test/interop/interop.sh $<TARGET_FILE:${PROJECT_NAME}>)
+    set_tests_properties(interop PROPERTIES TIMEOUT 180)
+  else()
+    message(STATUS "interop test disabled (needs rtmpdump + ffmpeg + ffprobe on PATH)")
+  endif()
+
   # End-to-end RTMP relay throughput benchmark (publisher -> server -> subscriber).
   # Not a ctest; drives the spawned server at max rate and reports GiB/s.
   add_executable(bench_rtmp_throughput test/bench_rtmp_throughput.cpp)
