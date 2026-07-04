@@ -5,7 +5,6 @@
 
 namespace fms
 {
-	void *memmem(char *, int, char *, int);
 	void hexdump(std::ostream &, void *, int);
 
 	/// Format a wall-clock time point as "YYYY-MM-DD HH:MM:SS" (replaces
