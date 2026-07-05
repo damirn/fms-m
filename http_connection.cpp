@@ -22,7 +22,33 @@ namespace fms
 
 	void http_connection::start()
 	{
-		do_read();
+		// Negotiate the transport (TLS for RTMPTS; a no-op for plaintext RTMPT) before
+		// reading any HTTP.
+		transport_handshake([self = shared_from_this()](const boost::system::error_code &ec)
+		{
+			if (ec)
+			{
+				self->close();
+				return;
+			}
+			self->do_read();
+		});
+	}
+
+	void http_connection::async_read_request(io_handler h)
+	{
+		http::async_read(m_socket, m_buffer, *m_parser, std::move(h));
+	}
+
+	void http_connection::async_write_response(io_handler h)
+	{
+		http::async_write(m_socket, m_response, std::move(h));
+	}
+
+	void http_connection::transport_handshake(handshake_handler h)
+	{
+		// Plaintext RTMPT: nothing to negotiate. Post so completion is always async.
+		boost::asio::post(m_socket.get_executor(), [h = std::move(h)]() { h(boost::system::error_code{}); });
 	}
 
 	void http_connection::do_read()
@@ -39,7 +65,7 @@ namespace fms
 		m_timer.expires_after(std::chrono::seconds(eIdleTimeout));
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->on_timeout(ec); });
 
-		http::async_read(m_socket, m_buffer, *m_parser,
+		async_read_request(
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_read(ec, n); });
 	}
 
@@ -152,7 +178,7 @@ namespace fms
 		m_response.body() = std::move(body);
 		m_response.prepare_payload();   // sets Content-Length
 
-		http::async_write(m_socket, m_response,
+		async_write_response(
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_write(ec, n); });
 	}
 

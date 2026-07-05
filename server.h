@@ -51,6 +51,10 @@ namespace fms
 		// Initialize acceptor
 		void init_acceptors(const std::string &);
 
+		// Open + bind + listen one acceptor (throws server_exception on failure).
+		void bind_acceptor(boost::asio::ip::tcp::resolver &, boost::asio::ip::tcp::acceptor &,
+			const std::string &address, const std::string &port);
+
 		// Initialize RTMFP service
 		void init_rtmfp_service();
 
@@ -58,6 +62,7 @@ namespace fms
 		void do_accept();
 		void do_http_accept();
 		void do_rtmps_accept();
+		void do_rtmpts_accept();
 
 		// Create RTMP applications
 		void create_applications();
@@ -75,6 +80,9 @@ namespace fms
 		// empty/null unless a cert+key are configured and the rtmps port is set.
 		boost::asio::ip::tcp::acceptor m_rtmps_acceptor;
 		std::shared_ptr<boost::asio::ssl::context> m_ssl_context;
+
+		// RTMPTS (RTMPT over TLS) acceptor, sharing m_ssl_context.
+		boost::asio::ip::tcp::acceptor m_rtmpts_acceptor;
 
 		// SIGINT/SIGTERM -> stop(). A clean stop lets ~server run, which flushes
 		// in-progress FLV recordings (flv_writer's dtor) and closes sockets;
