@@ -43,6 +43,12 @@ namespace fms
 		void pause(std::uint32_t connection_id, std::uint32_t stream_id, bool pause);
 		void seek(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms);
 
+		// Act on a client SetBufferLength user-control: how far ahead of real time we
+		// may pre-send this VOD playback. A large value (rtmpdump's BUFX hack) turns
+		// the paced stream into a fast, download-everything pull. No-op for a
+		// (connection_id, stream_id) that isn't a VOD playback.
+		void set_buffer_length(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms);
+
 		// Stop and drop the playback for `key`, if any. Caller holds the lock.
 		void stop(const stream_client_id_t &key);
 

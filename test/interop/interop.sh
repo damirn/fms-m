@@ -145,11 +145,18 @@ kill "$PUB" 2>/dev/null
 has_av "$WORK/live.flv"                 && ok "live: valid A/V received" || bad "live: media"
 saw_ctrl "$WORK/live.log" 0             && ok "live: StreamBegin(0) sent+consumed" || bad "live: StreamBegin"
 
-# --- Case 2: RTMP VOD (served .flv) -------------------------------------------
-echo "[2] RTMP VOD: play a saved .flv to EOF"
-make_source "$WORK/clip.flv" 3
-play_rtmpdump "rtmp://127.0.0.1:$RTMP_PORT/bcast/clip" "$WORK/vod.flv" 8
+# --- Case 2: RTMP VOD (served .flv), with SetBufferLength fast pull -----------
+# rtmpdump sends SetBufferLength with a huge buffer (BUFX); the server honours it
+# and streams the whole file at once instead of pacing in real time. A 6s clip that
+# arrives in well under its own duration proves the buffer is acted on (real-time
+# pacing would take ~6s). EOF user-control events must still be delivered.
+echo "[2] RTMP VOD: fast pull (SetBufferLength/BUFX) a saved .flv to EOF"
+make_source "$WORK/clip.flv" 6
+vod_t0=$SECONDS
+play_rtmpdump "rtmp://127.0.0.1:$RTMP_PORT/bcast/clip" "$WORK/vod.flv" 12
+vod_secs=$((SECONDS - vod_t0))
 has_av "$WORK/vod.flv"                  && ok "vod: valid A/V received" || bad "vod: media"
+[[ "$vod_secs" -lt 3 ]]                 && ok "vod: 6s clip pulled in ${vod_secs}s (buffer honoured)" || bad "vod: fast pull (${vod_secs}s, expected <3s)"
 saw_ctrl "$WORK/vod.log" 0             && ok "vod: StreamBegin(0)" || bad "vod: StreamBegin"
 saw_ctrl "$WORK/vod.log" 4             && ok "vod: StreamIsRecorded(4) sent+consumed" || bad "vod: StreamIsRecorded"
 saw_ctrl "$WORK/vod.log" 1             && ok "vod: StreamEOF(1) at end sent+consumed" || bad "vod: StreamEOF"
