@@ -141,6 +141,7 @@ set(sourceFiles
   rtmpt_manager.cpp
   rtmpt_session.cpp
   rtmps_connection.cpp
+  rtmpts_connection.cpp
   server.cpp
   so_manager.cpp
   speex_codec.cpp

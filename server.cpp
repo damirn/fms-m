@@ -21,6 +21,7 @@ namespace fms
 		, m_acceptor(m_io_context_pool.get_io_context())
 		, m_http_acceptor(m_io_context_pool.get_io_context())
 		, m_rtmps_acceptor(m_io_context_pool.get_io_context())
+		, m_rtmpts_acceptor(m_io_context_pool.get_io_context())
 		, m_signals(m_io_context_pool.get_io_context(), SIGINT, SIGTERM) {}
 
 	// Out-of-line (not =default) so the unique_ptr members' destructors are
@@ -97,38 +98,47 @@ namespace fms
 		m_http_acceptor.listen();
 		do_http_accept();
 
-		// RTMPS (RTMP over TLS) -- optional. Armed only when a cert+key are configured
-		// and a port is given. A bad cert leaves the plaintext listeners running.
-		if (config::instance()->tls_enabled() && !config::instance()->rtmps_port().empty())
+		// TLS transports (RTMPS / RTMPTS) -- optional. Built once from the configured
+		// cert+key; each listener is armed only if its port is set. A bad cert logs
+		// and leaves the plaintext listeners running.
+		if (config::instance()->tls_enabled())
 		{
 			m_ssl_context = make_server_ssl_context(config::instance()->tls_cert(), config::instance()->tls_key());
 			if (!m_ssl_context)
 			{
-				BOOST_LOG(lg::get()) << "RTMPS disabled: could not load TLS cert/key";
+				BOOST_LOG(lg::get()) << "TLS disabled: could not load cert/key";
 			}
 			else
 			{
-				endpoint = resolver.resolve(address, config::instance()->rtmps_port()).begin()->endpoint();
-				m_rtmps_acceptor.open(endpoint.protocol(), ec);
-				if (ec)
+				if (!config::instance()->rtmps_port().empty())
 				{
-					std::string err("Cannot open port ");
-					err += config::instance()->rtmps_port();
-					throw server_exception(err.c_str());
+					bind_acceptor(resolver, m_rtmps_acceptor, address, config::instance()->rtmps_port());
+					do_rtmps_accept();
+					BOOST_LOG(lg::get()) << "RTMPS listening on port " << config::instance()->rtmps_port();
 				}
-				m_rtmps_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
-				m_rtmps_acceptor.bind(endpoint, ec);
-				if (ec)
+				if (!config::instance()->rtmpts_port().empty())
 				{
-					std::string err("Cannot bind to port ");
-					err += config::instance()->rtmps_port();
-					throw server_exception(err.c_str());
+					bind_acceptor(resolver, m_rtmpts_acceptor, address, config::instance()->rtmpts_port());
+					do_rtmpts_accept();
+					BOOST_LOG(lg::get()) << "RTMPTS listening on port " << config::instance()->rtmpts_port();
 				}
-				m_rtmps_acceptor.listen();
-				do_rtmps_accept();
-				BOOST_LOG(lg::get()) << "RTMPS listening on port " << config::instance()->rtmps_port();
 			}
 		}
+	}
+
+	void server::bind_acceptor(boost::asio::ip::tcp::resolver &resolver, boost::asio::ip::tcp::acceptor &acceptor,
+		const std::string &address, const std::string &port)
+	{
+		boost::system::error_code ec;
+		boost::asio::ip::tcp::endpoint const endpoint = resolver.resolve(address, port).begin()->endpoint();
+		acceptor.open(endpoint.protocol(), ec);
+		if (ec)
+			throw server_exception((std::string("Cannot open port ") + port).c_str());
+		acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+		acceptor.bind(endpoint, ec);
+		if (ec)
+			throw server_exception((std::string("Cannot bind to port ") + port).c_str());
+		acceptor.listen();
 	}
 
 	void server::do_accept()
@@ -185,6 +195,23 @@ namespace fms
 				conn->start();
 			}
 			do_rtmps_accept();
+		});
+	}
+
+	void server::do_rtmpts_accept()
+	{
+		// Same shape as do_http_accept, but the adopted socket is wrapped in a TLS
+		// stream (rtmpts_connection); the TLS handshake runs before any HTTP.
+		boost::asio::io_context &io = m_io_context_pool.get_io_context();
+		m_rtmpts_acceptor.async_accept(io, [this, iop = &io](const boost::system::error_code &ec, boost::asio::ip::tcp::socket sock)
+		{
+			if (!ec)
+			{
+				http_connection_ptr const conn = m_app_manager->create_rtmpts_connection(*iop, m_ssl_context);
+				conn->adopt_socket(std::move(sock));
+				conn->start();
+			}
+			do_rtmpts_accept();
 		});
 	}
 

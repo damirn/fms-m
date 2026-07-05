@@ -54,6 +54,7 @@ namespace fms
 
 		http_connection_ptr create_http_connection();
 		http_connection_ptr create_http_connection(boost::asio::io_context &);
+		http_connection_ptr create_rtmpts_connection(boost::asio::io_context &, std::shared_ptr<boost::asio::ssl::context>);
 		void delete_http_connection(std::uint32_t);
 
 		client_session_ptr get_connection(std::uint32_t);

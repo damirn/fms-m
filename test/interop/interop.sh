@@ -33,6 +33,7 @@ RTMP_PORT=27000
 RTMPT_PORT=27001
 RTMFP_PORT=27002
 RTMPS_PORT=27443
+RTMPTS_PORT=27444
 
 # RTMPS (RTMP over TLS) is exercised when openssl is available to mint a throwaway
 # self-signed cert; the server is then started with it. Skipped otherwise.
@@ -70,7 +71,7 @@ start_server() {
 	if have_tls; then
 		openssl req -x509 -newkey rsa:2048 -keyout "$TLS_KEY" -out "$TLS_CERT" \
 			-days 2 -nodes -subj "/CN=localhost" >/dev/null 2>&1 \
-			&& tls_args=(--rtmps-port "$RTMPS_PORT" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY")
+			&& tls_args=(--rtmps-port "$RTMPS_PORT" --rtmpts-port "$RTMPTS_PORT" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY")
 	fi
 	"$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" "${tls_args[@]}" -o "$WORK" -P "$WORK/logs" -t 4 \
 		>"$WORK/server.out" 2>&1 &
@@ -245,8 +246,18 @@ if have_tls && [[ -f "$TLS_CERT" ]]; then
 	kill "$PUB" 2>/dev/null
 	has_av "$WORK/tls.flv"                 && ok "rtmps: valid A/V over TLS" || bad "rtmps: media"
 	grep -q "NetConnection.Connect.Success" "$WORK/tls.log" && ok "rtmps: TLS handshake + Connect.Success" || bad "rtmps: connect"
+
+	# RTMPTS: RTMPT tunnel over TLS. rtmpdump (librtmp) tunnels it cleanly; ffmpeg's
+	# native rtmpts is quirky on this platform, so we drive this one with rtmpdump.
+	echo "[8b] RTMPTS: ffmpeg publish -> rtmpdump play over rtmpts://"
+	PUB=$(publish_live tuntls 8)
+	sleep 1.5
+	play_rtmpdump "rtmpts://127.0.0.1:$RTMPTS_PORT/bcast/tuntls" "$WORK/tuntls.flv" 4 -v
+	kill "$PUB" 2>/dev/null
+	has_av "$WORK/tuntls.flv"              && ok "rtmpts: valid A/V over the TLS tunnel" || bad "rtmpts: media"
+	grep -q "NetConnection.Connect.Success" "$WORK/tuntls.log" && ok "rtmpts: TLS+HTTP tunnel + Connect.Success" || bad "rtmpts: connect"
 else
-	skip "RTMPS: openssl not available to mint a test cert"
+	skip "RTMPS/RTMPTS: openssl not available to mint a test cert"
 fi
 
 # --- documented gaps ---------------------------------------------------------
