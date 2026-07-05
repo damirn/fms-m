@@ -144,6 +144,10 @@ play_rtmpdump "rtmp://127.0.0.1:$RTMP_PORT/bcast/live" "$WORK/live.flv" 4 -v
 kill "$PUB" 2>/dev/null
 has_av "$WORK/live.flv"                 && ok "live: valid A/V received" || bad "live: media"
 saw_ctrl "$WORK/live.log" 0             && ok "live: StreamBegin(0) sent+consumed" || bad "live: StreamBegin"
+# FMS 4.5 parity: Play.Start -> BufferEmpty(31) (buffer starts empty) -> BufferReady
+# (32) once media flows. Verified against stock FMS in a container.
+saw_ctrl "$WORK/live.log" 31           && ok "live: BufferEmpty(31) after Play.Start" || bad "live: BufferEmpty(31)"
+saw_ctrl "$WORK/live.log" 32           && ok "live: BufferReady(32) once media flows" || bad "live: BufferReady(32)"
 
 # --- Case 2: RTMP VOD (served .flv), with SetBufferLength fast pull -----------
 # rtmpdump sends SetBufferLength with a huge buffer (BUFX); the server honours it

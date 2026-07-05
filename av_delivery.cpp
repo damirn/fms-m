@@ -161,6 +161,15 @@ namespace fms
 				return;   // subscriber gone
 			client->m_session = s;
 		}
+		// Buffer transitions empty -> filling: signal BufferReady(32) just before the
+		// first media, mirroring FMS (Play.Start -> BufferEmpty, then BufferReady once
+		// data flows). One-shot per empty span; the drain side re-arms it.
+		if (client->m_buffer_empty)
+		{
+			m_host.enqueue_unchecked(client->m_connection_id,
+				std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingBufferReady, client->m_stream_id));
+			client->m_buffer_empty = false;
+		}
 		m_host.enqueue_unchecked(client->m_connection_id, msg);
 		s->notify();
 	}

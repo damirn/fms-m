@@ -392,6 +392,12 @@ namespace fms
 				m_app_manager->update_netstream(cid, stream_name, false);
 			}
 			send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
+			// A live playback buffer starts empty: emit BufferEmpty(31) right after
+			// Play.Start (FMS order), then av_delivery emits BufferReady(32) when the
+			// first frame flows. With no publisher yet, 31 stands alone until one
+			// appears -- exactly the FMS 4.5 waiting-subscriber sequence.
+			enqueue_async_message(connection_id,
+				std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingBufferEmpty, invoke->stream_id()));
 			if (res)
 				m_av.send_metadata(connection_id, invoke->stream_id(), bcaster_id);
 		}
