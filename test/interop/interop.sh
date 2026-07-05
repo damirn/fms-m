@@ -12,12 +12,16 @@
 # Coverage here is what works locally:
 #   RTMP  play/publish (rtmpdump + ffmpeg)  -- events observable
 #   RTMPT play          (ffmpeg)            -- media only (ffmpeg has no ping log)
+#   RTMFP play/publish (rtmfp-cpp)          -- strict crypto, no -H -S relaxation;
+#                                              tcconn logs each received A/V frame
+#   RTMFP -> RTMP bridge (tcpublish -> rtmpdump) -- ingest + cross-protocol fan-out
 # Deliberately NOT covered locally:
 #   RTMPE  -- rtmpdump bus-errors on the encrypted handshake on this platform
-#   RTMFP  -- no local reference client (rtmfp-cpp lives on the Linux box)
 #
 # Usage: interop.sh [path-to-fms-m]   (default: build-test/fms-m)
 # Requires: rtmpdump, ffmpeg, ffprobe on PATH.
+# Optional: rtmfp-cpp's built tcpublish/tcconn (set RTMFP_CPP to its test/ dir);
+#           RTMFP cases skip cleanly when they are absent.
 # ---------------------------------------------------------------------------
 set -u
 
@@ -28,6 +32,12 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/fms-interop.XXXXXX")"
 RTMP_PORT=27000
 RTMPT_PORT=27001
 RTMFP_PORT=27002
+
+# rtmfp-cpp reference clients (optional). tcpublish = publish, tcconn = play.
+# Built with: make tcpublish tcconn OPENSSL_DIR=/opt/homebrew/opt/openssl@3
+RTMFP_CPP="${RTMFP_CPP:-/Users/damir/Documents/work/playground/rtmfp-cpp/test}"
+TCPUBLISH="$RTMFP_CPP/tcpublish"
+TCCONN="$RTMFP_CPP/tcconn"
 
 # macOS: Boost.Log needs icu4c@74 at its old keg path (see docs / build notes).
 if [[ "$(uname)" == "Darwin" && -d /opt/homebrew/opt/icu4c@74/lib ]]; then
@@ -44,7 +54,7 @@ need rtmpdump; need ffmpeg; need ffprobe
 [[ -x "$FMS" ]] || { echo "fms-m not found/executable: $FMS"; exit 2; }
 
 SRV=
-cleanup() { [[ -n "$SRV" ]] && kill "$SRV" 2>/dev/null; pkill -f "$FMS" 2>/dev/null; wait 2>/dev/null; rm -rf "$WORK"; }
+cleanup() { [[ -n "$SRV" ]] && kill "$SRV" 2>/dev/null; pkill -f "$FMS" 2>/dev/null; pkill -f tcpublish 2>/dev/null; pkill -f tcconn 2>/dev/null; wait 2>/dev/null; rm -rf "$WORK"; }
 trap cleanup EXIT
 
 start_server() {
@@ -97,6 +107,31 @@ has_av() {   # ffprobe: file has both a video and an audio stream
 # saw_ctrl <log> <type-number> -- did rtmpdump log receiving that user-control type?
 saw_ctrl() { grep -qE "received ctrl\. type: $2," "$1"; }
 
+# ---- RTMFP (rtmfp-cpp) helpers -----------------------------------------------
+# The stream name is the rtmfp-uri #fragment (NOT the path); the path is the app.
+# So bcast#<name> mirrors RTMP's bcast/<name>. Strict crypto: no -H -S needed.
+have_rtmfp() { [[ -x "$TCPUBLISH" && -x "$TCCONN" ]]; }
+
+# publish_rtmfp <name> <flv> -- background tcpublish (paces the FLV in real time);
+# echoes its pid.
+publish_rtmfp() {
+	"$TCPUBLISH" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/bcast#$1" "$2" >"$WORK/rtmfp_pub_$1.log" 2>&1 &
+	echo $!
+}
+
+# play_rtmfp <name> <max_seconds> -- tcconn in verbose mode (logs each received
+# A/V frame as "stream onVideo/onAudio ..."), killed after max_seconds.
+play_rtmfp() {
+	local name="$1" secs="$2"
+	"$TCCONN" -4 -v -v "rtmfp://127.0.0.1:$RTMFP_PORT/bcast#$name" >"$WORK/rtmfp_play_$name.log" 2>&1 &
+	local pid=$!
+	for _ in $(seq 1 $((secs*4))); do kill -0 "$pid" 2>/dev/null || return 0; sleep 0.25; done
+	kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; return 0
+}
+
+# saw_media <tcconn-log> -- did tcconn actually receive audio or video frames?
+saw_media() { grep -qE "stream on(Video|Audio) " "$1"; }
+
 echo "=== fms-m interop matrix ==="
 echo "server: $FMS   work: $WORK"
 start_server || exit 1
@@ -127,9 +162,29 @@ ffmpeg -hide_banner -loglevel error -y -i "rtmpt://127.0.0.1:$RTMPT_PORT/bcast/t
 kill "$PUB" 2>/dev/null
 has_av "$WORK/tun.flv"                  && ok "rtmpt: valid A/V over the HTTP tunnel" || bad "rtmpt: media"
 
+# --- Case 4/5: RTMFP (rtmfp-cpp reference clients, strict crypto) -------------
+if have_rtmfp; then
+	echo "[4] RTMFP live: tcpublish -> tcconn (strict crypto, no -H -S)"
+	make_source "$WORK/rtmfp.flv" 6
+	PUB=$(publish_rtmfp live "$WORK/rtmfp.flv")
+	sleep 1.5
+	play_rtmfp live 3
+	kill "$PUB" 2>/dev/null
+	saw_media "$WORK/rtmfp_play_live.log"  && ok "rtmfp: A/V received over RTMFP" || bad "rtmfp: media"
+
+	echo "[5] RTMFP->RTMP bridge: tcpublish -> rtmpdump"
+	PUB=$(publish_rtmfp bridge "$WORK/rtmfp.flv")
+	sleep 1.5
+	play_rtmpdump "rtmp://127.0.0.1:$RTMP_PORT/bcast/bridge" "$WORK/bridge.flv" 4
+	kill "$PUB" 2>/dev/null
+	has_av "$WORK/bridge.flv"               && ok "rtmfp->rtmp: valid A/V bridged" || bad "rtmfp->rtmp: media"
+	saw_ctrl "$WORK/bridge.log" 0          && ok "rtmfp->rtmp: StreamBegin(0) sent+consumed" || bad "rtmfp->rtmp: StreamBegin"
+else
+	skip "RTMFP: rtmfp-cpp tcpublish/tcconn not built (set RTMFP_CPP to its test/ dir)"
+fi
+
 # --- documented gaps ---------------------------------------------------------
 skip "RTMPE: rtmpdump bus-errors on the encrypted handshake on this platform"
-skip "RTMFP: no local reference client (rtmfp-cpp is on the Linux box)"
 echo
 echo "=== results: $PASS passed, $FAIL failed, $SKIP skipped ==="
 [[ $FAIL -eq 0 ]]
