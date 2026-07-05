@@ -190,6 +190,19 @@ else
 	skip "RTMFP: rtmfp-cpp tcpublish/tcconn not built (set RTMFP_CPP to its test/ dir)"
 fi
 
+# --- Case 6: app resolution vs a leading-slash "app" (librtmfp shape) ---------
+# The connect "app" is a URL path. librtmfp sends it raw ("/bcast"); rtmfp-cpp
+# strips the leading '/' for us, which is the only reason plain matching worked.
+# rtmpdump's -a lets us send the un-normalized form over RTMP (app resolution is
+# protocol-agnostic) -- a stand-in for librtmfp until it's available locally.
+echo "[6] app resolution: leading-slash 'app' (librtmfp shape) must connect"
+rtmpdump -z -r "rtmp://127.0.0.1:$RTMP_PORT" -a "/bcast" -y "clip" -o "$WORK/slash.flv" >"$WORK/slash.log" 2>&1
+if grep -q "NetConnection.Connect.Success" "$WORK/slash.log" && has_av "$WORK/slash.flv"; then
+	ok "app: '/bcast' resolves + plays (no spurious InvalidApp)"
+else
+	bad "app: '/bcast' rejected (InvalidApp regression)"
+fi
+
 # --- documented gaps ---------------------------------------------------------
 skip "RTMPE: rtmpdump bus-errors on the encrypted handshake on this platform"
 echo
