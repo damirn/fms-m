@@ -20,6 +20,11 @@ namespace fms
 		bool m_receive_video{true};
 		bool m_receive_audio{true};
 		bool m_key_frame_sent{false};
+		// Live playback-buffer occupancy, for the BufferEmpty(31)/BufferReady(32)
+		// user-control signal. Starts empty (BufferEmpty is sent right after
+		// Play.Start); flips to full when the first media frame is delivered
+		// (BufferReady). Mirrors FMS 4.5's observed Play.Start -> 31 -> 32-on-data.
+		bool m_buffer_empty{true};
 		bool m_first_audio_packet_seen{false};
 		bool m_first_video_packet_seen{false};
 		bool m_video_sent_from_queue{false};
