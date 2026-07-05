@@ -1,0 +1,5 @@
+# Adobe FMS 4.5 is proprietary -- never commit the tarball or extracted tree.
+FlashMediaServer4.5_x64.tar.gz
+FMS_4_5_0_r297/
+*.flv
+*.log
