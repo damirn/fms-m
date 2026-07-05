@@ -6,9 +6,9 @@ encoders), relays them to any number of subscribers in real time, and can record
 incoming streams to FLV files on disk.
 
 The server speaks the full family of Adobe streaming protocols — plain RTMP,
-encrypted RTMPE, HTTP-tunnelled RTMPT, and UDP-based RTMFP — over a
-`io_context`-per-core Boost.Asio engine, so a single process scales across all
-available CPU cores.
+encrypted RTMPE, TLS-secured RTMPS, HTTP-tunnelled RTMPT (and RTMPTS over TLS),
+and UDP-based RTMFP — over an `io_context`-per-core Boost.Asio engine, so a
+single process scales across all available CPU cores.
 
 - **Language / build:** C++23, CMake, Boost, OpenSSL 3, Speex
 - **Platforms:** macOS (Apple clang) and Linux (GCC/clang) — POSIX only
@@ -28,7 +28,9 @@ available CPU cores.
 - **Multiple transports** for the same content:
   - **RTMP** — plain TCP (default port `1935`)
   - **RTMPE** — encrypted RTMP (RC4 + Diffie-Hellman handshake), same port
+  - **RTMPS** — RTMP over TLS (opt-in; needs a cert/key — see [TLS](#tls-rtmps--rtmpts))
   - **RTMPT** — RTMP tunnelled over HTTP (default port `80`)
+  - **RTMPTS** — RTMPT tunnelled over HTTPS (TLS); opt-in, shares the TLS cert/key
   - **RTMFP** — Adobe's UDP real-time protocol (default port `1935/udp`)
 - **Codec pass-through** for H.264 video and AAC audio, plus built-in Speex and
   G.711 audio support used by the call application.
@@ -64,7 +66,7 @@ The publish/play/record URL for the broadcast app is
 - **Boost** — `date_time`, `log`, `log_setup`, `program_options`, `system`,
   `thread` (macOS builds pin Boost **1.76**; Linux uses the system Boost)
 - **OpenSSL 3** — `libcrypto` (the **legacy provider** must be available for
-  RTMPE, which uses RC4)
+  RTMPE, which uses RC4) and `libssl` (for the TLS transports, RTMPS / RTMPTS)
 - **Speex** — audio codec
 - `pkg-config`
 
@@ -103,8 +105,9 @@ The resulting binary is `build/fms-m`.
 
 ## Verified build environments
 
-The server has been built **warning-free** and its full RTMP / RTMPE / RTMPT /
-RTMFP functional suite run successfully on the following combinations, spanning
+The server has been built **warning-free** and its full RTMP / RTMPE / RTMPS /
+RTMPT / RTMPTS / RTMFP functional suite run successfully on the following
+combinations, spanning
 Boost 1.76 → 1.91, OpenSSL 3.0 → 3.6, GCC 12 → 16 and Clang 16 → 22:
 
 | OS                    | Compiler(s)             | Boost | OpenSSL | Build file          |
@@ -153,6 +156,27 @@ A more typical invocation:
 > privileges on Linux. Use `--rtmpt-port 8080` (or similar) when running as a
 > normal user.
 
+### TLS (RTMPS / RTMPTS)
+
+The TLS transports are **opt-in**: they are armed only when a certificate *and*
+private key are supplied and the corresponding port is set. RTMPS wraps the RTMP
+state machine in a TLS stream; RTMPTS runs the RTMPT HTTP tunnel over TLS. Both
+share the one cert/key. A cert that fails to load is logged and the plaintext
+listeners keep running.
+
+```sh
+# a throwaway self-signed cert for local testing
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem \
+  -days 365 -nodes -subj "/CN=localhost"
+
+./build/fms-m \
+  --rtmps-port 443 --rtmpts-port 8443 \
+  --tls-cert cert.pem --tls-key key.pem
+```
+
+Then `rtmpdump -r rtmps://host/app/stream` (or `rtmpts://…`) plays over TLS; use
+a CA-signed cert in production (clients that verify will reject self-signed).
+
 ---
 
 ## Command-line options
@@ -165,6 +189,10 @@ A more typical invocation:
 | `-R`  | `--rtmp-port <port>`              | `1935`    | RTMP (and RTMPE) TCP listen port.                      |
 | `-T`  | `--rtmpt-port <port>`             | `80`      | RTMPT (HTTP-tunnelled RTMP) listen port.               |
 | `-K`  | `--rtmfp-port <port>`             | `1935`    | RTMFP (UDP) listen port.                               |
+|       | `--rtmps-port <port>`             | *(off)*   | RTMPS (RTMP over TLS) listen port; empty = disabled.   |
+|       | `--rtmpts-port <port>`            | *(off)*   | RTMPTS (RTMPT over TLS) listen port; empty = disabled. |
+|       | `--tls-cert <path>`               | *(none)*  | PEM certificate chain; required for RTMPS/RTMPTS.      |
+|       | `--tls-key <path>`                | *(none)*  | PEM private key; required for RTMPS/RTMPTS.            |
 | `-t`  | `--threads <n>`                   | `1`       | Number of I/O threads (one `io_context` per thread).   |
 | `-o`  | `--output-folder <path>`          | `.`       | Destination folder for recorded `.flv` files.          |
 | `-c`  | `--config-file <path>`            |           | Optional config file (same keys as CLI options).       |
