@@ -6,19 +6,34 @@
 #include "rtmp_application.h"
 #include "rtmp_header.h"
 
+#include <string_view>
+
 namespace fms
 {
 	bool connect_router::match_app(const std::string &app_name, const std::string &app, std::string &instance)
 	{
-		std::size_t const pos = app_name.find('/');
-		std::string const name = std::string(app_name, 0, pos);
-		if (name == app)
-		{
-			if (pos != std::string::npos)
-				instance = std::string(app_name, pos + 1);
-			return true;
-		}
-		return false;
+		// The connect "app" is a URL path, so normalize before matching -- accept what
+		// any RFC-3986 client sends, not just the one shape rtmfp-cpp happens to emit:
+		//   * a leading '/'  -- the raw path of rtmfp://host/bcast IS "/bcast".
+		//     rtmfp-cpp strips it client-side (TCConnection.cpp), but librtmfp passes
+		//     it through; without stripping it here the app name resolved to "" and the
+		//     connect was rejected with NetConnection.Connect.InvalidApp.
+		//   * a trailing "?query" -- rtmfp-cpp appends the URL query to "app"; it isn't
+		//     part of the app identity (publish likewise drops '?' from stream names).
+		// (Boost has no URL parser to reuse here: Beast treats the HTTP target as an
+		// opaque string, and Boost.URL needs >= 1.81 while we build against 1.76.)
+		std::string_view view(app_name);
+		if (!view.empty() && view.front() == '/')
+			view.remove_prefix(1);
+		if (std::size_t const q = view.find('?'); q != std::string_view::npos)
+			view = view.substr(0, q);
+
+		std::size_t const pos = view.find('/');
+		if (view.substr(0, pos) != app)
+			return false;
+		if (pos != std::string_view::npos)
+			instance = std::string(view.substr(pos + 1));
+		return true;
 	}
 
 	boost::tribool connect_router::route(const rtmp_message_invoke_ptr &invoke, std::uint32_t connection_id,
