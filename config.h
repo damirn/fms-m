@@ -49,6 +49,33 @@ namespace fms
 			return m_rtmpf_port;
 		}
 
+		// TLS transports (RTMPS / RTMPTS). Empty port = that listener is disabled.
+		// TLS is only armed when BOTH a cert and key are configured.
+		const std::string &rtmps_port() const
+		{
+			return m_rtmps_port;
+		}
+
+		const std::string &rtmpts_port() const
+		{
+			return m_rtmpts_port;
+		}
+
+		const std::string &tls_cert() const
+		{
+			return m_tls_cert;
+		}
+
+		const std::string &tls_key() const
+		{
+			return m_tls_key;
+		}
+
+		bool tls_enabled() const
+		{
+			return !m_tls_cert.empty() && !m_tls_key.empty();
+		}
+
 		const std::uint32_t &log_level() const
 		{
 			return m_log_level;
@@ -132,6 +159,10 @@ namespace fms
 		std::string m_rtmp_port;
 		std::string m_rtmpt_port;
 		std::uint16_t m_rtmpf_port;
+		std::string m_rtmps_port;
+		std::string m_rtmpts_port;
+		std::string m_tls_cert;
+		std::string m_tls_key;
 		std::string m_log_file;
 		std::string m_log_path;
 		std::string m_flv_folder;
