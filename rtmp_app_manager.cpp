@@ -46,6 +46,7 @@ namespace fms
 
 	// ---- connection registry: thin delegators onto m_conn_registry --------------
 	rtmp_connection_ptr rtmp_app_manager::create_connection(boost::asio::io_context &io) { return m_conn_registry->create_connection(io); }
+	rtmp_connection_ptr rtmp_app_manager::create_rtmps_connection(boost::asio::io_context &io, std::shared_ptr<boost::asio::ssl::context> ctx) { return m_conn_registry->create_rtmps_connection(io, std::move(ctx)); }
 	rtmpt_session_ptr rtmp_app_manager::create_rtmpt_session() { return m_conn_registry->create_rtmpt_session(); }
 	void rtmp_app_manager::register_session(const client_session_ptr& s) { m_conn_registry->register_session(s); }
 	std::uint32_t rtmp_app_manager::reserve_connection_id() { return m_conn_registry->reserve_connection_id(); }
