@@ -46,6 +46,7 @@ namespace fms
 		rtmp_application *get_app_by_name(const std::string &);
 
 		rtmp_connection_ptr create_connection(boost::asio::io_context &);
+		rtmp_connection_ptr create_rtmps_connection(boost::asio::io_context &, std::shared_ptr<boost::asio::ssl::context>);
 		rtmpt_session_ptr create_rtmpt_session();
 		void register_session(const client_session_ptr&);
 

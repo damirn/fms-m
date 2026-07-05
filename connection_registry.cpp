@@ -4,6 +4,7 @@
 #include "io_context_pool.h"
 #include "logging.h"
 #include "rtmp_application.h"
+#include "rtmps_connection.h"
 #include "rtmpt_manager.h"
 
 namespace fms
@@ -12,6 +13,15 @@ namespace fms
 	{
 		std::unique_lock const lock(m_mutex);
 		rtmp_connection_ptr tmp = std::make_shared<rtmp_connection>(m_counter, io, &m_manager);
+		m_connections[m_counter++] = tmp;
+		return tmp;
+	}
+
+	rtmp_connection_ptr connection_registry::create_rtmps_connection(boost::asio::io_context &io,
+		std::shared_ptr<boost::asio::ssl::context> ctx)
+	{
+		std::unique_lock const lock(m_mutex);
+		rtmp_connection_ptr tmp = std::make_shared<rtmps_connection>(m_counter, io, &m_manager, std::move(ctx));
 		m_connections[m_counter++] = tmp;
 		return tmp;
 	}
