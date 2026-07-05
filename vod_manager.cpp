@@ -85,20 +85,40 @@ namespace fms
 		bool const is_video = std::dynamic_pointer_cast<rtmp_message_video_data>(frame) != nullptr;
 		frame->stream_id() = session->m_stream_id;
 		frame->channel_id() = stream_to_channel(session->m_stream_id, is_video ? eVideo : eAudio);
-		std::uint32_t const prev_ts = frame->timestamp();
+		std::uint32_t const cur_ts = frame->timestamp();
+
+		// Anchor pacing to an absolute origin on the first frame after any
+		// start / seek / unpause. Everything after is scheduled relative to it, so
+		// look-ahead sending never drifts.
+		if (!session->m_origin)
+		{
+			session->m_origin = std::chrono::steady_clock::now();
+			session->m_origin_ts = cur_ts;
+		}
 
 		m_host.enqueue(session->m_connection_id, frame);
 		m_host.notify_connection(session->m_connection_id);
 
-		// read the next frame and pace by its timestamp delta
+		// read the next frame and schedule it for its playhead time, minus the buffer
+		// the client asked us to pre-fill (SetBufferLength). buffer_ms >= remaining
+		// media => the send time is already in the past => delay 0 => the rest of the
+		// file streams out at once (rtmpdump's BUFX fast pull).
 		session->m_next = session->m_reader.read_frame() ? session->m_reader.get_frame() : nullptr;
 		std::uint32_t delay = 0;
 		if (session->m_next)
 		{
-			std::uint32_t const nts = session->m_next->timestamp();
-			delay = nts > prev_ts ? nts - prev_ts : 0;
-			if (delay > 10000)   // cap pathological gaps / discontinuities
-				delay = 10000;
+			std::int64_t const media_ahead =
+				static_cast<std::int64_t>(session->m_next->timestamp()) -
+				static_cast<std::int64_t>(session->m_origin_ts);
+			auto const send_at = *session->m_origin +
+				std::chrono::milliseconds(media_ahead) -
+				std::chrono::milliseconds(session->m_buffer_ms);
+			auto const now = std::chrono::steady_clock::now();
+			if (send_at > now)
+			{
+				auto const d = std::chrono::duration_cast<std::chrono::milliseconds>(send_at - now).count();
+				delay = d > 10000 ? 10000 : static_cast<std::uint32_t>(d);   // cap pathological gaps
+			}
 		}
 		session->m_timer.expires_after(std::chrono::milliseconds(delay));
 		session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) tick(session); });
@@ -125,6 +145,7 @@ namespace fms
 		else if (session->m_state == vod_session::ePaused)
 		{
 			session->m_state = vod_session::ePlaying;
+			session->m_origin.reset();   // re-anchor pacing from the resume point
 			m_host.send_status(connection_id, stream_id, "NetStream.Unpause.Notify",
 				"Unpaused " + session->m_stream_name, true);
 			session->m_timer.expires_after(std::chrono::milliseconds(0));
@@ -142,6 +163,7 @@ namespace fms
 
 		session->m_reader.seek(ms);
 		session->m_next = session->m_reader.read_frame() ? session->m_reader.get_frame() : nullptr;
+		session->m_origin.reset();   // re-anchor pacing from the seek target
 
 		m_host.send_status(connection_id, stream_id, "NetStream.Seek.Notify",
 			"Seeking " + std::to_string(ms) + " (" + session->m_stream_name + ")", true);
@@ -152,6 +174,18 @@ namespace fms
 			session->m_timer.expires_after(std::chrono::milliseconds(0));
 			session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) tick(session); });
 		}
+	}
+
+	void vod_manager::set_buffer_length(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms)
+	{
+		auto const lock = m_registry.lock_exclusive();
+		auto const it = m_vod.find(std::make_pair(connection_id, stream_id));
+		if (it == m_vod.end())
+			return;   // no VOD playback here (live subscribers pace themselves)
+		// Record the client's buffer. The already-armed tick picks it up on its next
+		// pass (within one frame interval), so we don't touch the running timer -- a
+		// SetBufferLength racing an in-flight tick can't spawn a second timer chain.
+		it->second->m_buffer_ms = ms;
 	}
 
 	void vod_manager::stop(const stream_client_id_t &key)

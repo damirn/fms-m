@@ -260,6 +260,13 @@ namespace fms
 			return m_value2;
 		}
 
+		// Third field of a 3-element user-control event. For SetBufferLength (type 3)
+		// the wire layout is type | stream_id (get_value) | buffer_length_ms (this).
+		std::uint32_t get_value2() const
+		{
+			return m_value3;
+		}
+
 	protected:
 		std::uint8_t m_elements;
 		std::uint16_t m_value1{0};

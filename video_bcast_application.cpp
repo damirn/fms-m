@@ -209,6 +209,14 @@ namespace fms
 	void video_bcast_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &h)
 	{
 		rtmp_application::handle_ping(msg, connection_id, h);
+
+		// A client SetBufferLength tells us how much playback buffer it wants filled.
+		// For VOD that governs how far ahead we may pre-send; rtmpdump's BUFX hack
+		// sets a huge value to pull the whole file at once. The event carries its
+		// own stream id (get_value); ping messages ride stream 0 in the header.
+		rtmp_message_ping_ptr const ping = std::dynamic_pointer_cast<rtmp_message_ping>(msg);
+		if (ping && ping->get_type() == rtmp_message_ping::ePingSetBufferLength)
+			m_vod.set_buffer_length(connection_id, ping->get_value(), ping->get_value2());
 	}
 
 	boost::tribool video_bcast_application::handle_client_login(std::uint32_t connection_id, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &)
