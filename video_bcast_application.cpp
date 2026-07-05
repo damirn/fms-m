@@ -603,10 +603,13 @@ namespace fms
 
 			for (stream_client_id_t const &ssid : td.subscribers)
 			{
-				// tell each ex-subscriber the source ended before the status message
-				rtmp_message_ping_ptr const eof = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingStreamEOF, ssid.second);
-				enqueue_async_message(ssid.first, eof);
-				notify_client(ssid.first, ssid.second, td.name);
+				// The source ended: the subscriber's buffer drains (BufferEmpty) and it
+				// gets Play.UnpublishNotify -- exactly what FMS 4.5 sends here. FMS does
+				// NOT send StreamEOF(1) on a live unpublish (that's a VOD end-of-file
+				// signal); rtmpdump and ffmpeg both close cleanly on UnpublishNotify.
+				rtmp_message_ping_ptr const drain = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingBufferEmpty, ssid.second);
+				enqueue_async_message(ssid.first, drain);
+				notify_client(ssid.first, ssid.second, td.name);   // Play.UnpublishNotify
 			}
 		}
 		else

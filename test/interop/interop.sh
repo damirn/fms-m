@@ -207,6 +207,19 @@ else
 	bad "app: '/bcast' rejected (InvalidApp regression)"
 fi
 
+# --- Case 7: live unpublish (FMS parity: UnpublishNotify + drain, no StreamEOF) --
+# When a live publisher stops, FMS sends the subscriber Play.UnpublishNotify and a
+# BufferEmpty drain -- NOT StreamEOF(1) (that is a VOD end-of-file signal). rtmpdump
+# closes cleanly on UnpublishNotify. Verified against a stock FMS 4.5 container.
+echo "[7] live unpublish: publisher stops mid-play -> UnpublishNotify, no StreamEOF"
+PUB=$(publish_live unp 3)          # short-lived publisher; ends on its own
+sleep 0.5
+play_rtmpdump "rtmp://127.0.0.1:$RTMP_PORT/bcast/unp" "$WORK/unp.flv" 8 -v
+kill "$PUB" 2>/dev/null
+has_av "$WORK/unp.flv"                          && ok "unpublish: media received before unpublish" || bad "unpublish: media"
+grep -q "UnpublishNotify" "$WORK/unp.log"      && ok "unpublish: Play.UnpublishNotify sent" || bad "unpublish: UnpublishNotify missing"
+! saw_ctrl "$WORK/unp.log" 1                    && ok "unpublish: no StreamEOF(1) on live (FMS parity)" || bad "unpublish: spurious StreamEOF(1)"
+
 # --- documented gaps ---------------------------------------------------------
 skip "RTMPE: rtmpdump bus-errors on the encrypted handshake on this platform"
 echo
