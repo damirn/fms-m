@@ -39,7 +39,7 @@ namespace fms
 			return false;
 		}
 
-		return video_bcast_application::handle_invoke(msg, connection_id, header, result);
+		return media_application::handle_invoke(msg, connection_id, header, result);
 	}
 
 	void video_call_application::handle_audio_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &h)
@@ -57,7 +57,7 @@ namespace fms
 					data->m_mixer->add_audio(connection_id, audio);
 			}
 		}
-		video_bcast_application::handle_audio_data(msg, connection_id, h);
+		media_application::handle_audio_data(msg, connection_id, h);
 	}
 
 	void video_call_application::handle_call_invoke(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)

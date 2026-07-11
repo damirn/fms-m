@@ -14,7 +14,7 @@ namespace fms
 {
 	// Per-play VOD (video-on-demand) playback state: reads frames from a saved FLV
 	// and paces them out to one subscriber connection via a timer. Driven by
-	// video_bcast_application (which owns the send path). Not thread-safe on its
+	// media_application (which owns the send path). Not thread-safe on its
 	// own; the owning application serialises access under its mutex.
 	struct vod_session
 	{

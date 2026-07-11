@@ -24,14 +24,14 @@ namespace fms
 
 	// Implements media_host so the av_delivery / vod_manager collaborators drive the
 	// RTMP send path through that narrow interface rather than as friends.
-	class video_bcast_application : public rtmp_application, public media_host
+	class media_application : public rtmp_application, public media_host
 	{
 	public:
-		explicit video_bcast_application(rtmp_app_manager *, const char *app_name = "bcast");
+		explicit media_application(rtmp_app_manager *, const char *app_name = "media");
 
 		// Out-of-line so the registry's stream_recorder unique_ptr dtors are instantiated in the
 		// .cpp, where stream_recorder is a complete type.
-		~video_bcast_application() override;
+		~media_application() override;
 
 		void delete_connection(std::uint32_t, const std::string & = "") override;
 

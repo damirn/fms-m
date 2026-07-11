@@ -5,7 +5,7 @@
 //
 //     fms_helper -r <origin_url> -l rtmp://localhost:<port>/<app> -s <stream>
 //
-// (see video_bcast_application::spawn_helper). This tool fulfils that contract:
+// (see media_application::spawn_helper). This tool fulfils that contract:
 // it plays <stream> from the remote origin (-r) and republishes it to the local
 // fms-m (-l) under the same name, so the waiting local subscriber gets fed. It
 // is a pure pull-relay -- no disk, no reconnect (fms-m re-spawns on the next

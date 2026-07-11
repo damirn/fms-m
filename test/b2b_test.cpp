@@ -207,7 +207,7 @@ namespace
 		return false;
 	}
 
-	std::string url_for(int port) { return "rtmp://127.0.0.1:" + std::to_string(port) + "/bcast"; }
+	std::string url_for(int port) { return "rtmp://127.0.0.1:" + std::to_string(port) + "/media"; }
 }
 
 TEST_CASE("b2b: client plays a VOD file served by the fms-m server")
@@ -293,7 +293,7 @@ TEST_CASE("b2b(rtmpt): publish -> play round-trip over the HTTP tunnel")
 	server_process server(dir.string(), port);
 
 	boost::asio::io_context io;
-	std::string const url = "rtmpt://127.0.0.1:" + std::to_string(port + 1) + "/bcast";
+	std::string const url = "rtmpt://127.0.0.1:" + std::to_string(port + 1) + "/media";
 
 	player_nc player(io);
 	player.stream_name = "livestream";
