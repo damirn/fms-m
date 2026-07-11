@@ -46,11 +46,13 @@ namespace fms
 
 	// ---- connection registry: thin delegators onto m_conn_registry --------------
 	rtmp_connection_ptr rtmp_app_manager::create_connection(boost::asio::io_context &io) { return m_conn_registry->create_connection(io); }
+	rtmp_connection_ptr rtmp_app_manager::create_rtmps_connection(boost::asio::io_context &io, std::shared_ptr<boost::asio::ssl::context> ctx) { return m_conn_registry->create_rtmps_connection(io, std::move(ctx)); }
 	rtmpt_session_ptr rtmp_app_manager::create_rtmpt_session() { return m_conn_registry->create_rtmpt_session(); }
 	void rtmp_app_manager::register_session(const client_session_ptr& s) { m_conn_registry->register_session(s); }
 	std::uint32_t rtmp_app_manager::reserve_connection_id() { return m_conn_registry->reserve_connection_id(); }
 	http_connection_ptr rtmp_app_manager::create_http_connection() { return m_conn_registry->create_http_connection(); }
 	http_connection_ptr rtmp_app_manager::create_http_connection(boost::asio::io_context &io) { return m_conn_registry->create_http_connection(io); }
+	http_connection_ptr rtmp_app_manager::create_rtmpts_connection(boost::asio::io_context &io, std::shared_ptr<boost::asio::ssl::context> ctx) { return m_conn_registry->create_rtmpts_connection(io, std::move(ctx)); }
 	void rtmp_app_manager::delete_http_connection(std::uint32_t id) { m_conn_registry->delete_http_connection(id); }
 	client_session_ptr rtmp_app_manager::get_connection(std::uint32_t conn_id) { return m_conn_registry->get_connection(conn_id); }
 	client_session_ptr rtmp_app_manager::get_connection_opt(std::uint32_t conn_id) { return m_conn_registry->get_connection_opt(conn_id); }

@@ -32,6 +32,14 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/fms-interop.XXXXXX")"
 RTMP_PORT=27000
 RTMPT_PORT=27001
 RTMFP_PORT=27002
+RTMPS_PORT=27443
+RTMPTS_PORT=27444
+
+# RTMPS (RTMP over TLS) is exercised when openssl is available to mint a throwaway
+# self-signed cert; the server is then started with it. Skipped otherwise.
+TLS_CERT="$WORK/tls-cert.pem"
+TLS_KEY="$WORK/tls-key.pem"
+have_tls() { command -v openssl >/dev/null 2>&1; }
 
 # rtmfp-cpp reference clients (optional). tcpublish = publish, tcconn = play.
 # Built with: make tcpublish tcconn OPENSSL_DIR=/opt/homebrew/opt/openssl@3
@@ -59,7 +67,13 @@ trap cleanup EXIT
 
 start_server() {
 	mkdir -p "$WORK/logs"
-	"$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" -o "$WORK" -P "$WORK/logs" -t 4 \
+	local tls_args=()
+	if have_tls; then
+		openssl req -x509 -newkey rsa:2048 -keyout "$TLS_KEY" -out "$TLS_CERT" \
+			-days 2 -nodes -subj "/CN=localhost" >/dev/null 2>&1 \
+			&& tls_args=(--rtmps-port "$RTMPS_PORT" --rtmpts-port "$RTMPTS_PORT" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY")
+	fi
+	"$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" "${tls_args[@]}" -o "$WORK" -P "$WORK/logs" -t 4 \
 		>"$WORK/server.out" 2>&1 &
 	SRV=$!
 	for _ in $(seq 1 40); do
@@ -219,6 +233,32 @@ kill "$PUB" 2>/dev/null
 has_av "$WORK/unp.flv"                          && ok "unpublish: media received before unpublish" || bad "unpublish: media"
 grep -q "UnpublishNotify" "$WORK/unp.log"      && ok "unpublish: Play.UnpublishNotify sent" || bad "unpublish: UnpublishNotify missing"
 ! saw_ctrl "$WORK/unp.log" 1                    && ok "unpublish: no StreamEOF(1) on live (FMS parity)" || bad "unpublish: spurious StreamEOF(1)"
+
+# --- Case 8: RTMPS (RTMP over TLS) -------------------------------------------
+# Publish plaintext, then play the same stream back over rtmps:// -- exercises the
+# TLS handshake + the encrypted RTMP path. rtmpdump doesn't verify the server cert,
+# so the throwaway self-signed cert is fine.
+if have_tls && [[ -f "$TLS_CERT" ]]; then
+	echo "[8] RTMPS: ffmpeg publish -> rtmpdump play over rtmps://"
+	PUB=$(publish_live tls 8)
+	sleep 1.5
+	play_rtmpdump "rtmps://127.0.0.1:$RTMPS_PORT/bcast/tls" "$WORK/tls.flv" 4 -v
+	kill "$PUB" 2>/dev/null
+	has_av "$WORK/tls.flv"                 && ok "rtmps: valid A/V over TLS" || bad "rtmps: media"
+	grep -q "NetConnection.Connect.Success" "$WORK/tls.log" && ok "rtmps: TLS handshake + Connect.Success" || bad "rtmps: connect"
+
+	# RTMPTS: RTMPT tunnel over TLS. rtmpdump (librtmp) tunnels it cleanly; ffmpeg's
+	# native rtmpts is quirky on this platform, so we drive this one with rtmpdump.
+	echo "[8b] RTMPTS: ffmpeg publish -> rtmpdump play over rtmpts://"
+	PUB=$(publish_live tuntls 8)
+	sleep 1.5
+	play_rtmpdump "rtmpts://127.0.0.1:$RTMPTS_PORT/bcast/tuntls" "$WORK/tuntls.flv" 4 -v
+	kill "$PUB" 2>/dev/null
+	has_av "$WORK/tuntls.flv"              && ok "rtmpts: valid A/V over the TLS tunnel" || bad "rtmpts: media"
+	grep -q "NetConnection.Connect.Success" "$WORK/tuntls.log" && ok "rtmpts: TLS+HTTP tunnel + Connect.Success" || bad "rtmpts: connect"
+else
+	skip "RTMPS/RTMPTS: openssl not available to mint a test cert"
+fi
 
 # --- documented gaps ---------------------------------------------------------
 skip "RTMPE: rtmpdump bus-errors on the encrypted handshake on this platform"

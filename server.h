@@ -9,6 +9,10 @@
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
 
+// Forward-declared; the real ssl header is included in server.cpp only (keeps the
+// OpenSSL link dependency off TUs that merely include server.h).
+namespace boost::asio::ssl { class context; }
+
 namespace fms
 {
 	class rtmp_app_manager;
@@ -47,12 +51,18 @@ namespace fms
 		// Initialize acceptor
 		void init_acceptors(const std::string &);
 
+		// Open + bind + listen one acceptor (throws server_exception on failure).
+		void bind_acceptor(boost::asio::ip::tcp::resolver &, boost::asio::ip::tcp::acceptor &,
+			const std::string &address, const std::string &port);
+
 		// Initialize RTMFP service
 		void init_rtmfp_service();
 
 		// Arm the next accept (async_accept -> socket, then adopt) for each listener.
 		void do_accept();
 		void do_http_accept();
+		void do_rtmps_accept();
+		void do_rtmpts_accept();
 
 		// Create RTMP applications
 		void create_applications();
@@ -65,6 +75,14 @@ namespace fms
 
 		// Acceptor used to listen for incoming connections on HTTP port.
 		boost::asio::ip::tcp::acceptor m_http_acceptor;
+
+		// RTMPS (RTMP over TLS) acceptor + the shared server TLS context. Both stay
+		// empty/null unless a cert+key are configured and the rtmps port is set.
+		boost::asio::ip::tcp::acceptor m_rtmps_acceptor;
+		std::shared_ptr<boost::asio::ssl::context> m_ssl_context;
+
+		// RTMPTS (RTMPT over TLS) acceptor, sharing m_ssl_context.
+		boost::asio::ip::tcp::acceptor m_rtmpts_acceptor;
 
 		// SIGINT/SIGTERM -> stop(). A clean stop lets ~server run, which flushes
 		// in-progress FLV recordings (flv_writer's dtor) and closes sockets;

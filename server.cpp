@@ -5,6 +5,7 @@
 #include "logging.h"
 #include "rtmp_app_manager.h"
 #include "service.h"
+#include "ssl_context.h"
 #include "video_bcast_application.h"
 #include "video_call_application.h"
 
@@ -19,6 +20,8 @@ namespace fms
 		: m_io_context_pool(io_pool_size)
 		, m_acceptor(m_io_context_pool.get_io_context())
 		, m_http_acceptor(m_io_context_pool.get_io_context())
+		, m_rtmps_acceptor(m_io_context_pool.get_io_context())
+		, m_rtmpts_acceptor(m_io_context_pool.get_io_context())
 		, m_signals(m_io_context_pool.get_io_context(), SIGINT, SIGTERM) {}
 
 	// Out-of-line (not =default) so the unique_ptr members' destructors are
@@ -94,6 +97,48 @@ namespace fms
 		}
 		m_http_acceptor.listen();
 		do_http_accept();
+
+		// TLS transports (RTMPS / RTMPTS) -- optional. Built once from the configured
+		// cert+key; each listener is armed only if its port is set. A bad cert logs
+		// and leaves the plaintext listeners running.
+		if (config::instance()->tls_enabled())
+		{
+			m_ssl_context = make_server_ssl_context(config::instance()->tls_cert(), config::instance()->tls_key());
+			if (!m_ssl_context)
+			{
+				BOOST_LOG(lg::get()) << "TLS disabled: could not load cert/key";
+			}
+			else
+			{
+				if (!config::instance()->rtmps_port().empty())
+				{
+					bind_acceptor(resolver, m_rtmps_acceptor, address, config::instance()->rtmps_port());
+					do_rtmps_accept();
+					BOOST_LOG(lg::get()) << "RTMPS listening on port " << config::instance()->rtmps_port();
+				}
+				if (!config::instance()->rtmpts_port().empty())
+				{
+					bind_acceptor(resolver, m_rtmpts_acceptor, address, config::instance()->rtmpts_port());
+					do_rtmpts_accept();
+					BOOST_LOG(lg::get()) << "RTMPTS listening on port " << config::instance()->rtmpts_port();
+				}
+			}
+		}
+	}
+
+	void server::bind_acceptor(boost::asio::ip::tcp::resolver &resolver, boost::asio::ip::tcp::acceptor &acceptor,
+		const std::string &address, const std::string &port)
+	{
+		boost::system::error_code ec;
+		boost::asio::ip::tcp::endpoint const endpoint = resolver.resolve(address, port).begin()->endpoint();
+		acceptor.open(endpoint.protocol(), ec);
+		if (ec)
+			throw server_exception((std::string("Cannot open port ") + port).c_str());
+		acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+		acceptor.bind(endpoint, ec);
+		if (ec)
+			throw server_exception((std::string("Cannot bind to port ") + port).c_str());
+		acceptor.listen();
 	}
 
 	void server::do_accept()
@@ -133,6 +178,40 @@ namespace fms
 				conn->start();
 			}
 			do_http_accept();
+		});
+	}
+
+	void server::do_rtmps_accept()
+	{
+		// Same shape as do_accept, but the adopted socket is wrapped in a TLS stream
+		// (rtmps_connection); the TLS handshake runs before the RTMP handshake.
+		boost::asio::io_context &io = m_io_context_pool.get_io_context();
+		m_rtmps_acceptor.async_accept(io, [this, iop = &io](const boost::system::error_code &ec, boost::asio::ip::tcp::socket sock)
+		{
+			if (!ec)
+			{
+				rtmp_connection_ptr const conn = m_app_manager->create_rtmps_connection(*iop, m_ssl_context);
+				conn->adopt_socket(std::move(sock));
+				conn->start();
+			}
+			do_rtmps_accept();
+		});
+	}
+
+	void server::do_rtmpts_accept()
+	{
+		// Same shape as do_http_accept, but the adopted socket is wrapped in a TLS
+		// stream (rtmpts_connection); the TLS handshake runs before any HTTP.
+		boost::asio::io_context &io = m_io_context_pool.get_io_context();
+		m_rtmpts_acceptor.async_accept(io, [this, iop = &io](const boost::system::error_code &ec, boost::asio::ip::tcp::socket sock)
+		{
+			if (!ec)
+			{
+				http_connection_ptr const conn = m_app_manager->create_rtmpts_connection(*iop, m_ssl_context);
+				conn->adopt_socket(std::move(sock));
+				conn->start();
+			}
+			do_rtmpts_accept();
 		});
 	}
 
