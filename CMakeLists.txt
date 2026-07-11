@@ -234,6 +234,18 @@ if(BUILD_AMF_TESTS)
   endif()
   add_test(NAME av_delivery_test COMMAND av_delivery_test)
 
+  # Outbound-queue backpressure policy: message classification + the two-pass
+  # shed that keeps a slow consumer from growing a send queue without bound.
+  # Header-only policy, so only the message types come along.
+  add_executable(send_queue_policy_test
+    test/test_main.cpp test/send_queue_policy_test.cpp
+    rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp rtmp_so_message.cpp amf0.cpp amf3.cpp)
+  if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(send_queue_policy_test Threads::Threads)
+  endif()
+  add_test(NAME send_queue_policy_test COMMAND send_queue_policy_test)
+
   # Manual throughput benchmark for byte_writer's input-buffer role (not a test).
   # Always built optimized (with asserts off) so the numbers are meaningful even
   # in an otherwise-Debug configure.

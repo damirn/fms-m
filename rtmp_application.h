@@ -6,6 +6,7 @@
 #include "stats.h"
 
 #include <atomic>
+#include <chrono>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -60,6 +61,10 @@ namespace fms
 
 		std::uint32_t enqueue_async_message(std::uint32_t, const rtmp_message_ptr&, bool = false);
 		std::uint32_t enqueue_async_message_unchecked(std::uint32_t, const rtmp_message_ptr&, bool = false);
+
+		// Queued outbound bytes for a connection (0 if it has no queue). For the
+		// admin/queue-stats path and the backpressure tests.
+		std::size_t queued_bytes(std::uint32_t);
 
 		void notify(std::uint32_t);
 
@@ -135,10 +140,20 @@ namespace fms
 		// (find shared; first-message insert and teardown erase exclusive) and each
 		// entry has its OWN mutex, so enqueues to different connections don't
 		// serialise. The mutex-in-value is safe: unordered_map never relocates nodes.
+		//
+		// `bytes` is the backpressure accounting (see send_queue_policy.h): a
+		// subscriber that stops reading stalls its in-flight write, and without this
+		// bound live media would pile up here without limit.
 		struct async_queue
 		{
 			std::mutex mutex;
 			std::uint32_t count{0};
+			std::size_t bytes{0};
+			// A saturated queue sheds on nearly every frame, and it can oscillate
+			// across the threshold frame-by-frame, so a transition-only latch still
+			// floods. Rate-limit the log per queue instead. Kept here rather than in
+			// a side map so it dies with the queue -- no extra teardown path.
+			std::chrono::steady_clock::time_point last_shed_log{};
 			std::list<rtmp_message_ptr> msgs;
 		};
 		using async_messages_map_t = std::unordered_map<std::uint32_t, async_queue>;
@@ -151,6 +166,10 @@ namespace fms
 
 		app_stats m_stats;
 		std::mutex m_stats_mutex;
+
+		// Outbound-queue cap, cached from config at construction rather than read per
+		// message: enqueue runs on the per-frame fan-out path. 0 = unbounded.
+		std::size_t m_max_queue_bytes;
 
 		std::atomic<long> m_invoke_id;
 
@@ -203,6 +222,8 @@ namespace fms
 		virtual void handle_invoke_set_peer_info(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 
 		enum { eBWCheckStringSize = 32768 };
+		// Seconds between "shedding video" log lines for one connection.
+		enum { eShedLogInterval = 5 };
 
 		class rtmp_illegal_parameter_exception : public std::runtime_error
 		{
