@@ -323,7 +323,7 @@ TEST_CASE("amf0 read: byte_reader decodes the documented vectors")
 
 TEST_CASE("amf0_object: copy + merge leaves the original snapshot unchanged (metadata COW)")
 {
-	// video_bcast_application::update_metadata does copy-on-write so a metadata update
+	// media_application::update_metadata does copy-on-write so a metadata update
 	// never mutates an object a subscriber thread may be serializing. That relies on:
 	// copying an amf0_object and merging into the copy leaves the original untouched.
 	auto const orig = std::make_shared<amf0_object>();
