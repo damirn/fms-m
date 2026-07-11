@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -26,6 +27,8 @@ namespace fms
 	public:
 		http_connection(std::uint32_t, boost::asio::io_context &, rtmp_app_manager *, rtmpt_manager *);
 
+		virtual ~http_connection() = default;
+
 		void start();
 
 		boost::asio::ip::tcp::socket &socket()
@@ -40,11 +43,25 @@ namespace fms
 			m_socket = std::move(s);
 		}
 
-	private:
+	protected:
 		using body_t = boost::beast::http::vector_body<std::uint8_t>;
 		using request_t = boost::beast::http::request<body_t>;
 		using response_t = boost::beast::http::response<body_t>;
 
+		// Transport seam -- virtual so an RTMPTS subclass can route the same HTTP
+		// read/write through a TLS stream. Base implementations are plaintext, over
+		// m_socket. The handler is a std::function so it can cross the virtual call.
+		using io_handler = std::function<void(const boost::system::error_code &, std::size_t)>;
+		using handshake_handler = std::function<void(const boost::system::error_code &)>;
+
+		virtual void async_read_request(io_handler h);
+		virtual void async_write_response(io_handler h);
+		// Negotiate the transport (TLS) before any HTTP. Base completes immediately.
+		virtual void transport_handshake(handshake_handler h);
+
+		boost::asio::ip::tcp::socket m_socket;
+
+	private:
 		enum { eIdleTimeout = 60 };   // seconds a connection may wait for a full request
 
 		void do_read();
@@ -55,16 +72,17 @@ namespace fms
 		void on_timeout(const boost::system::error_code &);
 		void close();
 
-		boost::asio::ip::tcp::socket m_socket;
 		boost::asio::steady_timer m_timer;
 		std::uint32_t m_id;
 		rtmp_app_manager *m_app_manager;
 		rtmpt_manager *m_rtmpt_manager;
 
+	protected:
 		boost::beast::flat_buffer m_buffer;
 		std::optional<boost::beast::http::request_parser<body_t>> m_parser;
 		response_t m_response;
 
+	private:
 		std::string m_cid;   // RTMPT session id for this connection (once opened)
 	};
 

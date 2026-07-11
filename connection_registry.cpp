@@ -4,7 +4,9 @@
 #include "io_context_pool.h"
 #include "logging.h"
 #include "rtmp_application.h"
+#include "rtmps_connection.h"
 #include "rtmpt_manager.h"
+#include "rtmpts_connection.h"
 
 namespace fms
 {
@@ -12,6 +14,15 @@ namespace fms
 	{
 		std::unique_lock const lock(m_mutex);
 		rtmp_connection_ptr tmp = std::make_shared<rtmp_connection>(m_counter, io, &m_manager);
+		m_connections[m_counter++] = tmp;
+		return tmp;
+	}
+
+	rtmp_connection_ptr connection_registry::create_rtmps_connection(boost::asio::io_context &io,
+		std::shared_ptr<boost::asio::ssl::context> ctx)
+	{
+		std::unique_lock const lock(m_mutex);
+		rtmp_connection_ptr tmp = std::make_shared<rtmps_connection>(m_counter, io, &m_manager, std::move(ctx));
 		m_connections[m_counter++] = tmp;
 		return tmp;
 	}
@@ -45,6 +56,15 @@ namespace fms
 	{
 		std::unique_lock const lock(m_mutex);
 		http_connection_ptr tmp = std::make_shared<http_connection>(m_counter, io, &m_manager, &m_rtmpt);
+		m_http_conns[m_counter++] = tmp;
+		return tmp;
+	}
+
+	http_connection_ptr connection_registry::create_rtmpts_connection(boost::asio::io_context &io,
+		std::shared_ptr<boost::asio::ssl::context> ctx)
+	{
+		std::unique_lock const lock(m_mutex);
+		http_connection_ptr tmp = std::make_shared<rtmpts_connection>(m_counter, io, &m_manager, &m_rtmpt, std::move(ctx));
 		m_http_conns[m_counter++] = tmp;
 		return tmp;
 	}

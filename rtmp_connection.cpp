@@ -95,12 +95,39 @@ namespace fms
 			if (!ep_ec)
 				self->set_remote_endpoint(ep.address().to_string() + ":" + std::to_string(ep.port()));
 
-			boost::asio::async_read(self->m_socket, self->m_buffer.write_buffer(),
-				boost::asio::transfer_at_least(eHandShakeSize + 1), // magic byte + handshake block
-				[self](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
-
+			// Bound the whole handshake (TLS negotiation + RTMP handshake) with one
+			// timer, then negotiate the transport. For plaintext transport_handshake
+			// completes immediately; for RTMPS it runs the TLS handshake first.
 			self->arm_hs_timer();
+			self->transport_handshake([self](const boost::system::error_code &ec)
+			{
+				if (ec)
+				{
+					self->close();
+					return;
+				}
+				self->async_read_transport(self->m_buffer.write_buffer(),
+					eHandShakeSize + 1, // magic byte + handshake block
+					[self](const boost::system::error_code &e, std::size_t bytes) { self->handle_hand_shake(e, bytes); });
+			});
 		});
+	}
+
+	void rtmp_connection::async_read_transport(const boost::asio::mutable_buffer &buf, std::size_t at_least, io_handler h)
+	{
+		boost::asio::async_read(m_socket, buf, boost::asio::transfer_at_least(at_least), std::move(h));
+	}
+
+	void rtmp_connection::async_write_transport(const boost::asio::const_buffer &buf, io_handler h)
+	{
+		boost::asio::async_write(m_socket, buf, std::move(h));
+	}
+
+	void rtmp_connection::transport_handshake(handshake_handler h)
+	{
+		// Plaintext transport: nothing to negotiate. Post so the caller always sees
+		// asynchronous completion (matching the TLS path).
+		boost::asio::post(m_io_context, [h = std::move(h)]() { h(boost::system::error_code{}); });
 	}
 
 	void rtmp_connection::handle_hand_shake(const boost::system::error_code &e, std::size_t bytes_transferred)
@@ -204,8 +231,7 @@ namespace fms
 		m_rto_timer.expires_after(std::chrono::seconds(2 * ePingInterval));
 		m_rto_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_rto(ec); });
 
-		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
-			boost::asio::transfer_at_least(1),
+		async_read_transport(m_buffer.write_buffer(), 1,
 			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_read_packet(ec, bytes); });
 	}
 
@@ -258,8 +284,7 @@ namespace fms
 
 	void rtmp_connection::write_hand_shake_block()
 	{
-		boost::asio::async_write(m_socket,
-			boost::asio::buffer(m_tmp_buff, eHandShakeSize + 1),
+		async_write_transport(boost::asio::buffer(m_tmp_buff, eHandShakeSize + 1),
 			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
@@ -268,15 +293,14 @@ namespace fms
 		// echo the client's C1 (at data()+1) back as S2. Don't consume here: the
 		// buffer must stay put while this async_write is in flight; the processed
 		// C0+C1 are dropped in read_hand_shake_response, once this write is done.
-		boost::asio::async_write(m_socket, boost::asio::buffer(m_buffer.data() + 1, eHandShakeSize),
+		async_write_transport(boost::asio::buffer(m_buffer.data() + 1, eHandShakeSize),
 			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
 	void rtmp_connection::read_hand_shake_response()
 	{
 		m_buffer.consume(eHandShakeSize + 1);   // drop the now-sent C0+C1
-		boost::asio::async_read(m_socket, m_buffer.write_buffer(),
-			boost::asio::transfer_at_least(eHandShakeSize),
+		async_read_transport(m_buffer.write_buffer(), eHandShakeSize,
 			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
@@ -306,7 +330,7 @@ namespace fms
 		if (m_key_out != nullptr && !m_output_buffer.empty())
 			rc4_crypt(m_key_out, m_output_buffer.size(), m_output_buffer.data(), m_output_buffer.data());
 
-		boost::asio::async_write(m_socket, boost::asio::buffer(m_output_buffer.data(), m_output_buffer.size()),
+		async_write_transport(boost::asio::buffer(m_output_buffer.data(), m_output_buffer.size()),
 			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write_packet(ec, bytes); });
 	}
 

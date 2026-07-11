@@ -61,6 +61,9 @@ endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SPEEX REQUIRED speex)
 pkg_check_modules(CRYPTO REQUIRED libcrypto)
+# libssl (in addition to libcrypto) for the TLS transports (RTMPS/RTMPTS) via
+# boost::asio::ssl. libcrypto alone -- used by the RTMPE/DH handshake -- is not enough.
+pkg_check_modules(SSL REQUIRED libssl)
 
 if(APPLE)
   find_library(CORE_AUDIO CoreAudio REQUIRED)
@@ -86,9 +89,10 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp
   ${Boost_INCLUDE_DIRS}
   ${SPEEX_INCLUDE_DIRS}
-  ${CRYPTO_INCLUDE_DIRS})
+  ${CRYPTO_INCLUDE_DIRS}
+  ${SSL_INCLUDE_DIRS})
 
-link_directories(${Boost_LIBRARY_DIRS} ${SPEEX_LIBRARY_DIRS} ${CRYPTO_LIBRARY_DIRS})
+link_directories(${Boost_LIBRARY_DIRS} ${SPEEX_LIBRARY_DIRS} ${CRYPTO_LIBRARY_DIRS} ${SSL_LIBRARY_DIRS})
 
 set(sourceFiles
   admin_application.cpp
@@ -136,9 +140,12 @@ set(sourceFiles
   rtmp_so_message.cpp
   rtmpt_manager.cpp
   rtmpt_session.cpp
+  rtmps_connection.cpp
+  rtmpts_connection.cpp
   server.cpp
   so_manager.cpp
   speex_codec.cpp
+  ssl_context.cpp
   qos_reporter.cpp
   stream_recorder.cpp
   stream_registry.cpp
@@ -154,7 +161,8 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE pch.h)
 target_link_libraries(${PROJECT_NAME}
   ${Boost_LIBRARIES}
   ${SPEEX_LIBRARIES}
-  ${CRYPTO_LIBRARIES})
+  ${CRYPTO_LIBRARIES}
+  ${SSL_LIBRARIES})
 
 if(APPLE)
   target_link_libraries(${PROJECT_NAME}
