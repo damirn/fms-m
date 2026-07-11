@@ -6,7 +6,7 @@
 #include "rtmp_app_manager.h"
 #include "service.h"
 #include "ssl_context.h"
-#include "video_bcast_application.h"
+#include "media_application.h"
 #include "video_call_application.h"
 
 #include <csignal>
@@ -219,7 +219,7 @@ namespace fms
 	{
 		m_app_manager = std::make_unique<rtmp_app_manager>(m_io_context_pool);
 
-		rtmp_application *bc = new video_bcast_application(m_app_manager.get());
+		rtmp_application *bc = new media_application(m_app_manager.get());
 		m_app_manager->register_rtmp_app(bc);
 		m_app_manager->register_rtmp_app(new admin_application(m_app_manager.get()));
 		m_app_manager->register_rtmp_app(new video_call_application(m_app_manager.get()));

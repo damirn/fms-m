@@ -80,7 +80,7 @@ lsof -nP -iUDP:1935 2>/dev/null | grep -q "$FMS_PID" || fail "fms-m did not bind
 echo "publishing over RTMFP (flags: '${TCPUB_FLAGS:-<strict>}') ..."
 # -v so tcpublish prints its status; -L so it keeps publishing while we pull.
 # shellcheck disable=SC2086
-"$TCPUBLISH" -v $TCPUB_FLAGS -L rtmfp://localhost/bcast#interop "$work/src.flv" >"$work/pub.log" 2>&1 &
+"$TCPUBLISH" -v $TCPUB_FLAGS -L rtmfp://localhost/media#interop "$work/src.flv" >"$work/pub.log" 2>&1 &
 PUB_PID=$!
 
 # 4. give the RTMFP session ~4s to establish + publish. A successful -L publisher
@@ -94,7 +94,7 @@ fi
 
 # 5. pull the stream back over RTMP and assert media. -rw_timeout bounds the read
 # so we don't hang if no media crossed the bridge.
-ffmpeg -hide_banner -v error -rw_timeout 8000000 -i rtmp://localhost:1935/bcast/interop -t 4 -c copy -y "$work/out.flv" 2>/dev/null
+ffmpeg -hide_banner -v error -rw_timeout 8000000 -i rtmp://localhost:1935/media/interop -t 4 -c copy -y "$work/out.flv" 2>/dev/null
 [ -s "$work/out.flv" ] || fail "no RTMP capture of the RTMFP-published stream"
 vframes="$(ffprobe -v error -count_frames -select_streams v -show_entries stream=nb_read_frames -of csv=p=0 "$work/out.flv" 2>/dev/null)"
 aframes="$(ffprobe -v error -count_frames -select_streams a -show_entries stream=nb_read_frames -of csv=p=0 "$work/out.flv" 2>/dev/null)"

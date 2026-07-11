@@ -14,7 +14,7 @@ namespace fms
 	{
 		// The connect "app" is a URL path, so normalize before matching -- accept what
 		// any RFC-3986 client sends, not just the one shape rtmfp-cpp happens to emit:
-		//   * a leading '/'  -- the raw path of rtmfp://host/bcast IS "/bcast".
+		//   * a leading '/'  -- the raw path of rtmfp://host/media IS "/media".
 		//     rtmfp-cpp strips it client-side (TCConnection.cpp), but librtmfp passes
 		//     it through; without stripping it here the app name resolved to "" and the
 		//     connect was rejected with NetConnection.Connect.InvalidApp.
