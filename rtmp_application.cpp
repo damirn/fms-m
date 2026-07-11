@@ -1,7 +1,10 @@
 #include "pch.h"
 #include "rtmp_application.h"
 #include "client_session.h"
+#include "config.h"
+#include "logging.h"
 #include "rtmp_message.h"
+#include "send_queue_policy.h"
 #include "session.h"
 #include "so_manager.h"
 
@@ -33,6 +36,7 @@ namespace fms
 	rtmp_application::rtmp_application(rtmp_app_manager *app_manager, const std::string &app_name)
 		: m_app_manager(app_manager)
 		, m_app_name(app_name)
+		, m_max_queue_bytes(config::instance()->max_queue_bytes())
 		, m_invoke_id(100000)
 	{
 		m_so_manager = std::make_unique<so_manager>([this](std::uint32_t client, const rtmp_message_ptr &msg)
@@ -119,30 +123,100 @@ namespace fms
 	// callers that have already established the connection is live (e.g. the
 	// fan-out path, which holds a locked shared_ptr to the subscriber's session).
 	// Skips one rtmp_app_manager::m_mutex acquisition per call.
+	//
+	// This is also where outbound backpressure is applied. A subscriber that stops
+	// reading stalls its in-flight write, so without a bound the queue below grows
+	// with the live stream until the process dies. Over the shed threshold we drop
+	// droppable video (see send_queue_policy.h); past the hard cap the connection is
+	// closed, which is what FMS 4.5 does (measured -- docs/slow-consumer.md).
 	std::uint32_t rtmp_application::enqueue_async_message_unchecked(std::uint32_t connection_id, const rtmp_message_ptr& msg, bool urgent /* = false */)
 	{
+		std::size_t const msg_bytes = queued_size(msg);
+		std::size_t const cap = m_max_queue_bytes;
+		std::size_t dropped = 0;
+		bool over_cap = false;
+		bool began_shedding = false;
+		std::size_t queue_bytes = 0;
+		std::uint32_t depth = 0;
+
 		auto push = [&](async_queue &q) {
 			std::unique_lock const qlock(q.mutex);
 			if (urgent)
 				q.msgs.push_front(msg);
 			else
 				q.msgs.push_back(msg);
-			return ++q.count;
+			q.bytes += msg_bytes;
+			depth = ++q.count;
+
+			// Shed with hysteresis (down to half the threshold) so we thin a backlog
+			// in bursts rather than dropping one frame per enqueue forever after.
+			if (cap != 0 && q.bytes > cap / 2)
+			{
+				dropped = shed_to(q.msgs, q.bytes, cap / 4);
+				q.count -= static_cast<std::uint32_t>(dropped);
+				depth = q.count;
+				if (auto const now = std::chrono::steady_clock::now();
+					now - q.last_shed_log >= std::chrono::seconds(eShedLogInterval))
+				{
+					q.last_shed_log = now;
+					began_shedding = true;
+				}
+				// Still over the hard cap after shedding everything droppable: this
+				// peer is not consuming at all (or the backlog is all audio/control,
+				// which we never shed). Nothing left to give -- drop the connection.
+				over_cap = q.bytes > cap;
+			}
+			queue_bytes = q.bytes;
+			return depth;
 		};
 
 		// Fast path: the entry already exists (true for every message after the
 		// first) -> shared map lock + this connection's own mutex, so enqueues to
 		// different connections run concurrently.
+		bool pushed = false;
 		{
 			std::shared_lock const maplock(m_async_map_mutex);
 			auto const i = m_async_messages.find(connection_id);
 			if (i != m_async_messages.end())
-				return push(i->second);
+			{
+				depth = push(i->second);
+				pushed = true;
+			}
 		}
-		// Slow path: first message for this connection -> create the entry under the
-		// exclusive lock (which excludes all shared holders, so the insert is safe).
-		std::unique_lock const maplock(m_async_map_mutex);
-		return push(m_async_messages[connection_id]);
+		if (!pushed)
+		{
+			// Slow path: first message for this connection -> create the entry under
+			// the exclusive lock (which excludes all shared holders, so the insert is
+			// safe).
+			std::unique_lock const maplock(m_async_map_mutex);
+			depth = push(m_async_messages[connection_id]);
+		}
+
+		// Both of these call back into the manager, so they run with no queue or map
+		// lock held. destroy_connection() only posts the close onto the connection's
+		// own io_context, so it cannot re-enter us here.
+		if (dropped > 0)
+			m_app_manager->add_dropped_messages_for_netstream(std::make_pair(connection_id, msg->stream_id()), dropped);
+		if (began_shedding)
+			BOOST_LOG(lg::get()) << "cid: " << connection_id << " slow consumer: outbound queue past "
+				<< (cap / 2) << " bytes, shedding video (dropped " << dropped << " msgs, queue now " << queue_bytes << ")";
+		if (over_cap)
+		{
+			BOOST_LOG(lg::get()) << "cid: " << connection_id << " outbound queue still over "
+				<< cap << " bytes with nothing left to shed -- dropping slow consumer";
+			m_app_manager->destroy_connection(connection_id);
+		}
+		return depth;
+	}
+
+	std::size_t rtmp_application::queued_bytes(std::uint32_t connection_id)
+	{
+		std::shared_lock const maplock(m_async_map_mutex);
+		auto const i = m_async_messages.find(connection_id);
+		if (i == m_async_messages.end())
+			return 0;
+		std::unique_lock const qlock(i->second.mutex);
+		return i->second.bytes;
 	}
 
 	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_invoke_ptr& msg, result_handler_ptr res_handler, bool urgent /* = false */)
@@ -179,6 +253,8 @@ namespace fms
 		if (i->second.msgs.empty())
 			return false;
 		msg = i->second.msgs.front();
+		std::size_t const n = queued_size(msg);
+		i->second.bytes = n >= i->second.bytes ? 0 : i->second.bytes - n;
 		i->second.msgs.pop_front();
 		--i->second.count;
 		return true;

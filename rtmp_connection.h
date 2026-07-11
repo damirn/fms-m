@@ -110,6 +110,11 @@ namespace fms
 
 		enum { eHandShakeTimeout = 5, ePingInterval = 30 };
 
+		// Upper bound on how much handle_notify() serializes into m_output_buffer per
+		// async_write. Bounds the buffer and keeps one connection's backlog from
+		// monopolising its io_context thread; the remainder drains on write completion.
+		static constexpr std::size_t eMaxWriteBatchBytes = 256u * 1024;
+
 	private:
 		// Typed convenience over the base's shared_from_this() (named distinctly so it
 		// doesn't hide enable_shared_from_this<basic_rtmp_connection>::shared_from_this).
