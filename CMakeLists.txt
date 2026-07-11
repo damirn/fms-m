@@ -190,10 +190,6 @@ if(BUILD_AMF_TESTS)
   add_executable(amf_tests
     test/test_main.cpp test/amf0_test.cpp test/amf3_test.cpp test/media_path_test.cpp
     amf0.cpp amf3.cpp)
-  if(NOT APPLE)
-    find_package(Threads REQUIRED)
-    target_link_libraries(amf_tests Threads::Threads)
-  endif()
   add_test(NAME amf_tests COMMAND amf_tests)
 
   # so_manager unit tests: the shared-object state machine + fan-out, driven
@@ -201,10 +197,6 @@ if(BUILD_AMF_TESTS)
   add_executable(so_tests
     test/test_main.cpp test/so_test.cpp
     so_manager.cpp rtmp_so_message.cpp amf0.cpp amf3.cpp)
-  if(NOT APPLE)
-    find_package(Threads REQUIRED)
-    target_link_libraries(so_tests Threads::Threads)
-  endif()
   add_test(NAME so_tests COMMAND so_tests)
 
   # RTMFP byte-level codec tests (option / option_list / header). Like the AMF
@@ -215,10 +207,6 @@ if(BUILD_AMF_TESTS)
     rtmfp/types.cpp rtmfp/header.cpp rtmfp/chunk.cpp rtmfp/flow.cpp
     rtmfp/parser.cpp rtmfp/aes.cpp)   # session-crypto test needs the checksum + aes helpers
   target_link_libraries(rtmfp_tests ${CRYPTO_LIBRARIES})   # cookie HMAC (rtmfp/cookie.h) + aes/HMAC
-  if(NOT APPLE)
-    find_package(Threads REQUIRED)
-    target_link_libraries(rtmfp_tests Threads::Threads)
-  endif()
   add_test(NAME rtmfp_tests COMMAND rtmfp_tests)
 
   # av_delivery unit tests: the live A/V fan-out (keyframe join, config priming,
@@ -228,11 +216,15 @@ if(BUILD_AMF_TESTS)
     test/test_main.cpp test/av_delivery_test.cpp
     av_delivery.cpp stream_registry.cpp stream_recorder.cpp rtmp_message.cpp rtmp_header.cpp
     rtmp_protocol.cpp rtmp_so_message.cpp client_session.cpp amf0.cpp amf3.cpp flv_writer.cpp)
-  if(NOT APPLE)
-    find_package(Threads REQUIRED)
-    target_link_libraries(av_delivery_test Threads::Threads)
-  endif()
   add_test(NAME av_delivery_test COMMAND av_delivery_test)
+
+  # Outbound-queue backpressure policy: message classification + the two-pass
+  # shed that keeps a slow consumer from growing a send queue without bound.
+  # Header-only policy, so only the message types come along.
+  add_executable(send_queue_policy_test
+    test/test_main.cpp test/send_queue_policy_test.cpp
+    rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp rtmp_so_message.cpp amf0.cpp amf3.cpp)
+  add_test(NAME send_queue_policy_test COMMAND send_queue_policy_test)
 
   # Manual throughput benchmark for byte_writer's input-buffer role (not a test).
   # Always built optimized (with asserts off) so the numbers are meaningful even
@@ -256,10 +248,6 @@ if(BUILD_FUZZERS)
   target_include_directories(fuzz_run PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_options(fuzz_run PRIVATE -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined)
   target_link_options(fuzz_run PRIVATE -fsanitize=address,undefined)
-  if(NOT APPLE)
-    find_package(Threads REQUIRED)
-    target_link_libraries(fuzz_run Threads::Threads)
-  endif()
   add_test(NAME fuzz_run COMMAND fuzz_run)
 
   # libFuzzer needs LLVM clang's -fsanitize=fuzzer runtime; GCC has no equivalent
