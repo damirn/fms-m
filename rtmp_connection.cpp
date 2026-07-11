@@ -258,7 +258,11 @@ namespace fms
 		if (m_app != nullptr)
 		{
 			int i = 0;
-			while (m_app->get_async_message(m_id, result))
+			// Drain in bounded batches. Unbounded, a backlog that built up behind a
+			// stalled write would be serialized into one enormous m_output_buffer and
+			// handed to a single async_write. handle_write_packet() calls us again on
+			// completion, so the rest of the queue goes out in the next batch.
+			while (m_output_buffer.size() < eMaxWriteBatchBytes && m_app->get_async_message(m_id, result))
 			{
 				if (result->type() == rtmp_message::eMessageClose)
 				{
@@ -275,10 +279,7 @@ namespace fms
 				serialize_message(result, channel);
 			}
 			if (i > 0)
-			{
-				//std::cout << "sending " << i << " messages" << std::endl;
 				perform_write();
-			}
 		}
 	}
 
