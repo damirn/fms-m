@@ -226,6 +226,15 @@ if(BUILD_AMF_TESTS)
     rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp rtmp_so_message.cpp amf0.cpp amf3.cpp)
   add_test(NAME send_queue_policy_test COMMAND send_queue_policy_test)
 
+  # result_handler_registry: the table of callbacks awaiting a peer _result, its
+  # per-connection cap and its teardown purge. Templated on the handler pointer,
+  # so it needs nothing but doctest.
+  add_executable(result_handler_test
+    test/test_main.cpp test/result_handler_test.cpp)
+  target_include_directories(result_handler_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
+  add_test(NAME result_handler_test COMMAND result_handler_test)
+
   # Manual throughput benchmark for byte_writer's input-buffer role (not a test).
   # Always built optimized (with asserts off) so the numbers are meaningful even
   # in an otherwise-Debug configure.

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "random_string.h"
+#include "result_handler_registry.h"
 #include "rtmp_app_manager.h"
 #include "rtmp_message.h"
 #include "stats.h"
@@ -192,8 +193,6 @@ namespace fms
 			callback_t m_call_back;
 		};
 
-		using result_handlers_t = std::unordered_map<std::uint32_t, result_handler_ptr>;
-
 		struct bwcheck_result_handler : result_handler
 		{
 			bwcheck_result_handler(std::uint32_t id, callback_t f)
@@ -209,11 +208,17 @@ namespace fms
 
 		using bwcheck_result_handler_ptr = std::shared_ptr<bwcheck_result_handler>;
 
-		result_handlers_t m_result_handlers;
-		std::mutex m_result_handlers_mutex;
+		// Max replies one connection may have outstanding. Generous: a bandwidth
+		// check keeps exactly one handler alive at a time (each step of the
+		// three-step exchange re-registers the same object under a fresh id).
+		enum { eMaxResultHandlersPerConnection = 16 };
 
-		std::uint32_t enqueue_async_message(std::uint32_t, const rtmp_message_invoke_ptr&, result_handler_ptr, bool = false);
-		void add_result_handler(std::uint32_t, result_handler_ptr);
+		// Callbacks awaiting a peer `_result`, capped per connection and cleared on
+		// teardown -- see result_handler_registry.h for why both are load-bearing.
+		result_handler_registry<result_handler_ptr> m_result_handlers{eMaxResultHandlersPerConnection};
+
+		// Returns false when the connection is at the cap (callback not registered).
+		bool add_result_handler(std::uint32_t, result_handler_ptr);
 		virtual bool handle_invoke_result(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 		virtual void handle_invoke_check_bandwidth(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &result);
 		virtual void handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
