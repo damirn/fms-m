@@ -252,7 +252,7 @@ namespace
 		}
 	};
 
-	std::string url_for(int port) { return "rtmp://127.0.0.1:" + std::to_string(port) + "/bcast"; }
+	std::string url_for(int port) { return "rtmp://127.0.0.1:" + std::to_string(port) + "/media"; }
 
 	struct stream_pair
 	{

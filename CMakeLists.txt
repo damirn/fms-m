@@ -151,7 +151,7 @@ set(sourceFiles
   stream_registry.cpp
   util.cpp
   vod_manager.cpp
-  video_bcast_application.cpp
+  media_application.cpp
   video_call_application.cpp)
 
 add_executable(${PROJECT_NAME} ${sourceFiles})

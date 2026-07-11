@@ -1,6 +1,6 @@
 #pragma once
 
-#include "video_bcast_application.h"
+#include "media_application.h"
 
 #include <map>
 #include <memory>
@@ -12,11 +12,11 @@ namespace fms
 	class mixer;
 	class audio_sink;
 
-	class video_call_application : public video_bcast_application
+	class video_call_application : public media_application
 	{
 	public:
 		explicit video_call_application(rtmp_app_manager *app_manager)
-			: video_bcast_application(app_manager, "video_call") {}
+			: media_application(app_manager, "video_call") {}
 
 	protected:
 		boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;

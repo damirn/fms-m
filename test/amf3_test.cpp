@@ -280,7 +280,7 @@ TEST_CASE("object serialization: exact bytes")
 TEST_CASE("object: multiple properties round-trip (sorted keys deterministic)")
 {
 	auto obj = std::make_shared<amf3_object_type>();
-	obj->add_entry("app", std::string("bcast"));
+	obj->add_entry("app", std::string("media"));
 	obj->add_entry("objectEncoding", 3u);
 	obj->add_entry("flag", mk_bool(true));
 	roundtrip(obj);
@@ -288,7 +288,7 @@ TEST_CASE("object: multiple properties round-trip (sorted keys deterministic)")
 	auto got = std::dynamic_pointer_cast<amf3_object_type>(decode(encode(obj)));
 	REQUIRE(got);
 	CHECK(got->value().size() == 3);
-	CHECK(as_str(got->value().at("app")) == "bcast");
+	CHECK(as_str(got->value().at("app")) == "media");
 	CHECK(as_int(got->value().at("objectEncoding")) == 3u);
 	CHECK(got->value().at("flag")->type() == amf3_type::eAMF3True);
 }

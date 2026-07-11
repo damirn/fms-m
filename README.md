@@ -48,12 +48,12 @@ RTMP organises streams under a named *application*. A client connects to
 
 | App name     | Purpose                                                                 |
 |--------------|-------------------------------------------------------------------------|
-| `bcast`      | General live broadcast: publish, play, and record.                      |
-| `video_call` | Two-way video-call variant of `bcast` (adds call signalling / mixing).  |
+| `media`      | The main A/V app: publish + live fan-out, VOD playback, and recording.  |
+| `video_call` | Multi-party video-call variant of `media` (adds call signalling / audio mixing). |
 | `admin`      | Administrative control and monitoring (requires a password file).       |
 
-The publish/play/record URL for the broadcast app is
-`rtmp://host:1935/bcast/<streamName>`.
+The publish/play/record URL for the media app is
+`rtmp://host:1935/media/<streamName>`.
 
 ---
 
@@ -222,21 +222,21 @@ The examples use [`ffmpeg`](https://ffmpeg.org/) to publish/play plain RTMP and
 ### Publish a live stream (RTMP)
 
 ```sh
-ffmpeg -re -i input.mp4 -c copy -f flv rtmp://127.0.0.1:1935/bcast/mystream
+ffmpeg -re -i input.mp4 -c copy -f flv rtmp://127.0.0.1:1935/media/mystream
 ```
 
 ### Play a live stream (RTMP)
 
 ```sh
-ffmpeg -i rtmp://127.0.0.1:1935/bcast/mystream -c copy out.flv
+ffmpeg -i rtmp://127.0.0.1:1935/media/mystream -c copy out.flv
 # or watch it live:
-ffplay rtmp://127.0.0.1:1935/bcast/mystream
+ffplay rtmp://127.0.0.1:1935/media/mystream
 ```
 
 ### Play an encrypted stream (RTMPE)
 
 ```sh
-rtmpdump -r "rtmpe://127.0.0.1:1935/bcast/mystream" --live -o out.flv
+rtmpdump -r "rtmpe://127.0.0.1:1935/media/mystream" --live -o out.flv
 ```
 
 RTMPE reuses the RTMP port — the client selects encryption via the `rtmpe://`
@@ -245,7 +245,7 @@ scheme. The server negotiates the RC4/Diffie-Hellman handshake automatically.
 ### Play over RTMPT (HTTP tunnel)
 
 ```sh
-ffmpeg -i rtmpt://127.0.0.1:8080/bcast/mystream -c copy out.flv
+ffmpeg -i rtmpt://127.0.0.1:8080/media/mystream -c copy out.flv
 ```
 
 ### Play / publish over RTMFP (UDP)
@@ -257,10 +257,10 @@ author's implementation). Using its test tools, built from that repository:
 
 ```sh
 # play a live stream over RTMFP
-tcconn -4 -H -S 'rtmfp://127.0.0.1:1935/bcast#mystream'
+tcconn -4 -H -S 'rtmfp://127.0.0.1:1935/media#mystream'
 
 # publish an FLV over RTMFP
-tcpublish -4 -H -S 'rtmfp://127.0.0.1:1935/bcast#mystream' input.flv
+tcpublish -4 -H -S 'rtmfp://127.0.0.1:1935/media#mystream' input.flv
 ```
 
 The stream name is passed as the URL fragment (`#mystream`), and RTMFP listens on
