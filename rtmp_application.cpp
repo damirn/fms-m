@@ -104,12 +104,20 @@ namespace fms
 
 	void rtmp_application::delete_connection(std::uint32_t conn_id, const std::string &)
 	{
-		std::unique_lock lock(m_async_map_mutex);   // exclusive: excludes all entry access
-		m_async_messages.erase(conn_id);
-		lock.unlock();
-
-		std::unique_lock const lock2(m_delay_mutex);
-		m_delays.erase(conn_id);
+		{
+			std::unique_lock const lock(m_async_map_mutex);   // exclusive: excludes all entry access
+			m_async_messages.erase(conn_id);
+		}
+		{
+			std::unique_lock const lock(m_delay_mutex);
+			m_delays.erase(conn_id);
+		}
+		// Replies this connection still owes us. A handler is otherwise released only
+		// when the matching _result arrives, so without this every client that
+		// triggered a bandwidth check and then went away (or simply never answered)
+		// stranded its handler for the lifetime of the process -- and checkBandwidth
+		// is client-invokable, so any peer could drive that just by connecting.
+		m_result_handlers.erase_connection(conn_id);
 	}
 
 	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_ptr& msg, bool urgent /* = false */)
@@ -219,18 +227,29 @@ namespace fms
 		return i->second.bytes;
 	}
 
-	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_invoke_ptr& msg, result_handler_ptr res_handler, bool urgent /* = false */)
+	// Register a callback for the _result the peer should send for `invoke_id`.
+	// Returns false if this connection already has too many replies outstanding, in
+	// which case the callback is dropped (the invoke itself still goes out; we just
+	// stop tracking a peer that is not answering).
+	//
+	// The cap exists because the handler is released only when the client answers,
+	// and checkBandwidth / checkUploadBandwidth are client-invokable: a peer that
+	// calls them in a loop and never replies would otherwise grow this map for its
+	// whole session. A legitimate bandwidth check holds one handler at a time -- each
+	// step of the three-step exchange re-registers the same object under a new id,
+	// and the previous entry was already erased by handle_invoke_result.
+	bool rtmp_application::add_result_handler(std::uint32_t invoke_id, result_handler_ptr res_handler)
 	{
-		std::uint32_t const size = enqueue_async_message(connection_id, msg, urgent);
-		std::unique_lock const lock(m_result_handlers_mutex);
-		m_result_handlers[static_cast<std::uint32_t>(msg->invoke_id()->value())] = std::move(res_handler);
-		return size;
-	}
-
-	void rtmp_application::add_result_handler(std::uint32_t invoke_id, result_handler_ptr res_handler)
-	{
-		std::unique_lock const lock(m_result_handlers_mutex);
-		m_result_handlers[invoke_id] = std::move(res_handler);
+		if (!res_handler)
+			return false;
+		std::uint32_t const conn_id = res_handler->m_connection_id;
+		bool reached_cap = false;
+		if (!m_result_handlers.add(invoke_id, conn_id, std::move(res_handler), &reached_cap))
+			return false;
+		if (reached_cap)
+			BOOST_LOG(lg::get()) << "cid: " << conn_id << " has " << eMaxResultHandlersPerConnection
+				<< " unanswered result callbacks outstanding; further ones will not be tracked";
+		return true;
 	}
 
 	bool rtmp_application::has_async_messages(std::uint32_t connection_id)
@@ -332,16 +351,13 @@ namespace fms
 
 	bool rtmp_application::handle_invoke_result(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
-		std::unique_lock lock(m_result_handlers_mutex);
-		auto const i = m_result_handlers.find(static_cast<std::uint32_t>(msg->invoke_id()->value()));
-		if (i != m_result_handlers.end())
-		{
-			result_handler_ptr const res = i->second;
-			m_result_handlers.erase(i);
-			lock.unlock();
-			return res->m_call_back(msg, res, result);
-		}
-		return false;
+		// take() frees this connection's slot before the callback runs -- the
+		// bandwidth exchange re-registers the same handler under a fresh id from
+		// inside it, which would otherwise be charged against a slot we still hold.
+		result_handler_ptr const res = m_result_handlers.take(static_cast<std::uint32_t>(msg->invoke_id()->value()));
+		if (!res)
+			return false;
+		return res->m_call_back(msg, res, result);
 	}
 
 	void rtmp_application::handle_invoke_check_bandwidth(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
