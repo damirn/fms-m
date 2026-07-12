@@ -106,22 +106,24 @@ namespace fms
 			m_ssl_context = make_server_ssl_context(config::instance()->tls_cert(), config::instance()->tls_key());
 			if (!m_ssl_context)
 			{
-				BOOST_LOG(lg::get()) << "TLS disabled: could not load cert/key";
+				// config::check_params has already established that a TLS port was
+				// asked for, so carrying on would leave that port closed with only a
+				// log line to say why. Fail loudly like any other listener we cannot
+				// bring up; make_server_ssl_context has logged the specific reason.
+				BOOST_LOG(lg::get()) << "TLS: cannot start -- cert/key did not load";
+				throw server_exception("Cannot load TLS certificate/key");
 			}
-			else
+			if (!config::instance()->rtmps_port().empty())
 			{
-				if (!config::instance()->rtmps_port().empty())
-				{
-					bind_acceptor(resolver, m_rtmps_acceptor, address, config::instance()->rtmps_port());
-					do_rtmps_accept();
-					BOOST_LOG(lg::get()) << "RTMPS listening on port " << config::instance()->rtmps_port();
-				}
-				if (!config::instance()->rtmpts_port().empty())
-				{
-					bind_acceptor(resolver, m_rtmpts_acceptor, address, config::instance()->rtmpts_port());
-					do_rtmpts_accept();
-					BOOST_LOG(lg::get()) << "RTMPTS listening on port " << config::instance()->rtmpts_port();
-				}
+				bind_acceptor(resolver, m_rtmps_acceptor, address, config::instance()->rtmps_port());
+				do_rtmps_accept();
+				BOOST_LOG(lg::get()) << "RTMPS listening on port " << config::instance()->rtmps_port();
+			}
+			if (!config::instance()->rtmpts_port().empty())
+			{
+				bind_acceptor(resolver, m_rtmpts_acceptor, address, config::instance()->rtmpts_port());
+				do_rtmpts_accept();
+				BOOST_LOG(lg::get()) << "RTMPTS listening on port " << config::instance()->rtmpts_port();
 			}
 		}
 	}
