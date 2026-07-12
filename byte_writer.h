@@ -203,6 +203,25 @@ namespace fms
 		bool empty() const { return m_buf.size() == m_read_pos; }
 		void clear() { m_buf.clear(); m_read_pos = 0; }
 
+		// clear() keeps the capacity, which is what you want for a buffer that is
+		// reused at a steady size. For one that occasionally holds something huge --
+		// a per-chunk-stream reassembly buffer, say -- that capacity is retained for
+		// as long as the object lives, so a peer can pin memory just by having sent a
+		// large message once. This clears AND hands the storage back when it grew
+		// past `keep_bytes`. Swap-with-empty rather than shrink_to_fit(): the latter
+		// is a non-binding request.
+		void clear_and_shrink(std::size_t keep_bytes)
+		{
+			if (m_buf.capacity() > keep_bytes)
+				std::vector<std::uint8_t, default_init_allocator<std::uint8_t>>().swap(m_buf);
+			else
+				m_buf.clear();
+			m_read_pos = 0;
+		}
+
+		// Allocated storage, for tests/diagnostics (>= footprint()).
+		std::size_t capacity() const { return m_buf.capacity(); }
+
 		// Underlying storage in use (>= size(); the excess is the consumed prefix
 		// not yet reclaimed). For diagnostics/tests -- verifies consume() keeps a
 		// write()+consume()-only buffer bounded rather than growing per round.
