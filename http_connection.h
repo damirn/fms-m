@@ -57,6 +57,9 @@ namespace fms
 		virtual void async_read_request(io_handler h);
 		virtual void async_write_response(io_handler h);
 		// Negotiate the transport (TLS) before any HTTP. Base completes immediately.
+		// Always invoked on this connection's own io_context (start() posts first),
+		// so an override may initiate async ops on m_socket / a layered stream
+		// directly -- see the comment in start().
 		virtual void transport_handshake(handshake_handler h);
 
 		boost::asio::ip::tcp::socket m_socket;
