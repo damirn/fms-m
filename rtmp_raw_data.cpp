@@ -40,7 +40,15 @@ namespace fms
 				std::uint32_t cid;
 				if (!peek_channel_id(r, cid))
 					break;   // partial basic header
-				channel = m_channel_manager->get_channel(cid);
+				// Peer-supplied chunk stream id: bounded find-or-create. A peer that
+				// walks the whole 0..65599 id space would otherwise grow this map
+				// (never evicted) far out of proportion to the bytes it sent.
+				channel = m_channel_manager->open_channel(cid);
+				if (!channel)
+				{
+					m_framing_error = true;
+					break;
+				}
 				m_channel_id = cid;
 				if (!channel->try_deserialize_header(r))
 					break;   // partial header — reader untouched
@@ -129,9 +137,13 @@ namespace fms
 				auto const type = p.message()->type();
 				if (type == rtmp_message::eMessageAbort)
 				{
-					// discard the in-progress reassembly on the referenced chunk stream
+					// Discard the in-progress reassembly on the referenced chunk stream.
+					// find_channel, not get_channel: the id is peer-supplied, and there
+					// is nothing to discard on a stream that was never opened -- so
+					// don't let an Abort conjure channels.
 					auto const abort = std::dynamic_pointer_cast<rtmp_message_abort>(p.message());
-					m_channel_manager->get_channel(abort->chunk_stream_id())->clear_data();
+					if (rtmp_channel_ptr const target = m_channel_manager->find_channel(abort->chunk_stream_id()))
+						target->clear_data();
 				}
 				else if (type != rtmp_message::eMessageChunkSize &&
 					type != rtmp_message::eMessageWindowAcknowledgementSize)

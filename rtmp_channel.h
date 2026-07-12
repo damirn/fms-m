@@ -127,11 +127,20 @@ namespace fms
 			return m_message_len;
 		}
 
+		// Called once a message is fully assembled and dispatched. Hands back the
+		// reassembly storage if this message was a large one: channels are never
+		// evicted and the chunk basic header addresses up to 65599 of them, so
+		// retaining each one's high-water capacity let a peer pin memory in
+		// proportion to every large message it had EVER sent, not to what is in
+		// flight. eKeepBufferBytes is well above a normal message, so steady-state
+		// traffic still reuses its buffer and never reallocates.
 		void clear_data()
 		{
 			m_message_len = 0;
-			m_buffer.clear();
+			m_buffer.clear_and_shrink(eKeepBufferBytes);
 		}
+
+		enum : std::size_t { eKeepBufferBytes = 64u * 1024 };
 
 	protected:
 		std::uint32_t m_id;

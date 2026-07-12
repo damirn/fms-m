@@ -4,6 +4,7 @@
 
 #include "byte_reader.h"
 #include "byte_writer.h"
+#include "channel_manager.h"
 #include "doctest.h"
 #include "rtmp_channel.h"
 #include "rtmp_header.h"
@@ -870,4 +871,83 @@ TEST_CASE("rtmp_protocol serialize: payload_view equals the serialized body (byt
 	std::vector<std::uint8_t> const via_serialize(bw.data(), bw.data() + bw.size());
 	CHECK(via_view == via_serialize);   // direct path is byte-for-byte the serialize path
 	CHECK(via_view == payload);
+}
+
+// ---- channel-map bounding + reassembly-buffer reclaim -----------------------
+// Channels are never evicted and the chunk basic header addresses up to 65599 of
+// them, so both the number of channels and the capacity each one retains are
+// attacker-influenced. See channel_manager::open_channel and
+// rtmp_channel::clear_data.
+
+TEST_CASE("a peer walking the chunk-stream id space is cut off at the cap")
+{
+	parser_harness h;
+
+	// One tiny complete message on each of `cap` distinct chunk streams: all fine,
+	// this is (absurdly generous) legitimate use.
+	for (std::uint32_t cid = 3; cid < 3 + fms::channel_manager::eMaxChannels; ++cid)
+	{
+		chunk_stream b;
+		b.message(cid, 0x08 /* audio */, 1, 0, pattern(2));
+		h.feed(b.bytes);
+		REQUIRE_FALSE(h.framing_error());
+	}
+
+	// One id beyond the cap is refused rather than silently growing the map.
+	chunk_stream over;
+	over.message(3 + fms::channel_manager::eMaxChannels, 0x08, 1, 0, pattern(2));
+	h.feed(over.bytes);
+	CHECK(h.framing_error());
+}
+
+TEST_CASE("an Abort for an unopened chunk stream does not create one")
+{
+	parser_harness h;
+
+	// Abort (type 0x02) naming a chunk stream we have never seen. It must be a
+	// no-op: letting it conjure a channel would hand a peer a second, cheaper way
+	// to populate the map.
+	chunk_stream b;
+	std::vector<std::uint8_t> body(4);
+	std::uint32_t const victim = 40000;
+	body[0] = (victim >> 24) & 0xFF; body[1] = (victim >> 16) & 0xFF;
+	body[2] = (victim >> 8) & 0xFF;  body[3] = victim & 0xFF;
+	b.message(2, 0x02, 0, 0, body);
+	h.feed(b.bytes);
+	CHECK_FALSE(h.framing_error());
+
+	// The cap is still fully available, i.e. the Abort consumed no slot beyond the
+	// chunk stream it arrived on.
+	for (std::uint32_t cid = 3; cid < 3 + fms::channel_manager::eMaxChannels - 1; ++cid)
+	{
+		chunk_stream m;
+		m.message(cid, 0x08, 1, 0, pattern(2));
+		h.feed(m.bytes);
+	}
+	CHECK_FALSE(h.framing_error());
+}
+
+TEST_CASE("a large message does not pin its reassembly buffer afterwards")
+{
+	fms::byte_writer buf;
+	std::vector<std::uint8_t> const big = pattern(2u * 1024 * 1024);
+	buf.write(big.data(), big.size());
+	REQUIRE(buf.capacity() >= big.size());
+
+	// clear() alone would keep every byte of that capacity for the object's life.
+	buf.clear_and_shrink(fms::rtmp_channel::eKeepBufferBytes);
+	CHECK(buf.size() == 0);
+	CHECK(buf.capacity() <= fms::rtmp_channel::eKeepBufferBytes);
+}
+
+TEST_CASE("ordinary traffic keeps its buffer, so steady state never reallocates")
+{
+	fms::byte_writer buf;
+	std::vector<std::uint8_t> const small = pattern(1024);
+	buf.write(small.data(), small.size());
+	std::size_t const cap = buf.capacity();
+
+	buf.clear_and_shrink(fms::rtmp_channel::eKeepBufferBytes);
+	CHECK(buf.size() == 0);
+	CHECK(buf.capacity() == cap);   // retained: below the keep threshold
 }

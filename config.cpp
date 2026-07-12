@@ -104,6 +104,29 @@ namespace fms
 			return false;
 		}
 
+		// TLS is armed only when a cert AND a key are present (tls_enabled()), and the
+		// listeners are armed only for the ports that are set. Every mismatch used to
+		// resolve silently: ask for --rtmps-port with no cert and you got a closed
+		// port, no listener and not one line of output to explain it. Refuse to start
+		// instead -- an operator who asked for TLS should not discover at connect time
+		// that they did not get it.
+		bool const want_tls_port = !m_rtmps_port.empty() || !m_rtmpts_port.empty();
+		if (want_tls_port && !tls_enabled())
+		{
+			std::cout << "--rtmps-port/--rtmpts-port need both --tls-cert and --tls-key"
+			          << (m_tls_cert.empty() ? " (no --tls-cert given)" : "")
+			          << (m_tls_key.empty() ? " (no --tls-key given)" : "")
+			          << std::endl;
+			return false;
+		}
+		if (tls_enabled() && !want_tls_port)
+		{
+			std::cout << "--tls-cert/--tls-key given but neither --rtmps-port nor "
+			             "--rtmpts-port is set, so no TLS listener would be started"
+			          << std::endl;
+			return false;
+		}
+
 		if (!m_flv_folder.empty())
 		{
 			try

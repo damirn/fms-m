@@ -138,7 +138,7 @@ namespace fms
 
 		// VOD (video-on-demand) playback of saved .flv files, when a play target has
 		// no live publisher. Owns its own per-play state; shares the registry's lock.
-		vod_manager m_vod{*this, m_registry};
+		vod_manager m_vod{*this};
 
 		boost::asio::steady_timer m_timer;
 	};
