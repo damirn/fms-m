@@ -344,6 +344,13 @@ if(BUILD_CLIENT)
   target_include_directories(chunk_parser_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
   target_link_libraries(chunk_parser_test PRIVATE fms_media_client ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  # Was built but never registered, so it only ran if someone invoked it by hand.
+  add_test(NAME chunk_parser_test COMMAND chunk_parser_test)
+  if(APPLE)
+    # Links Boost.Log, which wants icu4c@74 at its old keg path (as interop.sh does).
+    set_tests_properties(chunk_parser_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/opt/icu4c@74/lib")
+  endif()
   if(NOT APPLE)
     find_package(Threads REQUIRED)
     target_link_libraries(chunk_parser_test PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
