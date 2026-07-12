@@ -19,7 +19,9 @@ single process scales across all available CPU cores.
 ## Features
 
 - **Live relay** — one publisher fans out to many subscribers with per-client
-  queueing and QoS notifications.
+  queueing and QoS notifications, and a bounded send queue that sheds video
+  rather than growing without limit behind a slow client (see
+  [Slow consumers](#slow-consumers)).
 - **Origin pull** — play `stream@rtmp://origin/app` and, with no local
   publisher, the server bridges the stream in from the remote origin using the
   bundled `fms_helper` relay (see [Stream relay](#stream-relay-origin-pull)).
@@ -161,8 +163,13 @@ A more typical invocation:
 The TLS transports are **opt-in**: they are armed only when a certificate *and*
 private key are supplied and the corresponding port is set. RTMPS wraps the RTMP
 state machine in a TLS stream; RTMPTS runs the RTMPT HTTP tunnel over TLS. Both
-share the one cert/key. A cert that fails to load is logged and the plaintext
-listeners keep running.
+share the one cert/key.
+
+A half-configured TLS setup is a **startup error**, not a silent downgrade — the
+server refuses to run rather than leave you with a closed port and no
+explanation. That covers a TLS port without both `--tls-cert` and `--tls-key`, a
+cert without its key, a cert/key pair with neither TLS port set, and a cert that
+is present but fails to load.
 
 ```sh
 # a throwaway self-signed cert for local testing
@@ -204,10 +211,7 @@ a CA-signed cert in production (clients that verify will reject self-signed).
 | `-A`  | `--admin-data-keep-time <sec>`    | `600`     | How long admin statistics are retained, in seconds.    |
 | `-H`  | `--helper-app <path>`             | *(none)*  | Relay helper spawned for origin-pull play (`fms_helper`). |
 | `-q`  | `--quality <0..10>`               | `6`       | Speex encoder quality.                                 |
-| `-e`  | `--max-audio-frames <n>`          | `2`       | Max audio frames queued per client.                    |
-| `-E`  | `--max-audio-frames-high-latency` | `10`      | Max audio frames queued per client in high-latency mode.|
-| `-n`  | `--notify-threshold <ms>`         | `2000`    | Delay (ms) after which a client is warned/throttled.   |
-| `-r`  | `--terminate-threshold <ms>`      | `3000`    | Delay (ms) after which a lagging client is dropped.    |
+| `-e`  | `--max-queue-bytes <n>`           | `10485760`| Queued outbound bytes per connection before a slow consumer is shed, then dropped (`0` = unbounded). See [Slow consumers](#slow-consumers). |
 
 Options may also be supplied through a config file (`--config-file`) using the
 long option names as keys.
@@ -271,6 +275,40 @@ RTMPE/RTMPT), and vice versa — since all transports share the same application
 
 ---
 
+## Slow consumers
+
+A subscriber that stops reading (or reads slower than the stream) applies TCP
+backpressure, and the frames the publisher keeps producing pile up in that
+connection's send queue. `--max-queue-bytes` (default 10 MB) bounds that queue
+per connection, in three tiers:
+
+| Queued | Behaviour |
+|--------|-----------|
+| ≤ half the limit | normal — nothing happens |
+| over half | shed droppable video down to a quarter, and keep streaming |
+| still over the limit afterwards | nothing left to give — disconnect the client |
+
+Shedding drops inter frames first, then whole GOPs, oldest first: a client that
+is behind wants the freshest content. **Audio, codec sequence headers and all
+control messages are never shed** — audio is a small fraction of the bytes but
+far more noticeable when it gaps, and losing a sequence header makes the stream
+undecodable for the rest of the session. Shed and disconnect decisions are
+logged (rate-limited per connection) and counted into the admin app's dropped
+message stats.
+
+Setting `--max-queue-bytes 0` disables the bound entirely, which lets one stuck
+client grow the server's memory without limit. It exists for testing and A/B
+measurement, not for production.
+
+For reference, Adobe FMS 4.5 bounds the same backlog by bytes (measured at
+~8–10 MB, independent of bitrate) and then simply disconnects, without sending
+anything at RTMP level and without thinning the stream first. This server keeps
+that shape but sheds before it drops, which is gentler and invisible on the
+wire. The measurements behind those numbers are in
+[`docs/slow-consumer.md`](docs/slow-consumer.md).
+
+---
+
 ## Recording
 
 Recording is triggered by the RTMP **publish type**: a client that calls
@@ -329,3 +367,13 @@ next remote-stream play.
 
 The server writes rotating log files to `--log-path` (default: current
 directory). Verbosity is controlled with `--log-level` (higher is more verbose).
+
+---
+
+## Further documentation
+
+| Document | Contents |
+|----------|----------|
+| [`docs/concurrency.md`](docs/concurrency.md) | The one-thread-per-`io_context` contract every connection relies on, and what may touch what from where. Read this before changing anything threading-related. |
+| [`docs/slow-consumer.md`](docs/slow-consumer.md) | What the server does when a subscriber stops reading, what Adobe FMS 4.5 does (measured against a stock 4.5 install), and why they differ. |
+| [`docs/TODO.md`](docs/TODO.md) | Protocol gap analysis against rtmpdump/librtmp and rtmfp-cpp, priority-sorted. |
