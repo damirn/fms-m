@@ -22,16 +22,29 @@ namespace fms
 
 	void http_connection::start()
 	{
-		// Negotiate the transport (TLS for RTMPTS; a no-op for plaintext RTMPT) before
-		// reading any HTTP.
-		transport_handshake([self = shared_from_this()](const boost::system::error_code &ec)
+		// start() runs on the ACCEPTOR's thread, but this connection's socket, timer
+		// and (for RTMPTS) TLS stream all live on its own round-robin io_context --
+		// a different thread whenever --threads > 1. asio io-objects are not
+		// thread-safe, and an ssl::stream is more than a socket: its stream_core owns
+		// two steady_timers bound to that context, which async_handshake touches. So
+		// hop onto our own context BEFORE negotiating anything, exactly as
+		// rtmp_connection::start() does (see the comment there for the failure mode).
+		//
+		// The plaintext override happened to be safe because it posted; the TLS one
+		// called async_handshake inline, which is what this fixes.
+		boost::asio::post(m_socket.get_executor(), [self = shared_from_this()]()
 		{
-			if (ec)
+			// Negotiate the transport (TLS for RTMPTS; nothing for plaintext RTMPT)
+			// before reading any HTTP.
+			self->transport_handshake([self](const boost::system::error_code &ec)
 			{
-				self->close();
-				return;
-			}
-			self->do_read();
+				if (ec)
+				{
+					self->close();
+					return;
+				}
+				self->do_read();
+			});
 		});
 	}
 
@@ -47,8 +60,10 @@ namespace fms
 
 	void http_connection::transport_handshake(handshake_handler h)
 	{
-		// Plaintext RTMPT: nothing to negotiate. Post so completion is always async.
-		boost::asio::post(m_socket.get_executor(), [h = std::move(h)]() { h(boost::system::error_code{}); });
+		// Plaintext RTMPT: nothing to negotiate. start() has already hopped us onto
+		// this connection's own io_context, so completing inline here runs the
+		// continuation on the right thread -- no post needed.
+		h(boost::system::error_code{});
 	}
 
 	void http_connection::do_read()
