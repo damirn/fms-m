@@ -152,8 +152,8 @@ namespace fms
 					{
 						if (m_key_in != nullptr) // encrypted data
 							rc4_crypt(m_key_in, m_buffer.size(), m_buffer.data(), m_buffer.data());
-						parse_data(m_buffer);
-						if (m_framing_error)
+						m_parser.parse(m_buffer);
+						if (m_parser.framing_error())
 						{
 							close();
 							return;
@@ -184,8 +184,8 @@ namespace fms
 				rc4_crypt(m_key_in, bytes_transferred, in, in);
 			}
 			handle_bytes_read(bytes_transferred);
-			parse_data(m_buffer);   // parses and dispatches messages internally
-			if (m_framing_error)
+			m_parser.parse(m_buffer);   // parses and dispatches messages internally
+			if (m_parser.framing_error())
 			{
 				close();
 				return;
@@ -268,7 +268,7 @@ namespace fms
 					break;
 				}
 				++i;
-				rtmp_channel_ptr const channel = m_channel_manager->get_channel(result->channel_id());
+				rtmp_channel_ptr const channel = m_channel_manager.get_channel(result->channel_id());
 				serialize_message(result, channel);
 			}
 			if (i > 0)

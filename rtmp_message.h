@@ -20,6 +20,12 @@ namespace fms
 	// and the application layer would otherwise have to reach into each other for.
 	inline constexpr std::uint32_t eDefaultAckWindow = 2500000;
 
+	// RTMP's default chunk size (bytes) before either peer sends a SetChunkSize.
+	// A protocol constant shared by the inbound parser, the outbound serializer and
+	// the connection's own outgoing-chunk default, so it lives here rather than
+	// being inherited from the parser.
+	inline constexpr std::uint32_t eDefaultChunkSize = 128;
+
 	class rtmp_message
 	{
 	public:
