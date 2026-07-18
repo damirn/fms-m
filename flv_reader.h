@@ -36,6 +36,8 @@ namespace fms
 		void seek(std::uint32_t ms);
 
 	protected:
+		// Big-endian read of n bytes; 0 if the stream ran out mid-value.
+		std::uint32_t read_be(std::uint8_t n);
 		std::uint32_t read_uint32_3();
 		std::uint32_t read_uint32();
 
