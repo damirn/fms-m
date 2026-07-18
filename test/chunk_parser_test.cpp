@@ -1,4 +1,4 @@
-// Characterization tests for the RTMP chunk parser (rtmp_raw_data::parse_data):
+// Characterization tests for the RTMP chunk parser (rtmp_parser::parse):
 // bytes in, messages out. The harness feeds a std::vector<uint8_t> (optionally in
 // fragments, to exercise the partial-message path) and records the emitted messages.
 
@@ -10,7 +10,7 @@
 #include "rtmp_header.h"
 #include "rtmp_message.h"
 #include "rtmp_protocol.h"
-#include "rtmp_raw_data.h"
+#include "rtmp_parser.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -93,15 +93,20 @@ namespace
 		std::vector<std::uint8_t> payload;
 	};
 
-	struct parser_harness : rtmp_raw_data
+	// Recording sink that owns a real rtmp_parser -- now that the parser is a
+	// component, the harness composes it (with its own channel_manager) and records
+	// what it emits, instead of subclassing it.
+	struct parser_harness : rtmp_message_sink
 	{
 		std::vector<recorded> messages;
 		std::vector<int> internals;
 		fms::byte_writer buf;
+		channel_manager channels;
+		rtmp_parser parser{channels, *this};
 
-		void set_chunk_size(std::uint32_t n) { m_chunk_size = n; }
-		bool framing_error() const { return m_framing_error; }
-		static constexpr std::uint32_t max_message_length() { return eMaxMessageLength; }
+		void set_chunk_size(std::uint32_t n) { parser.set_chunk_size(n); }
+		bool framing_error() const { return parser.framing_error(); }
+		static constexpr std::uint32_t max_message_length() { return rtmp_parser::eMaxMessageLength; }
 
 		// bytes in; feed in `frag`-sized pieces (default: all at once)
 		boost::tribool feed(const std::vector<std::uint8_t> &bytes, std::size_t frag = SIZE_MAX)
@@ -114,7 +119,7 @@ namespace
 				REQUIRE(mb.size() >= n);
 				std::memcpy(mb.data(), bytes.data() + i, n);
 				buf.update(n);
-				result = parse_data(buf);
+				result = parser.parse(buf);
 			}
 			return result;
 		}
@@ -136,7 +141,7 @@ namespace
 		void handle_internal_message(rtmp_message_ptr msg) override
 		{
 			if (msg->type() == rtmp_message::eMessageChunkSize)
-				m_chunk_size = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg)->chunk_size();
+				parser.set_chunk_size(std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg)->chunk_size());
 			internals.push_back(msg->type());
 		}
 	};

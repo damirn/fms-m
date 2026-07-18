@@ -20,7 +20,7 @@
 using namespace fms;
 using clk = std::chrono::steady_clock;
 
-// Model rtmp_raw_data::parse_data: each "network read" reserves via write_buffer,
+// Model rtmp_parser::parse: each "network read" reserves via write_buffer,
 // fills it, commits with update(); then parse as many fixed-size records as are
 // available and consume() the parsed prefix (memmoving the leftover tail).
 static void run(const char *label, std::size_t total, std::size_t read_sz, std::size_t msg_sz)

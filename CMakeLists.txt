@@ -136,7 +136,7 @@ set(sourceFiles
   rtmp_header.cpp
   rtmp_message.cpp
   rtmp_protocol.cpp
-  rtmp_raw_data.cpp
+  rtmp_parser.cpp
   rtmp_so_message.cpp
   rtmpt_manager.cpp
   rtmpt_session.cpp
@@ -295,7 +295,7 @@ option(BUILD_CLIENT "Build the RTMP client tool" ON)
 if(BUILD_CLIENT)
   add_library(fms_media_client STATIC
     amf0.cpp amf3.cpp crypto.cpp flv_reader.cpp flv_writer.cpp rtmp_handshake.cpp rtmp_header.cpp
-    rtmp_message.cpp rtmp_protocol.cpp rtmp_raw_data.cpp rtmp_so_message.cpp util.cpp)
+    rtmp_message.cpp rtmp_protocol.cpp rtmp_parser.cpp rtmp_so_message.cpp util.cpp)
   target_include_directories(fms_media_client PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp)
   target_precompile_headers(fms_media_client PRIVATE pch.h)
@@ -355,7 +355,7 @@ if(BUILD_CLIENT)
   target_compile_definitions(bench_rtmp_throughput PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
   add_dependencies(bench_rtmp_throughput ${PROJECT_NAME})
 
-  # Characterization tests for the RTMP chunk parser (rtmp_raw_data::parse_data),
+  # Characterization tests for the RTMP chunk parser (rtmp_parser::parse),
   # linked against the shared media lib. Bytes in, messages out.
   add_executable(chunk_parser_test test/chunk_parser_test.cpp test/test_main.cpp)
   target_include_directories(chunk_parser_test PRIVATE

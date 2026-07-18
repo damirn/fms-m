@@ -63,7 +63,7 @@ namespace fms
 
 	void rtmpt_session::serialize_message(const rtmp_message_ptr& msg, byte_writer &buffer)
 	{
-		rtmp_channel_ptr const channel = m_channel_manager->get_channel(msg->channel_id());
+		rtmp_channel_ptr const channel = m_channel_manager.get_channel(msg->channel_id());
 
 		if (m_app != nullptr)
 			m_app->update_stats(false, false, 1);
@@ -115,11 +115,11 @@ namespace fms
 	{
 		if (m_sstate == eCSReadCommands)
 		{
-			// A prior oversized message (rtmp_raw_data's message-length cap) latched
+			// A prior oversized message (rtmp_parser's message-length cap) latched
 			// m_framing_error. Stop buffering/parsing so an abusive client can't
 			// drive m_remaining_data to hold unbounded bytes; the session is reaped
 			// by the manager's not-alive timeout.
-			if (m_framing_error)
+			if (m_parser.framing_error())
 			{
 				m_remaining_data.clear();
 				return false;
@@ -134,16 +134,16 @@ namespace fms
 				// byte_writer::consume() self-compacts, so the unparsed tail stays
 				// and the consumed prefix is reclaimed without a separate compact().
 				m_remaining_data.write(input.data(), input.size());
-				res = parse_data(m_remaining_data);
+				res = m_parser.parse(m_remaining_data);
 			}
 			else
 			{
-				res = parse_data(input);
+				res = m_parser.parse(input);
 				if (boost::indeterminate(res))
 					m_remaining_data.write(input.data(), input.size());   // save the leftover
 			}
 
-			if (m_framing_error)   // just tripped -> drop the offending buffer
+			if (m_parser.framing_error())   // just tripped -> drop the offending buffer
 			{
 				m_remaining_data.clear();
 				return false;

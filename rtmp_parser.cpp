@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "rtmp_raw_data.h"
+#include "rtmp_parser.h"
 #include "byte_writer.h"
 #include "channel_manager.h"
 #include "rtmp_channel.h"
@@ -8,16 +8,7 @@
 
 namespace fms
 {
-	rtmp_raw_data::rtmp_raw_data()
-		: m_channel_manager(new channel_manager)
-	{}
-
-	/**
-	* parses binary data received from the network.
-	* @param buffer - input buffer
-	* @returns true on success, false on failure or indeterminate if more data needed
-	*/
-	boost::tribool rtmp_raw_data::parse_data(byte_writer &buffer)
+	boost::tribool rtmp_parser::parse(byte_writer &buffer)
 	{
 		// Resumable, non-throwing framing. We scan the readable bytes through a
 		// byte_reader, tracking `committed` = the offset up to which everything is
@@ -43,7 +34,7 @@ namespace fms
 				// Peer-supplied chunk stream id: bounded find-or-create. A peer that
 				// walks the whole 0..65599 id space would otherwise grow this map
 				// (never evicted) far out of proportion to the bytes it sent.
-				channel = m_channel_manager->open_channel(cid);
+				channel = m_channels.open_channel(cid);
 				if (!channel)
 				{
 					m_framing_error = true;
@@ -56,7 +47,7 @@ namespace fms
 				committed = r.position();
 			}
 			else
-				channel = m_channel_manager->get_channel(m_channel_id);
+				channel = m_channels.get_channel(m_channel_id);
 
 			// A client SetChunkSize below 1 is invalid (RTMP spec). Left unchecked it
 			// makes the per-chunk read length degenerate to 0, so the stream desyncs
@@ -100,7 +91,7 @@ namespace fms
 			{
 				channel->prev_message_complete() = true;
 				seen_complete_msg = true;
-				handle_message(channel);
+				dispatch(channel);
 			}
 			else
 				channel->prev_message_complete() = false;
@@ -113,14 +104,7 @@ namespace fms
 		return seen_complete_msg ? boost::tribool(true) : boost::tribool(false);
 	}
 
-	/**
-	* for each RTMP channel parse and handle the message
-	* @param channel - received RTMP channel
-	* @returns void
-	* @note - WindowAcknowledgementSize message is special case since it's considered
-	* internal and application specific.
-	*/
-	void rtmp_raw_data::handle_message(const rtmp_channel_ptr& channel)
+	void rtmp_parser::dispatch(const rtmp_channel_ptr &channel)
 	{
 		rtmp_protocol p;
 		// The message body is a *complete* assembled buffer here; deserialize's
@@ -142,17 +126,17 @@ namespace fms
 					// is nothing to discard on a stream that was never opened -- so
 					// don't let an Abort conjure channels.
 					auto const abort = std::dynamic_pointer_cast<rtmp_message_abort>(p.message());
-					if (rtmp_channel_ptr const target = m_channel_manager->find_channel(abort->chunk_stream_id()))
+					if (rtmp_channel_ptr const target = m_channels.find_channel(abort->chunk_stream_id()))
 						target->clear_data();
 				}
 				else if (type != rtmp_message::eMessageChunkSize &&
 					type != rtmp_message::eMessageWindowAcknowledgementSize)
-					handle_message(channel, p.message());
+					m_sink.handle_message(channel, p.message());
 				else
 				{
-					handle_internal_message(p.message());
+					m_sink.handle_internal_message(p.message());
 					if (type == rtmp_message::eMessageWindowAcknowledgementSize)
-						handle_message(channel, p.message());
+						m_sink.handle_message(channel, p.message());
 				}
 			}
 		}
@@ -166,7 +150,7 @@ namespace fms
 	// Peek the channel id from the chunk basic header without consuming (the reader
 	// is taken by value). Returns false if the basic header isn't fully present --
 	// non-throwing, unlike the pre-resumable-parser version this replaced.
-	bool rtmp_raw_data::peek_channel_id(byte_reader r, std::uint32_t &channel)
+	bool rtmp_parser::peek_channel_id(byte_reader r, std::uint32_t &channel)
 	{
 		std::uint8_t c;
 		if (!r.try_u8(c))

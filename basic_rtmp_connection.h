@@ -1,8 +1,9 @@
 #pragma once
 
+#include "channel_manager.h"
 #include "client_session.h"
 #include "rtmp_message.h"
-#include "rtmp_raw_data.h"
+#include "rtmp_parser.h"
 
 #include <array>
 #include <chrono>
@@ -20,7 +21,10 @@ namespace fms
 	class rtmp_message;
 	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
 
-	class basic_rtmp_connection : public client_session, public rtmp_raw_data, public std::enable_shared_from_this<basic_rtmp_connection>
+	// Composes an rtmp_parser (was: inherited rtmp_raw_data) and feeds it as its
+	// rtmp_message_sink. The parser holds the framing state; this holds identity
+	// (client_session), lifetime (enable_shared_from_this) and the RTMP handshake.
+	class basic_rtmp_connection : public client_session, public rtmp_message_sink, public std::enable_shared_from_this<basic_rtmp_connection>
 	{
 	public:
 		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, rtmp_app_manager *);
@@ -54,10 +58,10 @@ namespace fms
 		// (RTMPT) transport, which runs no timers, leaves it a no-op.
 		virtual void on_handshake_complete() {}
 
-		// Handle decoded message
+		// rtmp_message_sink: what m_parser delivers. handle_message dispatches a
+		// decoded app message; handle_internal_message applies SetChunkSize to the
+		// parser and WindowAck to our own ack accounting.
 		void handle_message(rtmp_channel_ptr, rtmp_message_ptr) override;
-
-		// Handle internal messages
 		void handle_internal_message(rtmp_message_ptr) override;
 
 		// Handle application's result
@@ -86,6 +90,12 @@ namespace fms
 		// does not, which is what app_host exists to keep true.
 		rtmp_app_manager *m_manager;
 
+		// Inbound RTMP chunk parser, fed by the transport read loop (parse), delivering
+		// to us as its sink. Declared AFTER m_channel_manager so the reference the
+		// parser holds is valid; both outlive it (all members of this connection).
+		channel_manager m_channel_manager;
+		rtmp_parser m_parser{m_channel_manager, *this};
+
 		enum { eHandShakeHeaderSize = 8, eHandShakeSize = 1536 };
 		enum { ePlainMagic = 0x03, eCryptoMagic = 0x06 };
 		enum : std::uint32_t { eAckSize = eDefaultAckWindow };
@@ -97,7 +107,7 @@ namespace fms
 		bool m_write_in_progress{false};
 
 		std::int32_t m_current_channel{-1};
-		std::uint16_t m_outgoing_chunk_size{eChunkSize};
+		std::uint16_t m_outgoing_chunk_size{eDefaultChunkSize};
 
 		std::array<std::uint8_t, eHandShakeSize + 1> m_tmp_buff;
 

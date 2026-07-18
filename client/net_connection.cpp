@@ -270,7 +270,7 @@ namespace fms::rtmp_client
 				return;
 			}
 
-			parse_data(*m_input_buffer);
+			m_parser.parse(*m_input_buffer);
 			read_data();
 		}
 		else
@@ -310,7 +310,7 @@ namespace fms::rtmp_client
 				rtmp_message_ptr const msg = m_queue.front();
 				m_queue.pop();
 				if (msg->type() != rtmp_message::eMessageClose)
-					serialize_message(msg, m_channel_manager->get_channel(msg->channel_id()));
+					serialize_message(msg, m_channel_manager.get_channel(msg->channel_id()));
 				else
 				{
 					close();
@@ -440,7 +440,7 @@ namespace fms::rtmp_client
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
 			rtmp_message_chunk_size_ptr const cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg);
-			m_chunk_size = cs->chunk_size();
+			m_parser.set_chunk_size(cs->chunk_size());
 		}
 		else if (msg->type() == rtmp_message::eMessageWindowAcknowledgementSize)
 		{
@@ -458,7 +458,7 @@ namespace fms::rtmp_client
 		}
 		if (msg->type() != rtmp_message::eMessageClose)
 		{
-			serialize_message(msg, m_channel_manager->get_channel(msg->channel_id()));
+			serialize_message(msg, m_channel_manager.get_channel(msg->channel_id()));
 			write_data();
 		}
 		else
@@ -591,7 +591,7 @@ namespace fms::rtmp_client
 
 	void net_connection::handle_aggregate(const rtmp_message_aggregate_ptr& agg)
 	{
-		rtmp_channel_ptr const c = m_channel_manager->get_channel(agg->channel_id());
+		rtmp_channel_ptr const c = m_channel_manager.get_channel(agg->channel_id());
 		for (auto & i : agg->get_messages())
 			handle_message(c, i);
 	}

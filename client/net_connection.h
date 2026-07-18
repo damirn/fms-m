@@ -1,8 +1,9 @@
 #pragma once
 
+#include "channel_manager.h"
 #include "net_client.h"
 #include "rtmp_message.h"
-#include "rtmp_raw_data.h"
+#include "rtmp_parser.h"
 
 #include <list>
 #include <map>
@@ -45,7 +46,8 @@ namespace fms::rtmp_client
 
 	using invoke_handler_t = std::function<void (rtmp_message_invoke_ptr)>;
 
-	class net_connection : public rtmp_raw_data, boost::noncopyable, public std::enable_shared_from_this<net_connection>
+	// Composes an rtmp_parser (was: inherited rtmp_raw_data) and is its message sink.
+	class net_connection : public rtmp_message_sink, boost::noncopyable, public std::enable_shared_from_this<net_connection>
 	{
 	public:
 		net_connection(boost::asio::io_context &, net_connection_event_handler &, bool);
@@ -185,6 +187,13 @@ namespace fms::rtmp_client
 
 		// Invoke handlers
 		std::map<std::string, invoke_handler_t> m_invoke_handlers;
+
+		// Inbound RTMP chunk parser, fed by handle_read_data, delivering to us as its
+		// sink. m_channel_manager is shared with the serialize path (per-channel
+		// header state, both directions) and is declared first so the parser's
+		// reference to it is valid.
+		channel_manager m_channel_manager;
+		rtmp_parser m_parser{m_channel_manager, *this};
 
 		// I/O buffers
 		byte_writer *m_input_buffer;
