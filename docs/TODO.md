@@ -115,10 +115,11 @@ note. What remains at P1 is resource safety, below.)*
   empties, so nothing is ever reclaimed. Fix: `remove_connection(conn_id)` called
   from `rtmp_application::delete_connection`, dropping any object whose client set
   empties — i.e. FMS's non-persistent semantics, which is what the existing
-  release path already implements per object. Two related gaps, both optional:
-  we have **no cap** on the object count (FMS caps at 50000), and our namespace is
-  per-**application** where FMS's is per-app-**instance**, so two instances of the
-  same app share objects here and would not on FMS.
+  release path already implements per object. One related gap, optional: we have
+  **no cap** on the object count (FMS caps at 50000 per vhost).
+
+  Note the instance question below — because we do not scope by app instance, our
+  objects are per-application where FMS's are per-instance.
 - **Origin-pull helper spawning is unbounded and runs under the media lock.**
   `spawn_helper` is called from `handle_invoke_play` while the registry's EXCLUSIVE
   lock is held, so a `fork()` (page-table copy of the whole server) stalls every
@@ -182,6 +183,21 @@ note. What remains at P1 is resource safety, below.)*
   OpenSSL-3 padding bug, not ours — no fms-m change needed.
 
 ### Media / server
+- **App instances are parsed but not honoured.** `connect_router::match_app`
+  already splits `media/roomA` into app + instance and stores it on the session
+  (`client_session::m_app_instance`), and it is threaded through
+  `delete_connection(conn_id, app_instance)` — but the base implementation does not
+  even name that parameter, and nothing on the media path scopes by it:
+  `add_broadcaster`/`broadcaster_for_name` use the bare stream name, and
+  `so_manager` is instance-agnostic. So `rtmp://host/media/roomA/x` and
+  `rtmp://host/media/roomB/x` are the same stream here and are different streams on
+  FMS, where an instance is the unit of isolation *and* of lifetime (it goes idle
+  after its last client, then unloads — see the shared-object note in P1).
+  The sole exception is `video_call_application`, which does scope by instance
+  (`m_instance_to_client`, one mixer and client set per room) — so the plumbing is
+  proven, it just is not applied to streams or shared objects. Either honour the
+  instance in the stream/SO namespaces or stop accepting it silently.
+  (`connect_router.cpp:31-36`, `rtmp_application.cpp:105`, `media_application.cpp:290,374`)
 - **HLS / DASH / fMP4 output.** FLV recording is the only output container.
 - **Native relay** (push-to-remote / pull-from-origin). "Pull" is an external
   `execvp`'d helper today; no edge/origin clustering.
