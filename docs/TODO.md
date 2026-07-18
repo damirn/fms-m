@@ -211,44 +211,30 @@ note. What remains here is correctness and resource safety.)*
 
 Priority order within this block; the first item is the one the others hang off.
 
-1. **Finish the interface extraction — cut the app layer free of the transport
-   layer.** `rtmp_application.h` includes `rtmp_app_manager.h`, which includes
-   `rtmp_connection.h` + `http_connection.h` + `rtmpt_session.h`, so every
-   application TU depends on the concrete transports. The tree contains its own
-   controlled experiment: of the extracted collaborators, the ones taking only an
-   interface parse **0** Beast headers, and the one still holding a concrete
-   `rtmp_app_manager *` parses **172** —
-
-   | collaborator | takes | Beast headers |
-   |---|---|---|
-   | `av_delivery`, `vod_manager` | `media_host &` | 0 |
-   | `qos_reporter` | `media_host &` **+ `rtmp_app_manager *`** | 172 |
-   | `media_application` | `rtmp_app_manager *` | 172 |
-
-   Same refactor, one variable different. This is not only compile time: it is why
-   the application tier has no unit tests. Testing `rtmp_application` directly pulls
-   in Boost.Log *and* a `dynamic_cast` to the RTMFP `session` through
-   `handle_invoke_set_peer_info`, which is what forced `result_handler_registry`
-   out into its own header rather than being tested in place. *Done when:*
-   `qos_reporter` and `media_application` reach the manager through a narrow
-   interface (extend `media_host`, or a sibling for the stats/netstream calls), no
-   application TU includes a transport header, and an `rtmp_application`-level test
-   links without the transport stack.
-2. **Collapse the duplicated transport seam.** `io_handler`, `handshake_handler`
+**Finish the interface extraction — DONE** (`app_host`). Applications now hold
+   an `app_host *` (connection lookup/lifecycle, netstream bookkeeping, admin
+   introspection, io_context pool), implemented by `rtmp_app_manager`; no
+   app-layer TU includes a transport header (172 Boost.Beast headers → 0), and
+   `test/app_host_test.cpp` drives `rtmp_application` through a fake host, linking
+   without the transport stack. Fixed a latent remote null-deref found on the way:
+   `setPeerInfo` downcast every connection to the RTMFP `session` and dereferenced
+   the result, which is null for any RTMP client — now a virtual on
+   `client_session`. Remaining renumbered below.
+1. **Collapse the duplicated transport seam.** `io_handler`, `handshake_handler`
    and `transport_handshake` are declared verbatim in both `rtmp_connection.h:50-57`
    and `http_connection.h:54-63`. The pattern is good; it is copy-pasted rather than
    shared, and the two copies had silently diverged over whether `start()` posts
    onto the connection's own context — which is exactly where the RTMPTS
    cross-thread handshake bug lived. One mixin, two users.
-3. **`rtmp_application` is a god base class** (~48 declarations). Every app inherits
+2. **`rtmp_application` is a god base class** (~48 declarations). Every app inherits
    bandwidth-check, shared objects, result handlers, the async queue, the delay map
    and stats whether it uses them or not — `admin_application` needs none of the
    media machinery. Composition, not inheritance; the "invoke string-ladder" item
    below is a symptom of the same thing.
-4. **`basic_rtmp_connection` mixes three axes by inheritance** —
+3. **`basic_rtmp_connection` mixes three axes by inheritance** —
    `client_session` (identity) + `rtmp_raw_data` (chunk parsing) +
    `enable_shared_from_this` (lifetime) in one type.
-5. **RTMFP is the risk concentration**: a second full protocol stack with its own
+4. **RTMFP is the risk concentration**: a second full protocol stack with its own
    lock-free model, reaching into `rtmp_app_manager` directly, and no tests at any
    level. Ties to the testing item above and the RTMFP seam item below.
 
