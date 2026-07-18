@@ -118,6 +118,11 @@ namespace fms
 		// stranded its handler for the lifetime of the process -- and checkBandwidth
 		// is client-invokable, so any peer could drive that just by connecting.
 		m_result_handlers.erase_connection(conn_id);
+
+		// Shared objects this connection was using. Same story: without it, only an
+		// explicit Release ever removed a client, so a disconnect stranded the object
+		// and everything stored on it. (so_manager takes its own lock; we hold none.)
+		m_so_manager->remove_connection(conn_id);
 	}
 
 	std::uint32_t rtmp_application::enqueue_async_message(std::uint32_t connection_id, const rtmp_message_ptr& msg, bool urgent /* = false */)

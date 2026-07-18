@@ -244,3 +244,85 @@ TEST_CASE("SharedObject: an over-long SendMessage length is rejected before allo
 	SO so;
 	CHECK_THROWS_AS(so.deserialize(r), buffer_eof_exception);   // rejected, no giant alloc
 }
+
+// ---- disconnect teardown ----------------------------------------------------
+// Before remove_connection existed, the only way out of an object's client set
+// was the client explicitly sending a Release event, so a peer that used an
+// object and then disconnected left its id behind for good -- the set never
+// emptied, the object and its values were never reclaimed, and the fan-out kept
+// iterating dead ids. Object names are client-chosen, so connect / touch a fresh
+// name / disconnect / repeat grew the table without limit.
+
+TEST_CASE("disconnect drops the client and reclaims an object nobody is left using")
+{
+	sink k;
+	so_manager sm(k.fn());
+	do_use(sm, "room", 1);
+	REQUIRE(sm.size() == 1);
+
+	sm.remove_connection(1);
+	CHECK(sm.size() == 0);
+}
+
+TEST_CASE("disconnect keeps an object that other clients are still using")
+{
+	sink k;
+	so_manager sm(k.fn());
+	do_use(sm, "room", 1);
+	do_use(sm, "room", 2);
+	REQUIRE(sm.size() == 1);
+
+	sm.remove_connection(1);
+	CHECK(sm.size() == 1);   // client 2 is still in it
+
+	// ...and the departed client no longer receives fan-out.
+	k.recs.clear();
+	auto s = make_so("room");
+	s->add_event(change_ev("k", "v"));
+	rtmp_message_ptr r;
+	sm.handle_so(s, 2, r);
+	CHECK(k.clients().empty());   // only client 2 is a member, and it is the sender
+
+	sm.remove_connection(2);
+	CHECK(sm.size() == 0);
+}
+
+TEST_CASE("disconnect clears the client from every object it used")
+{
+	sink k;
+	so_manager sm(k.fn());
+	for (int i = 0; i < 25; ++i)
+		do_use(sm, "obj" + std::to_string(i), 7);
+	REQUIRE(sm.size() == 25);
+
+	sm.remove_connection(7);
+	CHECK(sm.size() == 0);
+}
+
+TEST_CASE("a connect/use/disconnect storm leaves nothing behind")
+{
+	sink k;
+	so_manager sm(k.fn());
+	// The pre-fix leak, with client-chosen names so each round added a fresh entry.
+	for (std::uint32_t c = 1; c <= 300; ++c)
+	{
+		do_use(sm, "obj" + std::to_string(c), c);
+		auto s = make_so("obj" + std::to_string(c));
+		s->add_event(change_ev("payload", std::string(256, 'x')));
+		rtmp_message_ptr r;
+		sm.handle_so(s, c, r);
+		sm.remove_connection(c);
+	}
+	CHECK(sm.size() == 0);
+}
+
+TEST_CASE("removing an unknown connection is a no-op")
+{
+	sink k;
+	so_manager sm(k.fn());
+	do_use(sm, "room", 1);
+	sm.remove_connection(99);
+	CHECK(sm.size() == 1);
+	sm.remove_connection(99);
+	CHECK(sm.size() == 1);
+}
