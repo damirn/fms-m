@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rtmp_connection.h"
+#include "tls_stream.h"
 
 #include <memory>
 
@@ -25,9 +26,8 @@ namespace fms
 		void async_write_transport(const boost::asio::const_buffer &buf, io_handler h) override;
 
 	private:
-		// Keep the shared context alive for this connection's lifetime; the stream
-		// layers over the base m_socket by reference (its fd is adopted post-ctor).
-		std::shared_ptr<boost::asio::ssl::context> m_ctx;
-		boost::asio::ssl::stream<boost::asio::ip::tcp::socket &> m_ssl;
+		// Owns the TLS context + the ssl::stream layered over the base m_socket
+		// (adopted before start()); the shared TLS wiring lives in tls_stream.
+		tls_stream m_tls;
 	};
 }

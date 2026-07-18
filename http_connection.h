@@ -1,7 +1,8 @@
 #pragma once
 
+#include "transport_seam.h"
+
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -22,7 +23,7 @@ namespace fms
 	// target as "/<verb>[/<cid>/<seq>]" (verbs: fcs, open, send, idle, close). One
 	// connection per socket, kept alive across requests, on its own single-threaded
 	// io_context (like rtmp_connection).
-	class http_connection : public std::enable_shared_from_this<http_connection>, boost::noncopyable
+	class http_connection : public std::enable_shared_from_this<http_connection>, public transport_seam, boost::noncopyable
 	{
 	public:
 		http_connection(std::uint32_t, boost::asio::io_context &, rtmp_app_manager *, rtmpt_manager *);
@@ -50,17 +51,11 @@ namespace fms
 
 		// Transport seam -- virtual so an RTMPTS subclass can route the same HTTP
 		// read/write through a TLS stream. Base implementations are plaintext, over
-		// m_socket. The handler is a std::function so it can cross the virtual call.
-		using io_handler = std::function<void(const boost::system::error_code &, std::size_t)>;
-		using handshake_handler = std::function<void(const boost::system::error_code &)>;
-
+		// m_socket. io_handler / handshake_handler and the plaintext
+		// transport_handshake come from transport_seam (shared with rtmp_connection);
+		// only the HTTP-framed read/write ops are declared here.
 		virtual void async_read_request(io_handler h);
 		virtual void async_write_response(io_handler h);
-		// Negotiate the transport (TLS) before any HTTP. Base completes immediately.
-		// Always invoked on this connection's own io_context (start() posts first),
-		// so an override may initiate async ops on m_socket / a layered stream
-		// directly -- see the comment in start().
-		virtual void transport_handshake(handshake_handler h);
 
 		boost::asio::ip::tcp::socket m_socket;
 

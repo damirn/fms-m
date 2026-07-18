@@ -123,13 +123,6 @@ namespace fms
 		boost::asio::async_write(m_socket, buf, std::move(h));
 	}
 
-	void rtmp_connection::transport_handshake(handshake_handler h)
-	{
-		// Plaintext transport: nothing to negotiate. Post so the caller always sees
-		// asynchronous completion (matching the TLS path).
-		boost::asio::post(m_io_context, [h = std::move(h)]() { h(boost::system::error_code{}); });
-	}
-
 	void rtmp_connection::handle_hand_shake(const boost::system::error_code &e, std::size_t bytes_transferred)
 	{
 		if (!e)
