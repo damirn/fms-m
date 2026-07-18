@@ -77,49 +77,26 @@ Priority-sorted. Subsystem tag in parentheses. Updated 2026-08-01.
 > The first three were unbounded growth an unauthenticated peer could drive. This
 > also retired four inert config options in favour of `--max-queue-bytes` and
 > registered `chunk_parser_test` with ctest, which it never was.
+>
+> Second review round: **shared objects are released on disconnect**
+> (`so_manager::remove_connection`) -- previously only an explicit Release event
+> ever removed a client, so using an object and disconnecting stranded it and
+> everything stored on it, unbounded and client-driven; and **flv_reader** no
+> longer composes tag lengths from a byte `istream::read` leaves untouched on a
+> short read (truncated recordings are an ordinary case, and VOD serves them).
 
 ---
 
-*(The transport P1 is empty — RTMPS + RTMPTS both landed; see the recently-landed
-note. What remains at P1 is resource safety, below.)*
 ## P1 — correctness / resource safety
+
+*(The transport P1 is empty — RTMPS + RTMPTS both landed; see the recently-landed
+note. What remains here is correctness and resource safety.)*
 
 - **`std::atomic_load`/`atomic_store` on `shared_ptr` are REMOVED in C++26.** Used
   for the avc/aac config slots on the fan-out path. Deprecated in C++20, and we
   already build at `-std=c++23`, so this is a dated build break rather than a
   style point. Swap to `std::atomic<std::shared_ptr<T>>`.
   (`av_delivery.cpp:32,139,140,242,349`, `stream_registry.h:70-75`)
-- **Shared objects are never released on disconnect.** `so_manager` has no
-  per-connection teardown at all — its only entry point is `handle_so`, and an
-  entry is dropped only when a client explicitly sends a *release* event for that
-  object. A client that uses N shared objects and then disconnects leaves its id
-  in each `so_data::m_clients` forever, so the object (and every property value it
-  set) is never reclaimed and the fan-out loops keep iterating dead ids. Same
-  defect class as the result-handler table, and equally client-driven: connect,
-  touch a fresh object name, disconnect, repeat. (`so_manager.cpp:95-108`)
-
-  *How FMS scopes them* (from the shipped 4.5 `Application.xml` / `Vhost.xml`):
-  a shared object is **not** tied to one RTMP session — outliving its creator is
-  the point of the feature — and it is **not** unconditionally persistent either.
-  It is scoped to the **application instance**, which "only goes idle after the
-  last client disconnects" and is then unloaded after `MaxAppIdleTime` (1200 s),
-  with `AppInstanceGC` (1 min) sweeping "SharedObjects, Streams and Script
-  engine". On top of that a client may request **persistence**
-  (`SharedObject.getRemote(name, uri, true)`), which commits the object to
-  `StorageDir` (`AutoCommit` true by default) so it survives instance unload and
-  server restart. FMS also **bounds** them: `MaxSharedObjects` 50000 per vhost,
-  plus `MaxProperties` / `MaxPropertySize` per object.
-
-  So the leak is a bug under every one of those models — the defect is not that we
-  keep an object alive after its creator leaves, it is that the client set never
-  empties, so nothing is ever reclaimed. Fix: `remove_connection(conn_id)` called
-  from `rtmp_application::delete_connection`, dropping any object whose client set
-  empties — i.e. FMS's non-persistent semantics, which is what the existing
-  release path already implements per object. One related gap, optional: we have
-  **no cap** on the object count (FMS caps at 50000 per vhost).
-
-  Note the instance question below — because we do not scope by app instance, our
-  objects are per-application where FMS's are per-instance.
 - **Origin-pull helper spawning is unbounded and runs under the media lock.**
   `spawn_helper` is called from `handle_invoke_play` while the registry's EXCLUSIVE
   lock is held, so a `fork()` (page-table copy of the whole server) stalls every
@@ -183,6 +160,16 @@ note. What remains at P1 is resource safety, below.)*
   OpenSSL-3 padding bug, not ours — no fms-m change needed.
 
 ### Media / server
+- **Shared-object scope + persistence.** Reclaiming an object when its last client
+  goes (fixed in 2.0.0) matches FMS's NON-persistent objects. Two FMS behaviours we
+  still do not have, both optional: a client may request **persistence**
+  (`SharedObject.getRemote(name, uri, true)`), committing the object to `StorageDir`
+  (`AutoCommit` on by default) so it survives instance unload and server restart;
+  and FMS **bounds** them -- `MaxSharedObjects` 50000 per vhost, plus
+  `MaxProperties`/`MaxPropertySize` per object. We cap nothing. On FMS the app
+  instance is the unit of both isolation and lifetime for these (it goes idle after
+  its last client, then unloads, with `AppInstanceGC` sweeping SharedObjects) --
+  which ties to the item below.
 - **App instances are parsed but not honoured.** `connect_router::match_app`
   already splits `media/roomA` into app + instance and stores it on the session
   (`client_session::m_app_instance`), and it is threaded through
