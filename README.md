@@ -12,7 +12,7 @@ single process scales across all available CPU cores.
 
 - **Language / build:** C++23, CMake, Boost, OpenSSL 3, Speex
 - **Platforms:** macOS (Apple clang) and Linux (GCC/clang) — POSIX only
-- **Version:** 0.28.1
+- **Version:** 2.0.0
 
 ---
 

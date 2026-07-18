@@ -8,7 +8,7 @@
 
 namespace fms
 {
-	static const char version[] = "0.28.1";
+	static const char version[] = "2.0.0";
 
 	config *config::m_instance = nullptr;
 
