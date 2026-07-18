@@ -98,11 +98,12 @@ namespace fms
 		// the registry enforces that at compile time). The owning app's VOD and
 		// call-instance state ride in the same critical-section domain (same lock).
 		//
-		// LOCK ORDER: this lock is always acquired BEFORE rtmp_app_manager::m_mutex
-		// (the data path and handle_timer take it, then call into the manager's
-		// update_netstream_stats/get_stream_stats/get_connection). Never the reverse --
-		// no manager method may call back into the app while holding
-		// rtmp_app_manager::m_mutex (delete_connection unlocks first, by design).
+		// LOCK ORDER: this lock is the outermost of the cross-connection locks -- the
+		// data path and handle_timer take it, then call into the manager
+		// (update_netstream_stats / get_stream_stats / get_connection, which lock
+		// connection_registry and netstream_stats_registry internally). Never the
+		// reverse: no manager method may call back into an app while holding one of
+		// those (delete_connection unlocks first, by design). See docs/concurrency.md.
 		stream_registry m_registry;
 
 		// Live audio/video fan-out: turns a publisher frame into per-subscriber

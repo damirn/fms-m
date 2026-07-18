@@ -35,7 +35,9 @@ namespace fms
 	// structure without holding the exclusive lock. Reads take no token: they cannot
 	// corrupt structure, and the hot data path holds a shared lock while mutating a
 	// broadcast_stream's OWN fields (single writer per stream; avc/aac config via
-	// atomics). LOCK ORDER: this lock is always acquired BEFORE rtmp_app_manager::m_mutex.
+	// atomics). LOCK ORDER: this is the outermost of the cross-connection locks --
+	// acquired before the manager's (connection_registry, netstream_stats_registry)
+	// and before vod_manager's. Full table in docs/concurrency.md.
 	class stream_registry : boost::noncopyable
 	{
 	public:
