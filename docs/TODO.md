@@ -96,8 +96,29 @@ note. What remains at P1 is resource safety, below.)*
   in each `so_data::m_clients` forever, so the object (and every property value it
   set) is never reclaimed and the fan-out loops keep iterating dead ids. Same
   defect class as the result-handler table, and equally client-driven: connect,
-  touch a fresh object name, disconnect, repeat. Needs a `remove_connection` called
-  from `rtmp_application::delete_connection`. (`so_manager.cpp:95-108`)
+  touch a fresh object name, disconnect, repeat. (`so_manager.cpp:95-108`)
+
+  *How FMS scopes them* (from the shipped 4.5 `Application.xml` / `Vhost.xml`):
+  a shared object is **not** tied to one RTMP session — outliving its creator is
+  the point of the feature — and it is **not** unconditionally persistent either.
+  It is scoped to the **application instance**, which "only goes idle after the
+  last client disconnects" and is then unloaded after `MaxAppIdleTime` (1200 s),
+  with `AppInstanceGC` (1 min) sweeping "SharedObjects, Streams and Script
+  engine". On top of that a client may request **persistence**
+  (`SharedObject.getRemote(name, uri, true)`), which commits the object to
+  `StorageDir` (`AutoCommit` true by default) so it survives instance unload and
+  server restart. FMS also **bounds** them: `MaxSharedObjects` 50000 per vhost,
+  plus `MaxProperties` / `MaxPropertySize` per object.
+
+  So the leak is a bug under every one of those models — the defect is not that we
+  keep an object alive after its creator leaves, it is that the client set never
+  empties, so nothing is ever reclaimed. Fix: `remove_connection(conn_id)` called
+  from `rtmp_application::delete_connection`, dropping any object whose client set
+  empties — i.e. FMS's non-persistent semantics, which is what the existing
+  release path already implements per object. Two related gaps, both optional:
+  we have **no cap** on the object count (FMS caps at 50000), and our namespace is
+  per-**application** where FMS's is per-app-**instance**, so two instances of the
+  same app share objects here and would not on FMS.
 - **Origin-pull helper spawning is unbounded and runs under the media lock.**
   `spawn_helper` is called from `handle_invoke_play` while the registry's EXCLUSIVE
   lock is held, so a `fork()` (page-table copy of the whole server) stalls every
