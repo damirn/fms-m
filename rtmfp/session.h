@@ -145,7 +145,14 @@ namespace fms
 			return m_parser->get_aes();
 		}
 
-		void add_peer_address(const std::string &);
+		void add_peer_address(const std::string &) override;
+
+	protected:
+		// Concrete manager for the connect-routing entry (handle_message); see the
+		// note in basic_rtmp_connection.h.
+		rtmp_app_manager *m_manager;
+
+	public:
 
 		const std::uint16_t &ts_echo_tx() const
 		{

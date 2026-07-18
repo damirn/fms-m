@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app_host.h"
 #include "connect_router.h"
 #include "connection_registry.h"
 #include "http_connection.h"
@@ -36,7 +37,7 @@ namespace fms
 	class amf0_type;
 	using amf0_type_ptr = std::shared_ptr<amf0_type>;
 
-	class rtmp_app_manager : boost::noncopyable
+	class rtmp_app_manager : public app_host, boost::noncopyable
 	{
 	public:
 		explicit rtmp_app_manager(io_context_pool &);
@@ -57,21 +58,21 @@ namespace fms
 		http_connection_ptr create_rtmpts_connection(boost::asio::io_context &, std::shared_ptr<boost::asio::ssl::context>);
 		void delete_http_connection(std::uint32_t);
 
-		client_session_ptr get_connection(std::uint32_t);
+		client_session_ptr get_connection(std::uint32_t) override;
 		// Non-throwing lookup: nullptr when the connection is gone (an ordinary miss
 		// on the fan-out / notify paths, not an error).
-		client_session_ptr get_connection_opt(std::uint32_t);
-		const std::string &get_app_instance(std::uint32_t);
-		bool has_connection(std::uint32_t);
-		void delete_connection(std::uint32_t);
-		void destroy_connection(std::uint32_t);
+		client_session_ptr get_connection_opt(std::uint32_t) override;
+		const std::string &get_app_instance(std::uint32_t) override;
+		bool has_connection(std::uint32_t) override;
+		void delete_connection(std::uint32_t) override;
+		void destroy_connection(std::uint32_t) override;
 
-		void set_encoding_for_connection(std::uint32_t, bool);
-		bool is_amf3_encoding(std::uint32_t);
+		void set_encoding_for_connection(std::uint32_t, bool) override;
+		bool is_amf3_encoding(std::uint32_t) override;
 
 		boost::tribool handle_message(const rtmp_message_ptr&, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
 
-		io_context_pool &get_io_context_pool()
+		io_context_pool &get_io_context_pool() override
 		{
 			return m_io_context_pool;
 		}
@@ -81,21 +82,21 @@ namespace fms
 			return m_rtmpt_manager.get();
 		}
 
-		void list_applications(string_list_t &);
-		void list_clients(client_list_t &);
-		client_data_ptr get_client_data(std::uint32_t);
-		bool get_client_stats(std::uint32_t, client_stats &);
-		std::optional<app_stats> get_app_stats(const std::string &);
-		void list_streams(netstream_list_t &);
-		void get_queue_stats(queue_stats_list_t &);
+		void list_applications(string_list_t &) override;
+		void list_clients(client_list_t &) override;
+		client_data_ptr get_client_data(std::uint32_t) override;
+		bool get_client_stats(std::uint32_t, client_stats &) override;
+		std::optional<app_stats> get_app_stats(const std::string &) override;
+		void list_streams(netstream_list_t &) override;
+		void get_queue_stats(queue_stats_list_t &) override;
 
-		void create_netstream(const stream_client_id_t &);
-		void delete_netstream(const stream_client_id_t &);
-		void delete_netstreams(std::uint32_t);
-		void update_netstream(const stream_client_id_t &, const std::string &, bool);
-		void update_netstream_stats(const stream_client_id_t &, std::uint32_t bytes, std::uint32_t msgs, std::uint32_t ts);
-		void add_dropped_messages_for_netstream(const stream_client_id_t &, std::size_t);
-		std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &);
+		void create_netstream(const stream_client_id_t &) override;
+		void delete_netstream(const stream_client_id_t &) override;
+		void delete_netstreams(std::uint32_t) override;
+		void update_netstream(const stream_client_id_t &, const std::string &, bool) override;
+		void update_netstream_stats(const stream_client_id_t &, std::uint32_t bytes, std::uint32_t msgs, std::uint32_t ts) override;
+		void add_dropped_messages_for_netstream(const stream_client_id_t &, std::size_t) override;
+		std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &) override;
 
 	protected:
 		io_context_pool &m_io_context_pool;

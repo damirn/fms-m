@@ -9,12 +9,12 @@
 namespace fms
 {
 	class rtmp_application;
-	class rtmp_app_manager;
+	class app_host;
 
 	class client_session
 	{
 	public:
-		client_session(std::uint32_t, rtmp_app_manager *);
+		client_session(std::uint32_t, app_host *);
 		virtual ~client_session()= default;
 
 		virtual void start() = 0;
@@ -130,6 +130,14 @@ namespace fms
 		// Transport description for the admin/stats path -- overridden per transport so
 		// the manager never has to downcast to the concrete session type. Defaults suit
 		// the direct RTMP socket (address cached via set_remote_endpoint on its thread).
+		// RTMFP's setPeerInfo carries the peer's candidate addresses for P2P
+		// introduction. Virtual with an empty default rather than something the
+		// application downcasts to reach: the invoke is dispatched by the BASE
+		// application, so it arrives on every transport, and the cast it used to do
+		// yielded nullptr for every non-RTMFP connection -- which was then
+		// dereferenced. Only the RTMFP session has anywhere to put these.
+		virtual void add_peer_address(const std::string &) {}
+
 		virtual std::string protocol_name() const { return "rtmp"; }
 		virtual std::string remote_address() const { return remote_endpoint_string(); }
 		virtual std::uint16_t remote_port() const { return 0; }
@@ -143,7 +151,7 @@ namespace fms
 		// optional username (if the application sets it)
 		std::string m_username;
 
-		rtmp_app_manager *m_app_manager;
+		app_host *m_app_manager;
 		rtmp_application *m_app{nullptr};
 
 		// start time

@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "client_session.h"
-#include "rtmp_app_manager.h"
+#include "app_host.h"
 #include "rtmp_application.h"
 
 namespace fms
 {
-	client_session::client_session(std::uint32_t id, rtmp_app_manager *app_mngr)
+	client_session::client_session(std::uint32_t id, app_host *app_mngr)
 		: m_id(id)
 		, m_app_manager(app_mngr)
 		, 

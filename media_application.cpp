@@ -2,6 +2,7 @@
 #include "media_application.h"
 #include "client_session.h"
 #include "config.h"
+#include "io_context_pool.h"
 #include "stream_recorder.h"
 #include "logging.h"
 #include "remote_relay.h"
@@ -31,7 +32,7 @@ namespace fms
 		static const char clear_data_frame[] = "@clearDataFrame";
 	}
 
-	media_application::media_application(rtmp_app_manager *app_manager, const char *app_name /* = "media" */)
+	media_application::media_application(app_host *app_manager, const char *app_name /* = "media" */)
 		: rtmp_application(app_manager, app_name)
 		, m_timer(app_manager->get_io_context_pool().get_io_context())
 	{

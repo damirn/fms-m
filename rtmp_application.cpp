@@ -5,7 +5,6 @@
 #include "logging.h"
 #include "rtmp_message.h"
 #include "send_queue_policy.h"
-#include "session.h"
 #include "so_manager.h"
 
 #include <memory>
@@ -33,7 +32,7 @@ namespace fms
 	amf0_string_ptr rtmp_application::m_rnd_str = std::make_shared<amf0_string>();
 	bool rtmp_application::m_rnd_str_generated(false);
 
-	rtmp_application::rtmp_application(rtmp_app_manager *app_manager, const std::string &app_name)
+	rtmp_application::rtmp_application(app_host *app_manager, const std::string &app_name)
 		: m_app_manager(app_manager)
 		, m_app_name(app_name)
 		, m_max_queue_bytes(config::instance()->max_queue_bytes())
@@ -501,7 +500,6 @@ namespace fms
 		try
 		{
 			client_session_ptr const c = get_connection(connection_id);
-			session_ptr const s = std::dynamic_pointer_cast<session>(c);
 			rtmp_message_invoke::parameters_list_t &params = info->parameters();
 			if (params.size() > 1)
 			{
@@ -510,7 +508,7 @@ namespace fms
 				while (i != params.end() && (*i)->type() == amf0_type::eAMF0String)
 				{
 					amf0_string_ptr const addr = std::dynamic_pointer_cast<amf0_string>(*i);
-					s->add_peer_address(addr->value());
+					c->add_peer_address(addr->value());
 					++i;
 				}
 			}
@@ -623,7 +621,7 @@ namespace fms
 
 	void rtmp_application::create_connect_messages(std::uint32_t connection_id, optional_param_list_t param /* = optional_param_list_t() */)
 	{
-		std::uint32_t const ack_size = rtmp_connection::get_ack_size();
+		std::uint32_t const ack_size = eDefaultAckWindow;
 		rtmp_message_window_acknowledgement_size_ptr const was_m = std::make_shared<rtmp_message_window_acknowledgement_size>(ack_size);
 		rtmp_message_set_peer_bandwidth_ptr const spb_m = std::make_shared<rtmp_message_set_peer_bandwidth>(ack_size, 0x02);
 //		rtmp_message_ping_ptr png_m(new rtmp_message_ping(rtmp_message_ping::ePingStreamBegin, 0));

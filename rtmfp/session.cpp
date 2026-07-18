@@ -28,6 +28,7 @@ namespace fms
 {
 	session::session(service *srv, const boost::asio::ip::udp::endpoint &ep, std::uint32_t reserved_sid, rtmp_app_manager *app_mngr)
 		: client_session(reserved_sid, app_mngr)
+		, m_manager(app_mngr)
 		, m_service(srv)
 		, 
 		 m_outgoing_sid(reserved_sid)
@@ -525,7 +526,7 @@ namespace fms
 		}
 		else
 		{
-			ret = m_app_manager->handle_message(msg, m_id, h, result);
+			ret = m_manager->handle_message(msg, m_id, h, result);
 			if (m_app != nullptr) // if app has been selected, update stats
 				m_app->update_stats(true, false, 1);
 		}

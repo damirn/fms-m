@@ -15,7 +15,7 @@ namespace fms
 	class video_call_application : public media_application
 	{
 	public:
-		explicit video_call_application(rtmp_app_manager *app_manager)
+		explicit video_call_application(app_host *app_manager)
 			: media_application(app_manager, "video_call") {}
 
 	protected:
