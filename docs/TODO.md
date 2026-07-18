@@ -220,21 +220,23 @@ Priority order within this block; the first item is the one the others hang off.
    `setPeerInfo` downcast every connection to the RTMFP `session` and dereferenced
    the result, which is null for any RTMP client — now a virtual on
    `client_session`. Remaining renumbered below.
-1. **Collapse the duplicated transport seam.** `io_handler`, `handshake_handler`
-   and `transport_handshake` are declared verbatim in both `rtmp_connection.h:50-57`
-   and `http_connection.h:54-63`. The pattern is good; it is copy-pasted rather than
-   shared, and the two copies had silently diverged over whether `start()` posts
-   onto the connection's own context — which is exactly where the RTMPTS
-   cross-thread handshake bug lived. One mixin, two users.
-2. **`rtmp_application` is a god base class** (~48 declarations). Every app inherits
+**Collapse the duplicated transport seam — DONE.** The `io_handler` /
+   `handshake_handler` aliases and the plaintext `transport_handshake` now live in a
+   `transport_seam` mixin shared by `rtmp_connection` and `http_connection`, and the
+   `ssl::context` + `ssl::stream` + server handshake in a `tls_stream` helper shared
+   by both TLS subclasses. The two base defaults had diverged over posting (the
+   RTMPTS bug); there is now one definition and the "must post in `start()`" contract
+   is documented in one place. Read/write ops stay per-class (byte-stream vs HTTP).
+
+1. **`rtmp_application` is a god base class** (~48 declarations). Every app inherits
    bandwidth-check, shared objects, result handlers, the async queue, the delay map
    and stats whether it uses them or not — `admin_application` needs none of the
    media machinery. Composition, not inheritance; the "invoke string-ladder" item
    below is a symptom of the same thing.
-3. **`basic_rtmp_connection` mixes three axes by inheritance** —
+2. **`basic_rtmp_connection` mixes three axes by inheritance** —
    `client_session` (identity) + `rtmp_raw_data` (chunk parsing) +
    `enable_shared_from_this` (lifetime) in one type.
-4. **RTMFP is the risk concentration**: a second full protocol stack with its own
+3. **RTMFP is the risk concentration**: a second full protocol stack with its own
    lock-free model, reaching into `rtmp_app_manager` directly, and no tests at any
    level. Ties to the testing item above and the RTMFP seam item below.
 
