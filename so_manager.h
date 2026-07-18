@@ -28,6 +28,25 @@ namespace fms
 
 		bool handle_so(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_ptr &);
 
+		// Drop a departed connection from every shared object it was using, and
+		// discard any object left with no clients.
+		//
+		// Without this the ONLY way out of an object's client set was the client
+		// explicitly sending a Release event for it, so a peer that used an object
+		// and then disconnected left its id behind for good: the set never emptied,
+		// the object and every property value on it were never reclaimed, and the
+		// fan-out kept iterating dead ids. Since object names are client-chosen,
+		// connect / touch a fresh name / disconnect / repeat grew the table without
+		// limit. Must be called from the application's connection teardown.
+		//
+		// Discarding on the last client mirrors FMS's NON-persistent shared objects
+		// (FMS additionally offers disk-backed persistent ones, and scopes both to
+		// the app instance -- neither of which we implement; see docs/TODO.md).
+		void remove_connection(std::uint32_t connection_id);
+
+		// Live shared-object count, for tests/diagnostics.
+		std::size_t size();
+
 	protected:
 		// (client id, message) pairs collected while m_mutex is held and flushed to
 		// enqueue_async_message/notify AFTER it is released -- so the SO fan-out does

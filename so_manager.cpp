@@ -93,6 +93,29 @@ namespace fms
 		}
 	}
 
+	void so_manager::remove_connection(std::uint32_t connection_id)
+	{
+		std::unique_lock const lock(m_mutex);
+		// Same rule as an explicit Release, applied to every object at once: drop the
+		// client, and drop the object when it was the last one. Deliberately silent --
+		// the explicit release path notifies nobody either, so a disconnect does not
+		// suddenly become a wire event for the remaining clients.
+		for (auto i = m_so_map.begin(); i != m_so_map.end(); )
+		{
+			i->second->m_clients.erase(connection_id);
+			if (i->second->m_clients.empty())
+				i = m_so_map.erase(i);
+			else
+				++i;
+		}
+	}
+
+	std::size_t so_manager::size()
+	{
+		std::unique_lock const lock(m_mutex);
+		return m_so_map.size();
+	}
+
 	void so_manager::handle_release_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id)
 	{
 		const std::string &so_name = so->name()->value();
