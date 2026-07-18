@@ -1,6 +1,7 @@
 #pragma once
 
 #include "http_connection.h"
+#include "tls_stream.h"
 
 #include <memory>
 
@@ -24,7 +25,6 @@ namespace fms
 		void async_write_response(io_handler h) override;
 
 	private:
-		std::shared_ptr<boost::asio::ssl::context> m_ctx;
-		boost::asio::ssl::stream<boost::asio::ip::tcp::socket &> m_ssl;
+		tls_stream m_tls;
 	};
 }

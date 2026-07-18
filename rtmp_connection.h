@@ -2,15 +2,14 @@
 
 #include "basic_rtmp_connection.h"
 #include "byte_writer.h"
-
-#include <functional>
+#include "transport_seam.h"
 
 #include <boost/noncopyable.hpp>
 
 namespace fms
 {
 	// Represents a single connection from a client.
-	class rtmp_connection : public basic_rtmp_connection, boost::noncopyable
+	class rtmp_connection : public basic_rtmp_connection, public transport_seam, boost::noncopyable
 	{
 	public:
 		// Construct a connection with the given io_context.
@@ -45,16 +44,11 @@ namespace fms
 		// Transport I/O seam. The RTMP state machine drives these instead of touching
 		// m_socket directly, so a TLS subclass (rtmps_connection) can route the same
 		// reads/writes through an ssl::stream. Base implementations are plaintext.
-		// The handler is a std::function so the op can cross the virtual boundary; the
-		// per-read/write allocation is negligible next to the syscall.
-		using io_handler = std::function<void(const boost::system::error_code &, std::size_t)>;
-		using handshake_handler = std::function<void(const boost::system::error_code &)>;
-
+		// io_handler / handshake_handler and the plaintext transport_handshake come
+		// from transport_seam (shared with http_connection); only the byte-stream
+		// read/write ops are declared here, since they differ from the HTTP transport.
 		virtual void async_read_transport(const boost::asio::mutable_buffer &buf, std::size_t at_least, io_handler h);
 		virtual void async_write_transport(const boost::asio::const_buffer &buf, io_handler h);
-		// Negotiate the transport (TLS) before the RTMP handshake. Base: nothing to do,
-		// completes immediately with success.
-		virtual void transport_handshake(handshake_handler h);
 
 		// Handle protocol hand shake
 		void handle_hand_shake(const boost::system::error_code &, std::size_t);

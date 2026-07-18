@@ -58,14 +58,6 @@ namespace fms
 		http::async_write(m_socket, m_response, std::move(h));
 	}
 
-	void http_connection::transport_handshake(handshake_handler h)
-	{
-		// Plaintext RTMPT: nothing to negotiate. start() has already hopped us onto
-		// this connection's own io_context, so completing inline here runs the
-		// continuation on the right thread -- no post needed.
-		h(boost::system::error_code{});
-	}
-
 	void http_connection::do_read()
 	{
 		// One request at a time; a fresh parser each time. RTMPT bodies are small,
