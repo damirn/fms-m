@@ -17,6 +17,7 @@ namespace fms
 	basic_rtmp_connection::basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager)
 		: client_session(id, app_manager)
 		, m_io_context(io_context)
+		, m_manager(app_manager)
 	{}
 
 	basic_rtmp_connection::~basic_rtmp_connection()
@@ -64,7 +65,7 @@ namespace fms
 		}
 		else
 		{
-			ret = m_app_manager->handle_message(msg, m_id, channel->received_header(), result);
+			ret = m_manager->handle_message(msg, m_id, channel->received_header(), result);
 			if (m_app != nullptr) // if app has been selected, update stats
 				m_app->update_stats(true, false, 1);
 		}

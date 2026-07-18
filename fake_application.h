@@ -7,7 +7,7 @@ namespace fms
 	class fake_application : public rtmp_application
 	{
 	public:
-		explicit fake_application(rtmp_app_manager *app_manager)
+		explicit fake_application(app_host *app_manager)
 			: rtmp_application(app_manager, "")
 		{}
 

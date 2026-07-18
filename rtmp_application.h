@@ -2,7 +2,7 @@
 
 #include "random_string.h"
 #include "result_handler_registry.h"
-#include "rtmp_app_manager.h"
+#include "app_host.h"
 #include "rtmp_message.h"
 #include "stats.h"
 
@@ -47,7 +47,7 @@ namespace fms
 	class rtmp_application : boost::noncopyable
 	{
 	public:
-		rtmp_application(rtmp_app_manager *, const std::string &);
+		rtmp_application(app_host *, const std::string &);
 		virtual ~rtmp_application();
 
 		const std::string &app_name() const
@@ -134,7 +134,7 @@ namespace fms
 
 		static rtmp_message_invoke_ptr create_error_status(std::uint32_t, std::uint32_t, const char *);
 
-		rtmp_app_manager *m_app_manager;
+		app_host *m_app_manager;
 		std::string m_app_name;
 
 		// Per-connection async send queue. The map is guarded by a shared_mutex

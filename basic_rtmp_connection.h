@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client_session.h"
+#include "rtmp_message.h"
 #include "rtmp_raw_data.h"
 
 #include <array>
@@ -79,9 +80,15 @@ namespace fms
 
 		boost::asio::io_context &m_io_context;
 
+		// The concrete manager, for the connect-routing entry point
+		// (handle_message) a connection needs before an application is assigned.
+		// The transport layer legitimately knows the server; the APPLICATION layer
+		// does not, which is what app_host exists to keep true.
+		rtmp_app_manager *m_manager;
+
 		enum { eHandShakeHeaderSize = 8, eHandShakeSize = 1536 };
 		enum { ePlainMagic = 0x03, eCryptoMagic = 0x06 };
-		enum { eAckSize = 2500000 };
+		enum : std::uint32_t { eAckSize = eDefaultAckWindow };
 		enum { eEncodingAMF0, eEncodingAMF3 };
 
 		std::uint32_t m_bytes_read_notify{eAckSize};

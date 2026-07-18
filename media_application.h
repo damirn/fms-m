@@ -27,7 +27,7 @@ namespace fms
 	class media_application : public rtmp_application, public media_host
 	{
 	public:
-		explicit media_application(rtmp_app_manager *, const char *app_name = "media");
+		explicit media_application(app_host *, const char *app_name = "media");
 
 		// Out-of-line so the registry's stream_recorder unique_ptr dtors are instantiated in the
 		// .cpp, where stream_recorder is a complete type.

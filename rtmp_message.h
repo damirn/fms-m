@@ -13,6 +13,13 @@ namespace fms
 	class byte_reader;
 	class byte_writer;
 
+	// Default window-acknowledgement size, in bytes: how much a peer may send before
+	// it must be acknowledged. A protocol constant -- it is the value carried by
+	// rtmp_message_window_acknowledgement_size and announced during connect -- so it
+	// lives here rather than on any one transport, which both the connection layer
+	// and the application layer would otherwise have to reach into each other for.
+	inline constexpr std::uint32_t eDefaultAckWindow = 2500000;
+
 	class rtmp_message
 	{
 	public:

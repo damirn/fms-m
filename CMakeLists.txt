@@ -226,6 +226,23 @@ if(BUILD_AMF_TESTS)
     rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp rtmp_so_message.cpp amf0.cpp amf3.cpp)
   add_test(NAME send_queue_policy_test COMMAND send_queue_policy_test)
 
+  # rtmp_application driven through a fake app_host. Structural as much as
+  # behavioural: this target links the application tier WITHOUT the transport
+  # stack, which app_host is what makes possible. If a change reintroduces the
+  # app -> rtmp_app_manager -> transport dependency, this stops linking.
+  add_executable(app_host_test
+    test/test_main.cpp test/app_host_test.cpp
+    rtmp_application.cpp so_manager.cpp random_string.cpp client_session.cpp
+    rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp rtmp_so_message.cpp
+    amf0.cpp amf3.cpp config.cpp logging.cpp)
+  target_link_libraries(app_host_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME app_host_test COMMAND app_host_test)
+  if(APPLE)
+    # Boost.Log wants icu4c@74 at its old keg path (as interop.sh does).
+    set_tests_properties(app_host_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/opt/icu4c@74/lib")
+  endif()
+
   # result_handler_registry: the table of callbacks awaiting a peer _result, its
   # per-connection cap and its teardown purge. Templated on the handler pointer,
   # so it needs nothing but doctest.

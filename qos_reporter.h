@@ -4,7 +4,7 @@ namespace fms
 {
 	class media_host;
 	class stream_registry;
-	class rtmp_app_manager;
+	class app_host;
 
 	// The once-a-second QoS gather + report, lifted out of media_application's
 	// timer. Flushes the per-subscriber stats accumulated lock-free on the fan-out path
@@ -13,7 +13,7 @@ namespace fms
 	class qos_reporter
 	{
 	public:
-		qos_reporter(media_host &host, stream_registry &registry, rtmp_app_manager *manager)
+		qos_reporter(media_host &host, stream_registry &registry, app_host *manager)
 			: m_host(host), m_registry(registry), m_manager(manager)
 		{}
 
@@ -22,6 +22,6 @@ namespace fms
 	private:
 		media_host &m_host;
 		stream_registry &m_registry;
-		rtmp_app_manager *m_manager;
+		app_host *m_manager;
 	};
 }

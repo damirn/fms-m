@@ -29,7 +29,7 @@ namespace fms
 	class admin_application : public rtmp_application, public netstream_observer
 	{
 	public:
-		explicit admin_application(rtmp_app_manager *app_manager)
+		explicit admin_application(app_host *app_manager)
 			: rtmp_application(app_manager, "admin")
 		{
 			init();
