@@ -5,122 +5,294 @@ Gap analysis vs reference implementations: **rtmpdump/librtmp** (RTMP client lib
 protocol capability those exercise that our *server* can't serve or interop with.
 File refs are indicative anchors, not exhaustive.
 
-Legend: **[P1]** interop-breaking / high value · **[P2]** meaningful capability ·
-**[P3]** nice-to-have / hardening · **[dead]** unwired code to prune or finish.
+**Top-level goal:** 100% interop with rtmpdump + rtmfp-cpp, verified by an automated
+interop matrix (see the *Interop test matrix* item). Legend: **[P1]**
+interop-breaking, or a correctness/resource-safety defect · **[P2]** meaningful
+capability · **[P3]** nice-to-have / hardening.
+
+Priority-sorted. Subsystem tag in parentheses. Updated 2026-08-01.
+
+> Recently landed (removed from this list): RTMFP security hardening pass
+> (auth'd cookie, bounded reassembly, read_vlu cap, half-open reap); AMF0 + AMF3
+> completeness (+ fuzz); VOD playback + pause/seek; FMLE/OBS publish verbs; digest
+> handshake, RTMPE/RTMPTE; **stream_array → byte_reader/byte_writer** retirement;
+> **Abort message (0x02)**; **StreamIsRecorded** emit for VOD; modern
+> `async_accept(executor)`; the architecture pass — `media_host` (no friends),
+> `netstream_observer` + `netstream_stats_registry` (manager de-godding),
+> `get_connection_opt`, timers pushed to `rtmp_connection` (P4), the
+> one-thread-per-`io_context` contract doc (P5, `docs/concurrency.md`);
+> **RTMFP strict crypto parity** — per-packet session HMAC + sequence numbers with
+> sliding-window anti-replay, negotiated from the peer's keying flags, so rtmfp-cpp
+> `tcconn`/`tcpublish` interop **without** `-H -S` (`33399f0`; the IIKeying signature
+> stays deliberately unverified — anonymous DH, no PKI).
+>
+> Design-review architecture work (2026-07-30, all merged to `modernize`, ASan +
+> TSan clean incl. an 11-thread / 22-client TSan load run): **`stream_registry`
+> owns its lock** with compile-time `exclusive_guard` enforcement of the "no
+> structure-mutate under the shared lock" invariant; **media_application split finished**
+> — `stream_recorder` (FLV off the fan-out path) + `qos_reporter` extracted;
+> **`rtmp_app_manager` split** into `connect_router` + `connection_registry`, with
+> transport virtuals (`protocol_name`/`remote_address`) removing the admin-path RTTI;
+> a shared **`rtmp_handshake`** module (server + client) that fixes the client's
+> `std::rand()` → `RAND_bytes` handshake-filler divergence; and the **RTMPT global
+> lock narrowed** to the id table + sequencing, with a per-session mutex so tunnelled
+> clients no longer serialize (TSan-clean on the b2b RTMPT path).
+>
+> Interop automation + VOD fast pull (2026-08-01): the **interop matrix**
+> (`test/interop/interop.sh`, wired as a ctest) drives real reference clients and
+> asserts on both media (ffprobe) and user-control events — RTMP live/VOD +
+> RTMPT via rtmpdump/ffmpeg, and **RTMFP live + RTMFP→RTMP bridge via the local
+> `rtmfp-cpp` `tcpublish`/`tcconn` in strict crypto (no `-H -S`)**; only RTMPE is
+> skipped (rtmpdump bus-errors on the encrypted handshake on this ARM platform).
+> **Act on `SetBufferLength`** — VOD now honours the client's requested buffer and
+> paces against an absolute origin, so rtmpdump's BUFX huge buffer pulls the whole
+> file at once (a 6s clip downloads in <1s vs 5–6s real-time), asserted by the
+> matrix. StreamBegin/StreamIsRecorded/StreamEOF confirmed sent+consumed.
+> **Connect `app` path normalization** (`7b4ed4b`) — `match_app` strips a leading
+> `/` and trailing `?query`, fixing the librtmfp `NetConnection.Connect.InvalidApp`
+> (it sent the raw RFC-3986 path `/media`; only rtmfp-cpp's client-side strip had
+> been masking it). Interop case 6 guards it via `rtmpdump -a`.
+> **Live BufferEmpty(31)/BufferReady(32)** (`ce436cb`) — Play.Start→31, 32 on first
+> frame; verified against a stock **FMS 4.5** container (run under Docker/amd64 as a
+> ground-truth oracle — saved at `test/interop/fms-ref/`). Interop case 1 asserts both.
+> **Live unpublish** (`11945e5`) now sends BufferEmpty drain + `Play.UnpublishNotify`
+> (not StreamEOF), matching FMS; rtmpdump + ffmpeg close cleanly. Interop case 7.
+> **RTMPS** (`491a167`) — RTMP over TLS via a virtualized transport seam in
+> `rtmp_connection` + an `ssl::stream` subclass + an optional TLS acceptor; rtmpdump
+> and ffmpeg play/publish over `rtmps://` (interop case 8).
+> **RTMPTS** (`0b7da26`) — the same seam applied to the beast RTMPT tunnel
+> (`http_connection` + `rtmpts_connection`); rtmpdump tunnels over `rtmpts://`
+> (interop case 8b). **This clears the transport P1** — the last missing transports
+> are in; RTMPE (legacy RC4) is now the only transport-encryption gap.
+>
+> Resource-safety round (2.0.0): the **outbound send queue is bounded** — over half
+> of `--max-queue-bytes` (default 10 MB) droppable video is shed, past it the slow
+> consumer is dropped, modelled on measured FMS 4.5 behaviour
+> (`docs/slow-consumer.md`); the **pending-result-handler table** is capped per
+> connection and purged on teardown; **chunk-channel memory** no longer retains a
+> large message's reassembly capacity and the inbound channel map is capped;
+> **RTMPTS** negotiates TLS on the connection's own io_context rather than the
+> acceptor's; **VOD disk I/O** moved off the media-routing lock; and a
+> **half-configured TLS setup** is a startup error instead of a silent downgrade.
+> The first three were unbounded growth an unauthenticated peer could drive. This
+> also retired four inert config options in favour of `--max-queue-bytes` and
+> registered `chunk_parser_test` with ctest, which it never was.
 
 ---
 
-## RTMP (vs librtmp / rtmpdump)
+*(The transport P1 is empty — RTMPS + RTMPTS both landed; see the recently-landed
+note. What remains at P1 is resource safety, below.)*
+## P1 — correctness / resource safety
 
-- **[DONE — branch feat/amf3] AMF3 completeness.** Fixed the silent-corruption
-  reference bugs (string ref returned `""`, object ref returned `{}`, broken
-  traits-ref indexing) and added a proper per-message ref-table reset; fixed the
-  integer sign mask (`0x18000000`→`0x10000000`, which had wrongly negated positive
-  ints in [2^27, 2^28)); added Double, Date, ByteArray, Array (dense+assoc),
-  XML/XMLDoc; externalizable now throws explicitly instead of mis-reading. Test
-  suite under `test/` (doctest, `-DBUILD_AMF_TESTS=ON`): 19 cases / 108 assertions
-  — amf-cpp-style exact-byte serialization vectors for every type (all U29 lengths,
-  ±sign, special doubles, multi-byte string/bytearray lengths, empty/dense/assoc
-  arrays, objects, xml), deserialization vectors, the reference-table + sign
-  regressions, and malformed-input throws; fuzz harness (libFuzzer + standalone
-  GCC/ASan) — 3M iterations clean. Remaining AMF3 follow-ups: reference-emitting
-  *writer* (currently always inlines — spec-legal); Dictionary (0x11) + Vector
-  (0x0D–0x10) types (post-2007, Flash 10+ — currently throw); IExternalizable
-  class registry (rare); cross-validation fixtures from a reference codec (PyAMF).
-- **[P1] No RTMPS / RTMPTS (TLS).** Plain TCP only; no `asio::ssl`. The only
-  transport encryption is Adobe RTMPE (RC4), which is weak/legacy. Table-stakes
-  gap. (`server.cpp:36-79`, `config.cpp:48-50`)
-- **[DONE — branch feat/vod] `pause` / `pauseRaw` / `seek`.** Wired to the VOD
-  engine: pause stops/resumes the pacing timer (Pause/Unpause.Notify), seek
-  repositions via `flv_reader::seek` (Seek.Notify). The play command's start
-  offset is honoured too.
-- **[DONE — branch feat/vod] FMLE/OBS publish verbs.** `releaseStream`,
-  `FCUnpublish`, `FCSubscribe` are acknowledged with `_result`; `FCPublish`
-  replies `onFCPublish(NetStream.Publish.Start)` so FMLE-style encoders proceed.
-- **[DONE — branch feat/amf3] AMF0 gaps.** Implemented Date (0x0B), XMLDocument
-  (0x0F), TypedObject (0x10), Unsupported (0x0D), and Reference (0x07) with an
-  AMF0 object reference table (anonymous/typed objects + arrays register; refs
-  resolve to the same instance); previously these threw. Tests in
-  `test/amf0_test.cpp` (shared doctest main): exact-byte serialization +
-  deserialization vectors for every handled type (number, boolean, string,
-  object, null, undefined, reference, ecma/strict array, date, long string,
-  unsupported, xml-document, typed object, amf3 container) + round-trips + the
-  reference-table regression + malformed-input throws. Fuzzer now covers both
-  AMF0 and AMF3 (3M iterations clean under ASan). Not implemented (reserved):
-  MovieClip (0x04), Recordset (0x0E) — still throw.
-- **[P3] Abort Message (0x02) not implemented** — hits `default: return false`
-  (`rtmp_protocol.cpp:55`).
-- **[P3] Can't *require* SWF verification / SecureToken** (Adobe anti-leech).
-  Not an interop break; a missing access-control feature.
+- **`std::atomic_load`/`atomic_store` on `shared_ptr` are REMOVED in C++26.** Used
+  for the avc/aac config slots on the fan-out path. Deprecated in C++20, and we
+  already build at `-std=c++23`, so this is a dated build break rather than a
+  style point. Swap to `std::atomic<std::shared_ptr<T>>`.
+  (`av_delivery.cpp:32,139,140,242,349`, `stream_registry.h:70-75`)
+- **Shared objects are never released on disconnect.** `so_manager` has no
+  per-connection teardown at all — its only entry point is `handle_so`, and an
+  entry is dropped only when a client explicitly sends a *release* event for that
+  object. A client that uses N shared objects and then disconnects leaves its id
+  in each `so_data::m_clients` forever, so the object (and every property value it
+  set) is never reclaimed and the fan-out loops keep iterating dead ids. Same
+  defect class as the result-handler table, and equally client-driven: connect,
+  touch a fresh object name, disconnect, repeat. Needs a `remove_connection` called
+  from `rtmp_application::delete_connection`. (`so_manager.cpp:95-108`)
+- **Origin-pull helper spawning is unbounded and runs under the media lock.**
+  `spawn_helper` is called from `handle_invoke_play` while the registry's EXCLUSIVE
+  lock is held, so a `fork()` (page-table copy of the whole server) stalls every
+  live subscriber's fan-out — the same defect the VOD reader was just moved off.
+  It is also called once per remote-stream play with no dedup, rate limit or cap,
+  so repeated plays fork repeatedly; and the origin URL is fully client-supplied,
+  making the server issue outbound connections to arbitrary hosts. All three are
+  gated on `--helper-app` being configured (off by default), which is the only
+  reason this is not urgent. (`remote_relay.cpp:29-79`, `media_application.cpp:386`)
 
-Parity is good on: simple **and** FP9 digest/HMAC-SHA256 handshake, RTMPE (DH+RC4),
-RTMPTE, RTMPT tunnel, chunk protocol control (set-chunk-size, ack window, set peer
-bw, user-control, extended timestamps), server-side bandwidth check.
+## P2 — meaningful capability
 
-## RTMFP (vs rtmfp-cpp / librtmfp)
+### RTMP (librtmp / rtmpdump)
+- **Enhanced RTMP (E-RTMP) FourCC codecs.** librtmp + rtmfp-cpp speak the codec
+  extension: video HEVC/AV1/VP9/VP8/VVC, audio Opus/AC3/E-AC3/FLAC, the `_EX`
+  messages (COMMAND_EX 0x11, DATA_EX 0x0f, SHAREDOBJ_EX 0x10), and multitrack. Our
+  config-frame caching assumes AVC/AAC layout, so modern OBS HEVC/AV1 would
+  mis-cache. Pass-through parity at minimum.
+- **`BufferEmpty`(31)/`BufferReady`(32) for live subscribers — landed** (`ce436cb`),
+  meaningful-transitions model, verified against a stock **FMS 4.5** container: emit
+  BufferEmpty right after Play.Start (a live buffer starts empty) and BufferReady when
+  the first frame flows. Matches both FMS start sequences (publisher-live: 31→32;
+  subscriber-waiting: 31 alone then 32 on publish). Interop case 1 asserts both.
+  *Deliberately not reproduced:* FMS's continuous per-gap 31/32 chatter at the live
+  edge (advisory only, not needed for interop). `StreamDry`(2) still unemitted.
+- **Live unpublish signal — fixed** (`11945e5`): fms-m now sends the subscriber
+  BufferEmpty(31) drain + `Play.UnpublishNotify` (was StreamEOF(1), a VOD-only
+  signal), matching FMS 4.5. rtmpdump + ffmpeg both close cleanly (verified against
+  fms-m and stock FMS); interop case 7 guards it. *Still open (persistent clients
+  only):* FMS keeps the subscriber connected to **resume on republish** (re-park as a
+  waiting client + re-arm the buffer-empty flag so a republish re-emits 32). fms-m
+  still tears the subscriber down on unpublish; rtmpdump/ffmpeg close anyway so they're
+  unaffected. (`stream_registry::remove_broadcaster`, the waiting-client promote path)
+- **SWF verification enforcement (SecureToken).** Support *requiring* SWFVerification
+  so `rtmpdump --swfVfy` interops and anti-leech works.
+- **play2 / playlist + reset semantics.** librtmp's play2/switch and
+  `NetStream.Play.Reset` transitions; rtmpdump playlist / `--start` resume.
 
-- **[~] librtmfp "Bad RTMFP CRC" — ROOT-CAUSED: it's a librtmfp bug, NOT ours.**
-  librtmfp's `RTMFP::Engine::decode` (`sources/RTMFP.cpp:111`) never calls
-  `EVP_CIPHER_CTX_set_padding(_context, 0)`, so on decrypt OpenSSL 3's
-  `EVP_DecryptUpdate` **holds back the final 16-byte block** (PKCS7 still on) while
-  it checksums the full buffer → 16 bytes of stale ciphertext → false CRC fail.
-  Our RHello is a valid packet: it decrypts cleanly and its checksum verifies both
-  byte-orders (rtmfp-cpp accepts it). Proven by a standalone C repro *and* by
-  adding that one line to librtmfp — after which it connects to our **unchanged**
-  server ("RTMFPSession is now connected"). No fms-m change needed. Patched
-  librtmfp `.so` on the box (backup at `/tmp/RTMFP.cpp.bak`) for future testing.
-- **[P2] RTMFP NetConnection app resolution differs from librtmfp.** Once the CRC
-  bug is patched, librtmfp reaches connect but gets `NetConnection.Connect.
-  InvalidApp` for `bcast` (rtmfp-cpp connects fine). Our RTMFP→app mapping doesn't
-  match the app string librtmfp sends — a higher-layer interop nuance to chase
-  next. *(new, discovered while root-causing the CRC issue)*
-- **[P2] DH group 2 (1024-bit) only.** Modern clients default to group 14
-  (2048-bit) and must negotiate down. `evp_dh` is group-agnostic but only ever
-  called with the one prime. (`dh2.cpp`, `service.cpp:17-23`)
-- **[P2] Congestion/flow control is crude.** RTT estimation exists, but only a
-  6-packet burst cap; `m_outstanding_bytes` unused, receive window hardcoded
-  `0x7f`, `m_prev_rwnd` never populated (`session.cpp:555,587`). Poor on
-  lossy/high-BDP links.
-- **[P2] NetGroup is a skeleton** — join + peer-list dissemination only; no
-  posting/ranking/gossip multicast, no group media relay (`group.h`,
-  `session.cpp:418`). P2P is introducer-only (`redirect_ihello`), no P2P media.
-- **[P3] Crypto verification is lax:** IIKeying signature parsed but never
-  verified (`chunk.cpp:122`); cookie is a plaintext addr/port/ts compare, not
-  HMAC'd (`service.cpp:390`).
-- **[P3] No FEC.**
-- **[P3] Half-open session leak** — `// fixme: stalled initial sessions should be
-  removed too` (`service.cpp:173`).
+### RTMFP (rtmfp-cpp / librtmfp)
+- **DH group 14 (2048-bit).** Implement group 14 so we don't depend on clients
+  negotiating down to group 2; full FlashCrypto parity. `evp_dh` is group-agnostic
+  but only ever called with the group-2 prime. (`dh2.cpp`, `service.cpp`)
+- **Robust flow / congestion control.** Real advertised receive window (not hardcoded
+  `0x7f`), `m_outstanding_bytes` tracking, correct retransmit under loss. *Done when:*
+  a multi-MB `tcpublish→tcconn` transfer completes intact under simulated loss.
+  (`session.cpp`)
+- **NetGroup / P2P parity.** Full group semantics + peer introduction so rtmfp-cpp P2P
+  (`tcconn` group mode) interops, beyond today's join + peer-list skeleton. No group
+  media relay yet; P2P is introducer-only. (`group.h`, `session.cpp`, `redirect_ihello`)
+- **Chunk types we don't parse** (RFC 7016): **FRAGMENT (0x7f)** packet-level
+  fragmentation for over-MTU packets (long control/data packets break without it);
+  **ACK_BITMAP (0x50)**; **BUFFERPROBE (0x18)**; **CLOSE request (0x0c)** (we only
+  handle CLOSE_ACK 0x4c, so can't cleanly initiate/respond to a close);
+  **ECN_REPORT (0xec)**; **RHELLO_COOKIE_CHANGE (0x79)**.
+- **librtmfp app-resolution** (`NetConnection.Connect.InvalidApp`) — **root-caused +
+  fixed server-side** (`7b4ed4b`): `match_app` now strips a leading `/` and a trailing
+  `?query` from the connect `app`, so the raw RFC-3986 path `/media` librtmfp sends
+  resolves instead of matching an empty name. Proven via `rtmpdump -a` (interop case
+  6). *Still needs a real librtmfp run to close* — not available locally; the RTMP `-a`
+  proxy stands in for now. Note: librtmfp's "Bad RTMFP CRC" was root-caused as *their*
+  OpenSSL-3 padding bug, not ours — no fms-m change needed.
 
-## Media / server features (vs modern servers — nginx-rtmp / SRS context)
+### Media / server
+- **HLS / DASH / fMP4 output.** FLV recording is the only output container.
+- **Native relay** (push-to-remote / pull-from-origin). "Pull" is an external
+  `execvp`'d helper today; no edge/origin clustering.
 
-- **[DONE — branch feat/vod] VOD playback of saved files.** When a `play` target
-  has no live publisher, the server serves a saved `.flv` from the output folder
-  via a timer-paced "virtual publisher" (`vod_session` + `flv_reader`). Stream
-  names are resolved through `resolve_media_file` (`media_path.h`), which blocks
-  path traversal / absolute paths / escapes (unit-tested); `flv_reader::seek`
-  supports seeking. Verified end-to-end (ffmpeg plays a saved file; traversal
-  attempts serve nothing).
-- **[P2] No HLS / DASH / fMP4** — FLV recording is the only output container.
-- **[P2] No native relay** (push-to-remote / pull-from-origin). "Pull" is an
-  external `execvp`'d helper (`spawn_helper`). No edge/origin clustering.
-- **[P3] Auth framework unwired** — `authentication_manager`/plugin scaffold is
-  never invoked in the connect path; only the admin app's password file is live.
-  No per-stream publish/play ACLs.
+### Infra
+- **Interop test matrix — extend the existing harness.** `test/interop/interop.sh`
+  now covers RTMP live/VOD + RTMPT (rtmpdump/ffmpeg) and RTMFP live + RTMFP→RTMP
+  bridge (rtmfp-cpp, strict crypto — the live case is already a two-client RTMFP
+  publish→play relay), plus **RTMPS/RTMPTS** (cases 8/8b, cert minted on the fly).
+  Still open: **RTMPE/RTMPTE** (blocked on the rtmpdump ARM bus-error — try a Linux
+  runner or librtmfp), an **`fcclient` raw-handshake** case, a **loss/congestion**
+  RTMFP transfer (ties to the flow-control P2 item), and a **slow-consumer** case
+  (the shed/drop policy is covered by unit tests + a manual harness, not the matrix).
+
+## P3 — nice-to-have / hardening
+
+### Testing (found during the P4/P5 pass — do before touching those paths)
+- **RTMFP `session`/`service` have no test at any level.** The whole lock-free
+  orchestration is unverified except by manual rtmfp-cpp interop on the Linux box.
+  This is the highest-leverage test to add: it's what makes the deferred RTMFP
+  session-path fixes below unsafe to attempt today. (See `docs/concurrency.md`.)
+
+### Structural design debt (whole-project design review, 2026-07-30)
+- **Latent ownership defects (small, bounded fixes):**
+  - `shared_object::event` is copyable but frees `m_data` with `delete[]` in its dtor
+    → double-free on any copy; survives only because it's always wrapped in a
+    `shared_ptr`. Use `std::vector`/`unique_ptr<uint8_t[]>`. (`rtmp_so_message.h:69-90`)
+  - `amf0_util::get_ref<std::uint32_t>` does `reinterpret_cast<uint32_t&>(double&)` →
+    hands back garbage bytes. Delete this path; keep one typed accessor with a defined
+    failure contract (the value model has three overlapping extraction APIs today).
+    Confirmed to have **zero call sites**, so this is a deletion, not a repair.
+    (`amf0_types.h:198-204`)
+  - `flv_reader::read_uint32_3`/`read_uint32` accumulate a byte that `istream::read`
+    leaves untouched on a short read, so a truncated FLV composes the length from an
+    indeterminate value. Callers currently discard it (they test the stream after),
+    so it is UB without a known consequence — initialise `b` and check the read.
+    (`flv_reader.cpp:107-133`)
+  - RTMFP chunk memory is raw `new`/`delete` with an unwritten "view vs. copy" rule —
+    some chunks hold `const uint8_t*` into the packet buffer that is freed when
+    `parse()` returns. The same dangling-view bug has been patched repeatedly. Parser
+    should hand `unique_ptr<chunk>`; any chunk that outlives the packet owns its buffer.
+    (`rtmfp/chunk.h`, `rtmfp/parser.cpp`)
+  - RTMFP control replies share one `m_ready_chunk` raw slot, hand-freed in six sites
+    (already leaked once). Replace with an owning `deque<unique_ptr<chunk>>` drained in
+    the send pass — also lifts the "one control reply per packet" limitation.
+    (`rtmfp/session.cpp`)
+- **Layer the codec / data model / framing (RTMP).** The `amf0` codec (+ its per-decode
+  reference table) is a member of *every* `rtmp_message`, so a ChunkSize/audio/video
+  message drags AMF decode state; `rtmp_protocol::deserialize_*` is 15 boilerplate
+  helpers shadowing the message `deserialize` virtuals; `byte_reader` exposes two
+  inconsistent APIs (a byte-order-aware non-throwing family + a naive throwing one that
+  forces ~20 scattered manual `ntoh` swaps); `byte_writer` fuses a serializer and an
+  async-fill accumulator under debug-only asserts. Make the codec a free service over
+  byte ranges (leaves `rtmp_message` a pure data object + `rtmp_protocol` a thin
+  framing/factory layer), give the throwing reader the same typed BE/LE reads, split
+  `byte_writer`. (`rtmp_message.h:102`, `rtmp_protocol.cpp:15-61`, `byte_reader.h`, `byte_writer.h`)
+- **Replace the invoke string-ladders with per-app dispatch tables.** Every app plus
+  the base re-implements an `if (fn == …)` chain, so a new verb edits a chain and every
+  subclass carries base machinery (bw-check, SO) it may not use. Register a
+  `unordered_map<string_view, handler>` per app in its ctor (base pre-fills the common
+  verbs). (`rtmp_application.cpp:220-241`, each app's `handle_invoke`)
+- **Give the RTMFP transport a testable seam (prereq for the Testing item above).**
+  `session` is both the RFC-7016 transport engine and the RTMP demux/dispatch (it
+  includes `rtmp_protocol.h`/`rtmp_app_manager.h`), constructed only against live
+  sockets/timers — which is *why* the tier has no tests. Introduce a narrow
+  `flow_message_sink(stream_id, bytes)` boundary and split I/O binding (`open()`/`start()`)
+  out of the constructors; inject the app-manager + a clock. (`rtmfp/session.cpp`, `rtmfp/service.cpp`)
+- **Finish the `get_connection` → `get_connection_opt` migration.** The throwing
+  overload is still used on live paths (e.g. the connect route). (`connect_router.cpp`,
+  `connection_registry.cpp`)
+- **Make `client/` an actual library.** The shipped `nc`/`ns_event_handler` are
+  hard-wired to the CLI `config` singleton, so both real consumers (helper tool, b2b
+  test) bypass them and reimplement handlers; sink ownership is raw-pointer with leak
+  paths; `net_connection` is a 712-line god object. Split the CLI (`main`, handlers,
+  `config`) from the reusable core, and export a typed status-code vocabulary (the
+  `NetConnection.Connect.*` / `NetStream.*` strings are re-typed in ≥4 places today).
+- **Inject `config` instead of reaching the singleton.** `config::instance()` is
+  pulled from ~14 files across every layer (server, rtmpt_manager, remote_relay, the
+  apps, codecs, the whole client) — a global that blocks unit-testing those classes in
+  isolation. Pass the needed config in rather than reading the singleton in ctors.
+
+### RTMP / RTMPT correctness (deferred — real clients don't hit these)
+- **RTMP simple-handshake fallback** for a versioned C1 with no valid digest (all
+  real clients sign).
+- **RTMPT out-of-order stash drain** on an `/idle` gap-filler (needs multi-connection
+  reordering); **partial handshake split across POSTs** (real clients send it whole).
+- **librtmp connect-param coverage** (`auth`/`token`/`subscribe`/`tcUrl`/`swfUrl`/…)
+  and command verbs we don't handle: `secureTokenResponse`, `set_playlist`/
+  `playlist_ready`, client-initiated `_checkbw`, `onFCSubscribe`/`onFCUnsubscribe`.
+
+### RTMFP correctness (deferred — needs the test harness above first)
+- **`handle_flow_exception_report` is a documented no-op.** Peer-initiated sending-flow
+  teardown needs coordinated removal across `m_sending_flows` +
+  `m_flow_id_to_stream_id`/`m_stream_id_to_flow_id` + the owning app (the flow-
+  lifecycle work). (`session.cpp`)
+- **One control-reply per received packet.** `m_ready_chunk` is a single slot cleared
+  each packet; sending multiple control replies (e.g. close-ack *and* ping-reply) in
+  one packet would need a send-scheduling redesign. Leak on that path is now fixed.
+- **Unverified redirect / glare path** in the P2P introducer. (`redirect_ihello`)
+- **Partial-reliability USERDATA semantics** — ABN (abandon) flag + MANDATORY_CUTOFF
+  option, per-flow priority scheduling (PRI_*).
+- **No FEC.**
+
+### Performance
+- **Zero-copy send (scatter-gather).** The last per-subscriber copy is
+  `serialize`→`chunk_buffer` into the output buffer. Removing it needs
+  scatter-gather `writev` of [owned header][shared-payload view]. BLOCKER: RTMPE
+  encrypts output in place per connection, so the payload can't be shared for
+  encrypted streams — helps plaintext RTMP only, and is a big write-path rewrite.
+  Scope carefully or drop.
+- **AMF is allocation-heavy.** Every value is `shared_ptr<amf0_x>(new …)`; a
+  value/variant design would be lighter on the command hot path. Taste/perf, not
+  correctness — the AMF layer is otherwise the strongest, best-tested part.
+
+### Infra / ops
+- **Graceful drain on shutdown.** SIGINT/SIGTERM `stop()`s, abandoning queued frames.
+  A real drain must run handlers to completion — unsafe today because teardown relies
+  on handlers being abandoned (see `docs/concurrency.md` and the note at
+  `server::stop()`); needs the acceptor + app/manager timers cancelled first.
+- **CI** — unit + fuzz + b2b + bench exist, nothing runs them.
+- **Prometheus-style metrics endpoint** (admin stats exist over RTMP).
+- **Wire the auth framework.** `authentication_manager` / `authentication_plugin`
+  scaffold is never invoked on connect/publish; only the admin password file is live.
+  No per-stream publish/play ACLs. Either wire it or prune it (see dead code).
 
 ## Dead / unwired code to prune or finish
 
-- ~~**[dead]** `flv_reader.*` — no VOD, never referenced.~~ Now wired for VOD.
-- **[dead]** `g711_codec.*` — never instantiated; only Speex is wired to the mixer.
-- **[dead]** `authentication_manager.*` / `authentication_plugin.*` — scaffold
-  never called.
-- Numerous RTMFP `// fixme` markers (address-type enums, empty
-  `handle_flow_exception_report`, unfinished NetGroup re-notification).
-
----
-
-## Suggested first picks (bounded, high value)
-
-1. **librtmfp "Bad CRC"** — smallest, most concrete interop win; may already be
-   fixed by the earlier RTMFP interop work. *(in progress)*
-2. **AMF3 completeness** — bounded, unblocks AMF3-encoding clients.
-3. **RTMPS/TLS** — larger, but the headline transport-security gap.
+- **`g711_codec.*`** — never instantiated; only Speex is wired to the mixer.
+- **`authentication_manager.*` / `authentication_plugin.*`** — scaffold never called;
+  the class is not instantiated anywhere in the tree, so `--auth-plugin` is an
+  advertised option that cannot do anything (same shape as the inert queue options
+  retired in 2.0.0 — either wire it or drop the option with the code). Couples with
+  the "wire the auth framework" P3 item.
+- RTMFP loose ends: `handle_flow_exception_report` (now a documented no-op),
+  unfinished NetGroup re-notification.

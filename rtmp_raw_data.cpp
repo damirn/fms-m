@@ -163,15 +163,9 @@ namespace fms
 		channel->clear_data();
 	}
 
-	/**
-	* peeks RTMP channel from the input buffer
-	* @param r
-	* @param channel
-	* @returns RTMP channel
-	* @note might throw an exception if there's no enough data in the buffer
-	*/
 	// Peek the channel id from the chunk basic header without consuming (the reader
-	// is taken by value). Returns false if the basic header isn't fully present.
+	// is taken by value). Returns false if the basic header isn't fully present --
+	// non-throwing, unlike the pre-resumable-parser version this replaced.
 	bool rtmp_raw_data::peek_channel_id(byte_reader r, std::uint32_t &channel)
 	{
 		std::uint8_t c;
