@@ -9,7 +9,7 @@ namespace fms
 	rtmpt_manager::rtmpt_manager(rtmp_app_manager *app_manager)
 		: m_app_manager(app_manager)
 		, m_timer(app_manager->get_io_context_pool().get_io_context())
-		, m_version(std::string("IMS/") + config::instance()->version_string())
+		, m_version(std::string("fms/") + config::instance()->version_string())
 	{
 		arm_timer();
 	}
