@@ -238,11 +238,12 @@ Priority order within this block; the first item is the one the others hang off.
    `enable_shared_from_this` is required by asio) and one was not: `rtmp_raw_data`
    (chunk parsing) became a composed `rtmp_parser` component with an injected
    `rtmp_message_sink`, converted on both the server and client connections and in
-   the parser test. MI on the server connection is now two correct bases. Follow-on
-   (separate, larger): the RTMP handshake STATE (`m_tmp_buff`, `m_key_in/out`,
-   `m_is_fp9`, `create_keys`, `validate_client`) still lives on the connection,
-   though its logic is already in `rtmp_handshake::` free functions — pulling the
-   state into an `rtmp_handshaker` component is the natural next shrink.
+   the parser test. MI on the server connection is now two correct bases. The
+   follow-on also landed: the RTMP handshake state (`m_tmp_buff`, the RC4 keys, the
+   negotiated flags, `create_keys`/`validate_client`) moved into an
+   `rtmp_handshaker` component with a two-phase `build_response`/`validate_c2` API
+   plus in-place `encrypt`/`decrypt`; `basic_rtmp_connection.cpp` dropped 238 to 78
+   lines. RTMPE round-trip verified on x86 (interop skips it on ARM).
 
 2. **RTMFP is the risk concentration**: a second full protocol stack with its own
    lock-free model, reaching into `rtmp_app_manager` directly, and no tests at any
