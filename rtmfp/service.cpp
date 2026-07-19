@@ -278,6 +278,13 @@ namespace fms
 
 	void service::handle_ihello(ihello_chunk *ic)
 	{
+		// The serializer's buffers are shared with any async_send_to still in
+		// flight, and prepare_raw_packet clears them -- so bail before building,
+		// not just before writing. The initiator retransmits, and the window is
+		// one UDP send wide. (handle_notify and the data path already do this.)
+		if (m_write_in_progress)
+			return;
+
 		byte_reader s(ic->epd(), static_cast<std::size_t>(ic->epd_len()));
 		s.read_vlu();
 		std::uint8_t ihellotype;
@@ -402,6 +409,13 @@ namespace fms
 
 	void service::handle_iikeying(iikeying_chunk *iikc)
 	{
+		// The serializer's buffers are shared with any async_send_to still in
+		// flight, and prepare_raw_packet clears them -- so bail before building,
+		// not just before writing. The initiator retransmits, and the window is
+		// one UDP send wide. (handle_notify and the data path already do this.)
+		if (m_write_in_progress)
+			return;
+
 		if (!echo_cookie_valid(iikc->cookie_echo(), iikc->cookie_len()))
 			return;
 		if (iikc->cert_len() < 0x84)
@@ -488,6 +502,13 @@ namespace fms
 
 	void service::redirect_ihello(ihello_chunk *ic, const std::uint8_t *peer_id)
 	{
+		// The serializer's buffers are shared with any async_send_to still in
+		// flight, and prepare_raw_packet clears them -- so bail before building,
+		// not just before writing. The initiator retransmits, and the window is
+		// one UDP send wide. (handle_notify and the data path already do this.)
+		if (m_write_in_progress)
+			return;
+
 		item const tmp(peer_id, false);
 		auto const i = m_session_map.find(tmp);
 		if (i != m_session_map.end())
