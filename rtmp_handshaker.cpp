@@ -129,7 +129,8 @@ namespace fms
 		{
 			// create RC4 keys
 			std::uint8_t shared_key[128];
-			mydh.copy_shared_key(shared_key, 128);
+			if (!mydh.copy_shared_key(shared_key, 128))
+				return false;   // short secret: fail closed rather than ship cleartext
 			m_key_in = EVP_CIPHER_CTX_new();
 			m_key_out = EVP_CIPHER_CTX_new();
 			if (!init_rc4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out))
