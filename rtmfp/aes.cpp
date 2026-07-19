@@ -35,10 +35,11 @@ namespace fms
 		// EVP_CipherUpdate emits fewer bytes than we reserve and leaves an
 		// indeterminate tail. Reject a non-aligned length -- `to` stays empty and the
 		// parser drops the packet.
-		if (n == 0 || n % 16 != 0)
+		if (m_decrypt_ctx == nullptr || n == 0 || n % 16 != 0)
 			return;
 		int outlen1 = 0;
-		EVP_CipherInit_ex(m_decrypt_ctx, EVP_aes_128_cbc(), nullptr, m_dec_key_data, m_iv, 0);
+		if (EVP_CipherInit_ex(m_decrypt_ctx, EVP_aes_128_cbc(), nullptr, m_dec_key_data, m_iv, 0) != 1)
+			return;
 		EVP_CIPHER_CTX_set_padding(m_decrypt_ctx, 0);
 		// padding off + block-aligned input, so plaintext == ciphertext size
 		std::uint8_t *dst = to.extend(n);
@@ -46,15 +47,29 @@ namespace fms
 			to.clear();
 	}
 
-	void aes::encrypt(byte_writer &from, byte_writer &to)
+	bool aes::encrypt(byte_writer &from, byte_writer &to)
 	{
+		// extend() hands back uninitialised storage, so every failure below has to
+		// take it away again: whatever is left in `to` goes on the wire otherwise.
+		if (m_encrypt_ctx == nullptr)
+			return false;
+
 		int outlen1 = 0;
-		EVP_CipherInit_ex(m_encrypt_ctx, EVP_aes_128_cbc(), nullptr, m_enc_key_data, m_iv, 1);
+		if (EVP_CipherInit_ex(m_encrypt_ctx, EVP_aes_128_cbc(), nullptr, m_enc_key_data, m_iv, 1) != 1)
+			return false;
+		EVP_CIPHER_CTX_set_padding(m_encrypt_ctx, 0);
 
 		// The plaintext is block-aligned (add_padding) and padding is disabled, so
 		// CBC emits exactly from.size() bytes; reserve that and encrypt in place.
-		std::uint8_t *dst = to.extend(from.size());
-		EVP_CipherUpdate(m_encrypt_ctx, dst, &outlen1, from.data(), static_cast<int>(from.size()));
+		std::size_t const n = from.size();
+		std::uint8_t *dst = to.extend(n);
+		if (EVP_CipherUpdate(m_encrypt_ctx, dst, &outlen1, from.data(), static_cast<int>(n)) != 1
+			|| outlen1 != static_cast<int>(n))
+		{
+			to.clear();
+			return false;
+		}
+		return true;
 	}
 
 	void aes::compute_tx_hmac(std::uint8_t *out, const std::uint8_t *ct, std::size_t len)
