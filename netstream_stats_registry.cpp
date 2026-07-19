@@ -61,9 +61,10 @@ namespace fms
 		{
 			i->second->m_name = name;
 			i->second->m_is_published = is_publish;
+			netstream_stats_ptr const data = i->second;   // `i` dies with the lock
 			lock.unlock();
-			if (m_observer && name.find("QOS!") != 0) // QOS streams are of no interest to admin app
-				m_observer->send_new_stream_notify(i->second);
+			if (m_observer && !name.starts_with("QOS!")) // QOS streams are of no interest to admin app
+				m_observer->send_new_stream_notify(data);
 		}
 	}
 
@@ -138,7 +139,7 @@ namespace fms
 				std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
 				for (auto & entry : m_netstream_stats)
 				{
-					if (entry.second->m_name.find("QOS!") != 0)
+					if (!entry.second->m_name.starts_with("QOS!"))
 					{
 						netstream_stats_ptr const stats = std::make_shared<netstream_stats>(*(entry.second));
 						std::chrono::system_clock::duration const td = now - stats->m_start_streaming_time;
