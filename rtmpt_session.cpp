@@ -80,9 +80,9 @@ namespace fms
 		p.serialize(buffer, msg, h, channel->sent_header());
 		channel->sent_header() = h;
 
-		// encrypt just the region this message serialized into
-		if (m_key_out != nullptr && buffer.size() > start)
-			rc4_crypt(m_key_out, buffer.size() - start, buffer.data() + start, buffer.data() + start);
+		// encrypt just the region this message serialized into (no-op if plaintext)
+		if (buffer.size() > start)
+			m_handshaker.encrypt(buffer.data() + start, buffer.size() - start);
 	}
 
 	void rtmpt_session::serialize_result(byte_writer &buffer)
@@ -127,8 +127,7 @@ namespace fms
 
 			m_results.clear();
 			boost::tribool res;
-			if (m_key_in != nullptr)
-				rc4_crypt(m_key_in, input.size(), input.data(), input.data());
+			m_handshaker.decrypt(input.data(), input.size());
 			if (!m_remaining_data.empty())
 			{
 				// byte_writer::consume() self-compacts, so the unparsed tail stays
@@ -162,8 +161,13 @@ namespace fms
 		{
 			if (input.size() < eHandShakeSize)
 				return false;
-			if (!check_hand_shake_response(input))
+			if (!m_handshaker.validate_c2(input.data()))
+			{
+				close();
 				return false;
+			}
+			input.consume(eHandShakeSize);
+			on_handshake_complete();   // no-op: an RTMPT session runs no handshake timer
 			m_sstate = eCSReadCommands;
 			// no arm_timer(): see start() -- an RTMPT session runs no cross-thread timers
 			if (!input.empty())
@@ -204,30 +208,15 @@ namespace fms
 		if (input.size() < eHandShakeSize + 1)
  			return false;
 
-		std::uint8_t *client_sig = input.data() + 1;
-		std::uint8_t const magic = input.data()[0];
-		if (magic == ePlainMagic)
-		{
-			m_uses_crypto = false;
-			// client_sig points at C1; C1[4] is the version high byte. (Do NOT use
-			// read_pos()+5 here: read_pos() was already advanced past C0 by the
-			// magic read above, so +5 lands on C1[5]=0 and misses the FP9 client.)
-			if (client_sig[4] != 0) // if client is v9 or later, use signed handshake
-				m_is_fp9 = true;
-		}
-		else if (magic == eCryptoMagic) // encrypted
-		{
-			m_is_fp9 = m_uses_crypto = true;
-		}
-		else
+		std::uint8_t *client_sig = input.data() + 1;   // C1
+		std::uint8_t const magic = input.data()[0];    // C0
+		if (!m_handshaker.build_response(magic, client_sig))
 			return false;
-
-		if (!prepare_hand_shake_response(magic, client_sig))
-			return false;
+		m_sid = m_handshaker.sid();
 
 		std::uint8_t const c = get_poll_time(true);
 		output.write(&c, 1);
-		output.write(m_tmp_buff.data(), eHandShakeSize + 1);
+		output.write(m_handshaker.response(), rtmp_handshaker::response_size());
 
 		output.write(input.data() + 1, eHandShakeSize);
 
