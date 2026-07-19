@@ -34,14 +34,19 @@ namespace fms
 	void dh::create_shared_key(std::uint8_t *key, std::uint16_t size)
 	{
 		std::size_t len = 0;
-		m_shared_key = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size, len);
-		if (m_shared_key == nullptr)
+		std::uint8_t *const secret = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size, len);
+		if (secret == nullptr)
 			throw std::runtime_error("DH shared-key derivation failed");
+		m_shared_key.assign(secret, secret + len);   // replaces any previous secret
+		delete[] secret;
 	}
 
-	void dh::copy_shared_key(std::uint8_t *key, std::uint16_t size)
+	bool dh::copy_shared_key(std::uint8_t *key, std::uint16_t size) const
 	{
-		std::memcpy(key, m_shared_key, size);
+		if (m_shared_key.size() < size)
+			return false;
+		std::memcpy(key, m_shared_key.data(), size);
+		return true;
 	}
 
 	void dh::copy_public_key(std::uint8_t *key, std::uint16_t size)
