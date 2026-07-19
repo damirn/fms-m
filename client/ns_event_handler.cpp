@@ -14,12 +14,14 @@ namespace fms::rtmp_client
 		else if (status == "NetStream.Play.Start")
 		{
 			create_sinks();
-			m_ns->set_sink(m_sink);
+			m_ns->set_sink(m_sink.get());
 		}
 		else if (status == "NetStream.Play.UnpublishNotify")
 		{
-			m_sink->close();
-			delete m_sink;
+			m_ns->set_sink(nullptr);   // no frames may reach the sink once it is gone
+			if (m_sink)
+				m_sink->close();
+			m_sink.reset();
 		}
 	}
 
@@ -27,13 +29,13 @@ namespace fms::rtmp_client
 	{
 		if (config::instance()->no_output())
 		{
-			m_sink = new null_sink();
+			m_sink = std::make_unique<null_sink>();
 			return;
 		}
 		if (config::instance()->command() == "play")
-			m_sink = new flv_sink(config::instance()->output_file());
+			m_sink = std::make_unique<flv_sink>(config::instance()->output_file());
 		else
-			m_sink = new flv_sink(config::instance()->output_file_prefix() + m_ns->stream_name() + ".flv");
+			m_sink = std::make_unique<flv_sink>(config::instance()->output_file_prefix() + m_ns->stream_name() + ".flv");
 	}
 
 	void ns_event_handler::publish()
