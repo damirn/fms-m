@@ -477,8 +477,8 @@ namespace fms
 				for (const auto & i : g->members())
 				{
 					session_ptr const tmp = i.lock();
-					if (tmp == shared_from_this())
-						continue;
+					if (!tmp || tmp == shared_from_this())
+						continue;   // a departed member locks to null, not to us
 					temp << marker;
 					temp.write(tmp->peer_id_data(), 0x20);
 				}
