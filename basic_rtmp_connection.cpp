@@ -31,11 +31,16 @@ namespace fms
 
 		if (m_bytes_read >= m_bytes_read_notify)
 		{
+			// No app until connect() has been routed, and a peer can push past the
+			// window before ever sending one. Leave the threshold alone so the ack
+			// goes out on the next read once an app exists, rather than being lost.
+			if (m_app == nullptr)
+				return;
+
 			m_bytes_read_notify += m_win_ack;
 			rtmp_message_bytes_read_ptr const msg = std::make_shared<rtmp_message_bytes_read>(m_bytes_read);
 			m_app->enqueue_async_message(m_id, msg);
 			notify();
-			//std::cout << "Sending bytes read: " << m_bytes_read << " bytes." << std::endl;
 		}
 	}
 
