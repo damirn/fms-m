@@ -233,10 +233,18 @@ Priority order within this block; the first item is the one the others hang off.
    and stats whether it uses them or not — `admin_application` needs none of the
    media machinery. Composition, not inheritance; the "invoke string-ladder" item
    below is a symptom of the same thing.
-2. **`basic_rtmp_connection` mixes three axes by inheritance** —
-   `client_session` (identity) + `rtmp_raw_data` (chunk parsing) +
-   `enable_shared_from_this` (lifetime) in one type.
-3. **RTMFP is the risk concentration**: a second full protocol stack with its own
+**`basic_rtmp_connection` mixed-inheritance — DONE (partial).** Of its three
+   bases, two were legitimate (`client_session` is shared with the RTMFP session;
+   `enable_shared_from_this` is required by asio) and one was not: `rtmp_raw_data`
+   (chunk parsing) became a composed `rtmp_parser` component with an injected
+   `rtmp_message_sink`, converted on both the server and client connections and in
+   the parser test. MI on the server connection is now two correct bases. Follow-on
+   (separate, larger): the RTMP handshake STATE (`m_tmp_buff`, `m_key_in/out`,
+   `m_is_fp9`, `create_keys`, `validate_client`) still lives on the connection,
+   though its logic is already in `rtmp_handshake::` free functions — pulling the
+   state into an `rtmp_handshaker` component is the natural next shrink.
+
+2. **RTMFP is the risk concentration**: a second full protocol stack with its own
    lock-free model, reaching into `rtmp_app_manager` directly, and no tests at any
    level. Ties to the testing item above and the RTMFP seam item below.
 
