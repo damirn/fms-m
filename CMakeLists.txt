@@ -180,12 +180,20 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------
+# Testing. enable_testing() must be at top level: it is what generates
+# CTestTestfile.cmake, and add_test() below lives under three different option
+# blocks. Inside one of them (as it used to be) a default configure -- where that
+# option is OFF -- generated no test file at all, so `ctest` found nothing and
+# the tests registered under BUILD_CLIENT (ON by default) were unreachable.
+# ---------------------------------------------------------------------------
+enable_testing()
+
+# ---------------------------------------------------------------------------
 # Unit tests (AMF): -DBUILD_AMF_TESTS=ON.  The AMF (de)serializers are the only
 # TUs pulled in, so tests build/run without the audio/RTMP/RTMFP stack.
 # ---------------------------------------------------------------------------
 option(BUILD_AMF_TESTS "Build AMF serialization unit tests" OFF)
 if(BUILD_AMF_TESTS)
-  enable_testing()
   # The AMF serializers use Boost only for headers, so tests need Boost includes
   # but link no Boost libs — avoids dragging in Boost.Log/ICU.
   add_executable(amf_tests
@@ -270,7 +278,6 @@ endif()
 # ---------------------------------------------------------------------------
 option(BUILD_FUZZERS "Build the AMF fuzzers (ASan/UBSan)" OFF)
 if(BUILD_FUZZERS)
-  enable_testing()
   add_executable(fuzz_run test/fuzz_run.cpp amf0.cpp amf3.cpp)
   target_include_directories(fuzz_run PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_options(fuzz_run PRIVATE -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined)
@@ -333,6 +340,14 @@ if(BUILD_CLIENT)
   target_link_libraries(b2b_test PRIVATE rtmp_client_lib)
   target_compile_definitions(b2b_test PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
   add_dependencies(b2b_test ${PROJECT_NAME})
+  # Built, wired to the server binary, and then never registered -- so the only
+  # end-to-end protocol test in the tree never ran under ctest.
+  add_test(NAME b2b_test COMMAND b2b_test)
+  set_tests_properties(b2b_test PROPERTIES TIMEOUT 180)
+  if(APPLE)
+    set_tests_properties(b2b_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/opt/icu4c@74/lib")
+  endif()
 
   # Interop matrix vs the reference clients (rtmpdump + ffmpeg): drives the real
   # server over RTMP/RTMPT and asserts both the media (ffprobe) and the RTMP
