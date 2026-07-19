@@ -431,3 +431,94 @@ TEST_CASE("amf3 read: byte_reader decodes the documented vectors")
 		CHECK(encode(decode(e)) == e);
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Reference-table amplification (C2)
+// ---------------------------------------------------------------------------
+namespace
+{
+	// AMF3 U29: 7 bits per byte for the first three, a full 8 in the fourth.
+	void put_u29(bytes &out, std::uint32_t v)
+	{
+		if (v < 0x80u)
+		{
+			out.push_back(static_cast<std::uint8_t>(v));
+		}
+		else if (v < 0x4000u)
+		{
+			out.push_back(static_cast<std::uint8_t>(0x80u | (v >> 7)));
+			out.push_back(static_cast<std::uint8_t>(v & 0x7Fu));
+		}
+		else if (v < 0x200000u)
+		{
+			out.push_back(static_cast<std::uint8_t>(0x80u | (v >> 14)));
+			out.push_back(static_cast<std::uint8_t>(0x80u | ((v >> 7) & 0x7Fu)));
+			out.push_back(static_cast<std::uint8_t>(v & 0x7Fu));
+		}
+		else
+		{
+			out.push_back(static_cast<std::uint8_t>(0x80u | (v >> 22)));
+			out.push_back(static_cast<std::uint8_t>(0x80u | ((v >> 15) & 0x7Fu)));
+			out.push_back(static_cast<std::uint8_t>(0x80u | ((v >> 8) & 0x7Fu)));
+			out.push_back(static_cast<std::uint8_t>(v & 0xFFu));
+		}
+	}
+
+	// Object with inline traits, not externalizable, not dynamic, `sealed` names.
+	std::uint32_t obj_info_sealed(std::uint32_t sealed)
+	{
+		return (sealed << 4) | 0x03u;
+	}
+}
+
+TEST_CASE("amf3 traits: a sealed count larger than the buffer is rejected")
+{
+	// Each sealed name costs at least the one wire byte of its U29 header, so a
+	// count this large can never be satisfied -- it must not be walked towards.
+	bytes b;
+	b.push_back(0x0A);                              // object marker
+	put_u29(b, obj_info_sealed(0x100000u));         // 1M sealed properties
+	put_u29(b, (0u << 1) | 1u);                     // empty class name
+
+	amf3 a;
+	byte_reader r(b.data(), b.size());
+	CHECK_THROWS_AS(a.read(r), amf3_read_exception);
+}
+
+TEST_CASE("amf3 strings: back-references cannot amplify past the decode budget")
+{
+	// One large string registered in the reference table, then a run of one-byte
+	// back-references to it as sealed property names. Each reference materializes
+	// a full copy, so ~66 KB of wire would otherwise buy 33 MB of heap -- and the
+	// same shape scales to gigabytes within one 8 MB message.
+	constexpr std::uint32_t big_len = 65536;
+	constexpr std::uint32_t refs = 512;
+
+	bytes b;
+	b.push_back(0x0A);
+	put_u29(b, obj_info_sealed(refs));
+	put_u29(b, (big_len << 1) | 1u);                // inline class name -> string_refs[0]
+	b.insert(b.end(), big_len, static_cast<std::uint8_t>('x'));
+	for (std::uint32_t i = 0; i < refs; ++i)
+		b.push_back(0x00);                          // string reference to index 0
+
+	amf3 a;
+	byte_reader r(b.data(), b.size());
+	CHECK_THROWS_AS(a.read(r), amf3_read_exception);
+}
+
+TEST_CASE("amf3 strings: the decode budget is per top-level read, not cumulative")
+{
+	// reset_refs() clears the budget with the reference tables, so a long-lived
+	// amf3 instance does not slowly starve across many legitimate messages.
+	bytes const b = hx("09 05 01 06 07 616263 06 00");   // array: "abc", ref to it
+
+	amf3 a;
+	for (int i = 0; i < 2000; ++i)
+	{
+		byte_reader r(b.data(), b.size());
+		auto got = std::dynamic_pointer_cast<amf3_array_type>(a.read(r));
+		REQUIRE(got);
+		CHECK(as_str(got->dense()[1]) == "abc");
+	}
+}

@@ -3,6 +3,7 @@
 #include "amf3_types.h"
 #include "byte_writer.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -91,9 +92,18 @@ namespace fms
 			m_string_refs.clear();
 			m_object_refs.clear();
 			m_traits_refs.clear();
+			m_decoded_string_bytes = 0;
 		}
 
 		enum { eMaxDepth = 32 };   // cap nested objects (untrusted input)
 		unsigned m_depth = 0;
+
+		// A string reference costs one wire byte but materializes a full copy, so
+		// one large string plus a run of back-references amplifies without bound.
+		// Charge every string we hand back against a per-message budget.
+		static constexpr std::size_t eMaxDecodedStringBytes = 32u << 20;
+		std::size_t m_decoded_string_bytes = 0;
+
+		void charge_string_bytes(std::size_t n);
 	};
 }
