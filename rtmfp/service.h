@@ -69,7 +69,7 @@ namespace fms
 
 		// Handshake cookie (see rtmfp/cookie.h): HMAC-bound to the initiator's
 		// endpoint for return-routability / anti-DoS (RFC 7016 sec. 2.3.4).
-		void create_cookie(std::uint8_t *);
+		[[nodiscard]] bool create_cookie(std::uint8_t *);
 		bool echo_cookie_valid(const std::uint8_t *, const vlu_t &);
 
 		rtmp_app_manager *m_app_manager;

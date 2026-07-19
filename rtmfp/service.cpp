@@ -11,6 +11,7 @@
 
 #include <cstring>
 #include <memory>
+#include <stdexcept>
 
 #include <openssl/rand.h>
 
@@ -33,7 +34,11 @@ namespace fms
 		 m_start(std::chrono::system_clock::now())
 		, m_sessions_iterator(m_sessions.begin())
 	{
-		RAND_bytes(m_cookie_secret, sizeof(m_cookie_secret));   // per-process cookie-HMAC key
+		// A predictable cookie secret defeats the whole authenticated-cookie
+		// return-routability check, so a failing CSPRNG must stop the service
+		// rather than quietly weaken it.
+		if (RAND_bytes(m_cookie_secret, sizeof(m_cookie_secret)) != 1)
+			throw std::runtime_error("RTMFP: CSPRNG failed seeding the cookie secret");
 		m_parser = new parser(*this);
 		m_serializer = new serializer;
 		create_certificate();
@@ -49,7 +54,8 @@ namespace fms
 	void service::create_certificate()
 	{
 		std::memcpy(m_cert, m_c1, sizeof(m_c1));
-		RAND_bytes(m_cert + sizeof(m_c1), eCertRandomLen);   // CSPRNG, not time-seeded MT
+		if (RAND_bytes(m_cert + sizeof(m_c1), eCertRandomLen) != 1)
+			throw std::runtime_error("RTMFP: CSPRNG failed generating the certificate nonce");
 		std::memcpy(m_cert + sizeof(m_c1) + eCertRandomLen, m_c2, sizeof(m_c2));
 	}
 
@@ -283,7 +289,8 @@ namespace fms
 		}
 
 		std::uint8_t cookie[eCookieSize];
-		create_cookie(cookie);
+		if (!create_cookie(cookie))
+			return;   // no RHello rather than one carrying uninitialised pad bytes
 
 		rhello_chunk rc(ic->tag_len(), ic->tag(), eCookieSize, cookie, eCertLen, m_cert);
 		std::uint16_t const ts = get_timestamp();
@@ -524,13 +531,15 @@ namespace fms
 		return rtmfp_cookie::valid(m_cookie_secret, addr, port, get_timestamp_ms(), cookie);
 	}
 
-	void service::create_cookie(std::uint8_t *cookie)
+	bool service::create_cookie(std::uint8_t *cookie)
 	{
 		std::uint32_t const addr = m_sender_endpoint.address().to_v4().to_uint();
 		std::uint16_t const port = m_sender_endpoint.port();
 		rtmfp_cookie::write(m_cookie_secret, addr, port, get_timestamp_ms(), cookie);
-		RAND_bytes(cookie + rtmfp_cookie::header_len,
-		           static_cast<int>(eCookieSize - rtmfp_cookie::header_len));   // opaque pad
+		// The pad is uninitialised stack until this fills it, so a failure here
+		// would put our own memory on the wire.
+		return RAND_bytes(cookie + rtmfp_cookie::header_len,
+		                  static_cast<int>(eCookieSize - rtmfp_cookie::header_len)) == 1;
 	}
 
 	std::uint32_t service::get_timestamp_ms()
