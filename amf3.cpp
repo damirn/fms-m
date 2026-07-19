@@ -194,6 +194,13 @@ namespace fms
 		}
 	}
 
+	void amf3::charge_string_bytes(std::size_t n)
+	{
+		if (n > eMaxDecodedStringBytes - m_decoded_string_bytes)
+			throw amf3_read_exception();
+		m_decoded_string_bytes += n;
+	}
+
 	amf3_string_type_ptr amf3::read_string(byte_reader &buffer)
 	{
 		std::uint32_t const header = read_u29(buffer);
@@ -202,12 +209,14 @@ namespace fms
 			std::uint32_t const idx = header >> 1;
 			if (idx >= m_string_refs.size())
 				throw amf3_read_exception();
+			charge_string_bytes(m_string_refs[idx].size());
 			return std::make_shared<amf3_string_type>(m_string_refs[idx]);
 		}
 
 		std::uint32_t const len = header >> 1;
 		if (buffer.available() < len)          // wire length must not exceed the buffer
 			throw buffer_eof_exception();
+		charge_string_bytes(len);
 		std::string s(reinterpret_cast<const char *>(buffer.read_pos()), len);   // NOLINT(misc-const-correctness) moved below
 		buffer.skip(len);
 		if (!s.empty())                        // the empty string is never sent by reference
@@ -362,6 +371,11 @@ namespace fms
 			bool const dynamic = (obj_info & 0x01) != 0;
 			obj_info >>= 1;
 			std::uint32_t const sealed_count = obj_info;
+			// Every sealed name costs at least the one wire byte of its U29 header,
+			// so a count past what is left in the buffer can never be satisfied --
+			// reject it up front instead of growing m_properties towards it.
+			if (sealed_count > buffer.available())
+				throw amf3_read_exception();
 
 			traits = std::make_shared<class_data>();
 			traits->m_dynamic = dynamic;
