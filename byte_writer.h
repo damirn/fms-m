@@ -85,22 +85,25 @@ namespace fms
 		}
 
 		// Variable-length unsigned (RTMFP VLU): 7 bits per byte, high bit set on
-		// all but the last; a full 4-byte form (>= 2^21) emits the final byte as
-		// 8 bits.
-		static std::uint8_t vlu_size(std::uint64_t v)
+		// all but the last; the 4-byte form emits its final byte as 8 bits, so
+		// eMaxVlu is everything the encoding can carry.
+		static constexpr std::uint64_t eMaxVlu = (std::uint64_t{1} << 29) - 1;
+
+		// Never more than the 4 bytes write_vlu can actually emit. The old
+		// shift-until-bigger loop returned 5+ past 2^28 -- which made
+		// serializer's reserve disagree with the bytes written -- and span
+		// forever once vlu_min shifted off the top of a uint64 (v >= 2^63).
+		static constexpr std::uint8_t vlu_size(std::uint64_t v)
 		{
-			std::uint64_t vlu_min = 0x80;
-			std::uint8_t res = 1;
-			while (v >= vlu_min)
-			{
-				++res;
-				vlu_min <<= 7;
-			}
-			return res;
+			if (v < 0x80) return 1;
+			if (v < 0x4000) return 2;
+			if (v < 0x200000) return 3;
+			return 4;
 		}
 
 		void write_vlu(std::uint64_t v)
 		{
+			assert(v <= eMaxVlu && "VLU is a 29-bit encoding; larger values truncate");
 			std::uint8_t size = (vlu_size(v) - 1) * 7;
 			bool max = false;
 			if (size >= 21)   // 4 bytes maximum

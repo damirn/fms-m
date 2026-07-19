@@ -748,6 +748,33 @@ TEST_CASE("VLU: byte_writer -> byte_reader round-trips the 1..3 byte forms")
 	}
 }
 
+TEST_CASE("VLU: vlu_size agrees with the bytes write_vlu emits")
+{
+	// serializer reserves vlu_size(seq) bytes up front and writes the value later,
+	// so any disagreement misaligns the packet front. The old loop returned 5+
+	// past 2^28 while write_vlu still emitted 4.
+	std::vector<std::uint64_t> const vals = {
+		0, 1, 0x7f, 0x80, 0x3fff, 0x4000, 0x1fffff, 0x200000,
+		0x0fffffff, byte_writer::eMaxVlu
+	};
+	for (std::uint64_t const v : vals)
+	{
+		byte_writer bw;
+		bw.write_vlu(v);
+		CHECK(bw.size() == byte_writer::vlu_size(v));
+		CHECK(byte_writer::vlu_size(v) <= 4);
+	}
+}
+
+TEST_CASE("VLU: vlu_size terminates on values past the encodable range")
+{
+	// vlu_min <<= 7 reached 0 after nine rounds, so `v >= vlu_min` held forever
+	// and the uint8 counter wrapped -- an outright hang for any v >= 2^63.
+	CHECK(byte_writer::vlu_size(std::uint64_t{1} << 29) == 4);
+	CHECK(byte_writer::vlu_size(std::uint64_t{1} << 63) == 4);
+	CHECK(byte_writer::vlu_size(~std::uint64_t{0}) == 4);
+}
+
 TEST_CASE("header round-trips: serialize (byte_writer) -> try_deserialize (byte_reader)")
 {
 	for (std::uint32_t ts : {std::uint32_t(1000), std::uint32_t(0x01020304)})   // normal + extended
