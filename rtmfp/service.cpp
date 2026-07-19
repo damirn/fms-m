@@ -64,6 +64,9 @@ namespace fms
 
 	void service::write(byte_writer &buffer, boost::asio::ip::udp::endpoint &ep)
 	{
+		if (buffer.size() == 0)
+			return;   // serialization failed; an empty datagram helps nobody
+
 		m_write_in_progress = true;
 		m_socket.async_send_to(boost::asio::buffer(buffer.data(), buffer.size()), ep,
 			[this](const boost::system::error_code &ec, std::size_t bytes) { handle_send_to(ec, bytes); });

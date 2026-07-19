@@ -65,7 +65,13 @@ namespace fms
 		// crypt: [4-byte session-id slot][ciphertext]
 		m_packet.clear();
 		m_packet.extend(4);
-		a->encrypt(m_raw_packet, m_packet);
+		if (!a->encrypt(m_raw_packet, m_packet))
+		{
+			// Nothing usable to scramble a session id into or HMAC over; leave the
+			// packet empty so write() drops it rather than emitting garbage.
+			m_packet.clear();
+			return;
+		}
 
 		// scramble the session id into the first 4 bytes:
 		// ssid = sid ^ (first 4 ciphertext bytes) ^ (next 4 ciphertext bytes)
