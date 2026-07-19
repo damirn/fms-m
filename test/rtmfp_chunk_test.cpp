@@ -301,3 +301,72 @@ TEST_CASE("rtmfp ping_reply_chunk copies its payload (no dangle into the freed p
 	CHECK(out.data()[5] == 0x33);
 	CHECK(out.data()[6] == 0x44);
 }
+
+TEST_CASE("rtmfp ihello: epd + tag split at the declared chunk length")
+{
+	// body = [epd_len VLU][epd][tag]; the tag is whatever remains inside `len`.
+	std::vector<std::uint8_t> const body = {0x01, 0x0A, 0xDE, 0xAD, 0xBE, 0xEF};
+	byte_reader r(body.data(), body.size());
+
+	ihello_chunk ic;
+	REQUIRE(ic.deserialize(r, static_cast<std::uint16_t>(body.size())));
+
+	CHECK(ic.epd_len() == 1);
+	CHECK(ic.epd()[0] == 0x0A);
+	REQUIRE(ic.tag_len() == 4);
+	CHECK(std::memcmp(ic.tag(), body.data() + 2, 4) == 0);
+}
+
+TEST_CASE("rtmfp ihello: the tag is owned, not a pointer into the packet buffer")
+{
+	// handle_ihello echoes the tag back in the RHello, which is built after parse()
+	// has released the decrypted packet buffer.
+	std::vector<std::uint8_t> pkt = {0x01, 0x0A, 0xDE, 0xAD, 0xBE, 0xEF};
+	ihello_chunk ic;
+	{
+		byte_reader r(pkt.data(), pkt.size());
+		REQUIRE(ic.deserialize(r, static_cast<std::uint16_t>(pkt.size())));
+	}
+
+	std::fill(pkt.begin(), pkt.end(), std::uint8_t{0xEE});   // packet buffer gone / reused
+
+	REQUIRE(ic.tag_len() == 4);
+	CHECK(ic.tag()[0] == 0xDE);
+	CHECK(ic.tag()[3] == 0xEF);
+}
+
+TEST_CASE("rtmfp ihello: a truncated body is rejected and leaves no tag to free")
+{
+	// Both rejection paths used to return before m_tag was ever assigned, while the
+	// destructor ran delete[] on it unconditionally -- an indeterminate free driven
+	// by one datagram. Destruction at the end of each SUBCASE is the real assertion.
+	SUBCASE("epd overruns the declared chunk length")
+	{
+		// epd_len = 4 consumes past end = here + len(2), so trailing_len rejects.
+		std::vector<std::uint8_t> const body = {0x04, 0x11, 0x22, 0x33, 0x44};
+		byte_reader r(body.data(), body.size());
+
+		ihello_chunk ic;
+		CHECK_FALSE(ic.deserialize(r, 2));
+		CHECK(ic.tag_len() == 0);
+	}
+
+	SUBCASE("epd_len runs past the end of the datagram")
+	{
+		// skip() throws buffer_eof before the tag is reached.
+		std::vector<std::uint8_t> const body = {0x40, 0x11};
+		byte_reader r(body.data(), body.size());
+
+		ihello_chunk ic;
+		CHECK_FALSE(ic.deserialize(r, static_cast<std::uint16_t>(body.size())));
+		CHECK(ic.tag_len() == 0);
+	}
+
+	SUBCASE("empty body")
+	{
+		ihello_chunk ic;
+		byte_reader r(nullptr, 0);
+		CHECK_FALSE(ic.deserialize(r, 0));
+		CHECK(ic.tag_len() == 0);
+	}
+}

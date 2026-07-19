@@ -105,11 +105,6 @@ namespace fms
 			: chunk(eInitiatorHello)
 		{}
 
-		~ihello_chunk() override
-		{
-			delete[] m_tag;
-		}
-
 		enum type { eServerIHello = 0x0a, eRemotePeerIHello = 0x0f };
 
 		const vlu_t &epd_len() const
@@ -122,14 +117,14 @@ namespace fms
 			return m_epd;
 		}
 
-		const std::uint16_t &tag_len() const
+		std::uint16_t tag_len() const
 		{
-			return m_tag_len;
+			return static_cast<std::uint16_t>(m_tag.size());
 		}
 
 		const std::uint8_t *tag() const
 		{
-			return m_tag;
+			return m_tag.data();
 		}
 
 		bool deserialize(byte_reader &, std::uint16_t) override;
@@ -139,10 +134,11 @@ namespace fms
 		} // not implemented
 
 	protected:
-		vlu_t m_epd_len;
-		std::uint8_t *m_epd;
-		std::uint8_t *m_tag;
-		std::uint16_t m_tag_len;
+		vlu_t m_epd_len{0};
+		std::uint8_t *m_epd{nullptr};
+		// Owns a copy: the RHello reply echoes the tag back after the packet
+		// buffer m_epd points into has been released.
+		std::vector<std::uint8_t> m_tag;
 	};
 
 	class rhello_chunk : public chunk

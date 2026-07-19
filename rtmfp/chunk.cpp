@@ -61,11 +61,11 @@ namespace fms
 			buff.skip(static_cast<size_t>(m_epd_len));
 
 			// make a copy of the tag, since it will be needed later
-			if (!trailing_len(here, len, buff, m_tag_len))
+			std::uint16_t tag_len = 0;
+			if (!trailing_len(here, len, buff, tag_len))
 				return false;
-			m_tag = new std::uint8_t[m_tag_len];
-			std::memcpy(m_tag, buff.read_pos(), m_tag_len);
-			buff.skip(m_tag_len);
+			m_tag.assign(buff.read_pos(), buff.read_pos() + tag_len);
+			buff.skip(tag_len);
 			return true;
 		}
 		catch (buffer_eof_exception &)
