@@ -142,16 +142,20 @@ namespace fms
 				m_buffer.update(bytes_transferred);
 				handle_bytes_read(bytes_transferred);
 				m_state = eStateHSResponseReceived;
-				if (!check_hand_shake_response(m_buffer))
+				if (!m_handshaker.validate_c2(m_buffer.data()))
+				{
+					close();
 					return;
+				}
+				m_buffer.consume(eHandShakeSize);
+				on_handshake_complete();
 
 				m_state = eStateReadPackets;
 				{
 					arm_timer();
 					if (!m_buffer.empty())
 					{
-						if (m_key_in != nullptr) // encrypted data
-							rc4_crypt(m_key_in, m_buffer.size(), m_buffer.data(), m_buffer.data());
+						m_handshaker.decrypt(m_buffer.data(), m_buffer.size());
 						m_parser.parse(m_buffer);
 						if (m_parser.framing_error())
 						{
@@ -175,14 +179,10 @@ namespace fms
 		if (!e)
 		{
 			m_buffer.update(bytes_transferred);
-			if (m_key_in != nullptr)
-			{
-				// decrypt exactly the bytes async_read just appended — the tail
-				// [size()-n, size()) — not the whole buffer, which would re-decrypt
-				// already-processed bytes and garble the RC4 session.
-				std::uint8_t *in = m_buffer.data() + m_buffer.size() - bytes_transferred;
-				rc4_crypt(m_key_in, bytes_transferred, in, in);
-			}
+			// Decrypt exactly the bytes async_read just appended — the tail
+			// [size()-n, size()) — not the whole buffer, which would re-decrypt
+			// already-processed bytes and garble the RC4 session. No-op if plaintext.
+			m_handshaker.decrypt(m_buffer.data() + m_buffer.size() - bytes_transferred, bytes_transferred);
 			handle_bytes_read(bytes_transferred);
 			m_parser.parse(m_buffer);   // parses and dispatches messages internally
 			if (m_parser.framing_error())
@@ -278,7 +278,7 @@ namespace fms
 
 	void rtmp_connection::write_hand_shake_block()
 	{
-		async_write_transport(boost::asio::buffer(m_tmp_buff, eHandShakeSize + 1),
+		async_write_transport(boost::asio::buffer(m_handshaker.response(), rtmp_handshaker::response_size()),
 			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_hand_shake(ec, bytes); });
 	}
 
@@ -320,9 +320,9 @@ namespace fms
 		m_wto_timer.expires_after(std::chrono::seconds(2 * ePingInterval));
 		m_wto_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_wto(ec); });
 
-		// encrypt outgoing data if needed
-		if (m_key_out != nullptr && !m_output_buffer.empty())
-			rc4_crypt(m_key_out, m_output_buffer.size(), m_output_buffer.data(), m_output_buffer.data());
+		// encrypt outgoing data if needed (no-op if plaintext)
+		if (!m_output_buffer.empty())
+			m_handshaker.encrypt(m_output_buffer.data(), m_output_buffer.size());
 
 		async_write_transport(boost::asio::buffer(m_output_buffer.data(), m_output_buffer.size()),
 			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_write_packet(ec, bytes); });
@@ -336,26 +336,12 @@ namespace fms
 
 		std::uint8_t *client_sig = m_buffer.data() + 1;   // C1
 		std::uint8_t const magic = m_buffer.data()[0];    // C0 (consumed together with C1 after block2)
-		if (magic == ePlainMagic) // not encrypted
-		{
-			m_uses_crypto = false;
-			if (*(m_buffer.data() + 5) != 0) // if client is v9 or later, use signed handshake
-				m_is_fp9 = true;
-		}
-		else if (magic == eCryptoMagic) // encrypted
-		{
-			m_is_fp9 = m_uses_crypto = true;
-		}
-		else
+		if (!m_handshaker.build_response(magic, client_sig))
 		{
 			close();
 			return;
 		}
-		if (!prepare_hand_shake_response(magic, client_sig))
-		{
-			close();
-			return;
-		}
+		m_sid = m_handshaker.sid();
 		return write_hand_shake_block();
 	}
 

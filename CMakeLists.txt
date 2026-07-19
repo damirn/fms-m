@@ -133,6 +133,7 @@ set(sourceFiles
   rtmp_application.cpp
   rtmp_connection.cpp
   rtmp_handshake.cpp
+  rtmp_handshaker.cpp
   rtmp_header.cpp
   rtmp_message.cpp
   rtmp_protocol.cpp
