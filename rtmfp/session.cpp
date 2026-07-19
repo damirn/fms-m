@@ -128,6 +128,20 @@ namespace fms
 		return true;
 	}
 
+	// add_fragment returns seq_manager::result, whose _eOK is 0 -- so the old
+	// `if (!f->add_fragment(...))` acked on a clean in-order arrival and never on
+	// the two results that actually want prompt feedback. _eOK is kept here: the
+	// peer's send window depends on that cadence (dropping it stalls the RTMFP
+	// bridge), so this only adds the cases the bool-era API meant to catch.
+	// A gap-fill needs nothing extra -- flow_sanity_check already forces an ack
+	// while has_seq_gaps() holds.
+	static bool needs_prompt_ack(flow::vlu_seq_manager::result r)
+	{
+		return r == flow::vlu_seq_manager::_eOK
+			|| r == flow::vlu_seq_manager::_eDuplicate
+			|| r == flow::vlu_seq_manager::_eProducesGap;
+	}
+
 	bool session::handle_user_data(user_data_chunk *udc)
 	{
 		flow_ptr f;
@@ -151,7 +165,7 @@ namespace fms
 		fragment_ptr const frag = std::make_shared<fragment>(udc->seq_number(), udc->user_data(), udc->user_data_len(), udc->frag_ctl());
 		if (!udc->should_abandon() && f->state() == flow::eOpen)
 		{
-			if (!f->add_fragment(frag))
+			if (needs_prompt_ack(f->add_fragment(frag)))
 				m_ack_now = true;
 		}
 		else
@@ -190,7 +204,7 @@ namespace fms
 			++m_next_seq;
 			if (!ndc->should_abandon() && f->state() == flow::eOpen)
 			{
-				if (!f->add_fragment(frag))
+				if (needs_prompt_ack(f->add_fragment(frag)))
 					m_ack_now = true;
 			}
 			handle_flow_message(f);

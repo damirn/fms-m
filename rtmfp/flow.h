@@ -75,10 +75,11 @@ namespace fms
 
 	class flow
 	{
-	protected:
+	public:
+		// Public: add_fragment returns this type, so callers must be able to name
+		// its result values.
 		using vlu_seq_manager = seq_manager<vlu_t>;
 
-	public:
 		enum role_t { eReceiver, eSender };
 		enum type_t { eNormal, eNetGroup };
 		enum usage_t { eData, eAudioVideo };
@@ -199,7 +200,7 @@ namespace fms
 			return m_has_associated_flow_id;
 		}
 
-		// false indicates a duplicate
+		// _eOK is a clean in-order arrival; see session::needs_prompt_ack.
 		vlu_seq_manager::result add_fragment(const fragment_ptr&);
 		void remove_fragments_until_seq(const vlu_t &);
 		const std::uint8_t *message_data(std::uint32_t &);
