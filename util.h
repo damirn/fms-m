@@ -5,10 +5,7 @@
 
 namespace fms
 {
-	void hexdump(std::ostream &, void *, int);
-
-	/// Format a wall-clock time point as "YYYY-MM-DD HH:MM:SS" (replaces
-	/// boost::posix_time::to_simple_string after the chrono migration).
+	/// Format a wall-clock time point as "YYYY-MM-DD HH:MM:SS".
 	std::string to_simple_string(std::chrono::system_clock::time_point);
 
 	struct url
