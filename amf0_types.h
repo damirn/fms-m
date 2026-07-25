@@ -174,35 +174,6 @@ namespace fms
 
 	namespace amf0_util
 	{
-		template<typename T> T &get_ref(const amf0_type_ptr&)
-		{
-			throw amf0_illegal_cast();
-		}
-
-		template<> inline bool &get_ref<bool>(const amf0_type_ptr& v)
-		{
-			amf0_boolean_ptr const bln = std::dynamic_pointer_cast<amf0_boolean>(v);
-			if (bln.get() != nullptr)
-				return bln->value();
-			throw amf0_illegal_cast();
-		}
-
-		template<> inline std::string &get_ref<std::string>(const amf0_type_ptr& v)
-		{
-			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(v);
-			if (str.get() != nullptr)
-				return str->value();
-			throw amf0_illegal_cast();
-		}
-
-		template<> inline std::uint32_t &get_ref<std::uint32_t>(const amf0_type_ptr& v)
-		{
-			amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(v);
-			if (num.get() != nullptr)
-				return reinterpret_cast<std::uint32_t &>(num->value());
-			throw amf0_illegal_cast();
-		}
-
 		template<typename T> T get(const amf0_type_ptr&)
 		{
 			throw amf0_illegal_cast();
