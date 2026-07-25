@@ -30,19 +30,11 @@ namespace fms
 		static const char on_new_stream[] = "onNewStream";
 		static const char on_delete_stream[] = "onDeleteStream";
 		static const char on_qos[] = "onQOS";
-		static const char on_auth_status[] = "onAuthStatus";
-		static const char on_disconnect[] = "onDisconnect";
-		static const char on_call_status[] = "onCallStatus";
 	}
 
 	void admin_application::init()
 	{
 		load_password_file();
-		m_keep_time = config::instance()->admin_data_keep_time();
-		if (m_keep_time > 3600) // one hour
-		{
-			BOOST_LOG(fms::lg::get()) << "Warning, admin data keep time is more than one hour!";
-		}
 	}
 
 	void admin_application::load_password_file()
@@ -202,16 +194,6 @@ namespace fms
 		rtmp_application::delete_connection(connection_id, app_instance);
 		std::unique_lock const lock(m_admin_mutex);
 		m_clients.erase(connection_id);
-	}
-
-	void admin_application::handle_win_ack_size(rtmp_message_ptr, std::uint32_t connection_id)
-	{
-		std::unique_lock const lock(m_admin_mutex);
-		if (m_clients.contains(connection_id))
-		{
-			if (m_clients[connection_id] && !m_queue.empty())
-				send_enqueued_messages(connection_id);
-		}
 	}
 
 	void admin_application::handle_invoke_get_apps(const rtmp_message_invoke_ptr& invoke, std::uint32_t, rtmp_message_ptr &result)
@@ -437,45 +419,6 @@ namespace fms
 			notify_active_client(i.second, [this](std::uint32_t a, const netstream_stats_ptr& b) { dispatch_qos_data_for_stream_notify(a, b); });
 	}
 
-	void admin_application::send_auth_status(const auth_status_data_ptr& data)
-	{
-		std::unique_lock const lock(m_admin_mutex);
-		if (m_clients.empty())
-			dispatch_auth_result(0, data, true);
-		else
-		{
-			for (auto & m_client : m_clients)
-				if (m_client.second)
-					dispatch_auth_result(m_client.first, data);
-		}
-	}
-
-	void admin_application::send_disconnect_notify(const auth_status_data_ptr& data)
-	{
-		std::unique_lock const lock(m_admin_mutex);
-		if (m_clients.empty())
-			dispatch_disconnect(0, data, true);
-		else
-		{
-			for (auto & m_client : m_clients)
-				if (m_client.second)
-					dispatch_disconnect(m_client.first, data);
-		}
-	}
-
-	void admin_application::send_call_status_notify(std::uint32_t connection_id, const amf0_object_ptr& obj)
-	{
-		std::unique_lock const lock(m_admin_mutex);
-		if (m_clients.empty())
-			dispatch_call_status(0, connection_id, obj, true);
-		else
-		{
-			for (auto & m_client : m_clients)
-				if (m_client.second)
-					dispatch_call_status(m_client.first, connection_id, obj);
-		}
-	}
-
 	void admin_application::notify_active_client(const netstream_stats_ptr& data, const std::function<void (std::uint32_t, netstream_stats_ptr)>& func)
 	{
 		std::unique_lock const lock(m_admin_mutex);
@@ -520,99 +463,4 @@ namespace fms
 		notify(connection_id);
 	}
 
-	void admin_application::dispatch_auth_result(std::uint32_t connection_id, const auth_status_data_ptr& data, bool to_enqueue /* = false */)
-	{
-		client_data_ptr const cd = m_app_manager->get_client_data(data->m_id);
-		if (cd.get() != nullptr)
-		{
-			rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_auth_status);
-
-			amf0_object_ptr const obj = std::make_shared<amf0_object>();
-			obj->add_entry("sid", cd->m_sid);
-			obj->add_entry("cid", data->m_id);
-			obj->add_entry("ip", cd->m_ip);
-			obj->add_entry("port", cd->m_port);
-			obj->add_entry("status", static_cast<std::uint32_t>(data->m_status));
-			obj->add_entry("reason", data->m_reason);
-			obj->add_entry("user", data->m_username);
-			obj->add_entry("time", to_simple_string(data->m_time));
-
-			res->add_parameter(obj);
-
-			if (!to_enqueue)
-			{
-				enqueue_async_message(connection_id, res);
-				notify(connection_id);
-			}
-			else
-				enqueue_message(res);
-		}
-	}
-
-	void admin_application::dispatch_disconnect(std::uint32_t connection_id, const auth_status_data_ptr& data, bool to_enqueue /* = false */)
-	{
-		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_disconnect);
-
-		amf0_object_ptr const obj = std::make_shared<amf0_object>();
-		obj->add_entry("sid", data->m_sid);
-		obj->add_entry("cid", data->m_id);
-		obj->add_entry("time", to_simple_string(data->m_time));
-		obj->add_entry("status", static_cast<std::uint32_t>(data->m_status));
-
-		res->add_parameter(obj);
-
-		if (!to_enqueue)
-		{
-			enqueue_async_message(connection_id, res);
-			notify(connection_id);
-		}
-		else
-			enqueue_message(res);
-	}
-
-	void admin_application::dispatch_call_status(std::uint32_t connection_id, std::uint32_t cid, const amf0_object_ptr& o, bool to_enqueue /* = false */)
-	{
-		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::on_call_status);
-
-		amf0_object_ptr const obj = std::make_shared<amf0_object>();
-		obj->add_entry("cid", cid);
-		obj->add_entry("time", to_simple_string(std::chrono::system_clock::now()));
-		obj->add_entry("call_data", o);
-
-		res->add_parameter(obj);
-
-		if (!to_enqueue)
-		{
-			enqueue_async_message(connection_id, res);
-			notify(connection_id);
-		}
-		else
-			enqueue_message(res);
-	}
-
-	void admin_application::enqueue_message(const rtmp_message_invoke_ptr& msg)
-	{
-		std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
-		m_queue.emplace_back(msg, now);
-		do 
-		{
-			msg_with_ts_t  const&m = m_queue.front();
-			std::chrono::system_clock::duration const ts = now - m.second;
-			if (static_cast<std::uint32_t>(std::chrono::duration_cast<std::chrono::seconds>(ts).count()) > m_keep_time)
-				m_queue.pop_front();
-			else
-				break;
-		} while (true);
-	}
-
-	void admin_application::send_enqueued_messages(std::uint32_t connection_id)
-	{
-		while (!m_queue.empty())
-		{
-			msg_with_ts_t  const&msg = m_queue.front();
-			enqueue_async_message(connection_id, msg.first);
-			notify(connection_id);
-			m_queue.pop_front();
-		}
-	}
 }
