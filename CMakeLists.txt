@@ -110,7 +110,6 @@ set(sourceFiles
   evp_dh.cpp
   flv_reader.cpp
   flv_writer.cpp
-  g711_codec.cpp
   http_connection.cpp
   io_context_pool.cpp
   logging.cpp
