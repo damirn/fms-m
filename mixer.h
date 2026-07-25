@@ -37,7 +37,6 @@ namespace fms
 		virtual void remove_source_stream(std::uint32_t);
 
 		void add_audio(std::uint32_t, const rtmp_message_audio_data_ptr&);
-		void add_audio(std::uint32_t, const char *, std::uint16_t);
 
 	protected:
 		struct stream_data

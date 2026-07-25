@@ -19,16 +19,6 @@ namespace fms
 			return m_id;
 		}
 
-		std::uint32_t &message_len()
-		{
-			return m_message_len;
-		}
-
-		const std::uint32_t &message_len() const
-		{
-			return m_message_len;
-		}
-
 		bool &prev_message_complete()
 		{
 			return m_prev_message_complete;
@@ -37,16 +27,6 @@ namespace fms
 		const bool &prev_message_complete() const
 		{
 			return m_prev_message_complete;
-		}
-
-		bool &uses_continuation()
-		{
-			return m_uses_continuation;
-		}
-
-		const bool &uses_continuation() const
-		{
-			return m_uses_continuation;
 		}
 
 		// Non-throwing, peek-then-commit header parse. Returns false (nothing
