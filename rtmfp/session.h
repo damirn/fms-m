@@ -243,9 +243,7 @@ namespace fms
 		bool m_has_data_ready{false};
 		std::uint8_t m_data_packet_count{0};   // packets sent since the last ack/alarm
 		congestion_window m_cc;                // bounds the in-flight burst
-		enum { ePeerIdSize = 0x20 };
 
-		enum { ePad0 = 0, ePadff = 0xff };
 
 		// rtt stuff
 		std::uint16_t m_ts_rx{0};
@@ -259,10 +257,7 @@ namespace fms
 		std::chrono::system_clock::duration m_erto{};
 		bool m_should_include_ts_echo{false};
 
-		std::uint32_t m_outstanding_bytes;
-		std::uint32_t m_rx_data_packets{0};
 		bool m_ack_now{false};
-		bool m_seen_data_chunk;
 
 		vlu_t m_current_flow_id;
 		vlu_t m_next_seq;

@@ -62,7 +62,6 @@ namespace fms
 		std::uint16_t len = 0;
 		std::uint8_t type;
 
-		m_seen_data_chunk = false;
 		while (raw.available() > 2 && raw.available() >= len)
 		{
 			raw >> type >> len;
@@ -78,10 +77,6 @@ namespace fms
 		return false;
 			}
 		}
-		if (m_seen_data_chunk)
-			++m_rx_data_packets;
-		if (m_rx_data_packets >= 2)
-			m_ack_now = true;
 		return true;
 	}
 
@@ -99,11 +94,9 @@ namespace fms
 			break;
 		case chunk::eUserData:
 			c = new user_data_chunk;
-			m_seen_data_chunk = true;
 			break;
 		case chunk::eNextUserData:
 			c = new next_user_data_chunk;
-			m_seen_data_chunk = true;
 			break;
 		case chunk::eDataAcknowledgementRanges:
 			c = new range_ack_chunk;

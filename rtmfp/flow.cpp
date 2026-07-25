@@ -42,7 +42,6 @@ namespace fms
 				f->take_ownership();
 			}
 
-			update_seqs(f->m_seq);
 			m_fragments[f->m_seq] = f;
 		}
 		return ret;
@@ -53,14 +52,6 @@ namespace fms
 		auto const i = m_fragments.find(seq);
 		m_fragments.erase(m_fragments.begin(), i);
 		m_fragments.erase(seq);
-		update_seqs(seq);
-	}
-
-	void flow::update_seqs(const vlu_t &seq)
-	{
-		m_last_ack_seq = seq;
-		m_prev_seq = m_curr_seq;
-		m_curr_seq = seq;
 	}
 
 	const std::uint8_t *flow::message_data(std::uint32_t &len)
