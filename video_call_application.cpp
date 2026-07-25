@@ -27,11 +27,12 @@ namespace fms
 		if (invoke.get() == nullptr)
 			return false;
 
+		// `call` is accepted and ignored. It was dispatched to a handler that
+		// parsed caller/callee/call_id into three locals and discarded them --
+		// never implemented. Still swallowed here rather than falling through to
+		// media_application, so what the peer sees is unchanged.
 		if (invoke->function()->value() == invoke_functions::call)
-		{
-			handle_call_invoke(invoke, connection_id);
 			return false;
-		}
 
 		if (invoke->function()->value() == invoke_functions::record)
 		{
@@ -58,49 +59,6 @@ namespace fms
 			}
 		}
 		media_application::handle_audio_data(msg, connection_id, h);
-	}
-
-	void video_call_application::handle_call_invoke(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
-	{
-		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
-		if (!check_call_params(params))
-			return;
-
-		auto i = params.begin();
-		++i;
-
-		amf0_string_ptr str = std::dynamic_pointer_cast<amf0_string>(*i);
-		std::string const caller = str->value();
-
-		++i;
-		str = std::dynamic_pointer_cast<amf0_string>(*i);
-		std::string const callee = str->value();
-
-		++i;
-		str = std::dynamic_pointer_cast<amf0_string>(*i);
-		std::string const call_id = str->value();
-	}
-
-	bool video_call_application::check_call_params(const rtmp_message_invoke::parameters_list_t &params)
-	{
-		if (params.size() < 4)
-			return false;
-
-		auto i = params.begin();
-		if ((*i)->type() != amf0_type::eAMF0Null)
-			return false;
-
-		++i;
-
-		// 3 strings
-		for (int j = 0; j < 3; ++j)
-		{
-			if ((*i)->type() != amf0_type::eAMF0String)
-				return false;
-			++i;
-		}
-
-		return true;
 	}
 
 	void video_call_application::handle_record_invoke(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
