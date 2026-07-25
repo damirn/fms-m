@@ -52,8 +52,6 @@ namespace fms
 		std::string protocol_name() const override { return "rtmpt"; }
 		std::string remote_address() const override { return m_address.to_string(); }
 
-		void close() override;
-
 		// True once the tunneled RTMP handshake is done and commands are flowing. The
 		// manager uses this to reap a session that keeps polling but never handshakes.
 		bool handshake_complete() const { return m_sstate == eCSReadCommands; }
@@ -68,9 +66,7 @@ namespace fms
 		// Handle application's result
 		void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr) override;
 
-		enum { eNotConnected, eConnected, eClose };
-		enum session_state { eCSIdle, eCSReadHS, eCSReadCommands, eCSInvalid = 0xffff };
-		enum commands { eCmdInvalid, eCmdFcs, eCmdOpen, eCmdIdle, eCmdSend, eCmdClose };
+		enum session_state { eCSIdle, eCSReadHS, eCSReadCommands };
 
 		boost::tribool handle_handshake(byte_writer &, byte_writer &);
 		void handle_results(byte_writer &);
@@ -78,15 +74,7 @@ namespace fms
 
 		std::uint8_t get_poll_time(bool);
 
-		rtmpt_manager *m_rtmpt_manager;
-
-		bool m_read_http_header{true};
-		bool m_write_http_header{true};
-		bool m_http_header_is_complete{false};
-
-		std::uint8_t m_state{eNotConnected};
 		session_state m_sstate{eCSIdle};
-		boost::asio::streambuf m_header;
 
 		enum { eMaxIdleTimes = 6};
 		std::uint8_t m_poll_cnt{0};

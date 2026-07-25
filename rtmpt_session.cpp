@@ -18,7 +18,6 @@ namespace fms
 
 	rtmpt_session::rtmpt_session(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager)
 		: basic_rtmp_connection(id, io_context, app_manager)
-		, m_rtmpt_manager(app_manager->get_rtmpt_manager())
 	{}
 
 	void rtmpt_session::start()
@@ -30,11 +29,6 @@ namespace fms
 		// callbacks on that other thread, racing handle_data over both the timer
 		// objects and the session state. Idle/stalled sessions are reaped by the
 		// rtmpt_manager not-alive timer instead.
-	}
-
-	void rtmpt_session::close()
-	{
-		basic_rtmp_connection::close();
 	}
 
 	void rtmpt_session::handle_results(byte_writer &buffer)
@@ -57,7 +51,6 @@ namespace fms
 				serialize_message(m_result, buffer);
 			m_results.clear();
 
-			m_http_header_is_complete = true;
 		}
 	}
 
