@@ -29,7 +29,6 @@ namespace fms
 			return m_frame;
 		}
 
-		void rewind();
 
 		// Position so the next read_frame() returns the first audio/video tag whose
 		// timestamp is >= ms (or leaves the reader at EOF if none).
@@ -39,7 +38,6 @@ namespace fms
 		// Big-endian read of n bytes; 0 if the stream ran out mid-value.
 		std::uint32_t read_be(std::uint8_t n);
 		std::uint32_t read_uint32_3();
-		std::uint32_t read_uint32();
 
 		std::string m_name;
 		std::ifstream m_f;

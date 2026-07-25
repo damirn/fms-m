@@ -371,14 +371,6 @@ namespace fms
 			: rtmp_message(eMessageAudioData), m_data(new std::uint8_t[size]), m_size(size)
 		{}
 
-		rtmp_message_audio_data(std::uint8_t *data, std::uint32_t size)
-			: rtmp_message(eMessageAudioData), m_data(data), m_size(size)
-		{}
-
-		rtmp_message_audio_data(std::shared_ptr<std::uint8_t[]> &data, std::uint32_t size)
-			: rtmp_message(eMessageAudioData), m_data(data), m_size(size)
-		{}
-
 		rtmp_message_audio_data(const rtmp_message_audio_data &audio_data)
 			 
 		= default;

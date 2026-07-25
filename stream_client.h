@@ -27,7 +27,6 @@ namespace fms
 		bool m_buffer_empty{true};
 		bool m_first_audio_packet_seen{false};
 		bool m_first_video_packet_seen{false};
-		bool m_video_sent_from_queue{false};
 		std::uint32_t m_video_epoch{0};
 		std::uint32_t m_audio_epoch{0};
 		std::uint32_t m_video_time{0};

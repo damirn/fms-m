@@ -67,15 +67,6 @@ namespace fms
 		}
 	}
 
-	void flv_reader::rewind()
-	{
-		if (m_f.is_open())
-		{
-			m_f.clear();
-			m_f.seekg(13, std::ios_base::beg);
-		}
-	}
-
 	void flv_reader::seek(std::uint32_t ms)
 	{
 		if (!m_f.is_open())
@@ -127,10 +118,5 @@ namespace fms
 	std::uint32_t flv_reader::read_uint32_3()
 	{
 		return read_be(3);
-	}
-
-	std::uint32_t flv_reader::read_uint32()
-	{
-		return read_be(4);
 	}
 }

@@ -196,12 +196,10 @@ namespace fms
 
 			if (client->m_stream_was_playing && size > 1) // if stream was playing when this client connected, send video frames from the queue
 			{
-				client->m_video_sent_from_queue = true;
 				send_enqueued_video_frames(bcid, video, client);
 				return;
 			}
 
-			client->m_video_sent_from_queue = false;
 
 			// Subscriber joined before the stream was "playing" (so it does NOT
 			// take the enqueued-frames path); still send the cached AVC sequence

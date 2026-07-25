@@ -42,11 +42,6 @@ namespace fms
 
 		void handle_bytes_read(std::size_t) override;
 
-		static std::uint32_t get_ack_size()
-		{
-			return eAckSize;
-		}
-
 		void set_outgoing_chunk_size(std::uint16_t size)
 		{
 			m_outgoing_chunk_size = size;
@@ -92,14 +87,12 @@ namespace fms
 		static constexpr std::uint8_t eCryptoMagic = rtmp_handshaker::eCryptoMagic;
 
 		enum : std::uint32_t { eAckSize = eDefaultAckWindow };
-		enum { eEncodingAMF0, eEncodingAMF3 };
 
 		std::uint32_t m_bytes_read_notify{eAckSize};
 		std::uint32_t m_win_ack{eAckSize};
 
 		bool m_write_in_progress{false};
 
-		std::int32_t m_current_channel{-1};
 		std::uint16_t m_outgoing_chunk_size{eDefaultChunkSize};
 	};
 

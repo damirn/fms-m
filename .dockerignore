@@ -1,0 +1,9 @@
+build/
+build-*/
+.git/
+.idea/
+.cache/
+.DS_Store
+*.log
+REVIEW_FINDINGS.md
+rec/

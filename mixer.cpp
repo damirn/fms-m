@@ -67,22 +67,6 @@ namespace fms
 		}
 	}
 
-	void simple_mixer::add_audio(std::uint32_t id, const char *data, std::uint16_t size)
-	{
-		if (m_active && size > 0)
-		{
-			std::unique_lock const lock(m_streams_mutex);
-			auto const i = m_streams.find(id);
-			if (i != m_streams.end())
-			{
-				rtmp_message_audio_data_ptr const audio = std::make_shared<rtmp_message_audio_data>(size + 1);
-				audio->data()[0] = 0x00;
-				std::memcpy(static_cast<void *>(audio->data() + 1), static_cast<const void *>(data), size);
-				i->second->m_queue.push(audio);
-			}
-		}
-	}
-
 	mixer::mixer()
 		: 
 		 m_rec_buffer(nullptr)
