@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cstring>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
@@ -19,34 +18,6 @@ namespace fms
 		std::ostringstream os;
 		os << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
 		return os.str();
-	}
-
-	void hexdump(std::ostream &s, void *ptr, int buflen)
-	{
-		unsigned char const *buf = static_cast<unsigned char *>(ptr);
-		int i;
-		int j;
-		s << std::hex << std::setfill('0');
-		for (i = 0; i < buflen; i += 16)
-		{
-			s << std::setw(6) << i << " ";
-			for (j = 0; j < 16; j++)
-				if (i + j < buflen)
-					s << std::setw(2) << static_cast<int>(buf[i + j]) << " ";
-				else
-					s << "   ";
-			s << " ";
-			char c;
-			for (j = 0; j < 16; j++)
-				if (i + j < buflen)
-				{
-					c = isprint(buf[i + j]) ? buf[i + j] : '.';
-					s << c;
-				}
-
-			s << std::endl;
-		}
-		s << std::dec;
 	}
 
 	namespace
