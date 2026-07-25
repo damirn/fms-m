@@ -132,7 +132,6 @@ namespace fms
 		}
 
 		void start() override{}
-		void close() override;
 		void notify() override;
 
 		// Initiate a graceful close (RFC 7016 sec. 2.3.11): queue a SessionClose to

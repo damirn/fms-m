@@ -118,7 +118,6 @@ namespace fms
 			lock.unlock();
 			if (conn->get_app() != nullptr)
 			{
-				conn->get_app()->delete_connection_by_cid(conn_id, conn->sid());
 				conn->get_app()->delete_connection(conn_id, conn->app_instance());
 			}
 		}

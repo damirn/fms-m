@@ -36,7 +36,7 @@ namespace fms
 			m_timer.cancel();
 			BOOST_LOG(lg::get()) << "Closing socket for cid: " << m_id;
 			m_socket.close();
-			basic_rtmp_connection::close();
+			client_session::close();
 		}
 	}
 
