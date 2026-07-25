@@ -5,6 +5,7 @@
 #include "rtmp_header.h"
 #include "rtmp_protocol.h"
 
+#include <cassert>
 #include <iostream>
 
 namespace fms
@@ -263,5 +264,11 @@ namespace fms
 	}
 
 	void rtmp_message_aggregate::serialize(byte_writer &)
-	{}
+	{
+		// Aggregates are inbound-only: rtmp_protocol decomposes them into their
+		// sub-messages and never queues one for sending. Emitting nothing under a
+		// non-zero header length would desync the peer, so make the misuse visible
+		// rather than silent.
+		assert(false && "rtmp_message_aggregate is not serializable");
+	}
 }

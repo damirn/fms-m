@@ -33,7 +33,6 @@ namespace fms
 		~basic_rtmp_connection() override = default;
 
 		// Close connection
-		void close() override;
 		void post_close() override;
 
 		boost::asio::io_context &io_context() const

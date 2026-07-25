@@ -57,7 +57,6 @@ namespace fms
 
 		virtual boost::tribool handle_message(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
 
-		virtual void delete_connection_by_cid(std::uint32_t, const std::string &) {}
 		virtual void delete_connection(std::uint32_t, const std::string & = "");
 
 		std::uint32_t enqueue_async_message(std::uint32_t, const rtmp_message_ptr&, bool = false);
@@ -96,8 +95,6 @@ namespace fms
 		virtual void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) = 0;
 		virtual boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) = 0;
 
-		virtual void handle_win_ack_size(rtmp_message_ptr, std::uint32_t);
-		virtual void handle_bytes_read(rtmp_message_ptr);
 		virtual void handle_ping(rtmp_message_ptr, std::uint32_t, const rtmp_header &);
 		virtual void handle_notify(rtmp_message_ptr, std::uint32_t){}
 

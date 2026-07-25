@@ -13,11 +13,6 @@ namespace fms
 		, m_manager(app_manager)
 	{}
 
-	void basic_rtmp_connection::close()
-	{
-		client_session::close();
-	}
-
 	void basic_rtmp_connection::post_close()
 	{
 		// run close() on this connection's own io_context — its socket/timers are

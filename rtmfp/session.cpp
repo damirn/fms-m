@@ -691,11 +691,6 @@ namespace fms
 		return has_data;
 	}
 
-	void session::close()
-	{
-		client_session::close();
-	}
-
 	void session::begin_close()
 	{
 		if (m_state != eOpen)

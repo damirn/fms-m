@@ -84,16 +84,10 @@ namespace fms
 				handle_ping(msg, connection_id, header);
 				return false;
 			}
+		// Consumed, not acted on: the peer's ack bookkeeping needs no reply.
 		case rtmp_message::eMessageBytesRead:
-			{
-				handle_bytes_read(msg);
-				return false;
-			}
 		case rtmp_message::eMessageWindowAcknowledgementSize:
-			{
-				handle_win_ack_size(msg, connection_id);
-				return false;
-			}
+			return false;
 		default:
 			break;
 		}
@@ -516,15 +510,6 @@ namespace fms
 		catch (std::runtime_error &){}
 		rtmp_message_ping_ptr const ping = std::make_shared<rtmp_message_ping>(0x29, 0x3a98, 0x2710);
 		result = ping;
-	}
-
-	void rtmp_application::handle_win_ack_size(rtmp_message_ptr msg, std::uint32_t connection_id)
-	{
-		rtmp_message_window_acknowledgement_size_ptr const ack = std::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
-	}
-
-	void rtmp_application::handle_bytes_read(rtmp_message_ptr)
-	{
 	}
 
 	void rtmp_application::handle_ping(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
