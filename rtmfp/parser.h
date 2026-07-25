@@ -40,9 +40,6 @@ namespace fms
 
 		chunk_handler &m_chunk_handler;
 		aes *m_aes;
-		std::uint32_t m_rx_data_packets{0};
-		bool m_ack_now{false};
-		bool m_seen_data_chunk;
 
 		enum { ePad0 = 0x00, ePadff = 0xff };
 	};

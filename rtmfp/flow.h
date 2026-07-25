@@ -1,6 +1,5 @@
 #pragma once
 
-#include "queue.h"
 #include "seq_manager.h"
 #include "types.h"
 
@@ -68,7 +67,6 @@ namespace fms
 		bool m_ever_sent;
 		std::uint16_t m_nak_count;
 		bool m_in_flight;
-		std::uint16_t m_transmit_size;
 	};
 
 	using fragment_ptr = std::shared_ptr<fragment>;
@@ -91,8 +89,6 @@ namespace fms
 			, m_type(eNormal)
 			, m_should_ack(false)
 			, m_has_associated_flow_id(false)
-			, m_prev_seq(1)
-			, m_curr_seq(1)
 			, m_state(eOpen)
 			, m_next_sn(1)
 			, m_exception(false)
@@ -105,8 +101,6 @@ namespace fms
 			, m_type(eNormal)
 			, m_should_ack(false)
 			, m_has_associated_flow_id(false)
-			, m_prev_seq(1)
-			, m_curr_seq(1)
 			, m_state(eOpen)
 			, m_options(options)
 			, m_next_sn(1)
@@ -206,11 +200,6 @@ namespace fms
 		const std::uint8_t *message_data(std::uint32_t &);
 		void remove_last_message();
 
-		vlu_t last_ack_seq() const
-		{
-			return m_last_ack_seq;
-		}
-
 		std::uint16_t add_and_fragment_data(const std::uint8_t *, const std::uint32_t &);
 		void abandon_stale_fragments();
 
@@ -283,7 +272,6 @@ namespace fms
 		bool on_timeout_alarm();
 
 	protected:
-		void update_seqs(const vlu_t &);
 		void parse_option_list();
 		static vlu_t get_stream_id_from_option(const option_ptr&);
 
@@ -296,23 +284,17 @@ namespace fms
 		role_t m_role;
 		usage_t m_usage;
 		type_t m_type;
-		vlu_t m_final_sn;
 		std::uint16_t m_prev_rwnd{eDefaultRwnd};   // peer's advertised receive window (blocks)
 		bool m_should_ack;
 		bool m_has_associated_flow_id;
 
-		vlu_t m_prev_seq;
-		vlu_t m_curr_seq;
-
 		fragment_map_t m_fragments;
-		vlu_t m_last_ack_seq;
 
 		std::uint8_t m_state;
 		option_ptr m_metadata;
 		option_list m_options;
 		vlu_t m_next_sn;
 		bool m_exception;
-		queue<fragment_ptr> m_send_queue;
 
 		enum { _eFragmentMaxSize = 1160 };
 
