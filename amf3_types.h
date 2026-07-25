@@ -282,52 +282,6 @@ namespace fms
 
 	using amf3_bytearray_type_ptr = std::shared_ptr<amf3_bytearray_type>;
 
-	namespace amf3_util
-	{
-		template<typename T> T get(const amf3_type_ptr&)
-		{
-			throw amf3_illegal_cast();
-		}
-
-		template<> inline bool get<bool>(const amf3_type_ptr& v)
-		{
-			if (v->type() == amf3_type::eAMF3True)
-				return true;
-			if (v->type() == amf3_type::eAMF3False)
-				return false;
-			throw amf3_illegal_cast();
-		}
-
-		template<> inline std::string get<std::string>(const amf3_type_ptr& v)
-		{
-			if (v->type() == amf3_type::eAMF3String)
-			{
-				amf3_string_type_ptr const str = std::dynamic_pointer_cast<amf3_string_type>(v);
-				return str->value();
-			}
-			throw amf3_illegal_cast();
-		}
-
-		template<> inline std::uint32_t get<std::uint32_t>(const amf3_type_ptr& v)
-		{
-			if (v->type() == amf3_type::eAMF3Integer)
-			{
-				amf3_integer_type_ptr const num = std::dynamic_pointer_cast<amf3_integer_type>(v);
-				return num->value();
-			}
-			throw amf3_illegal_cast();
-		}
-
-		template<> inline double get<double>(const amf3_type_ptr& v)
-		{
-			if (v->type() == amf3_type::eAMF3Double)
-				return std::dynamic_pointer_cast<amf3_double_type>(v)->value();
-			if (v->type() == amf3_type::eAMF3Integer)
-				return std::dynamic_pointer_cast<amf3_integer_type>(v)->value();
-			throw amf3_illegal_cast();
-		}
-	}
-
 	class amf3_object_type final : public amf3_type
 	{
 	public:
@@ -357,25 +311,6 @@ namespace fms
 		{
 			amf3_integer_type_ptr const tmp = std::make_shared<amf3_integer_type>(value);
 			m_properties[key] = tmp;
-		}
-
-		template <typename T> bool get(const std::string &field, T &value)
-		{
-			auto const i = m_properties.find(field);
-			if (i != m_properties.end())
-			{
-				try
-				{
-					T tmp = amf3_util::get<T>(i->second);
-					value = tmp;
-					return true;
-				}
-				catch (amf3_illegal_cast &)
-				{
-					return false;
-				}
-			}
-			return false;
 		}
 
 	protected:
