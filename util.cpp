@@ -7,6 +7,7 @@
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <string_view>
 
 namespace fms
 {
@@ -48,45 +49,49 @@ namespace fms
 		s << std::dec;
 	}
 
+	namespace
+	{
+		// std::tolower takes an int that must be representable as unsigned char;
+		// handing it a plain (signed) char makes every byte >= 0x80 UB.
+		std::string to_lower(std::string_view s)
+		{
+			std::string out;
+			out.reserve(s.size());
+			std::transform(s.begin(), s.end(), std::back_inserter(out),
+				[](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+			return out;
+		}
+	}
+
 	url url::parse(const std::string &uri)
 	{
-		static const std::string prot_end("://");
+		static constexpr std::string_view prot_end("://");
 		url ret;
 
-		std::string::const_iterator prot_i = std::search(uri.begin(), uri.end(), prot_end.begin(), prot_end.end());
-		if (prot_i == uri.end())
+		std::string_view const in(uri);
+		std::size_t const proto = in.find(prot_end);
+		if (proto == std::string_view::npos)
 			return ret;
-		ret.m_protocol.reserve(std::distance(uri.begin(), prot_i));
-		std::transform(uri.begin(), prot_i, std::back_inserter(ret.m_protocol), tolower); // protocol is icase
 
-		std::advance(prot_i, prot_end.length());
-		std::string::const_iterator porti = std::find(prot_i, uri.end(), ':');
-		if (porti != uri.end())
-		{
-			ret.m_host.reserve(std::distance(prot_i, porti));
-			std::transform(prot_i, porti, std::back_inserter(ret.m_host), tolower); // host is icase
+		ret.m_protocol = to_lower(in.substr(0, proto));   // protocol is icase
+		std::string_view const rest = in.substr(proto + prot_end.size());
 
-			std::advance(porti, 1);
-			std::string::const_iterator slashi = std::find(porti, uri.end(), '/');
-			ret.m_port = std::string(porti, slashi);
-			if (slashi != uri.end())
-			{
-				std::advance(slashi, 1);
-				ret.m_path = std::string(slashi, uri.end());
-			}
-		}
-		else
+		// The authority ends at the first '/'. Scanning the whole remainder for
+		// ':' made a colon anywhere in the path look like the port separator, so
+		// "rtmp://h/a:b" parsed as host "h/a" with port "b".
+		std::size_t const slash = rest.find('/');
+		std::string_view authority = rest.substr(0, slash);
+		if (slash != std::string_view::npos)
+			ret.m_path = rest.substr(slash + 1);
+
+		if (std::size_t const colon = authority.find(':'); colon != std::string_view::npos)
 		{
-			std::string::const_iterator pathi = std::find(prot_i, uri.end(), '/');
-			ret.m_host.reserve(std::distance(prot_i, pathi));
-			std::transform(prot_i, pathi, std::back_inserter(ret.m_host), tolower); // host is icase
-			if (pathi != uri.end())
-			{
-				std::advance(pathi, 1);
-				ret.m_path = std::string(pathi, uri.end());
-			}
+			ret.m_port = authority.substr(colon + 1);
+			authority = authority.substr(0, colon);
 		}
+		ret.m_host = to_lower(authority);   // host is icase
 
 		return ret;
 	}
 }
+
