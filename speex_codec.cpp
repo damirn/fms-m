@@ -42,8 +42,7 @@ namespace fms
 
 	std::uint8_t *speex_codec::decode(char *to, std::uint8_t *data, std::uint32_t size, std::uint32_t &dec_size)
 	{
-		// speex_bits_read_from takes an int; a frame is a few dozen bytes, so
-		// anything near that limit is malformed rather than merely large.
+		// speex_bits_read_from takes an int.
 		if (size == 0 || size > static_cast<std::uint32_t>(std::numeric_limits<int>::max()))
 			return nullptr;
 

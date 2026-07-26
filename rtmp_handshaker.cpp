@@ -136,9 +136,7 @@ namespace fms
 			if (!init_rc4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out))
 				return false;   // fail closed rather than ship cleartext
 
-			// Advance both keystreams past the first 1536 bytes, as the Adobe
-			// handshake requires. Only the keystream position matters, but the
-			// buffer is still read as cipher input -- so it has to be initialised.
+			// Advance both keystreams past 1536 bytes; d is read as cipher input.
 			std::uint8_t d[eHandShakeSize] = {};
 			rc4_crypt(m_key_in, eHandShakeSize, d, d);
 			rc4_crypt(m_key_out, eHandShakeSize, d, d);

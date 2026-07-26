@@ -23,8 +23,7 @@ namespace fms
 		}
 
 		void create_shared_key(std::uint8_t *, std::uint16_t);
-		// False if the derived secret is shorter than requested, rather than
-		// over-reading it.
+		// False if the derived secret is shorter than requested.
 		[[nodiscard]] bool copy_shared_key(std::uint8_t *, std::uint16_t) const;
 		void copy_public_key(std::uint8_t *, std::uint16_t);
 		void copy_private_key(std::uint8_t *, std::uint16_t);

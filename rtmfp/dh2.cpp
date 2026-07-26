@@ -115,8 +115,7 @@ namespace fms
 		static constexpr std::uint8_t salt[] = { 0x03, 0x1A, 0x02, 0x10, 0x02, 0x1E, 0x02, 0x81, 0x02, 0x0D, 0x02 };
 		int size = 0;
 		const std::uint8_t *pk = pub_key(size);
-		// A failed keygen leaves size 0 (and once left it negative, which the
-		// new[] below converted into a huge size_t).
+		// A failed keygen leaves size <= 0.
 		if (pk == nullptr || size <= 0)
 			return false;
 		delete[] m_rnonce;

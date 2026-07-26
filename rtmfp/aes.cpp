@@ -49,8 +49,7 @@ namespace fms
 
 	bool aes::encrypt(byte_writer &from, byte_writer &to)
 	{
-		// extend() hands back uninitialised storage, so every failure below has to
-		// take it away again: whatever is left in `to` goes on the wire otherwise.
+		// extend() hands back uninitialised storage; every failure below clears it.
 		if (m_encrypt_ctx == nullptr)
 			return false;
 

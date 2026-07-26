@@ -136,8 +136,7 @@ namespace fms
 	protected:
 		vlu_t m_epd_len{0};
 		std::uint8_t *m_epd{nullptr};
-		// Owns a copy: the RHello reply echoes the tag back after the packet
-		// buffer m_epd points into has been released.
+		// Owns a copy: the RHello reply outlives the packet buffer.
 		std::vector<std::uint8_t> m_tag;
 	};
 

@@ -18,8 +18,7 @@ namespace fms
 			return m_pub_key;
 		}
 
-		// False if the DH keypair or the derivation failed; the session must not
-		// continue keying on a secret that was never produced.
+		// False if the keypair or the derivation failed.
 		[[nodiscard]] bool generate_shared_secret(const std::uint8_t *, std::uint16_t);
 		void generate_symetric_keys(const std::uint8_t *, std::uint16_t, const std::uint8_t *, std::uint16_t,
 			std::uint8_t *, std::uint8_t *);

@@ -12,10 +12,8 @@ namespace fms::remote_relay
 	bool is_remote_stream(const std::string &stream, std::string &sname, std::string &remote)
 	{
 		std::string::size_type const pos = stream.find('@');
-		// Well-formed only with a name on both sides of the '@'. Every other shape
-		// is a plain local stream, and sname has to be set on all of them: a
-		// trailing '@' returned false without touching it, leaving the caller to
-		// look up an empty stream name.
+		// Well-formed only with a name on both sides of '@'; sname is set on every
+		// path, including the false ones.
 		if (pos == std::string::npos || pos == 0 || pos + 1 == stream.length())
 		{
 			sname = stream;

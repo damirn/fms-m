@@ -98,9 +98,8 @@ namespace fms
 		enum { eMaxDepth = 32 };   // cap nested objects (untrusted input)
 		unsigned m_depth = 0;
 
-		// A string reference costs one wire byte but materializes a full copy, so
-		// one large string plus a run of back-references amplifies without bound.
-		// Charge every string we hand back against a per-message budget.
+		// A string reference costs one wire byte but materializes a full copy;
+		// budget every string handed back, by value or by reference.
 		static constexpr std::size_t eMaxDecodedStringBytes = 32u << 20;
 		std::size_t m_decoded_string_bytes = 0;
 

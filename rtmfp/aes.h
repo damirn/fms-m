@@ -16,8 +16,7 @@ namespace fms
 		~aes();
 
 		void decrypt(byte_reader &, byte_writer &);
-		// False on any OpenSSL failure, with `to` cleared: never leave reserved-but-
-		// unwritten bytes for the caller to transmit.
+		// False on any OpenSSL failure, with `to` cleared.
 		[[nodiscard]] bool encrypt(byte_writer &, byte_writer &);
 
 		std::uint8_t *dec_key_data()

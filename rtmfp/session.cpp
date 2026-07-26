@@ -128,13 +128,8 @@ namespace fms
 		return true;
 	}
 
-	// add_fragment returns seq_manager::result, whose _eOK is 0 -- so the old
-	// `if (!f->add_fragment(...))` acked on a clean in-order arrival and never on
-	// the two results that actually want prompt feedback. _eOK is kept here: the
-	// peer's send window depends on that cadence (dropping it stalls the RTMFP
-	// bridge), so this only adds the cases the bool-era API meant to catch.
-	// A gap-fill needs nothing extra -- flow_sanity_check already forces an ack
-	// while has_seq_gaps() holds.
+	// A gap-fill needs no entry here: flow_sanity_check already forces an ack for
+	// as long as has_seq_gaps() holds.
 	static bool needs_prompt_ack(flow::vlu_seq_manager::result r)
 	{
 		return r == flow::vlu_seq_manager::_eOK

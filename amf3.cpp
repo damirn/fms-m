@@ -371,9 +371,8 @@ namespace fms
 			bool const dynamic = (obj_info & 0x01) != 0;
 			obj_info >>= 1;
 			std::uint32_t const sealed_count = obj_info;
-			// Every sealed name costs at least the one wire byte of its U29 header,
-			// so a count past what is left in the buffer can never be satisfied --
-			// reject it up front instead of growing m_properties towards it.
+			// Each name costs at least one wire byte, so a larger count is
+			// unsatisfiable.
 			if (sealed_count > buffer.available())
 				throw amf3_read_exception();
 

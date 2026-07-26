@@ -22,8 +22,7 @@ namespace fms
 
 	namespace
 	{
-		// std::tolower takes an int that must be representable as unsigned char;
-		// handing it a plain (signed) char makes every byte >= 0x80 UB.
+		// std::tolower's argument must be representable as unsigned char.
 		std::string to_lower(std::string_view s)
 		{
 			std::string out;
@@ -47,9 +46,7 @@ namespace fms
 		ret.m_protocol = to_lower(in.substr(0, proto));   // protocol is icase
 		std::string_view const rest = in.substr(proto + prot_end.size());
 
-		// The authority ends at the first '/'. Scanning the whole remainder for
-		// ':' made a colon anywhere in the path look like the port separator, so
-		// "rtmp://h/a:b" parsed as host "h/a" with port "b".
+		// The authority ends at the first '/'; only a colon inside it is a port.
 		std::size_t const slash = rest.find('/');
 		std::string_view authority = rest.substr(0, slash);
 		if (slash != std::string_view::npos)

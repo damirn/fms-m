@@ -31,8 +31,7 @@ namespace fms
 			m_wto_timer.cancel();
 			m_timer.cancel();
 			BOOST_LOG(lg::get()) << "Closing socket for cid: " << m_id;
-			// Non-throwing overload: close() runs from completion handlers, and an
-			// exception thrown there escapes into io_context::run().
+			// Non-throwing: close() runs from completion handlers.
 			boost::system::error_code ec;
 			m_socket.close(ec);
 			client_session::close();
@@ -241,9 +240,7 @@ namespace fms
 			notify();
 			return;
 		}
-		// Pre-connect and a write already in flight: no app to queue on, so hold it
-		// here rather than drop it -- this is the window the connect reply itself
-		// is produced in.
+		// Pre-connect with a write in flight: no app to queue on, so hold it here.
 		if (m_pre_app_results.size() < eMaxPreAppResults)
 			m_pre_app_results.emplace_back(std::move(channel), std::move(result));
 	}

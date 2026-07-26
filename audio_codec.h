@@ -17,8 +17,7 @@ namespace fms
 		virtual ~audio_codec() = default;
 
 		virtual std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &) = 0;
-		// Payload length is uint32: an audio message body is bounded by the RTMP
-		// message length, not by 255.
+		// Payload length is bounded by the RTMP message length, not by 255.
 		virtual std::uint8_t *decode(char *, std::uint8_t *, std::uint32_t, std::uint32_t &) = 0;
 
 	protected:

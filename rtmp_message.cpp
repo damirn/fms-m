@@ -254,11 +254,8 @@ namespace fms
 			if (h.message_length() > buffer.available())
 				break;
 
-			// Parse each sub-message against a reader bounded to its own declared
-			// body. Sharing the aggregate's reader let one malformed sub-message
-			// swallow the rest: rtmp_message_invoke::deserialize reads parameters
-			// `while (buffer.available() > 0)`, which on the shared reader means
-			// every byte of every sub-message that follows.
+			// Bounded to this sub-message's declared body: deserialize_invoke reads
+			// parameters until the reader is empty.
 			byte_reader sub(buffer.current(), h.message_length());
 			rtmp_protocol p;
 			p.set_aggregate_depth(depth);   // a nested aggregate sub-message is bounded
@@ -269,8 +266,7 @@ namespace fms
 			}
 			catch (const buffer_eof_exception &)
 			{
-				// body shorter than its own declared length: drop this sub-message,
-				// the aggregate's framing is still intact
+				// short body: drop this sub-message, the framing is still intact
 			}
 
 			buffer.skip(h.message_length());
@@ -282,10 +278,7 @@ namespace fms
 
 	void rtmp_message_aggregate::serialize(byte_writer &)
 	{
-		// Aggregates are inbound-only: rtmp_protocol decomposes them into their
-		// sub-messages and never queues one for sending. Emitting nothing under a
-		// non-zero header length would desync the peer, so make the misuse visible
-		// rather than silent.
+		// Inbound-only: rtmp_protocol decomposes these, never queues one to send.
 		assert(false && "rtmp_message_aggregate is not serializable");
 	}
 }
