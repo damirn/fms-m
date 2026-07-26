@@ -61,8 +61,7 @@ namespace fms::rtmp_client
 		boost::asio::steady_timer m_timer;
 		std::uint32_t m_ts{0};
 		fms::rtmp_message_ptr m_next_msg;
-		// Owns the sink; net_stream only observes it, so it must be cleared there
-		// before this pointer is reset.
+		// Owns the sink; net_stream only observes it.
 		std::unique_ptr<av_sink> m_sink;
 
 	private:

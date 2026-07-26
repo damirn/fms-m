@@ -513,9 +513,7 @@ namespace fms::rtmp_client
 		auto const i = m_result_handlers.find(static_cast<std::uint32_t>(invoke->invoke_id()->value()));
 		if (i != m_result_handlers.end())
 		{
-			// Extract before invoking: the callback runs application code that
-			// reaches create_stream() -> send_message(), which inserts into this
-			// same map and can rehash it -- so `i` must not be touched afterwards.
+			// Extract first: the callback can insert into this map and rehash it.
 			auto node = m_result_handlers.extract(i);
 			(node.mapped()->m_callback)(invoke, node.mapped());
 		}

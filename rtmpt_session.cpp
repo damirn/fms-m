@@ -147,10 +147,7 @@ namespace fms
 		}
 		if (m_sstate == eCSIdle)
 		{
-			// A client may split C0+C1 across POSTs. Accumulate and only advance
-			// the state once the stage is complete: setting eCSReadHS on a short
-			// read left C1 unconsumed, so the next request was validated as C2
-			// against it and the session desynced for good.
+			// C0+C1 may arrive split across POSTs; advance only once complete.
 			m_remaining_data.write(input.data(), input.size());
 			if (m_remaining_data.size() < eHandShakeSize + 1)
 			{
@@ -160,9 +157,7 @@ namespace fms
 			if (!handle_handshake(m_remaining_data, output))
 				return false;
 			m_sstate = eCSReadHS;
-			// handle_handshake wrote the poll time and S0/S1/S2; anything left in
-			// m_remaining_data is C2, handled on the next request.
-			return true;
+			return true;   // S0/S1/S2 written; C2 handled on the next request
 		}
 		if (m_sstate == eCSReadHS)
 		{
@@ -236,9 +231,7 @@ namespace fms
 
 		output.write(input.data() + 1, eHandShakeSize);
 
-		// consume only C0+C1: a client may have piggybacked C2 (or commands) in
-		// the same body, and clear() used to throw those away.
-		input.consume(eHandShakeSize + 1);
+		input.consume(eHandShakeSize + 1);   // keep anything piggybacked behind C1
 
 		return true;
 	}

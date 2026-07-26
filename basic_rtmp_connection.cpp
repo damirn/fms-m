@@ -26,9 +26,8 @@ namespace fms
 
 		if (m_bytes_read >= m_bytes_read_notify)
 		{
-			// No app until connect() has been routed, and a peer can push past the
-			// window before ever sending one. Leave the threshold alone so the ack
-			// goes out on the next read once an app exists, rather than being lost.
+			// No app until connect() is routed; leave the threshold so the ack
+			// still goes out once there is one.
 			if (m_app == nullptr)
 				return;
 

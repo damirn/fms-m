@@ -30,9 +30,7 @@ namespace fms
 		{
 			boost::program_options::store(boost::program_options::parse_command_line(argc, argv, m_description), m_vm);
 			boost::program_options::notify(m_vm);
-			// Inside the try: check_params -> parse_config_file runs store/notify
-			// again over the config file, which throws on a malformed one just as
-			// the command line does.
+			// Inside the try: check_params parses the config file, which throws too.
 			return check_params();
 		}
 		catch (boost::program_options::error &e)

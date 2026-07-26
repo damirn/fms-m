@@ -67,9 +67,7 @@ namespace fms
 		m_packet.extend(4);
 		if (!a->encrypt(m_raw_packet, m_packet))
 		{
-			// Nothing usable to scramble a session id into or HMAC over; leave the
-			// packet empty so write() drops it rather than emitting garbage.
-			m_packet.clear();
+			m_packet.clear();   // empty: write() drops it
 			return;
 		}
 

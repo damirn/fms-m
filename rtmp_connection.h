@@ -112,10 +112,8 @@ namespace fms
 		// monopolising its io_context thread; the remainder drains on write completion.
 		static constexpr std::size_t eMaxWriteBatchBytes = 256u * 1024;
 
-		// Results produced before connect() has been routed to an application, while
-		// a write was already in flight. There is no app to queue them on yet, and
-		// dropping them loses the connect reply itself. Bounded: everything on this
-		// path is server-generated, and a peer must not be able to grow it.
+		// Results produced before an app is assigned, while a write is in flight.
+		// Bounded: everything on this path is server-generated.
 		static constexpr std::size_t eMaxPreAppResults = 16;
 
 	private:

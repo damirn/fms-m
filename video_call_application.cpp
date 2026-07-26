@@ -27,10 +27,7 @@ namespace fms
 		if (invoke.get() == nullptr)
 			return false;
 
-		// `call` is accepted and ignored. It was dispatched to a handler that
-		// parsed caller/callee/call_id into three locals and discarded them --
-		// never implemented. Still swallowed here rather than falling through to
-		// media_application, so what the peer sees is unchanged.
+		// `call` is accepted and ignored; never implemented.
 		if (invoke->function()->value() == invoke_functions::call)
 			return false;
 
@@ -147,10 +144,8 @@ namespace fms
 			return;
 		}
 
-		// This client stops feeding the mixer. The mixer belongs to the instance
-		// and ~call_instance_data frees it once the last client is gone, so it
-		// must not be deleted here: with three or more clients in one instance
-		// the first departure killed mixing for everyone still in the call.
+		// Drop this client's source only: the mixer belongs to the instance and
+		// ~call_instance_data frees it.
 		if (j->second->m_mixer != nullptr)
 			j->second->m_mixer->remove_source_stream(connection_id);
 

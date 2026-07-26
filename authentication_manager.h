@@ -33,9 +33,8 @@ namespace fms
 		using plugin_ptr = std::unique_ptr<authentication_plugin, std::function<void (authentication_plugin *)>>;
 		using dl_handle = std::unique_ptr<void, void (*)(void *)>;
 
-		// Declaration order is destruction order reversed: the plugin is torn down
-		// by destroy_plugin, which lives inside the shared object, so the plugin
-		// must go before the handle that keeps that object mapped.
+		// Declared first so it is destroyed last: destroy_plugin lives in the
+		// shared object the handle keeps mapped.
 		dl_handle m_handle;
 		plugin_ptr m_auth_plugin;
 	};

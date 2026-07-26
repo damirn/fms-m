@@ -94,9 +94,7 @@ namespace fms
 		std::uint8_t *secret = nullptr;
 		if (dctx && EVP_PKEY_derive_init(dctx) > 0)
 		{
-			// The only thing making the secret a fixed prime-sized, left-zero-padded
-			// buffer. Unchecked, a failure here yields a short secret that callers
-			// asking for the full 128 bytes would read past.
+			// The pad is what makes the secret a fixed, prime-sized buffer.
 			if (EVP_PKEY_CTX_set_dh_pad(dctx, 1) > 0
 				&& EVP_PKEY_derive_set_peer(dctx, peer) > 0 && EVP_PKEY_derive(dctx, nullptr, &out_len) > 0)
 			{

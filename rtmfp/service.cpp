@@ -34,9 +34,7 @@ namespace fms
 		 m_start(std::chrono::system_clock::now())
 		, m_sessions_iterator(m_sessions.begin())
 	{
-		// A predictable cookie secret defeats the whole authenticated-cookie
-		// return-routability check, so a failing CSPRNG must stop the service
-		// rather than quietly weaken it.
+		// A predictable secret defeats the authenticated-cookie check entirely.
 		if (RAND_bytes(m_cookie_secret, sizeof(m_cookie_secret)) != 1)
 			throw std::runtime_error("RTMFP: CSPRNG failed seeding the cookie secret");
 		m_parser = new parser(*this);
@@ -278,10 +276,8 @@ namespace fms
 
 	void service::handle_ihello(ihello_chunk *ic)
 	{
-		// The serializer's buffers are shared with any async_send_to still in
-		// flight, and prepare_raw_packet clears them -- so bail before building,
-		// not just before writing. The initiator retransmits, and the window is
-		// one UDP send wide. (handle_notify and the data path already do this.)
+		// prepare_raw_packet clears buffers an in-flight send still points into,
+		// so bail before building, not just before writing.
 		if (m_write_in_progress)
 			return;
 
@@ -409,10 +405,8 @@ namespace fms
 
 	void service::handle_iikeying(iikeying_chunk *iikc)
 	{
-		// The serializer's buffers are shared with any async_send_to still in
-		// flight, and prepare_raw_packet clears them -- so bail before building,
-		// not just before writing. The initiator retransmits, and the window is
-		// one UDP send wide. (handle_notify and the data path already do this.)
+		// prepare_raw_packet clears buffers an in-flight send still points into,
+		// so bail before building, not just before writing.
 		if (m_write_in_progress)
 			return;
 
@@ -503,10 +497,8 @@ namespace fms
 
 	void service::redirect_ihello(ihello_chunk *ic, const std::uint8_t *peer_id)
 	{
-		// The serializer's buffers are shared with any async_send_to still in
-		// flight, and prepare_raw_packet clears them -- so bail before building,
-		// not just before writing. The initiator retransmits, and the window is
-		// one UDP send wide. (handle_notify and the data path already do this.)
+		// prepare_raw_packet clears buffers an in-flight send still points into,
+		// so bail before building, not just before writing.
 		if (m_write_in_progress)
 			return;
 
@@ -558,8 +550,7 @@ namespace fms
 		std::uint32_t const addr = m_sender_endpoint.address().to_v4().to_uint();
 		std::uint16_t const port = m_sender_endpoint.port();
 		rtmfp_cookie::write(m_cookie_secret, addr, port, get_timestamp_ms(), cookie);
-		// The pad is uninitialised stack until this fills it, so a failure here
-		// would put our own memory on the wire.
+		// The pad is uninitialised stack until this fills it.
 		return RAND_bytes(cookie + rtmfp_cookie::header_len,
 		                  static_cast<int>(eCookieSize - rtmfp_cookie::header_len)) == 1;
 	}
