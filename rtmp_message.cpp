@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "rtmp_message.h"
+#include "buffer_eof.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 #include "rtmp_header.h"
@@ -253,12 +254,28 @@ namespace fms
 			if (h.message_length() > buffer.available())
 				break;
 
+			// Parse each sub-message against a reader bounded to its own declared
+			// body. Sharing the aggregate's reader let one malformed sub-message
+			// swallow the rest: rtmp_message_invoke::deserialize reads parameters
+			// `while (buffer.available() > 0)`, which on the shared reader means
+			// every byte of every sub-message that follows.
+			byte_reader sub(buffer.current(), h.message_length());
 			rtmp_protocol p;
 			p.set_aggregate_depth(depth);   // a nested aggregate sub-message is bounded
-			if (p.deserialize(buffer, h))
-				m_messages.push_back(p.message());
-			else
-				buffer.skip(h.message_length());
+			try
+			{
+				if (p.deserialize(sub, h))
+					m_messages.push_back(p.message());
+			}
+			catch (const buffer_eof_exception &)
+			{
+				// body shorter than its own declared length: drop this sub-message,
+				// the aggregate's framing is still intact
+			}
+
+			buffer.skip(h.message_length());
+			if (buffer.available() < 4)
+				break;                       // no room for the prev-tag-size field
 			buffer.skip(4);
 		}
 	}

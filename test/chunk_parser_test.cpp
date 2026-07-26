@@ -983,3 +983,58 @@ TEST_CASE("ordinary traffic keeps its buffer, so steady state never reallocates"
 	CHECK(buf.size() == 0);
 	CHECK(buf.capacity() == cap);   // retained: below the keep threshold
 }
+
+namespace
+{
+	// One aggregate sub-message: FLV-tag header (type, len24, ts24, ts_ext,
+	// streamid24) + body + the trailing prev-tag-size field.
+	void agg_sub(std::vector<std::uint8_t> &v, std::uint8_t type,
+	             const std::vector<std::uint8_t> &body)
+	{
+		auto const n = static_cast<std::uint32_t>(body.size());
+		v.push_back(type);
+		v.insert(v.end(), {std::uint8_t(n >> 16), std::uint8_t(n >> 8), std::uint8_t(n)});
+		v.insert(v.end(), {0, 0, 0});      // timestamp
+		v.push_back(0);                    // timestamp extended
+		v.insert(v.end(), {0, 0, 0});      // stream id
+		v.insert(v.end(), body.begin(), body.end());
+		v.insert(v.end(), {0, 0, 0, 0});   // prev tag size
+	}
+}
+
+TEST_CASE("rtmp aggregate: a sub-message that fails to decode does not desync the rest")
+{
+	// rtmp_message_invoke::deserialize reads the function name, ignores
+	// read_number failing on the invalid marker, and then loops on
+	// `while (buffer.available() > 0)` reading parameters. On the aggregate's
+	// shared reader that ran past its own body and consumed every sub-message
+	// after it, so the audio message below was never seen.
+	std::vector<std::uint8_t> const bad = {
+		0x02, 0x00, 0x03, 'a', 'b', 'c',   // AMF0 string "abc" (the function name)
+		0xFF,                              // invalid AMF0 type marker -> throws
+		0x00, 0x00, 0x00                   // declared but never read
+	};
+	std::vector<std::uint8_t> const good_audio = {0xAF, 0x01, 0x11, 0x22};
+
+	std::vector<std::uint8_t> body;
+	agg_sub(body, rtmp_message::eMessageInvoke, bad);
+	agg_sub(body, rtmp_message::eMessageAudioData, good_audio);
+
+	rtmp_header h;
+	h.message_type() = rtmp_message::eMessageAggregate;
+	h.message_length() = static_cast<std::uint32_t>(body.size());
+	byte_reader r(body.data(), body.size());
+
+	rtmp_protocol p;
+	REQUIRE(p.deserialize(r, h));
+	auto agg = std::dynamic_pointer_cast<rtmp_message_aggregate>(p.message());
+	REQUIRE(agg);
+
+	// the bad invoke is dropped; the audio message after it still decodes
+	REQUIRE(agg->get_messages().size() == 1);
+	auto const audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(agg->get_messages().front());
+	REQUIRE(audio);
+	REQUIRE(audio->size() == good_audio.size());
+	CHECK(audio->data()[0] == 0xAF);
+	CHECK(audio->data()[3] == 0x22);
+}
