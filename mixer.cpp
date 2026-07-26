@@ -116,6 +116,7 @@ namespace fms
 		m_streams.clear();   // unique_ptrs delete each stream_data
 
 		m_rec_buffer.reset();
+		m_init = false;   // else init() would early-return and never restart
 	}
 
 	void mixer::run_loop()
