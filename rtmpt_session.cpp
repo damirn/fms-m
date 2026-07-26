@@ -147,28 +147,51 @@ namespace fms
 		}
 		if (m_sstate == eCSIdle)
 		{
+			// A client may split C0+C1 across POSTs. Accumulate and only advance
+			// the state once the stage is complete: setting eCSReadHS on a short
+			// read left C1 unconsumed, so the next request was validated as C2
+			// against it and the session desynced for good.
+			m_remaining_data.write(input.data(), input.size());
+			if (m_remaining_data.size() < eHandShakeSize + 1)
+			{
+				serialize_poll_time(output);   // nothing to answer with yet
+				return boost::indeterminate;
+			}
+			if (!handle_handshake(m_remaining_data, output))
+				return false;
 			m_sstate = eCSReadHS;
-			return handle_handshake(input, output);
+			// handle_handshake wrote the poll time and S0/S1/S2; anything left in
+			// m_remaining_data is C2, handled on the next request.
+			return true;
 		}
 		if (m_sstate == eCSReadHS)
 		{
-			if (input.size() < eHandShakeSize)
-				return false;
-			if (!m_handshaker.validate_c2(input.data()))
+			m_remaining_data.write(input.data(), input.size());
+			if (m_remaining_data.size() < eHandShakeSize)
+			{
+				serialize_poll_time(output);
+				return boost::indeterminate;
+			}
+			if (!m_handshaker.validate_c2(m_remaining_data.data()))
 			{
 				close();
 				return false;
 			}
-			input.consume(eHandShakeSize);
+			m_remaining_data.consume(eHandShakeSize);
 			on_handshake_complete();   // no-op: an RTMPT session runs no handshake timer
 			m_sstate = eCSReadCommands;
 			// no arm_timer(): see start() -- an RTMPT session runs no cross-thread timers
-			if (!input.empty())
-				return handle_data(input, output);
-			
-							serialize_poll_time(output);
-				return true;
-		
+
+			if (!m_remaining_data.empty())
+			{
+				// commands piggybacked after C2 in the same body
+				byte_writer pending;
+				pending.write(m_remaining_data.data(), m_remaining_data.size());
+				m_remaining_data.clear();
+				return handle_data(pending, output);
+			}
+			serialize_poll_time(output);
+			return true;
 		}
 		return false;
 	}
@@ -213,7 +236,9 @@ namespace fms
 
 		output.write(input.data() + 1, eHandShakeSize);
 
-		input.clear();
+		// consume only C0+C1: a client may have piggybacked C2 (or commands) in
+		// the same body, and clear() used to throw those away.
+		input.consume(eHandShakeSize + 1);
 
 		return true;
 	}
