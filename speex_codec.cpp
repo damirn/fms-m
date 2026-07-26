@@ -2,6 +2,8 @@
 #include "speex_codec.h"
 #include "config.h"
 
+#include <limits>
+
 namespace fms
 {
 	speex_codec::speex_codec(std::uint16_t reserved_for_header /* = 1 */)
@@ -38,12 +40,14 @@ namespace fms
 		return enc_buff;
 	}
 
-	std::uint8_t *speex_codec::decode(char *to, std::uint8_t *data, std::uint8_t size, std::uint32_t &dec_size)
+	std::uint8_t *speex_codec::decode(char *to, std::uint8_t *data, std::uint32_t size, std::uint32_t &dec_size)
 	{
-		if (size == 0)
+		// speex_bits_read_from takes an int; a frame is a few dozen bytes, so
+		// anything near that limit is malformed rather than merely large.
+		if (size == 0 || size > static_cast<std::uint32_t>(std::numeric_limits<int>::max()))
 			return nullptr;
 
-		speex_bits_read_from(&m_dec_bits, reinterpret_cast<char *>(data), size);
+		speex_bits_read_from(&m_dec_bits, reinterpret_cast<char *>(data), static_cast<int>(size));
 
 		int ret = 0;
 		int i = 0;

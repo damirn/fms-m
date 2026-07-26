@@ -13,7 +13,7 @@ namespace fms
 		~speex_codec() override;
 
 		std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &) override;
-		std::uint8_t *decode(char *, std::uint8_t *, std::uint8_t, std::uint32_t &) override;
+		std::uint8_t *decode(char *, std::uint8_t *, std::uint32_t, std::uint32_t &) override;
 
 		// returns frame size in bytes
 		std::int32_t frame_size() const
