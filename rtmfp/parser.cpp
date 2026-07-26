@@ -142,7 +142,7 @@ namespace fms
 
 	std::uint16_t parser::calculate_checksum(const std::uint8_t *data, size_t size)
 	{
-		int sum = 0;
+		std::uint32_t sum = 0;   // signed would overflow on a maximal payload
 		std::uint8_t  const*end = data + size;
 		while (data < end)
 		{
@@ -155,19 +155,15 @@ namespace fms
 			}
 			else
 			{
-				// Trailing odd byte. We sum 16-bit words in native (little-endian)
-				// order, which makes this checksum the byte-swap of RFC 7016's
-				// big-endian in_cksum -- and that swap is exactly what cancels when a
-				// peer reads our little-endian-stored field big-endian. To preserve
-				// that relationship for odd-length payloads the last byte must land in
-				// the high half of the word (in_cksum adds it low under big-endian
-				// summing). Even payloads never hit this branch.
+				// Words are summed in native order, so this is the byte-swap of RFC
+				// 7016's big-endian in_cksum; the odd tail byte goes high to keep
+				// that relationship.
 				sum += static_cast<std::uint16_t>(*data) << 8;
 				break;
 			}
 		}
 		sum = (sum >> 16) + (sum & 0xffff);
 		sum += (sum >> 16);
-		return ~sum;
+		return static_cast<std::uint16_t>(~sum);
 	}
 }
