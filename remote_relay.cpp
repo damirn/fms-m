@@ -12,18 +12,18 @@ namespace fms::remote_relay
 	bool is_remote_stream(const std::string &stream, std::string &sname, std::string &remote)
 	{
 		std::string::size_type const pos = stream.find('@');
-		if (pos == std::string::npos)
+		// Well-formed only with a name on both sides of the '@'. Every other shape
+		// is a plain local stream, and sname has to be set on all of them: a
+		// trailing '@' returned false without touching it, leaving the caller to
+		// look up an empty stream name.
+		if (pos == std::string::npos || pos == 0 || pos + 1 == stream.length())
 		{
 			sname = stream;
 			return false;
 		}
-		if (pos < stream.length() - 1)
-		{
-			sname = std::string(stream, 0, pos);
-			remote = std::string(stream, pos + 1);
-			return true;
-		}
-		return false;
+		sname = stream.substr(0, pos);
+		remote = stream.substr(pos + 1);
+		return true;
 	}
 
 	void spawn_helper(const std::string &remote_srv, const std::string &stream)
