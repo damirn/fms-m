@@ -229,22 +229,41 @@ namespace fms
 
 	void rtmp_connection::handle_app_result(rtmp_channel_ptr channel, rtmp_message_ptr result)
 	{
-		if (!m_write_in_progress && (m_app == nullptr || (m_app != nullptr && !m_app->has_async_messages(m_id))))
+		if (!m_write_in_progress && (m_app == nullptr || !m_app->has_async_messages(m_id)))
 		{
 			serialize_message(result, channel);
 			perform_write();
+			return;
 		}
-		else if (m_app != nullptr)   // a write is in flight; queue it (only an app can)
+		if (m_app != nullptr)   // a write is in flight; queue it on the app
 		{
 			m_app->enqueue_async_message(m_id, result);
 			notify();
+			return;
 		}
+		// Pre-connect and a write already in flight: no app to queue on, so hold it
+		// here rather than drop it -- this is the window the connect reply itself
+		// is produced in.
+		if (m_pre_app_results.size() < eMaxPreAppResults)
+			m_pre_app_results.emplace_back(std::move(channel), std::move(result));
 	}
 
 	void rtmp_connection::handle_notify()
 	{
 		if (m_write_in_progress)
 			return;
+
+		if (!m_pre_app_results.empty())
+		{
+			while (!m_pre_app_results.empty() && m_output_buffer.size() < eMaxWriteBatchBytes)
+			{
+				auto const &[channel, msg] = m_pre_app_results.front();
+				serialize_message(msg, channel);
+				m_pre_app_results.pop_front();
+			}
+			perform_write();
+			return;
+		}
 
 		rtmp_message_ptr result;
 		if (m_app != nullptr)

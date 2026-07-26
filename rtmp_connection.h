@@ -4,6 +4,9 @@
 #include "byte_writer.h"
 #include "transport_seam.h"
 
+#include <deque>
+#include <utility>
+
 #include <boost/noncopyable.hpp>
 
 namespace fms
@@ -109,6 +112,12 @@ namespace fms
 		// monopolising its io_context thread; the remainder drains on write completion.
 		static constexpr std::size_t eMaxWriteBatchBytes = 256u * 1024;
 
+		// Results produced before connect() has been routed to an application, while
+		// a write was already in flight. There is no app to queue them on yet, and
+		// dropping them loses the connect reply itself. Bounded: everything on this
+		// path is server-generated, and a peer must not be able to grow it.
+		static constexpr std::size_t eMaxPreAppResults = 16;
+
 	private:
 		// Typed convenience over the base's shared_from_this() (named distinctly so it
 		// doesn't hide enable_shared_from_this<basic_rtmp_connection>::shared_from_this).
@@ -138,6 +147,7 @@ namespace fms
 		byte_writer m_output_buffer;
 
 		bool m_to_close{false};
+		std::deque<std::pair<rtmp_channel_ptr, rtmp_message_ptr>> m_pre_app_results;
 	};
 
 	using rtmp_connection_ptr = std::shared_ptr<rtmp_connection>;
