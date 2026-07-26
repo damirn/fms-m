@@ -44,18 +44,27 @@ namespace fms
 	void dh2::generate_public_key()
 	{
 		m_pkey = evp_dh_keygen(m_dh_key, eKeySize, 2);
+		if (m_pkey == nullptr)
+			return;   // m_pub_key_size stays 0; every user checks it
 
 		// Our public part as big-endian bytes (at most the prime size).
 		m_pub_key = new std::uint8_t[eKeySize];
-		m_pub_key_size = evp_dh_pub(m_pkey, m_pub_key, eKeySize);
+		int const n = evp_dh_pub(m_pkey, m_pub_key, eKeySize);
+		m_pub_key_size = n > 0 ? n : 0;   // evp_dh_pub returns -1 on failure
 	}
 
-	void dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size)
+	bool dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size)
 	{
 		std::size_t len = 0;
+		delete[] m_shared_secret;   // a second call would otherwise leak the first
 		m_shared_secret = evp_dh_derive(m_pkey, m_dh_key, eKeySize, 2, remote_pub_key, key_size, len);
+		if (m_shared_secret == nullptr)
+		{
+			m_shared_secret_size = 0;
+			return false;
+		}
 		m_shared_secret_size = static_cast<int>(len);
-		generate_rnonce();
+		return generate_rnonce();
 	}
 
 	void dh2::generate_symetric_keys(const std::uint8_t *inonce,
@@ -90,7 +99,7 @@ namespace fms
 		EVP_Digest(data, data_size, target, nullptr, EVP_sha256(), nullptr);
 	}
 
-	void dh2::generate_rnonce()
+	bool dh2::generate_rnonce()
 	{
 		// This is our responder keying component (skrc): a list of RFC 7016 options,
 		// then the DH public key, that also feeds session-key derivation.
@@ -103,12 +112,18 @@ namespace fms
 		// them off. Whether we actually emit/verify them is decided per session from
 		// the initiator's own flags (see service::handle_iikeying) so it always agrees
 		// with what this advertisement promises.
-		static const std::uint8_t salt[] = { 0x03, 0x1A, 0x02, 0x10, 0x02, 0x1E, 0x02, 0x81, 0x02, 0x0D, 0x02 };
-		int size;
+		static constexpr std::uint8_t salt[] = { 0x03, 0x1A, 0x02, 0x10, 0x02, 0x1E, 0x02, 0x81, 0x02, 0x0D, 0x02 };
+		int size = 0;
 		const std::uint8_t *pk = pub_key(size);
-		m_rnonce = new std::uint8_t[size + sizeof(salt)];
+		// A failed keygen leaves size 0 (and once left it negative, which the
+		// new[] below converted into a huge size_t).
+		if (pk == nullptr || size <= 0)
+			return false;
+		delete[] m_rnonce;
+		m_rnonce = new std::uint8_t[static_cast<std::size_t>(size) + sizeof(salt)];
 		std::memcpy(m_rnonce, salt, sizeof(salt));
-		std::memcpy(m_rnonce + sizeof(salt), pk, size);
-		m_rnonce_size = size + sizeof(salt);
+		std::memcpy(m_rnonce + sizeof(salt), pk, static_cast<std::size_t>(size));
+		m_rnonce_size = static_cast<std::uint16_t>(size + sizeof(salt));
+		return true;
 	}
 }

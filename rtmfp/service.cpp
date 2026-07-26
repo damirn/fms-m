@@ -457,9 +457,10 @@ namespace fms
 			ipk = iikc->initator_cert() + 4;
 			ipk_len = static_cast<std::uint16_t>(iikc->cert_len() - 4);
 		}
-		d.generate_shared_secret(ipk, ipk_len);
+		if (!d.generate_shared_secret(ipk, ipk_len))
+			return;   // no usable secret: drop the keying rather than reply with none
 
-		std::uint16_t size;
+		std::uint16_t size = 0;
 		const std::uint8_t *rnonce = d.rnonce(size);
 		rikeying_chunk ric(boost::asio::detail::socket_ops::host_to_network_long(s->outgoing_sid()), size, rnonce);
 
