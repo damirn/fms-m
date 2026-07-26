@@ -73,8 +73,12 @@ namespace fms
 		bool has_async_messages(std::uint32_t);
 		bool get_async_message(std::uint32_t, rtmp_message_ptr &);
 
+		// Takes m_stats_mutex: update_stats mutates these four counters from every
+		// connection thread on every read and write, and this is read from the
+		// admin thread.
 		app_stats get_stats() const
 		{
+			std::lock_guard const lock(m_stats_mutex);
 			return m_stats;
 		}
 
@@ -163,7 +167,7 @@ namespace fms
 		std::mutex m_delay_mutex;
 
 		app_stats m_stats;
-		std::mutex m_stats_mutex;
+		mutable std::mutex m_stats_mutex;
 
 		// Outbound-queue cap, cached from config at construction rather than read per
 		// message: enqueue runs on the per-frame fan-out path. 0 = unbounded.
