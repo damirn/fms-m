@@ -17,6 +17,7 @@
 #include "service.h"
 #include "util.h"
 
+#include <charconv>
 #include <iostream>
 #include <memory>
 
@@ -700,7 +701,8 @@ namespace fms
 			m_has_data_ready = true;
 		}
 		m_state = eNearClose;
-		m_notifier();   // kick a send pass so the SessionClose goes out
+		if (m_notifier)
+			m_notifier();   // kick a send pass so the SessionClose goes out
 	}
 
 	void session::notify()
@@ -723,25 +725,35 @@ namespace fms
 				message_to_fragment(msg);
 				has_msg = true;
 			}
-			if (has_msg)
+			if (has_msg && m_notifier)
 				m_notifier();
 		}
 	}
 
 	void session::add_peer_address(const std::string &addr)
 	{
+		// Peer-supplied: neither the address nor the port may throw out of here.
 		std::string::size_type const i = addr.find(':');
-		if (i != std::string::npos && i < addr.size())
-		{
-			std::string const ip = std::string(addr, 0, i);
-			std::string const port = std::string(addr, i + 1);
-			address a;
-			boost::asio::ip::address_v4 const ad = boost::asio::ip::make_address_v4(ip);
-			a.m_type = eAddressOriginLocal;
-			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(ad.to_uint());
-			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(static_cast<std::uint16_t>(std::stoul(port)));
-			m_addresses.push_back(a);
-		}
+		if (i == std::string::npos || i + 1 >= addr.size())
+			return;
+
+		std::string const ip(addr, 0, i);
+		std::uint16_t port = 0;
+		auto const *const first = addr.data() + i + 1;
+		auto const *const last = addr.data() + addr.size();
+		if (std::from_chars(first, last, port).ec != std::errc{} || port == 0)
+			return;
+
+		boost::system::error_code ec;
+		boost::asio::ip::address_v4 const ad = boost::asio::ip::make_address_v4(ip, ec);
+		if (ec)
+			return;
+
+		address a;
+		a.m_type = eAddressOriginLocal;
+		a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(ad.to_uint());
+		a.m_port = boost::asio::detail::socket_ops::host_to_network_short(port);
+		m_addresses.push_back(a);
 	}
 
 	void session::arm_timer()
@@ -816,7 +828,8 @@ namespace fms
 					m_erto = erto_capped;
 				else
 					m_erto = m_mrto;
-				m_notifier();
+				if (m_notifier)
+					m_notifier();
 			}
 		}
 	}
