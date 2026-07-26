@@ -371,7 +371,10 @@ namespace fms
 			if (h.timestamp_echo_present() && m_ts_echo_rx != h.timestamp_echo())
 			{
 				m_ts_echo_rx = h.timestamp_echo();
-				std::uint32_t const rtt_ticks = std::abs(m_service->get_timestamp() - h.timestamp_echo());//) % 0x10000;
+				// uint16 tick difference: wraps correctly, unlike an int subtraction
+				// promoted out of the 16-bit domain.
+				std::uint32_t const rtt_ticks =
+					static_cast<std::uint16_t>(m_service->get_timestamp() - h.timestamp_echo());
 				if (rtt_ticks <= 0x7fff)
 				{
 					std::uint32_t const rtt = rtt_ticks * 4;
@@ -410,7 +413,8 @@ namespace fms
 		}
 		else
 		{
-			std::uint32_t const ts_echo = (m_ts_rx + rx_elapsed / 4);
+			// truncate before comparing: m_ts_echo_tx is 16-bit
+			auto const ts_echo = static_cast<std::uint16_t>(m_ts_rx + rx_elapsed / 4);
 			if (m_ts_echo_tx != ts_echo)
 			{
 				m_ts_echo_tx = ts_echo;
