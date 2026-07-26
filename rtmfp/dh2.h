@@ -18,7 +18,9 @@ namespace fms
 			return m_pub_key;
 		}
 
-		void generate_shared_secret(const std::uint8_t *, std::uint16_t);
+		// False if the DH keypair or the derivation failed; the session must not
+		// continue keying on a secret that was never produced.
+		[[nodiscard]] bool generate_shared_secret(const std::uint8_t *, std::uint16_t);
 		void generate_symetric_keys(const std::uint8_t *, std::uint16_t, const std::uint8_t *, std::uint16_t,
 			std::uint8_t *, std::uint8_t *);
 
@@ -38,7 +40,7 @@ namespace fms
 
 	protected:
 		void generate_public_key();
-		void generate_rnonce();
+		bool generate_rnonce();
 
 		enum { eAESKeySize = 0x20, eKeySize = 0x80 };
 		static const std::uint8_t m_dh_key[eKeySize];
