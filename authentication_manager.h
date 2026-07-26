@@ -9,28 +9,34 @@
 #include <boost/logic/tribool.hpp>
 #include <boost/noncopyable.hpp>
 
-using create = fms::authentication_plugin *(*)();
-using destroy = void *(*)(fms::authentication_plugin *);
-
 namespace fms
 {
 	class authentication_plugin;
+
+	// A plugin shared object exports these two.
+	using create_plugin_fn = authentication_plugin *(*)();
+	using destroy_plugin_fn = void (*)(authentication_plugin *);
 
 	class authentication_manager : boost::noncopyable
 	{
 	public:
 		authentication_manager();
 		explicit authentication_manager(const std::string &);
-		~authentication_manager();
+		~authentication_manager() = default;
 
-		boost::tribool authenticate(auth_data_ptr, const std::function<void (bool, auth_data_ptr)>&);
+		boost::tribool authenticate(auth_data_ptr);
 
 	protected:
 		void init_plugin(const std::string &);
 		void load_plugin(const std::string &);
 
-		authentication_plugin *m_auth_plugin;
-		bool m_plugin_loaded;
-		destroy m_destroy{nullptr};
+		using plugin_ptr = std::unique_ptr<authentication_plugin, std::function<void (authentication_plugin *)>>;
+		using dl_handle = std::unique_ptr<void, void (*)(void *)>;
+
+		// Declaration order is destruction order reversed: the plugin is torn down
+		// by destroy_plugin, which lives inside the shared object, so the plugin
+		// must go before the handle that keeps that object mapped.
+		dl_handle m_handle;
+		plugin_ptr m_auth_plugin;
 	};
 }
