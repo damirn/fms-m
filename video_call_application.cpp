@@ -128,7 +128,7 @@ namespace fms
 
 	void video_call_application::video_call_end_notify(std::uint32_t connection_id)
 	{
-		// no lock since the lock has already been aquired
+		// No lock: the caller already holds the registry's exclusive guard.
 		auto const i = m_client_to_instance.find(connection_id);
 		if (i == m_client_to_instance.end())
 			return;
@@ -142,24 +142,25 @@ namespace fms
 
 		std::set<std::uint32_t> &set = j->second->m_clients;
 		if (!set.contains(connection_id))
+		{
+			m_client_to_instance.erase(i);   // stale mapping either way
 			return;
+		}
+
+		// This client stops feeding the mixer. The mixer belongs to the instance
+		// and ~call_instance_data frees it once the last client is gone, so it
+		// must not be deleted here: with three or more clients in one instance
+		// the first departure killed mixing for everyone still in the call.
+		if (j->second->m_mixer != nullptr)
+			j->second->m_mixer->remove_source_stream(connection_id);
+
 		if (set.size() == 2)
 		{
-			// both clients are connected
-			if (j->second->m_mixer != nullptr)
-				j->second->m_mixer->remove_source_stream(connection_id);
-			auto i = set.begin();
-			if (*i == connection_id)
-				++i;
-			send_call_end_notify(*i);
-		}
-		else
-		{
-			if (j->second->m_mixer != nullptr)
-			{
-				delete j->second->m_mixer;
-				j->second->m_mixer = nullptr;
-			}
+			// exactly one peer left behind: tell it the call has ended
+			auto peer = set.begin();
+			if (*peer == connection_id)
+				++peer;
+			send_call_end_notify(*peer);
 		}
 
 		set.erase(connection_id);
