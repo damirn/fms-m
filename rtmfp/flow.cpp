@@ -314,7 +314,9 @@ namespace fms
 	vlu_t flow::ack_fragments_for_range(const vlu_t &from, const vlu_t &to)
 	{
 		vlu_t tsn = 0;
-		auto i = m_fragments.find(from);
+		// lower_bound, not find: `from` is a wire-decoded range start and rarely
+		// an exact fragment key.
+		auto i = m_fragments.lower_bound(from);
 		while (i != m_fragments.end() && i->first <= to)
 		{
 			tsn = i->second->m_tsn;
