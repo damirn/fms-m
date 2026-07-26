@@ -20,14 +20,10 @@ namespace fms
 		, m_timer(io_context)
 	{}
 
-	rtmp_connection::~rtmp_connection()
-	{
-		m_socket.close();
-	}
+	rtmp_connection::~rtmp_connection() = default;
 
 	void rtmp_connection::close()
 	{
-//		m_socket.shutdown(boost::asio::socket_base::shutdown_both);
 		if (m_state != eStateClosing)
 		{
 			m_state = eStateClosing;
@@ -35,7 +31,10 @@ namespace fms
 			m_wto_timer.cancel();
 			m_timer.cancel();
 			BOOST_LOG(lg::get()) << "Closing socket for cid: " << m_id;
-			m_socket.close();
+			// Non-throwing overload: close() runs from completion handlers, and an
+			// exception thrown there escapes into io_context::run().
+			boost::system::error_code ec;
+			m_socket.close(ec);
 			client_session::close();
 		}
 	}
