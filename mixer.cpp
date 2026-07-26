@@ -121,11 +121,22 @@ namespace fms
 
 	void mixer::run_loop()
 	{
+		// Pace against an absolute deadline, not a fixed sleep after the work:
+		// sleeping eTimeInterval *on top of* however long mix_tick took made the
+		// mix clock run slow under load, while mix_tick advances m_timestamp by
+		// exactly eTimeInterval per tick on the assumption that it did not.
+		auto next = std::chrono::steady_clock::now();
 		while (m_running)
 		{
 			if (m_active)
 				mix_tick();
-			std::this_thread::sleep_for(std::chrono::milliseconds(eTimeInterval));
+
+			next += std::chrono::milliseconds(eTimeInterval);
+			auto const now = std::chrono::steady_clock::now();
+			if (next > now)
+				std::this_thread::sleep_until(next);
+			else
+				next = now;   // fell behind; resync rather than burst to catch up
 		}
 	}
 
