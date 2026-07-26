@@ -78,7 +78,7 @@ namespace fms::rtmp_client
 		enum { _eConnectTimeout = 5 };
 
 		bool m_connected{false};
-		bool m_stopped;
+		bool m_stopped{false};
 		connect_cb m_connect_cb;
 		io_complete_cb m_read_cb;
 		io_complete_cb m_write_cb;
