@@ -111,6 +111,12 @@ namespace fms::rtmp_client
 
 	void net_client::close_socket()
 	{
-		m_socket.close();
+		// Stop check_deadline re-arming itself. Nothing else ever set m_stopped, so
+		// the timer held a shared_from_this forever and io_context::run() never
+		// returned -- the client hung after the stream ended.
+		m_stopped = true;
+		boost::system::error_code ec;
+		m_socket.close(ec);
+		m_timer.cancel();
 	}
 }
