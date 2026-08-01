@@ -147,7 +147,7 @@ namespace fms
 
 	void service::send_from_queue()
 	{
-		endpoint_chunk_pair_t p = m_queue.front();
+		endpoint_chunk_pair_t p = std::move(m_queue.front());
 		m_queue.pop();
 
 		std::uint16_t const ts = get_timestamp();
@@ -155,7 +155,6 @@ namespace fms
 		m_serializer->prepare_raw_packet(h, m_parser->get_aes());
 		p.second->serialize(m_serializer->raw_packet());
 		m_serializer->finish_raw_packet(0, m_parser->get_aes());
-		delete p.second;
 		write(m_serializer->packet(), p.first);
 	}
 
@@ -531,7 +530,7 @@ namespace fms
 			fi.serialize(m_serializer->raw_packet());
 			m_serializer->finish_raw_packet(i->second->session_id(), i->second->get_aes());
 
-			auto *rc = new redirect_chunk(ic->tag_len(), ic->tag());
+			auto rc = std::make_unique<redirect_chunk>(ic->tag_len(), ic->tag());
 			boost::asio::ip::address_v4 const tmp = i->second->end_point().address().to_v4();
 			a.m_type = 0x02;
 			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(tmp.to_uint());
@@ -539,7 +538,8 @@ namespace fms
 
 			rc->addresses().push_back(a);
 			std::copy(i->second->addresses().begin(), i->second->addresses().end(), std::back_insert_iterator<std::list<address>>(rc->addresses()));
-			m_queue.emplace(m_sender_endpoint, rc);
+			if (m_queue.size() < eMaxQueuedRedirects)
+				m_queue.emplace(m_sender_endpoint, std::move(rc));
 
 			write(m_serializer->packet(), i->second->end_point());
 		}
