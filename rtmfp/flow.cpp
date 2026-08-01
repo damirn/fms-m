@@ -2,7 +2,6 @@
 #include "flow.h"
 #include "byte_reader.h"
 
-#include <cmath>
 #include <iterator>
 #include <memory>
 
@@ -19,11 +18,16 @@ namespace fms
 
 	flow::vlu_seq_manager::result flow::add_fragment(const fragment_ptr& f)
 	{
-		// Cap reassembly buffering: an un-terminated fragment run (eBegin/eMiddle,
-		// never eEnd) would otherwise grow m_fragments without bound. Reject the
-		// flow and free what it buffered. (state != eOpen stops further fragments.)
 		if (m_fragments.size() >= eMaxBufferedFragments)
 		{
+			// Sending flow: the backlog is our own queued (and possibly in-flight)
+			// data, so refuse the new fragment rather than discarding all of it.
+			if (m_role == eSender)
+				return vlu_seq_manager::_eDuplicate;
+
+			// Receiving flow: an un-terminated fragment run (eBegin/eMiddle, never
+			// eEnd) grows m_fragments without bound. Reject the flow and free what
+			// it buffered; state != eOpen stops further fragments.
 			m_fragments.clear();
 			m_state = eRejected;
 			return vlu_seq_manager::_eDuplicate;
@@ -190,7 +194,7 @@ namespace fms
 		}
 		else
 		{
-			auto const cnt = static_cast<std::uint16_t>(std::ceil(static_cast<float>(len) / static_cast<float>(_eFragmentMaxSize)));
+			auto const cnt = static_cast<std::uint16_t>((len + _eFragmentMaxSize - 1) / _eFragmentMaxSize);
 			std::uint8_t ftype = fragment::eBegin;
 			std::uint32_t clen = _eFragmentMaxSize;
 			for (std::uint16_t i = 0; i < cnt; ++i)
