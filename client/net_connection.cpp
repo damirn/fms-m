@@ -265,7 +265,9 @@ namespace fms::rtmp_client
 					write_signed_c2(s1);
 				else
 					m_output_buffer->write(s1, eHandshakeSize);            // simple: echo S1
-				m_input_buffer->clear();
+				// consume, not clear: the server may coalesce Window Ack Size /
+				// Set Chunk Size behind S2 in the same segment.
+				m_input_buffer->consume(2 * eHandshakeSize + 1);
 				write_data();
 				return;
 			}
@@ -634,9 +636,13 @@ namespace fms::rtmp_client
 		m_tmp_net_streams.erase(s);
 
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
+		if (params.size() < 2)
+			return;
 		auto i = params.begin();
 		++i;
 		amf0_number_ptr const stream_id = std::dynamic_pointer_cast<amf0_number>(*i);
+		if (!stream_id)
+			return;
 
 		std::string func;
 		std::uint32_t const sid = static_cast<std::uint32_t>(stream_id->value());
