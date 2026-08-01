@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <queue>
 #include <set>
 
 #include <boost/asio.hpp>
@@ -103,7 +104,10 @@ namespace fms
 		using group_set_t = std::set<group_ptr, group::less>;
 		group_set_t m_groups;
 
-		using endpoint_chunk_pair_t = std::pair<boost::asio::ip::udp::endpoint, chunk *>;
+		using endpoint_chunk_pair_t = std::pair<boost::asio::ip::udp::endpoint, std::unique_ptr<chunk>>;
+		// Redirects pending a send slot. Bounded: one is pushed per peer-lookup
+		// IHello, and it only drains from handle_send_to.
+		static constexpr std::size_t eMaxQueuedRedirects = 1024;
 		std::queue<endpoint_chunk_pair_t> m_queue;
 
 		enum { ePacketMinLen = 13 };
