@@ -429,14 +429,23 @@ namespace fms
 		// against a determined flooder cycling real endpoints -- once reached, drop
 		// new handshakes; the server stays up and RTMP/RTMPT are unaffected.
 		constexpr std::size_t eMaxInitialSessions = 8192;
-		if (m_initial_sessions.size() >= eMaxInitialSessions
-			&& m_initial_sessions.find(m_sender_endpoint) == m_initial_sessions.end())
-			return;
-
-		session_ptr const s = std::make_shared<session>(this, m_sender_endpoint, m_app_manager->reserve_connection_id(), m_app_manager);
-		s->init();
-		s->notifier() = [this]() { notify(); };
-		m_initial_sessions[m_sender_endpoint] = s;
+		// One half-open session per endpoint: assigning over an existing entry
+		// orphaned the previous session, which keeps a timer self-reference and a
+		// reserved connection id alive until it is reaped.
+		session_ptr s;
+		if (auto const existing = m_initial_sessions.find(m_sender_endpoint); existing != m_initial_sessions.end())
+		{
+			s = existing->second;   // retransmitted IIKeying: re-key this one
+		}
+		else
+		{
+			if (m_initial_sessions.size() >= eMaxInitialSessions)
+				return;
+			s = std::make_shared<session>(this, m_sender_endpoint, m_app_manager->reserve_connection_id(), m_app_manager);
+			s->init();
+			s->notifier() = [this]() { notify(); };
+			m_initial_sessions[m_sender_endpoint] = s;
+		}
 
  		s->session_id() = iikc->isid();
 
