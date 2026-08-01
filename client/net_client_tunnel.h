@@ -19,6 +19,13 @@ namespace fms::rtmp_client
 	class net_client_tunnel : public net_client
 	{
 	public:
+		// The base keeps every async chain alive through shared_from_this; these
+		// handlers must do the same or they can fire on a destroyed tunnel.
+		std::shared_ptr<net_client_tunnel> shared_tunnel()
+		{
+			return std::static_pointer_cast<net_client_tunnel>(shared_from_this());
+		}
+
 		explicit net_client_tunnel(boost::asio::io_context &io_context)
 			: net_client(io_context)
 			, m_timer(io_context)
