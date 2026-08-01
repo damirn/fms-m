@@ -56,7 +56,7 @@ namespace fms::rtmp_client
 		m_request.prepare_payload();
 
 		http::async_write(m_socket, m_request,
-			[this](const boost::system::error_code &ec, std::size_t n) { on_write(ec, n); });
+			[self = shared_tunnel()](const boost::system::error_code &ec, std::size_t n) { self->on_write(ec, n); });
 	}
 
 	void net_client_tunnel::on_write(const boost::system::error_code &e, std::size_t bytes)
@@ -70,7 +70,7 @@ namespace fms::rtmp_client
 		m_parser.emplace();
 		m_parser->body_limit(16 * 1024 * 1024);
 		http::async_read(m_socket, m_read_buffer, *m_parser,
-			[this](const boost::system::error_code &ec, std::size_t n) { on_read(ec, n); });
+			[self = shared_tunnel()](const boost::system::error_code &ec, std::size_t n) { self->on_read(ec, n); });
 	}
 
 	void net_client_tunnel::on_read(const boost::system::error_code &e, std::size_t bytes)
@@ -128,7 +128,7 @@ namespace fms::rtmp_client
 	void net_client_tunnel::arm_timer()
 	{
 		m_timer.expires_after(std::chrono::milliseconds(m_ms_timer));
-		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
+		m_timer.async_wait([self = shared_tunnel()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 	}
 
 	void net_client_tunnel::handle_timer(const boost::system::error_code &e)
