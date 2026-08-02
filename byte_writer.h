@@ -137,6 +137,7 @@ namespace fms
 		void patch(std::size_t pos, const std::uint8_t *src, std::size_t n)
 		{
 			assert(m_read_pos == 0 && "patch() is output-role only");
+			assert(pos + n <= m_buf.size() && "patch() past the end of the buffer");
 			std::memcpy(m_buf.data() + pos, src, n);
 		}
 

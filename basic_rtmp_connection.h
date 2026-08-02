@@ -42,8 +42,10 @@ namespace fms
 
 		void handle_bytes_read(std::size_t) override;
 
-		void set_outgoing_chunk_size(std::uint16_t size)
+		void set_outgoing_chunk_size(std::uint32_t size)
 		{
+			if (size == 0)
+				return;   // rtmp_protocol divides by this
 			m_outgoing_chunk_size = size;
 		}
 
@@ -93,7 +95,7 @@ namespace fms
 
 		bool m_write_in_progress{false};
 
-		std::uint16_t m_outgoing_chunk_size{eDefaultChunkSize};
+		std::uint32_t m_outgoing_chunk_size{eDefaultChunkSize};
 	};
 
 	using basic_rtmp_connection_ptr = std::shared_ptr<basic_rtmp_connection>;

@@ -25,7 +25,7 @@ namespace fms
 		{
 			if (m_created)
 			{
-				// Flush all buffered records
+				boost::log::core::get()->remove_sink(m_sink);
 				m_sink->stop();
 				m_sink->flush();
 			}
