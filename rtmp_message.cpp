@@ -181,14 +181,14 @@ namespace fms
 
 	void rtmp_message_set_peer_bandwidth::deserialize(byte_reader &buffer)
 	{
-		buffer >> m_size >> m_type;
+		buffer >> m_size >> m_limit_type;
 		m_size = boost::asio::detail::socket_ops::network_to_host_long(m_size);
 	}
 
 	void rtmp_message_set_peer_bandwidth::serialize(byte_writer &buffer)
 	{
 		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_size);
-		buffer << tmp << m_type;
+		buffer << tmp << m_limit_type;
 	}
 
 	void rtmp_message_audio_data::deserialize(byte_reader &buffer)

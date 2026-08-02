@@ -330,7 +330,7 @@ namespace fms
 		rtmp_message_set_peer_bandwidth(std::uint32_t size, std::uint8_t limit_type)
 			: rtmp_message(eMessageSetPeerBandwidth)
 			, m_size(size)
-			, m_type(limit_type)
+			, m_limit_type(limit_type)
 		{
 			m_channel_id = 2;
 			m_stream_id = 0;
@@ -347,15 +347,14 @@ namespace fms
 		}
 
 		// RTMP Set Peer Bandwidth limit type: 0 = hard, 1 = soft, 2 = dynamic.
-		// (Named distinctly so it doesn't hide the base rtmp_message::type().)
-		const std::uint8_t &limit_type() const
+		std::uint8_t limit_type() const
 		{
-			return m_type;
+			return m_limit_type;
 		}
 
 	protected:
-		std::uint32_t m_size;
-		std::uint8_t m_type;
+		std::uint32_t m_size{0};
+		std::uint8_t m_limit_type{0};
 	};
 
 	using rtmp_message_set_peer_bandwidth_ptr = std::shared_ptr<rtmp_message_set_peer_bandwidth>;
