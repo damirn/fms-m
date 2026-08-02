@@ -18,15 +18,10 @@ namespace fms
 
 		rtmp_header()= default;
 
-		// De-serialize rtmp header from binary stream.
-
-		// Non-throwing, peek-then-commit variant over a byte_reader: returns false
-		// (and leaves *this and the reader untouched) if the whole header isn't
-		// present yet. Behaviour-equivalent to deserialize() for complete headers.
+		// Peek-then-commit: returns false, leaving *this and the reader untouched,
+		// if the whole header is not present yet.
 		bool try_deserialize(byte_reader &);
 
-		// Serialize rtmp header to binary stream. Templated on the writer so the one
-		// implementation serves byte_writer (and is templated for future buffers).
 		void serialize(byte_writer &, rtmp_header &);
 
 		std::uint32_t &header_size()

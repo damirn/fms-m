@@ -7,10 +7,11 @@
 
 namespace fms
 {
-	// A non-owning, non-throwing cursor over a byte range. Every try_* returns
-	// false and leaves the position untouched when there aren't enough bytes, so
-	// callers can parse speculatively and only commit (copy the advanced reader
-	// back) once a whole unit has been read.
+	// A non-owning cursor over a byte range. The try_* family returns false and
+	// leaves the position untouched when there aren't enough bytes, so callers can
+	// parse speculatively and commit (copy the advanced reader back) once a whole
+	// unit has been read; the operator>> / read family throws buffer_eof_exception
+	// instead.
 	class byte_reader
 	{
 	public:
@@ -114,9 +115,9 @@ namespace fms
 			int bytes = 0;
 			do
 			{
-				// A 64-bit value needs at most 10 continuation bytes; a longer run is
-				// malformed (and would silently overflow ret) -- reject it.
-				if (++bytes > 10)
+				// 10 bytes carry 70 bits, so the byte count alone does not bound a
+				// 64-bit accumulator: check that the shift cannot drop the top.
+				if (++bytes > 10 || (ret >> 57) != 0)
 					throw buffer_eof_exception();
 				*this >> a;
 				more = (a & 0x80) == 0x80;

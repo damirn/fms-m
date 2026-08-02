@@ -7,8 +7,8 @@ namespace fms
 {
 	bool rtmp_header::try_deserialize(byte_reader &reader)
 	{
-		// Work on copies; commit both the header state and the reader position
-		// only if the whole header is present. This mirrors deserialize() exactly.
+		// Work on copies; commit the header state and the reader position only if
+		// the whole header is present.
 		byte_reader r = reader;
 		rtmp_header h = *this;   // preserve accumulated timestamp across chunks
 
