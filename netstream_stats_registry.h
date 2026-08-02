@@ -17,9 +17,7 @@ namespace fms
 {
 	class netstream_observer;
 
-	// Owns the per-netstream stats store and the periodic QoS-gather timer, lifted out
-	// of rtmp_app_manager so the routing/connection-registry layer no longer carries the
-	// stats bookkeeping.
+	// Owns the per-netstream stats store and the periodic QoS-gather timer.
 	//
 	// Its mutex is deliberately independent of the manager's connection-map mutex: no
 	// method here ever touches the connection map, so the two locks never need to be

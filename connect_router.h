@@ -17,9 +17,8 @@ namespace fms
 
 	// Routes a NetConnection `connect` invoke to the registered application it names --
 	// setting that app on the connection and delegating to it -- or rejects it with a
-	// NetConnection.Connect.InvalidApp error via the fake app. Lifted out of
-	// rtmp_app_manager so the connection registry no longer parses AMF or builds
-	// protocol replies; it holds a reference to the manager's app registry + fake app.
+	// NetConnection.Connect.InvalidApp error via the fake app. Holds a reference to
+	// the manager's app registry and fake app.
 	class connect_router
 	{
 	public:

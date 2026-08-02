@@ -29,8 +29,7 @@ namespace fms
 	public:
 		explicit media_application(app_host *, const char *app_name = "media");
 
-		// Out-of-line so the registry's stream_recorder unique_ptr dtors are instantiated in the
-		// .cpp, where stream_recorder is a complete type.
+		// out-of-line: the unique_ptr members' types are complete in the .cpp
 		~media_application() override;
 
 		void delete_connection(std::uint32_t, const std::string & = "") override;

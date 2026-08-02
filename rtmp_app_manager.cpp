@@ -24,8 +24,7 @@ namespace fms
 		m_conn_registry.emplace(*this, m_io_context_pool, *m_rtmpt_manager);
 	}
 
-	// Out-of-line (not =default in the header) so the unique_ptr members'
-	// destructors are instantiated here, where the app types are complete.
+	// out-of-line: the unique_ptr members' types are complete in the .cpp
 	rtmp_app_manager::~rtmp_app_manager() = default;
 
 	void rtmp_app_manager::register_rtmp_app(rtmp_application *app)

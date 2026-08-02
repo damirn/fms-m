@@ -62,8 +62,7 @@ namespace fms
 		[[nodiscard]] exclusive_guard lock_exclusive() { return exclusive_guard(m_mutex); }
 		[[nodiscard]] shared_guard lock_shared() { return shared_guard(m_mutex); }
 
-		// Out-of-line (defined in stream_registry.cpp) so broadcast_stream's
-		// unique_ptr<stream_recorder> is destroyed where stream_recorder is complete.
+		// out-of-line: the unique_ptr members' types are complete in the .cpp
 		~stream_registry();
 		// All per-broadcaster (publisher) state, created together and destroyed
 		// together. The data path only ever find()s an existing entry and mutates its

@@ -18,7 +18,7 @@ namespace fms
 	public:
 		// Opens the FLV file at `path`; throws std::runtime_error on failure.
 		explicit stream_recorder(const std::string &path);
-		~stream_recorder();   // out-of-line: flv_writer is a complete type in the .cpp
+		~stream_recorder();   // out-of-line: the unique_ptr members' types are complete in the .cpp
 
 		void record_audio(const rtmp_message_audio_data_ptr &audio);
 		void record_video(const rtmp_message_video_data_ptr &video);
