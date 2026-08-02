@@ -94,7 +94,9 @@ Notes on specific edges:
   `delete_connection` unlocks first precisely so this stays true.
 - **`vod_manager` is *not* under the registry lock for its own work.** `tick()`,
   `pause()`, `seek()` and `set_buffer_length()` take only `vod_manager::m_mutex`;
-  they touch no registry state. Only `start()`/`stop()`/`stop_connection()` are
+  they touch no registry state. `m_mutex` is *not* a leaf, though: `tick()` holds it
+  across `app_host::enqueue`, `send_status` and `notify_connection`, so the
+  application's async-queue locks sit under it. Only `start()`/`stop()`/`stop_connection()` are
   called with the registry lock already held, which is the one place the edge above
   applies. This is why the per-frame VOD disk read no longer stalls live fan-out.
 - **`rtmpt_manager`'s two locks** are the only pair held simultaneously by design,
