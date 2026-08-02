@@ -16,10 +16,7 @@ namespace fms
 	// the pure logic (digest/DH via the rtmp_handshake:: free functions). The
 	// connection drives the async I/O around it and applies the crypto.
 	//
-	// This was ~110 lines and eight members inlined into basic_rtmp_connection; the
-	// logic was already half-extracted into rtmp_handshake:: free functions, this
-	// pulls the state and the responder flow out with it. Server-only: the client
-	// (net_connection) runs its own initiator handshake.
+	// Server-only: the client (net_connection) runs its own initiator handshake.
 	class rtmp_handshaker
 	{
 	public:
