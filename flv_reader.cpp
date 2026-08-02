@@ -47,7 +47,7 @@ namespace fms
 			}
 			else if (c == 0x09)
 			{
-				// allocate the full 24-bit tag size (was truncated to 16 bits -> heap overflow)
+				// the tag size is 24-bit; allocate all of it
 				fms::rtmp_message_video_data_ptr const video = std::make_shared<fms::rtmp_message_video_data>(size);
 				m_f.read(reinterpret_cast<char *>(video->data()), size);
 				m_frame = video;

@@ -37,10 +37,8 @@ namespace fms
 		if (ret != vlu_seq_manager::_eDuplicate)
 		{
 			// A whole fragment is a non-owning view into the decrypted packet buffer,
-			// which is freed once parse() returns. Any fragment we retain in m_fragments
-			// must own its bytes -- not only the out-of-order ones. (A `final`-flagged
-			// in-order fragment is retained without being consumed in place, so the old
-			// ret != _eOK condition left it dangling -> use-after-free.)
+			// freed once parse() returns. Anything retained in m_fragments must own
+			// its bytes.
 			if (f->m_frag_ctrl == fragment::eWhole)
 			{
 				f->take_ownership();

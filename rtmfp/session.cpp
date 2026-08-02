@@ -305,8 +305,7 @@ namespace fms
 		// *control* flow (the one carrying stream 0 / the connect) and demultiplexes
 		// streams by the metadata stream id above. So every data/response flow must
 		// return-associate with the initiator's control flow, not the per-stream
-		// command flow it happened to arrive on. (This was hardcoded to 2 — the flow
-		// id Flash uses for its control flow — which is why only Flash worked.)
+		// command flow it happened to arrive on.
 		vlu_t control_flow = flow_id;
 		for (auto const &p : m_flow_id_to_stream_id)
 			if (p.second == 0)

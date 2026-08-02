@@ -22,16 +22,10 @@ namespace fms
 
 	void http_connection::start()
 	{
-		// start() runs on the ACCEPTOR's thread, but this connection's socket, timer
-		// and (for RTMPTS) TLS stream all live on its own round-robin io_context --
-		// a different thread whenever --threads > 1. asio io-objects are not
-		// thread-safe, and an ssl::stream is more than a socket: its stream_core owns
-		// two steady_timers bound to that context, which async_handshake touches. So
-		// hop onto our own context BEFORE negotiating anything, exactly as
-		// rtmp_connection::start() does (see the comment there for the failure mode).
-		//
-		// The plaintext override happened to be safe because it posted; the TLS one
-		// called async_handshake inline, which is what this fixes.
+		// start() runs on the acceptor's thread while this connection's socket,
+		// timer and (for RTMPTS) TLS stream live on its own io_context. Hop onto
+		// that context before negotiating anything -- asio io-objects are not
+		// thread-safe, and an ssl::stream carries timers bound to it.
 		boost::asio::post(m_socket.get_executor(), [self = shared_from_this()]()
 		{
 			// Negotiate the transport (TLS for RTMPTS; nothing for plaintext RTMPT)

@@ -131,11 +131,8 @@ namespace fms
 		// the manager never has to downcast to the concrete session type. Defaults suit
 		// the direct RTMP socket (address cached via set_remote_endpoint on its thread).
 		// RTMFP's setPeerInfo carries the peer's candidate addresses for P2P
-		// introduction. Virtual with an empty default rather than something the
-		// application downcasts to reach: the invoke is dispatched by the BASE
-		// application, so it arrives on every transport, and the cast it used to do
-		// yielded nullptr for every non-RTMFP connection -- which was then
-		// dereferenced. Only the RTMFP session has anywhere to put these.
+		// introduction. The invoke is dispatched by the base application, so it
+		// arrives on every transport; only the RTMFP session stores them.
 		virtual void add_peer_address(const std::string &) {}
 
 		virtual std::string protocol_name() const { return "rtmp"; }

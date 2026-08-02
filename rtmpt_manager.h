@@ -73,11 +73,9 @@ namespace fms
 				for (auto &kv : m_out_of_order_data)
 					delete[] kv.second.first;
 			}
-			// Serializes this ONE session's rtmpt_session work (handle_data / serialize_*
-			// / close) so different sessions run concurrently instead of all contending
-			// the manager's global mutex. LOCK ORDER: the global m_mutex is acquired
-			// before this (the reaper/remove hold both); the request paths take the
-			// global lock, release it, then take this -- never both at once.
+			// Serializes this ONE session's work so sessions run concurrently.
+			// LOCK ORDER: the global m_mutex is taken before this; the request paths
+			// take the global lock, release it, then take this -- never both at once.
 			std::mutex m_session_mutex;
 			std::uint32_t m_sequence{0};
 			std::uint8_t m_not_alive{0};

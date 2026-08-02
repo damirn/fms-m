@@ -561,8 +561,8 @@ namespace fms
 	class ping_reply_chunk : public chunk
 	{
 	public:
-		// `data` points into the decrypted packet buffer, which is freed when
-		// parse() returns -- long before this reply is serialized. Own a copy.
+		// Owns a copy: `data` points into the packet buffer, freed when parse()
+		// returns, long before this reply is serialized.
 		ping_reply_chunk(const std::uint8_t *data, const std::uint16_t &data_len)
 			: chunk(ePingReply)
 			, m_data(data, data + data_len)

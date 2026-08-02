@@ -20,7 +20,7 @@ namespace fms
 		bool released = false;
 		{
 			std::unique_lock const lock(m_mutex);
-			m_new_message = true;   // must be written under the lock (was racing)
+			m_new_message = true;
 
 			for (auto i = list.begin(); i != j; ++i)
 			{
