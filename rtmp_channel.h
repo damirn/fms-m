@@ -46,8 +46,7 @@ namespace fms
 
 		void adjust_timestamp()
 		{
-			if (((m_prev_header_type == rtmp_header::eHeaderTimerChange || m_prev_header_type == rtmp_header::eHeaderSameSource || m_prev_header_type == rtmp_header::eHeaderContinue) && m_prev_message_complete && m_received_header.header_type() == rtmp_header::eHeaderContinue))// ||
-//				(m_uses_continuation && m_received_header.header_type() == rtmp_header::eHeaderContinue))
+			if (((m_prev_header_type == rtmp_header::eHeaderTimerChange || m_prev_header_type == rtmp_header::eHeaderSameSource || m_prev_header_type == rtmp_header::eHeaderContinue) && m_prev_message_complete && m_received_header.header_type() == rtmp_header::eHeaderContinue))
 			{
 				m_received_header.timestamp() += m_prev_time_delta;
 				m_uses_continuation = true;

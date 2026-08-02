@@ -58,29 +58,6 @@ namespace fms
 		return m_parser->parse(data);
 	}
 
-	void session::unreserve_stream_id(std::uint32_t stream_id)
-	{
-//		boost::asio::post(m_strand, [self = shared_from_this(), stream_id]() { self->unreserve_stream_id_impl(stream_id); });
-//		unreserve_stream_id_impl(stream_id);
-	}
-
-	void session::unreserve_stream_id_impl(std::uint32_t stream_id)
-	{
-		client_session::unreserve_stream_id(stream_id);
-		auto const i = m_stream_id_to_flow_id.find(stream_id);
-		if (i != m_stream_id_to_flow_id.end())
-		{
-			for (auto j = i->second.begin(); j != i->second.end(); ++j)
-			{
-				vlu_t const flow_id = (*j)->flow_id();
-				m_receiving_flows.erase(flow_id);
-				m_sending_flows.erase(flow_id);
-				m_flow_id_to_stream_id.erase(flow_id);
-			}
-			m_stream_id_to_flow_id.erase(i);   // after the loop -- erasing i frees i->second
-		}
-	}
-
 	bool session::handle_chunk(chunk *c)
 	{
 		if (c->type() == chunk::eUserData)

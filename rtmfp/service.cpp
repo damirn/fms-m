@@ -245,7 +245,6 @@ namespace fms
 			{
 				if (m_sessions_iterator->second->has_data_to_send(m_serializer))
 				{
-					//std::cout << "sending " << m_serializer->packet().wrote_size() << " bytes" << std::endl;
 					write(m_serializer->packet(), m_sessions_iterator->second->end_point());
 					++m_sessions_iterator;
 					return;

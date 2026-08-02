@@ -89,7 +89,6 @@ namespace fms
 		param = 1;
 		speex_encoder_ctl(m_enc_state, SPEEX_SET_VAD, &param);
 
-//		speex_encoder_ctl(m_enc_state, SPEEX_SET_DTX, &param);
 
 		speex_bits_init(&m_enc_bits);
 	}
