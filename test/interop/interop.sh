@@ -43,7 +43,10 @@ have_tls() { command -v openssl >/dev/null 2>&1; }
 
 # rtmfp-cpp reference clients (optional). tcpublish = publish, tcconn = play.
 # Built with: make tcpublish tcconn OPENSSL_DIR=/opt/homebrew/opt/openssl@3
-RTMFP_CPP="${RTMFP_CPP:-/Users/damir/Documents/work/playground/rtmfp-cpp/test}"
+# Sibling checkout by default; override RTMFP_CPP for anything else. An absolute
+# path into one developer's home made the RTMFP cases skip silently everywhere
+# else, so the matrix reported green having tested nothing.
+RTMFP_CPP="${RTMFP_CPP:-$ROOT/../rtmfp-cpp/test}"
 TCPUBLISH="$RTMFP_CPP/tcpublish"
 TCCONN="$RTMFP_CPP/tcconn"
 
@@ -58,11 +61,21 @@ bad()  { echo "  FAIL: $*"; FAIL=$((FAIL+1)); }
 skip() { echo "  SKIP: $*"; SKIP=$((SKIP+1)); }
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "missing tool: $1"; exit 2; }; }
-need rtmpdump; need ffmpeg; need ffprobe
+need rtmpdump; need ffmpeg; need ffprobe; need lsof
 [[ -x "$FMS" ]] || { echo "fms-m not found/executable: $FMS"; exit 2; }
 
 SRV=
-cleanup() { [[ -n "$SRV" ]] && kill "$SRV" 2>/dev/null; pkill -f "$FMS" 2>/dev/null; pkill -f tcpublish 2>/dev/null; pkill -f tcconn 2>/dev/null; wait 2>/dev/null; rm -rf "$WORK"; }
+KIDS=()
+track() { KIDS+=("$1"); }
+# pkill -f matched on the binary path and killed concurrent runs -- and any server
+# the developer had running -- machine-wide. Only our own children are killed here.
+cleanup() {
+	[[ -n "$SRV" ]] && kill "$SRV" 2>/dev/null
+	local p
+	for p in "${KIDS[@]:-}"; do [[ -n "$p" ]] && kill "$p" 2>/dev/null; done
+	wait 2>/dev/null
+	rm -rf "$WORK"
+}
 trap cleanup EXIT
 
 start_server() {
@@ -73,14 +86,28 @@ start_server() {
 			-days 2 -nodes -subj "/CN=localhost" >/dev/null 2>&1 \
 			&& tls_args=(--rtmps-port "$RTMPS_PORT" --rtmpts-port "$RTMPTS_PORT" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY")
 	fi
-	"$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" "${tls_args[@]}" -o "$WORK" -P "$WORK/logs" -t 4 \
-		>"$WORK/server.out" 2>&1 &
+	# CWD is $WORK so the live (pre-rotation) log lands there for wait_publishing.
+	( cd "$WORK" && exec "$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" "${tls_args[@]}" \
+		-o "$WORK" -P "$WORK/logs" -t 4 ) >"$WORK/server.out" 2>&1 &
 	SRV=$!
 	for _ in $(seq 1 40); do
 		lsof -nP -iTCP:"$RTMP_PORT" -sTCP:LISTEN >/dev/null 2>&1 && return 0
 		sleep 0.25
 	done
 	echo "server failed to listen on $RTMP_PORT"; return 1
+}
+
+# wait_publishing <name> [timeout_secs] -- block until the server has actually
+# accepted the publish. A fixed sleep raced the publisher's connect + handshake
+# (RTMFP does DH keying first) and made cases 1/3/4/5/8/8b flaky under load.
+wait_publishing() {
+	local name="$1" secs="${2:-15}"
+	for _ in $(seq 1 $((secs*10))); do
+		grep -qs "is publishing stream '$name'" "$WORK"/*.log && return 0
+		sleep 0.1
+	done
+	echo "  (timed out waiting for publish of '$name')"
+	return 1
 }
 
 # make_source <path> <seconds> -- a deterministic H.264+AAC FLV
@@ -98,6 +125,7 @@ publish_live() {
 		-f lavfi -i "sine=frequency=440" -t "$2" \
 		-c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac \
 		-f flv "rtmp://127.0.0.1:$RTMP_PORT/media/$1" >"$WORK/pub_$1.log" 2>&1 &
+	track $!
 	echo $!
 }
 
@@ -130,6 +158,7 @@ have_rtmfp() { [[ -x "$TCPUBLISH" && -x "$TCCONN" ]]; }
 # echoes its pid.
 publish_rtmfp() {
 	"$TCPUBLISH" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#$1" "$2" >"$WORK/rtmfp_pub_$1.log" 2>&1 &
+	track $!
 	echo $!
 }
 
@@ -139,6 +168,7 @@ play_rtmfp() {
 	local name="$1" secs="$2"
 	"$TCCONN" -4 -v -v "rtmfp://127.0.0.1:$RTMFP_PORT/media#$name" >"$WORK/rtmfp_play_$name.log" 2>&1 &
 	local pid=$!
+	track "$pid"
 	for _ in $(seq 1 $((secs*4))); do kill -0 "$pid" 2>/dev/null || return 0; sleep 0.25; done
 	kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; return 0
 }
@@ -153,7 +183,7 @@ start_server || exit 1
 # --- Case 1: RTMP live (publish + play) ---------------------------------------
 echo "[1] RTMP live: ffmpeg publish -> rtmpdump play"
 PUB=$(publish_live live 8)
-sleep 1.5
+wait_publishing live
 play_rtmpdump "rtmp://127.0.0.1:$RTMP_PORT/media/live" "$WORK/live.flv" 4 -v
 kill "$PUB" 2>/dev/null
 has_av "$WORK/live.flv"                 && ok "live: valid A/V received" || bad "live: media"
@@ -182,7 +212,7 @@ saw_ctrl "$WORK/vod.log" 1             && ok "vod: StreamEOF(1) at end sent+cons
 # --- Case 3: RTMPT live (ffmpeg play; media only) ----------------------------
 echo "[3] RTMPT tunnel: ffmpeg publish(rtmp) -> ffmpeg play(rtmpt)"
 PUB=$(publish_live tun 8)
-sleep 1.5
+wait_publishing tun
 ffmpeg -hide_banner -loglevel error -y -i "rtmpt://127.0.0.1:$RTMPT_PORT/media/tun" -t 2 -c copy -f flv "$WORK/tun.flv" >"$WORK/tun_play.log" 2>&1
 kill "$PUB" 2>/dev/null
 has_av "$WORK/tun.flv"                  && ok "rtmpt: valid A/V over the HTTP tunnel" || bad "rtmpt: media"
@@ -192,14 +222,14 @@ if have_rtmfp; then
 	echo "[4] RTMFP live: tcpublish -> tcconn (strict crypto, no -H -S)"
 	make_source "$WORK/rtmfp.flv" 6
 	PUB=$(publish_rtmfp live "$WORK/rtmfp.flv")
-	sleep 1.5
+	wait_publishing live
 	play_rtmfp live 3
 	kill "$PUB" 2>/dev/null
 	saw_media "$WORK/rtmfp_play_live.log"  && ok "rtmfp: A/V received over RTMFP" || bad "rtmfp: media"
 
 	echo "[5] RTMFP->RTMP bridge: tcpublish -> rtmpdump"
 	PUB=$(publish_rtmfp bridge "$WORK/rtmfp.flv")
-	sleep 1.5
+	wait_publishing bridge
 	play_rtmpdump "rtmp://127.0.0.1:$RTMP_PORT/media/bridge" "$WORK/bridge.flv" 4
 	kill "$PUB" 2>/dev/null
 	has_av "$WORK/bridge.flv"               && ok "rtmfp->rtmp: valid A/V bridged" || bad "rtmfp->rtmp: media"
@@ -241,7 +271,7 @@ grep -q "UnpublishNotify" "$WORK/unp.log"      && ok "unpublish: Play.UnpublishN
 if have_tls && [[ -f "$TLS_CERT" ]]; then
 	echo "[8] RTMPS: ffmpeg publish -> rtmpdump play over rtmps://"
 	PUB=$(publish_live tls 8)
-	sleep 1.5
+	wait_publishing tls
 	play_rtmpdump "rtmps://127.0.0.1:$RTMPS_PORT/media/tls" "$WORK/tls.flv" 4 -v
 	kill "$PUB" 2>/dev/null
 	has_av "$WORK/tls.flv"                 && ok "rtmps: valid A/V over TLS" || bad "rtmps: media"
@@ -251,7 +281,7 @@ if have_tls && [[ -f "$TLS_CERT" ]]; then
 	# native rtmpts is quirky on this platform, so we drive this one with rtmpdump.
 	echo "[8b] RTMPTS: ffmpeg publish -> rtmpdump play over rtmpts://"
 	PUB=$(publish_live tuntls 8)
-	sleep 1.5
+	wait_publishing tuntls
 	play_rtmpdump "rtmpts://127.0.0.1:$RTMPTS_PORT/media/tuntls" "$WORK/tuntls.flv" 4 -v
 	kill "$PUB" 2>/dev/null
 	has_av "$WORK/tuntls.flv"              && ok "rtmpts: valid A/V over the TLS tunnel" || bad "rtmpts: media"
