@@ -525,7 +525,6 @@ namespace fms
 			return;
 		}
 
-//		std::cout << "ping type: " << ping->get_type();
 		if (ping->get_type() == rtmp_message_ping::ePingResponse)
 		{
 			std::uint32_t const delay = get_timestamp(connection_id) - ping->get_value();
@@ -609,11 +608,9 @@ namespace fms
 		std::uint32_t const ack_size = eDefaultAckWindow;
 		rtmp_message_window_acknowledgement_size_ptr const was_m = std::make_shared<rtmp_message_window_acknowledgement_size>(ack_size);
 		rtmp_message_set_peer_bandwidth_ptr const spb_m = std::make_shared<rtmp_message_set_peer_bandwidth>(ack_size, 0x02);
-//		rtmp_message_ping_ptr png_m(new rtmp_message_ping(rtmp_message_ping::ePingStreamBegin, 0));
 
 		enqueue_async_message(connection_id, was_m);
 		enqueue_async_message(connection_id, spb_m);
-//		enqueue_async_message(connection_id, png_m);
 
 		rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>(invoke_functions::result, 1.0f);
 

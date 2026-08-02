@@ -206,10 +206,8 @@ namespace fms
 			calculate_ts(h);
 		}
 
-		void unreserve_stream_id(std::uint32_t) override;
 		bool handle_chunk(chunk *) override;
 
-		void unreserve_stream_id_impl(std::uint32_t);
 
 		void initialize_ts_flags();
 		void calculate_ts(const header &);
