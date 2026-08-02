@@ -464,7 +464,7 @@ namespace fms
 
 		std::uint16_t size = 0;
 		const std::uint8_t *rnonce = d.rnonce(size);
-		rikeying_chunk ric(boost::asio::detail::socket_ops::host_to_network_long(s->outgoing_sid()), size, rnonce);
+		rikeying_chunk ric(s->outgoing_sid(), size, rnonce);
 
 		std::uint16_t const ts = get_timestamp();
 		header h(false, false, ts, header::eStartup);

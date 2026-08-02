@@ -151,7 +151,10 @@ namespace fms
 			return 0;
 		byte_reader tmp(opt->m_value, opt->m_value_len);
 		tmp.skip(3);
-		return tmp.read_vlu();
+		vlu_t const id = tmp.read_vlu();
+		// stream_id() narrows to uint32 and that value keys both direction maps,
+		// so two flows declaring ids that differ only above 32 bits would collide.
+		return id > 0xFFFFFFFFu ? 0 : id;
 	}
 
 	const std::uint8_t *flow::create_message(const fragment_map_t::iterator &from, const fragment_map_t::iterator &to)
