@@ -33,7 +33,7 @@ different context, everything below silently breaks.
   `session`'s flow maps carry no mutex, because every UDP packet for the service is
   handled on that one thread. (`rtmfp/service.h`, `rtmfp/session.h`.)
 
-- **`rtmp_app_manager`'s `shared_mutex`.** The manager's connection map *does* take a
+- **`connection_registry`'s `shared_mutex`.** The connection map *does* take a
   lock — but only because it is read/written across contexts: the admin app (on its
   own connection's thread) reads connection/stats data that connection threads write.
   The lock guards *cross-`io_context`* access, not intra-connection races. The

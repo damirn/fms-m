@@ -26,9 +26,14 @@ namespace fms
 		// nodes into m_missing -> OOM. Far above any legitimate receive window.
 		static constexpr T eMaxGap = 0x10000;
 
+		// Ceiling on csn itself. m_sum is the triangular sum csn*(csn+1)/2, which
+		// overflows a 64-bit accumulator past roughly 2^32; eMaxGap only bounds a
+		// single step, so repeated advances could reach it.
+		static constexpr T eMaxCsn = 0xFFFFFFFF;
+
 		result add_seq(const T &val)
 		{
-			if (val <= m_csn || val - m_csn > eMaxGap || m_sequences.find(val) != m_sequences.end())
+			if (val <= m_csn || val - m_csn > eMaxGap || val > eMaxCsn || m_sequences.find(val) != m_sequences.end())
 			{
 				return _eDuplicate;
 			}
@@ -75,10 +80,10 @@ namespace fms
 		{
 			if (val > m_csn)
 			{
-				// Bound the advance the same as add_seq: a forged forward-seq could
-				// otherwise jump csn to ~2^63 in one step, overflowing the
-				// m_csn*(m_csn+1) triangular sum below.
-				if (val - m_csn > eMaxGap)
+				// eMaxGap bounds one step; eMaxCsn bounds where repeated steps can
+				// take csn, which is what actually keeps the triangular sum below
+				// from overflowing.
+				if (val - m_csn > eMaxGap || val > eMaxCsn)
 					return;
 				m_csn = val;
 				m_sum = m_csn * (m_csn + 1) / 2;

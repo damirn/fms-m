@@ -22,13 +22,9 @@ namespace fms
 
 	void rtmpt_session::start()
 	{
-		// Intentionally no timers. An RTMPT session is driven synchronously by HTTP
-		// requests (rtmpt_manager::handle_data, under the manager's mutex), but its
-		// inherited io_context is a DIFFERENT pool thread than the HTTP connection's.
-		// Arming basic_rtmp_connection's ping/handshake timers here would fire their
-		// callbacks on that other thread, racing handle_data over both the timer
-		// objects and the session state. Idle/stalled sessions are reaped by the
-		// rtmpt_manager not-alive timer instead.
+		// Intentionally no timers: the session is driven by HTTP requests on a
+		// different pool thread than its own io_context, so a timer callback would
+		// race handle_data. The manager's not-alive timer reaps idle sessions.
 	}
 
 	void rtmpt_session::handle_results(byte_writer &buffer)
