@@ -66,6 +66,7 @@ namespace fms
 		void on_read(const boost::system::error_code &, std::size_t);
 		void handle_request(const request_t &);
 		void reply(std::vector<std::uint8_t> body);
+		void reply_error(boost::beast::http::status);
 		void on_write(const boost::system::error_code &, std::size_t);
 		void on_timeout(const boost::system::error_code &);
 		void close();

@@ -65,10 +65,7 @@ namespace fms
 		m_parser.emplace();
 		m_parser->body_limit(16 * 1024 * 1024);
 
-		// Bound how long a connection may sit without a full request. RTMPT clients
-		// poll far more often than this; the old 7200 s let a slow-loris peer that
-		// sends nothing (or dribbles headers) tie up an fd + connection for 2 hours.
-		// This read timeout also bounds slow header delivery.
+		// Bounds an idle connection and slow header delivery.
 		m_timer.expires_after(std::chrono::seconds(eIdleTimeout));
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->on_timeout(ec); });
 
@@ -129,6 +126,11 @@ namespace fms
 		if (verb == "open")
 		{
 			m_rtmpt_manager->create_session(remote, m_cid);
+			if (m_cid.empty())   // session table full
+			{
+				reply_error(http::status::service_unavailable);
+				return;
+			}
 			std::vector<std::uint8_t> body(m_cid.begin(), m_cid.end());
 			body.push_back('\n');
 			reply(std::move(body));
@@ -173,6 +175,19 @@ namespace fms
 		}
 	}
 
+	void http_connection::reply_error(http::status st)
+	{
+		m_response = response_t{};
+		m_response.version(11);
+		m_response.result(st);
+		m_response.keep_alive(false);
+		m_response.set(http::field::server, m_rtmpt_manager->version());
+		m_response.prepare_payload();
+
+		async_write_response(
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_write(ec, n); });
+	}
+
 	void http_connection::reply(std::vector<std::uint8_t> body)
 	{
 		m_response = response_t{};
@@ -207,7 +222,9 @@ namespace fms
 
 	void http_connection::on_timeout(const boost::system::error_code &e)
 	{
-		if (!e)   // fired (not cancelled) -> idle too long
+		// cancel() does not unqueue a completion that already fired, so check the
+		// deadline itself rather than trusting the error code.
+		if (!e && m_timer.expiry() <= boost::asio::steady_timer::clock_type::now())
 			close();
 	}
 
