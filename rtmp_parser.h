@@ -20,8 +20,7 @@ namespace fms
 	class byte_writer;
 
 	// Where the parser delivers what it assembles. Implemented by the owning
-	// connection. Replaces the two pure virtuals rtmp_raw_data used to force onto
-	// every subclass by inheritance.
+	// connection.
 	//   handle_message          -- a decoded application message (invoke, a/v, ...)
 	//   handle_internal_message -- a protocol-internal one (SetChunkSize updates the
 	//                              parser via set_chunk_size; WindowAck is connection
@@ -35,23 +34,17 @@ namespace fms
 	};
 
 	// RTMP chunk-stream parser: turns received bytes into assembled messages,
-	// resumably and without throwing (see parse()). It is COMPOSED by a connection,
-	// not inherited: it owns the framing state (read cursor, inbound chunk size,
-	// framing-error latch) and drives a channel_manager, but knows nothing about
-	// sockets, identity or connection lifetime. That is what lets it be constructed
-	// and tested on its own with a recording sink.
-	//
-	// This was `rtmp_raw_data`, a base class three unrelated types (the server
-	// connection, the client connection, the parser test) all inherited -- the tell
-	// that it wanted to be a component. The message-emitting virtuals became the
-	// injected rtmp_message_sink above.
+	// resumably and without throwing (see parse()). Owns the framing state (read
+	// cursor, inbound chunk size, framing-error latch) and drives a
+	// channel_manager; knows nothing about sockets, identity or connection
+	// lifetime.
 	class rtmp_parser
 	{
 	public:
 		// channels is shared with the connection's serialize path: per-channel header
 		// state is used in both directions, so the connection owns the channel_manager
-		// and passes a reference here. sink receives the assembled messages. Both must
-		// outlive the parser (they are members of the same connection, declared first).
+		// and passes a reference here. sink receives the assembled messages. Both
+		// must outlive the parser.
 		rtmp_parser(channel_manager &channels, rtmp_message_sink &sink)
 			: m_channels(channels), m_sink(sink)
 		{}

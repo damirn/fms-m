@@ -46,7 +46,7 @@ namespace fms::rtmp_client
 
 	using invoke_handler_t = std::function<void (rtmp_message_invoke_ptr)>;
 
-	// Composes an rtmp_parser (was: inherited rtmp_raw_data) and is its message sink.
+	// Composes an rtmp_parser and is its message sink.
 	class net_connection : public rtmp_message_sink, boost::noncopyable, public std::enable_shared_from_this<net_connection>
 	{
 	public:

@@ -19,17 +19,14 @@ namespace fms
 	class rtmp_message;
 	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
 
-	// Composes the two RTMP protocol pieces it used to inline: an rtmp_parser (was:
-	// inherited rtmp_raw_data), fed as its rtmp_message_sink, and an rtmp_handshaker
-	// (was: ~110 lines + eight members here). What remains on this class is identity
-	// (client_session), lifetime (enable_shared_from_this) and the async I/O around
-	// the handshake and parse.
+	// Composes an rtmp_parser (fed as its rtmp_message_sink) and an
+	// rtmp_handshaker, and holds identity (client_session), lifetime
+	// (enable_shared_from_this) and the async I/O around handshake and parse.
 	class basic_rtmp_connection : public client_session, public rtmp_message_sink, public std::enable_shared_from_this<basic_rtmp_connection>
 	{
 	public:
 		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, rtmp_app_manager *);
 
-		// The RC4 keys used to be freed here; the handshaker owns them now.
 		~basic_rtmp_connection() override = default;
 
 		// Close connection
