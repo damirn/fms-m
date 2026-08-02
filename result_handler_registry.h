@@ -12,15 +12,10 @@ namespace fms
 	// they were sent under, and bounds how many any one connection may have
 	// outstanding.
 	//
-	// Both bounds matter. A handler is released only when the peer answers, and the
+	// Both bounds matter: a handler is released only when the peer answers, and the
 	// invokes that create one (checkBandwidth / checkUploadBandwidth) are
-	// CLIENT-invokable, so before this existed:
-	//   * a peer could call them in a loop and never reply, growing the table for
-	//     its whole session, and
-	//   * every connection that went away with a reply outstanding stranded its
-	//     handler for the lifetime of the process (nothing cleared them on
-	//     teardown).
-	// Either one is unbounded growth an unauthenticated peer can drive.
+	// client-invokable, so an unauthenticated peer drives both the per-connection
+	// count and the lifetime of anything left outstanding at teardown.
 	//
 	// Templated on the handler pointer so this stays free of the application types
 	// and can be exercised on its own; the connection id is passed in rather than

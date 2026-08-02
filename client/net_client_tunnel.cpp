@@ -106,8 +106,7 @@ namespace fms::rtmp_client
 
 	void net_client_tunnel::deliver(const std::vector<std::uint8_t> &body)
 	{
-		// A 0-length response has nothing to strip or forward (matches the old
-		// guard that kept a peer returning an empty body from crashing us).
+		// A 0-length response has nothing to strip or forward.
 		if (body.empty())
 			return;
 

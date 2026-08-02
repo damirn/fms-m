@@ -86,11 +86,7 @@ namespace fms
 		// bound entirely (unbounded growth -- test/diagnostic use only).
 		//
 		// The default matches what Adobe FMS 4.5 was measured to enforce (~8-10 MB,
-		// byte-based and independent of bitrate -- see docs/slow-consumer.md). This
-		// replaces the former max-audio-frames / notify-threshold /
-		// terminate-threshold options: those were message COUNTS and milliseconds,
-		// were never read by any code path, and are on the wrong axis -- the bound
-		// that matters is bytes of memory held per connection.
+		// byte-based and independent of bitrate -- see docs/slow-consumer.md).
 		const std::size_t &max_queue_bytes() const
 		{
 			return m_max_queue_bytes;

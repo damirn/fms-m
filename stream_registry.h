@@ -144,9 +144,8 @@ namespace fms
 		void add_subscriber(const stream_client_id_t &broadcaster, const stream_client_id_t &sub, const stream_client_ptr &client, const exclusive_guard &)
 		{
 			m_subscribers[sub] = client;
-			// Drop any prior mapping for `sub` first: on a re-play without an
-			// intervening closeStream, the bimap's unique right side would otherwise
-			// silently keep the stale broadcaster and misroute frames.
+			// Drop any prior mapping for `sub`: the bimap's right side is unique, so a
+			// stale broadcaster would survive a re-play and misroute frames.
 			m_stream_clients.right.erase(sub);
 			m_stream_clients.insert(stream_client_map_t::value_type(broadcaster, sub));
 		}
@@ -280,7 +279,7 @@ namespace fms
 		{
 			bool operator()(const subscriber &a, const subscriber &b) const
 			{
-				// tuple order: ANDing two `<` isn't a strict weak ordering (std::set UB)
+				// tuple order: a strict weak ordering, which std::set requires
 				return std::tie(a.m_id, a.m_stream_id) < std::tie(b.m_id, b.m_stream_id);
 			}
 		};

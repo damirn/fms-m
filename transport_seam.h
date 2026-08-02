@@ -19,12 +19,6 @@ namespace fms
 	// tls_stream). It is ALWAYS invoked on the connection's own io_context -- both
 	// start() methods post onto that context before calling it -- so the base may
 	// complete inline and a TLS override may start async ops on its stream directly.
-	//
-	// This used to be copy-pasted into both connection headers, and the two copies
-	// silently diverged over whether they posted: the plaintext RTMPT copy posted
-	// and was safe, the RTMPTS copy ran async_handshake on the acceptor's thread and
-	// was not. Sharing one definition is what stops that from recurring; the "must
-	// post in start()" contract now lives in exactly one place.
 	class transport_seam
 	{
 	protected:

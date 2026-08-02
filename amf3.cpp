@@ -110,8 +110,6 @@ namespace fms
 	{
 		std::uint32_t tmp = read_u29(buffer);
 		// AMF3 integers are 29-bit signed; bit 28 (0x10000000) is the sign bit.
-		// (The old mask 0x18000000 also caught bit 27, wrongly negating positive
-		// values in [2^27, 2^28).)
 		if ((tmp & 0x10000000) != 0)
 		{
 			tmp ^= 0x1fffffff;

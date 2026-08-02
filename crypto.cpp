@@ -49,7 +49,6 @@ namespace fms
 
 	unsigned int HMAC_SHA256(const std::uint8_t *data, std::uint32_t data_len, const std::uint8_t *key, std::uint32_t key_len, std::uint8_t *res)
 	{
-		// The one-shot HMAC() is not deprecated in OpenSSL 3 (only the HMAC_CTX API is).
 		unsigned int digest_len = 0;
 		if (HMAC(EVP_sha256(), key, static_cast<int>(key_len), data, data_len, res, &digest_len) == nullptr)
 			return 0;

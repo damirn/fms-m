@@ -149,9 +149,8 @@ namespace fms
 
 	void rtmp_message_ping::serialize(byte_writer &buffer)
 	{
-		// User-control fields are big-endian; mirror deserialize exactly and emit as
-		// many elements as the event carries. (The old code handled only == 3, so a
-		// 4-element event silently serialized as 2.)
+		// User-control fields are big-endian; emit as many elements as the event
+		// carries.
 		std::uint16_t const v1 = boost::asio::detail::socket_ops::host_to_network_short(m_value1);
 		std::uint32_t const v2 = boost::asio::detail::socket_ops::host_to_network_long(m_value2);
 		buffer << v1 << v2;
@@ -193,8 +192,8 @@ namespace fms
 
 	void rtmp_message_audio_data::deserialize(byte_reader &buffer)
 	{
-		// read() is the corruption guard now: it throws buffer_eof_exception if
-		// the wire length exceeds what's left of the (complete) message buffer.
+		// read() throws buffer_eof_exception if the wire length exceeds what is
+		// left of the (complete) message buffer.
 		buffer.read(m_data.get(), m_size);
 	}
 
@@ -229,8 +228,7 @@ namespace fms
 			h.message_type() = c;
 			h.message_length() = buffer.read_uint32_3();
 			// FLV tag header: Timestamp(3) + TimestampExtended(1) high byte, then a
-			// 3-byte StreamID (always 0). The old code read the ext byte as part of a
-			// 4-byte stream id, dropping the high timestamp bits and garbling the id.
+			// 3-byte StreamID (always 0).
 			std::uint32_t ts = buffer.read_uint32_3();
 			std::uint8_t ts_ext = 0;
 			buffer >> ts_ext;

@@ -109,9 +109,9 @@ namespace fms
 			}
 		}
 
-		// Per-session lock only: run the parse / dispatch / serialize (the slow work) so
-		// a busy session no longer stalls every other tunnelled client. `sd` keeps the
-		// session alive even if a concurrent remove/reap erases it from the table.
+		// Per-session lock only, so a busy session does not stall other tunnelled
+		// clients. `sd` keeps the session alive even if a concurrent remove/reap
+		// erases it from the table.
 		std::lock_guard const s(sd->m_session_mutex);
 		if (in_order)
 			sd->m_session->handle_data(input, output);

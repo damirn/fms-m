@@ -107,9 +107,8 @@ namespace fms
 	void rtmp_parser::dispatch(const rtmp_channel_ptr &channel)
 	{
 		rtmp_protocol p;
-		// The message body is a *complete* assembled buffer here; deserialize's
-		// buffer_eof is now a corruption guard (a body that over-reads its own
-		// declared length), not framing flow control — drop such a message.
+		// The body is a *complete* assembled buffer here, so a buffer_eof from
+		// deserialize means corruption -- drop the message.
 		try
 		{
 			// the body is fully assembled; read it through a cursor over the

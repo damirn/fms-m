@@ -18,12 +18,9 @@
 namespace fms
 {
 	const std::uint8_t service::m_c1[] = {0x01, 0x0a, 0x41, 0x0e};
-	// One CERT_OPTION_SUPPORTED_DH_GROUP (0x15) advertisement for group 2. We only
-	// implement the 1024-bit MODP group (group 2 / m_dh_key), so we must advertise
-	// only that. The old value also claimed groups 5 and 0x0e(14), which our DH code
-	// does not implement, so a modern client (rtmfp-cpp/librtmfp) would negotiate
-	// group 14, send a 2048-bit key, and reject our group-2 RIKeying. Flash happened
-	// to prefer group 2, which is why only Flash interoperated.
+	// One CERT_OPTION_SUPPORTED_DH_GROUP (0x15) advertisement. Group 2 (1024-bit
+	// MODP, m_dh_key) is the only group we implement, so it is the only one we may
+	// advertise -- a peer offered any other will negotiate it and we cannot answer.
 	const std::uint8_t service::m_c2[] = {0x02, 0x15, 0x02};
 
 	service::service(boost::asio::io_context &io_context, std::uint16_t port, rtmp_app_manager *app_manager)

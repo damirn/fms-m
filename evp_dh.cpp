@@ -117,9 +117,8 @@ namespace fms
 		BIGNUM *bn = nullptr;
 		if (EVP_PKEY_get_bn_param(key, name, &bn) != 1)
 			return -1;
-		// Fixed-length, left-zero-padded to the caller's slot (the RTMP/RTMFP
-		// wire format uses a fixed field); plain BN_bn2bin would short-write the
-		// ~1/256 of keys that have leading zero bytes and shift the value.
+		// Fixed-length, left-zero-padded to the caller's slot: the RTMP/RTMFP wire
+		// format uses a fixed field.
 		int n = BN_bn2binpad(bn, out, static_cast<int>(cap));  // NOLINT(misc-const-correctness)
 		BN_clear_free(bn);
 		return n;   // == cap on success, -1 if the value doesn't fit

@@ -16,25 +16,12 @@ namespace fms
 	class io_context_pool;
 
 	// Everything an rtmp_application may ask of the server it runs inside.
+	// Implemented by rtmp_app_manager. Names no transport, so an application (or a
+	// test double) links without one.
 	//
-	// This exists to break a dependency inversion. Applications used to hold a
-	// concrete `rtmp_app_manager *`, and rtmp_application.h had to include
-	// rtmp_app_manager.h to call it -- which includes rtmp_connection.h,
-	// http_connection.h and rtmpt_session.h. So every application translation unit
-	// depended on the concrete transports, and parsed ~172 Boost.Beast headers to
-	// compile code that has nothing to do with HTTP. It also meant the application
-	// tier could not be unit-tested: linking rtmp_application drags in Boost.Log and
-	// a dynamic_cast to the RTMFP session through handle_invoke_set_peer_info.
-	//
-	// The dependency now points the other way. Applications talk to this interface;
-	// rtmp_app_manager implements it. Nothing here names a transport, so an
-	// application (or a test double) links without one -- the same trick media_host
-	// plays for av_delivery and vod_manager, applied at the other boundary.
-	//
-	// Deliberately ONE interface rather than a core/admin split: an application holds
-	// a single host pointer, and the admin app would otherwise need two of them (or a
-	// downcast) to reach the introspection half. The introspection calls are grouped
-	// and labelled below instead.
+	// One interface rather than a core/admin split: an application holds a single
+	// host pointer, so the admin app would otherwise need two (or a downcast) to
+	// reach the introspection half. Those calls are grouped and labelled below.
 	class app_host
 	{
 	public:
