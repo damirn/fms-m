@@ -4,6 +4,9 @@
 #include "byte_reader.h"
 #include "byte_writer.h"
 
+#include <algorithm>
+#include <cassert>
+
 #include <string>
 
 #include <boost/asio/detail/socket_ops.hpp>
@@ -38,15 +41,20 @@ namespace fms
 		write_short_string(buffer, value->value().c_str(), static_cast<std::uint16_t >(value->value().size()), skip_type);
 	}
 
-	void amf0::write_short_string(byte_writer &buffer, const char *value, std::uint16_t len, bool skip_type /* = false */)
+	void amf0::write_short_string(byte_writer &buffer, const char *value, std::size_t len, bool skip_type /* = false */)
 	{
+		// AMF0 short strings carry a 16-bit length; longer ones need the
+		// eAMF0LongString form, which nothing here emits.
+		assert(len <= eMaxShortString && "AMF0 short string truncated");
+		auto const n = static_cast<std::uint16_t>(std::min<std::size_t>(len, eMaxShortString));
+
 		std::uint8_t const b = amf0_type::eAMF0String;
 		if (!skip_type)
 			buffer << b;
 
-		std::uint16_t const nlen = boost::asio::detail::socket_ops::host_to_network_short(len);
+		std::uint16_t const nlen = boost::asio::detail::socket_ops::host_to_network_short(n);
 		buffer << nlen;
-		buffer.write(value, len);
+		buffer.write(value, n);
 	}
 
 	bool amf0::read_boolean(byte_reader &buffer, const amf0_boolean_ptr& value)
@@ -376,8 +384,7 @@ namespace fms
 		std::uint8_t const b = amf0_type::eAMF0TypedObject;
 		buffer << b;
 
-		write_short_string(buffer, value->class_name().c_str(),
-			static_cast<std::uint16_t>(value->class_name().size()), true);
+		write_short_string(buffer, value->class_name().c_str(), value->class_name().size(), true);
 
 		for (amf0_object::indexed_iterator i = value->begin_indexed(); i != value->end_indexed(); ++i)
 		{

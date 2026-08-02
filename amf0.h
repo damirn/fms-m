@@ -24,7 +24,8 @@ namespace fms
 	public:
 		static bool read_short_string(byte_reader &, const amf0_string_ptr&, bool = false);
 		static void write_short_string(byte_writer &, const amf0_string_ptr&, bool = false);
-		static void write_short_string(byte_writer &, const char *, std::uint16_t, bool = false);
+		static constexpr std::size_t eMaxShortString = 0xFFFF;
+		static void write_short_string(byte_writer &, const char *, std::size_t, bool = false);
 
 		static bool read_boolean(byte_reader &, const amf0_boolean_ptr&);
 		static void write_boolean(byte_writer &, const amf0_boolean_ptr&);
