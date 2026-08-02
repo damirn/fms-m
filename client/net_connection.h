@@ -106,8 +106,9 @@ namespace fms::rtmp_client
 		void handle_connect(bool, const std::string &);
 
 	protected:
-		void prepare_handshake();
-		void write_signed_c2(const std::uint8_t *s1);   // FP9 signed C2 from the received S1
+		// False on CSPRNG failure: never ship a partially-built handshake.
+		[[nodiscard]] bool prepare_handshake();
+		[[nodiscard]] bool write_signed_c2(const std::uint8_t *s1);   // FP9 signed C2 from the received S1
 		void send_connect_invoke();
 
 		void read_data(std::size_t = 1);
