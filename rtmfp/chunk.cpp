@@ -142,8 +142,10 @@ namespace fms
 		std::size_t const hdr = to.mark();
 		to.extend(eChunkHeaderSize);
 
-		std::uint32_t const sid = boost::asio::detail::socket_ops::host_to_network_long(m_rsid);
-		to << sid;
+		// Host order, matching how service::get_sid reads the field back. The
+		// caller used to pre-swap and this swapped again, which cancelled to the
+		// same bytes; see follow-up F4 on whether the spec wants network order.
+		to << m_rsid;
 
 		to.write_vlu(m_skrc_len);
 		to.write(m_skrc, static_cast<std::size_t>(m_skrc_len));
