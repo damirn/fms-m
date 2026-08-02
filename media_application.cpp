@@ -139,7 +139,10 @@ namespace fms
 			return false;
 		}
 		if (fn == invoke_functions::delete_stream)
+		{
+			handle_invoke_delete_stream(invoke, connection_id);
 			return false;
+		}
 		if (fn == invoke_functions::pause || fn == invoke_functions::pause_raw)
 		{
 			handle_invoke_pause(invoke, connection_id);
@@ -664,6 +667,26 @@ namespace fms
 	}
 
 	// --------------------------------------------------------------- pause/seek --
+
+	void media_application::handle_invoke_delete_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
+	{
+		// deleteStream(txn, null, streamID) releases the id for reuse. Without
+		// this, reserve_stream_id's scan from 1 grows for the connection's life.
+		std::uint32_t stream_id = invoke->stream_id();
+		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
+		if (params.size() >= 2)
+		{
+			auto i = params.begin();
+			++i;
+			if (amf0_number_ptr const n = std::dynamic_pointer_cast<amf0_number>(*i))
+				stream_id = static_cast<std::uint32_t>(n->value());
+		}
+		if (stream_id == 0)
+			return;   // the control stream is never reserved
+
+		if (client_session_ptr const conn = get_connection_opt(connection_id))
+			conn->unreserve_stream_id(stream_id);
+	}
 
 	void media_application::handle_invoke_pause(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
