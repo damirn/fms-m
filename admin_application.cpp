@@ -419,12 +419,21 @@ namespace fms
 			notify_active_client(i.second, [this](std::uint32_t a, const netstream_stats_ptr& b) { dispatch_qos_data_for_stream_notify(a, b); });
 	}
 
-	void admin_application::notify_active_client(const netstream_stats_ptr& data, const std::function<void (std::uint32_t, netstream_stats_ptr)>& func)
+	void admin_application::notify_active_client(const netstream_stats_ptr& data, const std::function<void (std::uint32_t, const netstream_stats_ptr&)>& func)
 	{
-		std::unique_lock const lock(m_admin_mutex);
-		for (auto & m_client : m_clients)
-			if (m_client.second)
-				func(m_client.first, data);
+		// Collect under the lock, dispatch outside it: func reaches
+		// enqueue_async_message, so holding m_admin_mutex across it would make the
+		// lock a non-leaf (docs/concurrency.md).
+		std::vector<std::uint32_t> targets;
+		{
+			std::unique_lock const lock(m_admin_mutex);
+			targets.reserve(m_clients.size());
+			for (auto const &[id, active] : m_clients)
+				if (active)
+					targets.push_back(id);
+		}
+		for (std::uint32_t const id : targets)
+			func(id, data);
 	}
 
 	void admin_application::dispatch_new_stream_notify(std::uint32_t connection_id, const netstream_stats_ptr& data)
