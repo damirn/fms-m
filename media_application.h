@@ -57,6 +57,7 @@ namespace fms
 		virtual void handle_invoke_play(rtmp_message_invoke_ptr, std::uint32_t);
 		virtual void handle_invoke_publish(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 
+		void handle_invoke_delete_stream(const rtmp_message_invoke_ptr&, std::uint32_t);
 		void handle_invoke_pause(const rtmp_message_invoke_ptr&, std::uint32_t);
 		void handle_invoke_seek(const rtmp_message_invoke_ptr&, std::uint32_t);
 
