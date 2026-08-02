@@ -29,9 +29,8 @@ namespace fms
 
 	// Owns the live connections of the server: id allocation, the connection and
 	// HTTP-connection maps, their lookup/lifecycle, and the connection-based admin
-	// queries. Lifted out of rtmp_app_manager (which now just composes it). Holds the
-	// manager/rtmpt_manager it must hand to freshly-created connections as their
-	// back-pointer.
+	// queries. Holds the manager/rtmpt_manager it hands to freshly-created
+	// connections as their back-pointer.
 	//
 	// The reader/writer lock lives here: the hot reads (get_connection / has_connection
 	// / get_app_instance) take a SHARED lock; structural changes and admin readers take

@@ -50,8 +50,7 @@ namespace fms
 		}
 	}
 
-	// Out-of-line (so_manager complete here) so unique_ptr<so_manager>'s dtor
-	// instantiates against the full type.
+	// out-of-line: the unique_ptr members' types are complete in the .cpp
 	rtmp_application::~rtmp_application() = default;
 
 	boost::tribool rtmp_application::handle_message(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)

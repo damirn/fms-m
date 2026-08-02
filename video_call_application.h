@@ -35,10 +35,8 @@ namespace fms
 		{
 			call_instance_data()= default;
 
-			// owns the mixer, which in turn owns (and deletes) m_sink; deleting
-			// the mixer plugs the leak when an instance is torn down without
-			// having gone through the explicit delete path. Defined out-of-line
-			// because mixer is only forward-declared here.
+			// Owns the mixer, which owns m_sink; out-of-line because mixer is only
+			// forward-declared here.
 			~call_instance_data();
 
 			call_instance_data(const call_instance_data &) = delete;
