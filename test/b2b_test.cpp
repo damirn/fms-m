@@ -73,6 +73,26 @@ namespace
 	}
 
 	// RAII: fork+exec the server, kill it on teardown.
+	// Poll the listen socket instead of sleeping a fixed 1.5s: the sleep raced
+	// server startup under load, and it also cannot tell "still starting" from
+	// "execl failed", which surfaced as a wall of confusing assertion failures.
+	bool wait_for_listener(std::uint16_t port, int timeout_ms = 15000)
+	{
+		using namespace std::chrono;
+		auto const deadline = steady_clock::now() + milliseconds(timeout_ms);
+		boost::asio::io_context io;
+		while (steady_clock::now() < deadline)
+		{
+			boost::asio::ip::tcp::socket probe(io);
+			boost::system::error_code ec;
+			probe.connect({boost::asio::ip::make_address("127.0.0.1"), port}, ec);
+			if (!ec)
+				return true;
+			std::this_thread::sleep_for(milliseconds(25));
+		}
+		return false;
+	}
+
 	struct server_process
 	{
 		pid_t pid{-1};
@@ -93,7 +113,7 @@ namespace
 				        static_cast<char *>(nullptr));
 				::_exit(127);
 			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+			REQUIRE(wait_for_listener(rtmp_port));
 		}
 		~server_process()
 		{
