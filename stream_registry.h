@@ -62,8 +62,10 @@ namespace fms
 		// All per-broadcaster (publisher) state, created together and destroyed
 		// together. The data path only ever find()s an existing entry and mutates its
 		// own fields; the map STRUCTURE changes only under the exclusive lock.
-		// avc_config/aac_config are read+written on the data path, so they are accessed
-		// via std::atomic_load/atomic_store on the shared_ptr.
+		// avc_config/aac_config are read+written on the data path, so they are
+		// accessed via std::atomic_load/atomic_store on the shared_ptr (deprecated
+		// in C++20, removed in C++26; libc++ still has no std::atomic<shared_ptr>
+		// specialization to move to -- see F6).
 		struct broadcast_stream
 		{
 			std::list<rtmp_message_video_data_ptr> video_queue;
