@@ -164,10 +164,8 @@ namespace fms
 			m_reserved = n;
 			return boost::asio::mutable_buffer(m_buf.data() + old, n);
 		}
-		// Report how many of the reserved bytes an async read/receive actually
-		// filled. Must directly follow write_buffer() with no intervening size
-		// change (clear/consume/<<) -- else the "drop the unfilled tail" arithmetic
-		// is wrong; the assert catches that misuse in debug builds.
+		// How many of the reserved bytes an async read actually filled. Must
+		// directly follow write_buffer() with no intervening size change.
 		void update(std::size_t filled)
 		{
 			assert(filled <= m_reserved && filled <= m_buf.size() &&
@@ -176,11 +174,9 @@ namespace fms
 			m_reserved = 0;
 		}
 		// Drop the first n (already-parsed) bytes. Amortized O(1): advances a read
-		// offset rather than shifting. The consumed prefix is reclaimed either at
-		// the next write_buffer(), or here once it grows to at least half the
-		// buffer -- the latter is what bounds a buffer that only ever write()s and
-		// consume()s and never calls write_buffer() (e.g. the RTMPT
-		// m_remaining_data accumulator), which would otherwise grow without bound.
+		// offset. Storage is reclaimed at the next write_buffer(), or here once the
+		// dead prefix reaches half the buffer -- which bounds a buffer that only
+		// ever write()s and consume()s.
 		void consume(std::size_t n)
 		{
 			assert(n <= size() && "consume() past the end of the readable region");

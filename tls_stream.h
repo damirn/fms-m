@@ -9,15 +9,9 @@
 namespace fms
 {
 	// Owns the server TLS context and the ssl::stream layered over a connection's
-	// already-adopted socket. Shared by rtmps_connection and rtmpts_connection so
-	// the context lifetime, the stream wiring and the server-side handshake live in
-	// one place instead of being copy-pasted into both -- which is where the
-	// cross-thread handshake bug had to be fixed twice.
-	//
-	// The read/write ops stay in each connection (byte-stream vs HTTP), but route
-	// through stream(). The stream layers over the socket by reference, so the socket
-	// must already be adopted when this is constructed (it is: adopt_socket runs
-	// before start()).
+	// socket, shared by rtmps_connection and rtmpts_connection. Read/write stay in
+	// each connection but route through stream(). The stream holds the socket by
+	// reference, so it must already be adopted at construction.
 	class tls_stream
 	{
 	public:

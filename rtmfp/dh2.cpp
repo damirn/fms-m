@@ -87,9 +87,7 @@ namespace fms
 	void dh2::generate_hmac_keys(const std::uint8_t *enc_key, const std::uint8_t *dec_key,
 		std::uint8_t *tx_hmac_key, std::uint8_t *rx_hmac_key)
 	{
-		// We send with enc_key, so the peer verifies us with HMAC(secret, enc_key);
-		// it sends with the key we call dec_key, so we verify it the same way. This
-		// mirrors the reference's txHMAC = HMAC(secret, encrypt_key) exactly.
+		// txHMAC = HMAC(secret, enc_key), rxHMAC = HMAC(secret, dec_key).
 		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, enc_key, eAESKeySize, tx_hmac_key, nullptr);
 		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, dec_key, eAESKeySize, rx_hmac_key, nullptr);
 	}

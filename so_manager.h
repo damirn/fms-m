@@ -30,13 +30,7 @@ namespace fms
 
 		// Drop a departed connection from every shared object it was using, and
 		// discard any object left with no clients.
-		//
-		// Without this the ONLY way out of an object's client set was the client
-		// explicitly sending a Release event for it, so a peer that used an object
-		// and then disconnected left its id behind for good: the set never emptied,
-		// the object and every property value on it were never reclaimed, and the
-		// fan-out kept iterating dead ids. Since object names are client-chosen,
-		// connect / touch a fresh name / disconnect / repeat grew the table without
+		// Object names are client-chosen, so without this the table grows without
 		// limit. Must be called from the application's connection teardown.
 		void remove_connection(std::uint32_t connection_id);
 

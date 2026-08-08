@@ -228,13 +228,8 @@ namespace fms
 	// Returns false if this connection already has too many replies outstanding, in
 	// which case the callback is dropped (the invoke itself still goes out; we just
 	// stop tracking a peer that is not answering).
-	//
-	// The cap exists because the handler is released only when the client answers,
-	// and checkBandwidth / checkUploadBandwidth are client-invokable: a peer that
-	// calls them in a loop and never replies would otherwise grow this map for its
-	// whole session. A legitimate bandwidth check holds one handler at a time -- each
-	// step of the three-step exchange re-registers the same object under a new id,
-	// and the previous entry was already erased by handle_invoke_result.
+	// A legitimate bandwidth check holds one handler at a time: each step of the
+	// exchange re-registers under a new id, the previous entry already erased.
 	bool rtmp_application::add_result_handler(std::uint32_t invoke_id, result_handler_ptr res_handler)
 	{
 		if (!res_handler)

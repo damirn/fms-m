@@ -9,19 +9,13 @@
 
 namespace fms
 {
-	// NOT thread-safe: get_channel does an unsynchronised find-or-insert. Safe only
-	// because each connection owns one channel_manager and every handler for that
-	// connection (parse + serialize) runs on its single io_context thread (see
-	// io_context_pool: one thread per context, connections pinned round-robin). It
-	// would race if a connection's io_context ever ran on >1 thread, or if another
-	// connection's thread touched this map.
+	// NOT thread-safe: one manager per connection, one io_context thread per
+	// connection (io_context_pool).
 	//
-	// Channels are never evicted, and the chunk basic header addresses up to 65599
-	// of them, so the INBOUND path -- where the id comes from the peer -- goes
-	// through find_channel/open_channel instead: the former never creates, the
-	// latter refuses past eMaxChannels. Without that, ~800 KB of headers could pin
-	// tens of MB per connection for as long as it stayed open. get_channel keeps
-	// the unconditional find-or-insert for ids WE choose on the outbound path.
+	// Channels are never evicted and the basic header addresses up to 65599 of them,
+	// so the inbound path -- where the peer picks the id -- uses find_channel (never
+	// creates) / open_channel (refuses past eMaxChannels). get_channel's
+	// find-or-insert is for ids we choose, on the outbound path.
 	class channel_manager : boost::noncopyable
 	{
 	public:

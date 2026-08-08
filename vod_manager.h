@@ -24,18 +24,12 @@ namespace fms
 	// The RTMP send path is reached through an injected media_host (enqueue frames
 	// and status messages, the app manager / io_context).
 	//
-	// LOCKING: this owns m_mutex, guarding m_vod and the vod_session state reached
-	// through it. It deliberately does NOT use the stream_registry's lock, even
-	// though the owning application holds that around start()/stop(). tick() runs
-	// once per frame and does blocking disk I/O (flv_reader::read_frame); on the
-	// registry lock -- the same one every live audio/video frame takes shared -- a
-	// slow read stalled the entire application's fan-out, not just this playback.
-	// This lock is only ever contended by other VOD playbacks.
+	// LOCKING: owns m_mutex, guarding m_vod and the vod_session state behind it.
+	// Deliberately not the stream_registry's lock: tick() does blocking disk I/O
+	// per frame, and on the registry lock that would stall the whole application's
+	// live fan-out.
 	//
-	// LOCK ORDER: registry lock BEFORE this one. start()/stop()/stop_connection()
-	// are called with the registry lock already held and then take this; nothing
-	// takes this and then the registry lock. tick()/pause()/seek()/
-	// set_buffer_length() take only this one -- they touch no registry state.
+	// LOCK ORDER: registry lock BEFORE this one -- docs/concurrency.md.
 	class vod_manager : boost::noncopyable
 	{
 	public:

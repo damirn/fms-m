@@ -416,13 +416,9 @@ namespace fms
 		// would add cost without adding peer authentication. Confidentiality comes
 		// from the DH-derived session keys; peer identity is not asserted.
 
-		// Bound half-open handshake memory (and the per-packet DH work). The cookie
-		// is HMAC-authenticated (echo_cookie_valid), so an off-path attacker can't
-		// fabricate one and a real-IP attacker must complete the IHello/RHello
-		// round-trip per endpoint; stalled half-opens are reaped by the session idle
-		// timer (session::init -> arm_timer, service::remove). This cap is a backstop
-		// against a determined flooder cycling real endpoints -- once reached, drop
-		// new handshakes; the server stays up and RTMP/RTMPT are unaffected.
+		// Backstop on half-open handshake memory. The cookie is HMAC-authenticated,
+		// so reaching this needs a flooder cycling real endpoints; stalled entries
+		// are reaped by the session idle timer.
 		constexpr std::size_t eMaxInitialSessions = 8192;
 		// One half-open session per endpoint: assigning over an existing entry
 		// orphaned the previous session, which keeps a timer self-reference and a

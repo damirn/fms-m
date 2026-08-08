@@ -27,17 +27,12 @@ namespace fms
 	// (broadcast_stream), their subscribers, the fan-out index, and the clients
 	// waiting for a not-yet-live stream. Gives that state one home with a named API.
 	//
-	// The registry OWNS the media-routing lock (it is the largest shared state under
-	// it; the owning application's VOD and call-instance state ride in the same
-	// critical-section domain). Read/element access is safe under a shared lock; every
-	// structure-mutating method requires an `exclusive_guard`, which only the registry
-	// can mint (via lock_exclusive()) -- so it is a COMPILE ERROR to change the map
-	// structure without holding the exclusive lock. Reads take no token: they cannot
-	// corrupt structure, and the hot data path holds a shared lock while mutating a
-	// broadcast_stream's OWN fields (single writer per stream; avc/aac config via
-	// atomics). LOCK ORDER: this is the outermost of the cross-connection locks --
-	// acquired before the manager's (connection_registry, netstream_stats_registry)
-	// and before vod_manager's. Full table in docs/concurrency.md.
+	// Owns the media-routing lock. Reads are safe under a shared lock; every
+	// structure-mutating method requires an `exclusive_guard`, which only this class
+	// can mint, so changing the map structure without the exclusive lock is a
+	// compile error. The hot data path holds a shared lock while mutating a
+	// broadcast_stream's own fields (single writer per stream).
+	// LOCK ORDER: outermost of the cross-connection locks -- docs/concurrency.md.
 	class stream_registry : boost::noncopyable
 	{
 	public:
