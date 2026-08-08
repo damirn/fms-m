@@ -108,7 +108,7 @@ namespace fms
 
 	std::optional<netstream_stats_ptr> netstream_stats_registry::get(const stream_client_id_t &id)
 	{
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
 		auto const i = m_netstream_stats.find(id);
 		if (i != m_netstream_stats.end())
 			return std::optional(i->second);
@@ -117,7 +117,7 @@ namespace fms
 
 	void netstream_stats_registry::list(netstream_list_t &streams)
 	{
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
 		for (auto & i : m_netstream_stats)
 			streams.push_back(i.second);
 	}

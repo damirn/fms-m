@@ -145,7 +145,7 @@ namespace fms
 
 	bool connection_registry::is_amf3_encoding(std::uint32_t conn_id)
 	{
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
 		auto const i = m_connections.find(conn_id);
 		if (i != m_connections.end())
 			return i->second->uses_amf3_encoding();
@@ -165,7 +165,7 @@ namespace fms
 
 	client_data_ptr connection_registry::get_client_data(std::uint32_t connection_id)
 	{
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
 		return get_client_data_impl(connection_id);
 	}
 
@@ -198,7 +198,7 @@ namespace fms
 
 	bool connection_registry::get_client_stats(std::uint32_t cid, client_stats &stats)
 	{
-		std::unique_lock const lock(m_mutex);
+		std::shared_lock const lock(m_mutex);
 		auto const i = m_connections.find(cid);
 		if (i != m_connections.end())
 		{
