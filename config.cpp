@@ -10,13 +10,10 @@ namespace fms
 {
 	static const char version[] = "2.0.0";
 
-	config *config::m_instance = nullptr;
-
 	config *config::instance()
 	{
-		if (m_instance == nullptr)
-			m_instance = new config;
-		return m_instance;
+		static config inst;   // thread-safe initialisation since C++11
+		return &inst;
 	}
 
 	const char *config::version_string() 

@@ -160,7 +160,7 @@ namespace fms
 		while(true)
 		{
 			std::string id;
-			m_rnd_string.generate(eIDSize, id);
+			generate_random_string(eIDSize, id);
 
 			auto const i = m_ids.find(id);
 			if (i == m_ids.end())

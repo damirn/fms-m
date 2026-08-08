@@ -12,11 +12,6 @@ namespace fms
 	public:
 		static config *instance();
 
-		// Process-lifetime singleton: intentionally never destroyed. The old
-		// ~config() did `delete m_instance` (itself), which would have been an
-		// infinite recursion / double-free had it ever run.
-		~config() = default;
-
 		bool parse_cli(int, char **);
 
 		const std::uint32_t &speex_quality() const
@@ -177,6 +172,5 @@ namespace fms
 			create_description();
 		}
 
-		static config *m_instance;
 	};
 }
