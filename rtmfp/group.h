@@ -23,8 +23,8 @@ namespace fms
 	public:
 		enum commands { eJoinGroup = 0x01 };
 
-		explicit group(std::uint8_t *id)
-			: item(id, false)
+		explicit group(const std::uint8_t *id)
+			: item(id)
 		{}
 
 		static group_ptr deserialize(byte_reader &s)
@@ -38,24 +38,12 @@ namespace fms
 				s >> type;
 				if (type == 0x15)
 				{
-					group_ptr g = std::make_shared<group>(const_cast<std::uint8_t *>(s.read_pos()));
+					group_ptr g = std::make_shared<group>(s.read_pos());
 					g->command() = cmnd;
-					// The id currently points into the caller's packet buffer, which is
-					// freed when parse() returns; copy it so a retained group (any
-					// command) can't dangle. This is the single ownership point.
-					g->take_ownership();
 					return g;
 				}
 			}
 			throw std::runtime_error("Illegal group data");
-		}
-
-		void take_ownership()
-		{
-			std::uint8_t const *tmp = m_id;
-			m_id = new std::uint8_t[item::eIDLength];
-			std::memcpy(reinterpret_cast<void *>(m_id), tmp, item::eIDLength);
-			m_owner = true;
 		}
 
 		const std::uint8_t &command() const
