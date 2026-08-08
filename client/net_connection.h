@@ -204,7 +204,7 @@ namespace fms::rtmp_client
 		std::uint32_t m_messages_written{0};
 		std::uint16_t m_out_chunk_size{128};   // our outbound chunk size (Set Chunk Size)
 		std::uint32_t m_bytes_read{0};
-		std::uint32_t m_ack_size;
+		std::uint32_t m_ack_size{eAckSize};
 		std::uint32_t m_ack_size_next{eAckSize};
 
 		using message_queue_t = std::queue<rtmp_message_ptr>;

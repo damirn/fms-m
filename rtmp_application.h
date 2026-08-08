@@ -197,7 +197,7 @@ namespace fms
 				, 
 				 m_time(std::chrono::system_clock::now())
 			{}
-			std::uint32_t m_bytes;
+			std::uint32_t m_bytes{0};
 			std::uint8_t m_num_called{0};
 			std::chrono::system_clock::time_point m_time;
 			std::chrono::system_clock::duration m_latency;

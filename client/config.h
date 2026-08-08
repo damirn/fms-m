@@ -85,7 +85,7 @@ protected:
 	std::string m_output_file_prefix;
 	std::string m_stream_name;
 	std::string m_stream_list_str;
-	std::uint32_t m_publish_wait_time;
+	std::uint32_t m_publish_wait_time{0};
 	bool m_send_only_audio{false};
 	bool m_no_output{false};
 	bool m_record{false};

@@ -70,10 +70,10 @@ namespace fms
 
 		static const std::uint8_t m_key[];
 		static const std::uint8_t m_iv[eKeySize];
-		EVP_CIPHER_CTX *m_decrypt_ctx;
-		EVP_CIPHER_CTX *m_encrypt_ctx;
-		std::uint8_t m_dec_key_data[eKeySize * 2];
-		std::uint8_t m_enc_key_data[eKeySize * 2];
+		EVP_CIPHER_CTX *m_decrypt_ctx{nullptr};
+		EVP_CIPHER_CTX *m_encrypt_ctx{nullptr};
+		std::uint8_t m_dec_key_data[eKeySize * 2]{};
+		std::uint8_t m_enc_key_data[eKeySize * 2]{};
 
 		bool m_hmac_send{false};
 		bool m_hmac_recv{false};

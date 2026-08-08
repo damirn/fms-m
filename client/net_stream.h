@@ -139,8 +139,8 @@ namespace fms::rtmp_client
 		bool m_record{false};
 
 		std::string m_stream_name;
-		std::uint32_t m_id;
-		std::uint32_t m_stream_id;
+		std::uint32_t m_id{0};
+		std::uint32_t m_stream_id{0};
 		av_sink *m_sink{nullptr};
 	};
 

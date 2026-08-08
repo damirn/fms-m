@@ -13,8 +13,8 @@ namespace fms
 
 	struct client_data
 	{
-		std::uint32_t m_id;
-		std::uint16_t m_port;
+		std::uint32_t m_id{0};
+		std::uint16_t m_port{0};
 		std::string m_sid;
 		std::string m_username;
 		std::string m_ip;
@@ -92,8 +92,8 @@ namespace fms
 
 	struct livestream_stats
 	{
-		std::uint32_t m_publisher;
-		std::uint32_t m_publish_time;
+		std::uint32_t m_publisher{0};
+		std::uint32_t m_publish_time{0};
 		std::map<std::uint32_t, std::uint32_t> m_clients;
 	};
 
