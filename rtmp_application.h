@@ -171,7 +171,6 @@ namespace fms
 
 		std::atomic<long> m_invoke_id;
 
-		random_string m_rnd_string;
 
 		std::unique_ptr<so_manager> m_so_manager;
 
@@ -236,7 +235,6 @@ namespace fms
 		};
 
 	private:
-		static amf0_string_ptr m_rnd_str;
-		static bool m_rnd_str_generated;
+		static const amf0_string_ptr &bwcheck_string();
 	};
 }

@@ -29,8 +29,6 @@ namespace fms
 		const char setPeerInfo[] = "setPeerInfo";
 	}
 
-	amf0_string_ptr rtmp_application::m_rnd_str = std::make_shared<amf0_string>();
-	bool rtmp_application::m_rnd_str_generated(false);
 
 	rtmp_application::rtmp_application(app_host *app_manager, const std::string &app_name)
 		: m_app_manager(app_manager)
@@ -43,15 +41,24 @@ namespace fms
 			enqueue_async_message(client, msg);
 			notify(client);
 		});
-		if (!m_rnd_str_generated)
-		{
-			m_rnd_string.generate(eBWCheckStringSize, m_rnd_str->value());
-			m_rnd_str_generated = true;
-		}
 	}
 
 	// out-of-line: the unique_ptr members' types are complete in the .cpp
 	rtmp_application::~rtmp_application() = default;
+
+	// The bandwidth-check payload: one random string for the process, generated on
+	// first use. A magic static, so two applications constructed concurrently
+	// cannot race over it.
+	const amf0_string_ptr &rtmp_application::bwcheck_string()
+	{
+		static const amf0_string_ptr s = []
+		{
+			auto str = std::make_shared<amf0_string>();
+			generate_random_string(eBWCheckStringSize, str->value());
+			return str;
+		}();
+		return s;
+	}
 
 	boost::tribool rtmp_application::handle_message(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
@@ -365,7 +372,7 @@ namespace fms
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		res->add_parameter(null);
 
-		res->add_parameter(m_rnd_str);
+		res->add_parameter(bwcheck_string());
 		add_result_handler(id, res_handler);
 		result = res;
 	}
@@ -449,7 +456,7 @@ namespace fms
 			rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>("onBWCheck", id);
 			amf0_null_ptr const null = std::make_shared<amf0_null>();
 			res->add_parameter(null);
-			res->add_parameter(m_rnd_str);
+			res->add_parameter(bwcheck_string());
 
 			result = res;
 			add_result_handler(id, bw_res);

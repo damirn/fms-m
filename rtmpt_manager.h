@@ -57,7 +57,6 @@ namespace fms
 
 		std::string m_version;
 
-		random_string m_rnd_string;
 
 		struct rtmpt_session_data
 		{

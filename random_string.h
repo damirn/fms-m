@@ -1,17 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 namespace fms
 {
-	class random_string
-	{
-	public:
-		random_string() = default;
-
-		static void generate(std::uint16_t, std::string &);
-
-	private:
-		static std::string m_chars;
-	};
+	// CSPRNG-backed alphanumeric token, appended into `str`.
+	void generate_random_string(std::uint16_t size, std::string &str);
 }
