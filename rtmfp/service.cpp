@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "service.h"
+#include "byte_order.h"
 #include "aes.h"
 #include "chunk.h"
 #include "cookie.h"
@@ -515,8 +516,8 @@ namespace fms
 
 			address a;
 			a.m_type = eAddressOriginReported;   // the initiator's address as we saw it
-			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(m_sender_endpoint.address().to_v4().to_uint());
-			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(m_sender_endpoint.port());
+			a.m_ip = to_network<std::uint32_t>(m_sender_endpoint.address().to_v4().to_uint());
+			a.m_port = to_network<std::uint16_t>(m_sender_endpoint.port());
 
 			fihello_chunk fi(static_cast<std::uint16_t>(ic->epd_len()), ic->epd(), a, ic->tag_len(), ic->tag());
 			fi.serialize(m_serializer->raw_packet());
@@ -525,8 +526,8 @@ namespace fms
 			auto rc = std::make_unique<redirect_chunk>(ic->tag_len(), ic->tag());
 			boost::asio::ip::address_v4 const tmp = i->second->end_point().address().to_v4();
 			a.m_type = 0x02;
-			a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(tmp.to_uint());
-			a.m_port = boost::asio::detail::socket_ops::host_to_network_short(i->second->end_point().port());
+			a.m_ip = to_network<std::uint32_t>(tmp.to_uint());
+			a.m_port = to_network<std::uint16_t>(i->second->end_point().port());
 
 			rc->addresses().push_back(a);
 			std::copy(i->second->addresses().begin(), i->second->addresses().end(), std::back_insert_iterator<std::list<address>>(rc->addresses()));

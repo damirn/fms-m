@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "parser.h"
+#include "byte_order.h"
 #include "aes.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
@@ -66,7 +67,7 @@ namespace fms
 		{
 			raw >> type >> len;
 
-			len = boost::asio::detail::socket_ops::network_to_host_short(len);
+			len = to_host<std::uint16_t>(len);
 
 			if (type == ePad0 || type == ePadff) // break if padding reached
 				break;
