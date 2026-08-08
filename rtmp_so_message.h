@@ -3,6 +3,7 @@
 #include "rtmp_message.h"
 
 #include <utility>
+#include <vector>
 
 namespace fms
 {
@@ -68,26 +69,16 @@ namespace fms
 
 		struct event
 		{
-			event()
-				: m_type(0)
-				, m_data(nullptr)
-			{}
+			event() = default;
 
 			explicit event(std::uint8_t event_type)
 				: m_type(event_type)
-				, m_data(nullptr)
 			{}
 
-			~event()
-			{
-				delete[] m_data;
-			}
-
-			std::uint8_t m_type;
+			std::uint8_t m_type{0};
 			amf0_string_ptr m_name;
 			amf0_type_ptr m_value;
-			std::uint8_t *m_data;
-			std::uint32_t m_size{0};
+			std::vector<std::uint8_t> m_data;
 		};
 
 		using event_ptr = std::shared_ptr<event>;

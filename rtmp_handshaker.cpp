@@ -12,12 +12,6 @@
 
 namespace fms
 {
-	rtmp_handshaker::~rtmp_handshaker()
-	{
-		EVP_CIPHER_CTX_free(m_key_in);
-		EVP_CIPHER_CTX_free(m_key_out);
-	}
-
 	bool rtmp_handshaker::build_response(std::uint8_t magic, std::uint8_t *client_sig)
 	{
 		// Negotiate from C0 + C1. Plain magic + a non-zero C1 version byte (C1[4])
@@ -131,28 +125,29 @@ namespace fms
 			std::uint8_t shared_key[128];
 			if (!mydh.copy_shared_key(shared_key, 128))
 				return false;   // short secret: fail closed rather than ship cleartext
-			m_key_in = EVP_CIPHER_CTX_new();
-			m_key_out = EVP_CIPHER_CTX_new();
-			if (!init_rc4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in, m_key_out))
+			m_key_in.reset(EVP_CIPHER_CTX_new());
+			m_key_out.reset(EVP_CIPHER_CTX_new());
+			if (!m_key_in || !m_key_out
+				|| !init_rc4_encryption(shared_key, client_sig + client_dh_offset, server_sig + server_dh_offset, m_key_in.get(), m_key_out.get()))
 				return false;   // fail closed rather than ship cleartext
 
 			// Advance both keystreams past 1536 bytes; d is read as cipher input.
 			std::uint8_t d[eHandShakeSize] = {};
-			rc4_crypt(m_key_in, eHandShakeSize, d, d);
-			rc4_crypt(m_key_out, eHandShakeSize, d, d);
+			rc4_crypt(m_key_in.get(), eHandShakeSize, d, d);
+			rc4_crypt(m_key_out.get(), eHandShakeSize, d, d);
 		}
 		return true;
 	}
 
 	void rtmp_handshaker::decrypt(std::uint8_t *p, std::size_t n)
 	{
-		if (m_key_in != nullptr && n > 0)
-			rc4_crypt(m_key_in, n, p, p);
+		if (m_key_in && n > 0)
+			rc4_crypt(m_key_in.get(), n, p, p);
 	}
 
 	void rtmp_handshaker::encrypt(std::uint8_t *p, std::size_t n)
 	{
-		if (m_key_out != nullptr && n > 0)
-			rc4_crypt(m_key_out, n, p, p);
+		if (m_key_out && n > 0)
+			rc4_crypt(m_key_out.get(), n, p, p);
 	}
 }
