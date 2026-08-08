@@ -129,9 +129,9 @@ namespace fms
 		rtmp_header m_received_header;
 		rtmp_header m_sent_header;
 		byte_writer m_buffer;
-		std::uint8_t m_prev_header_type;
-		std::uint32_t m_prev_time_delta;
-		std::uint32_t m_prev_timestamp;
+		std::uint8_t m_prev_header_type{0};
+		std::uint32_t m_prev_time_delta{0};
+		std::uint32_t m_prev_timestamp{0};
 	};
 
 	using rtmp_channel_ptr = std::shared_ptr<rtmp_channel>;

@@ -137,16 +137,16 @@ namespace fms
 		boost::program_options::variables_map m_vm;
 		boost::program_options::options_description m_description;
 
-		std::uint32_t m_speex_quality;
-		std::uint32_t m_threads;
-		std::uint32_t m_log_level;
-		std::size_t m_max_queue_bytes;
-		std::uint32_t m_admin_data_keep_time;
+		std::uint32_t m_speex_quality{_eSpeexQuality};
+		std::uint32_t m_threads{_eDefaultThreads};
+		std::uint32_t m_log_level{_eDefaultLogLevel};
+		std::size_t m_max_queue_bytes{_eDefaultMaxQueueBytes};
+		std::uint32_t m_admin_data_keep_time{_eAdminDataKeepTime};
 
 		std::string m_bind_address;
 		std::string m_rtmp_port;
 		std::string m_rtmpt_port;
-		std::uint16_t m_rtmpf_port;
+		std::uint16_t m_rtmpf_port{0};
 		std::string m_rtmps_port;
 		std::string m_rtmpts_port;
 		std::string m_tls_cert;
