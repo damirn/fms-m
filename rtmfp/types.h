@@ -8,6 +8,7 @@
 #include <list>
 #include <memory>
 #include <optional>
+#include <vector>
 
 namespace fms
 {
@@ -42,42 +43,25 @@ namespace fms
 
 	struct option
 	{
-		option()
-			: m_len(0)
-			, m_type(0)
-			, m_value(nullptr)
-			, m_value_len(0)
-		{}
+		option() = default;
 
 		option(std::uint8_t type, const std::uint8_t *value, const std::uint16_t &value_len)
 			: m_type(type)
-			, m_value(nullptr)
-			, m_value_len(value_len)
 		{
-			if (value && value_len > 0)
+			if (value != nullptr && value_len > 0)
 			{
-				m_value = new std::uint8_t[value_len];
-				std::memcpy(m_value, value, value_len);
+				m_value.assign(value, value + value_len);
 				m_len = value_len;
 			}
-			else
-				m_len = 0;
 		}
 
 		option(std::uint8_t type, const vlu_t &value)
 			: m_type(type)
 		{
-			m_value_len = byte_writer::vlu_size(value);
-			m_value = new std::uint8_t[m_value_len];
-			m_len = m_value_len;
 			byte_writer s;
 			s.write_vlu(value);
-			std::memcpy(m_value, s.data(), m_value_len);
-		}
-
-		~option()
-		{
-			delete[] m_value;
+			m_value.assign(s.data(), s.data() + s.size());
+			m_len = m_value.size();
 		}
 
 		bool deserialize(byte_reader &);
@@ -90,10 +74,9 @@ namespace fms
 
 		vlu_t value_as_vlu() const;
 
-		vlu_t m_len;
-		vlu_t m_type;
-		std::uint8_t *m_value;
-		std::uint16_t m_value_len;
+		vlu_t m_len{0};
+		vlu_t m_type{0};
+		std::vector<std::uint8_t> m_value;
 
 		enum { eMetadata = 0, eReturnFlowAssociation = 10 };
 	};
