@@ -17,7 +17,7 @@ namespace fms
 	class amf0_illegal_cast final : public std::exception
 	{
 	public:
-		const char *what() const throw() override
+		const char *what() const noexcept override
 		{
 			return "amf0 bad cast";
 		}
