@@ -502,7 +502,7 @@ namespace fms
 		if (m_write_in_progress)
 			return;
 
-		item const tmp(peer_id, false);
+		item const tmp(peer_id);
 		auto const i = m_session_map.find(tmp);
 		if (i != m_session_map.end())
 		{

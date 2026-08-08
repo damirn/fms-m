@@ -7,6 +7,7 @@
 #include <cstring>
 #include <list>
 #include <memory>
+#include <array>
 #include <optional>
 #include <vector>
 
@@ -103,79 +104,51 @@ namespace fms
 	public:
 		enum { eIDLength = 32 };
 
-		item()
-			: m_id(new std::uint8_t[eIDLength])
-			, m_owner(true)
-		{}
+		item() = default;
 
-		item(const item &that)
-			: m_owner(false)
+		// Always copies: the source usually points into a packet buffer that is
+		// freed when parse() returns.
+		explicit item(const std::uint8_t *data)
 		{
-			if (that.m_owner)
-				set_id(that.m_id);
-			else
-			{
-				m_owner = false;
-				m_id = that.m_id;
-			}
+			std::memcpy(m_id.data(), data, eIDLength);
 		}
 
-		item(const std::uint8_t *data, bool copy)
-		{
-			if (copy)
-				set_id(data);
-			else
-			{
-				m_id = const_cast<std::uint8_t *>(data);
-				m_owner = false;
-			}
-		}
-
-		virtual ~item()
-		{
-			if (m_owner)
-				delete[] m_id;
-		}
+		virtual ~item() = default;
 
 		const std::uint8_t *id() const
 		{
-			return m_id;
+			return m_id.data();
 		}
 
 		std::uint8_t *id()
 		{
-			return m_id;
+			return m_id.data();
 		}
 
 		void set_id(const std::uint8_t *data)
 		{
-			if (m_owner && m_id)
-				delete[] m_id;
-			m_id = new std::uint8_t[eIDLength];
-			std::memcpy(m_id, data, eIDLength);
-			m_owner = true;
+			std::memcpy(m_id.data(), data, eIDLength);
 		}
 
 		bool operator==(const item &a) const
 		{
-			return std::memcmp(m_id, a.id(), eIDLength) == 0;
+			return m_id == a.m_id;
 		}
 
 		bool operator!=(const item &a) const
 		{
-			return std::memcmp(m_id, a.id(), eIDLength) != 0;
+			return m_id != a.m_id;
 		}
 
 		struct less
 		{
 			bool operator()(const item &a, const item &b) const
 			{
-				return std::memcmp(a.id(), b.id(), eIDLength) < 0;
+				return a.m_id < b.m_id;
 			}
 		};
 
 	protected:
-		std::uint8_t *m_id;
-		bool m_owner;
+		std::array<std::uint8_t, eIDLength> m_id{};
 	};
 }
