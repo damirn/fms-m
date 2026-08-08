@@ -21,10 +21,11 @@ namespace fms
 				// fit inside the datagram — otherwise the length is malformed
 				if (consumed > m_len || (m_len - consumed) > buff.available())
 					return false;
-				m_value_len = static_cast<std::uint16_t>(m_len - consumed);
-				m_value = new std::uint8_t[m_value_len];
-				std::memcpy(m_value, buff.read_pos(), m_value_len);
-				buff.skip(m_value_len);
+				std::size_t const value_len = m_len - consumed;
+				if (value_len > 0xFFFF)
+					return false;   // an option value cannot exceed a datagram
+				m_value.assign(buff.read_pos(), buff.read_pos() + value_len);
+				buff.skip(value_len);
 			}
 			return true;
 		}
@@ -43,16 +44,16 @@ namespace fms
 		}
 		// length is known up front (type VLU + value): write [len][type][value]
 		std::size_t const start = to.size();
-		vlu_t const size = byte_writer::vlu_size(m_type) + m_value_len;
+		vlu_t const size = byte_writer::vlu_size(m_type) + m_value.size();
 		to.write_vlu(size);
 		to.write_vlu(m_type);
-		to.write(m_value, m_value_len);
+		to.write(m_value.data(), m_value.size());
 		return static_cast<std::uint16_t>(to.size() - start);
 	}
 
 	vlu_t option::value_as_vlu() const
 	{
-		byte_reader t(m_value, m_value_len);
+		byte_reader t(m_value.data(), m_value.size());
 		return t.read_vlu();
 	}
 

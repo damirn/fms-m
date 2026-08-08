@@ -43,8 +43,7 @@ TEST_CASE("rtmfp option: value option round-trips [len][type][value]")
 	REQUIRE(dst.deserialize(r));
 	CHECK(r.available() == 0);                       // consumed exactly
 	CHECK(dst.m_type == 0x0a);
-	CHECK(dst.m_value_len == value.size());
-	CHECK(std::memcmp(dst.m_value, value.data(), value.size()) == 0);
+	CHECK(dst.m_value == value);
 	CHECK_FALSE(dst.is_marker());
 }
 
@@ -124,8 +123,7 @@ TEST_CASE("rtmfp option_list: multiple options round-trip and terminate on marke
 
 	auto meta_opt = dst.get_option(option::eMetadata);
 	REQUIRE(meta_opt.has_value());
-	CHECK((*meta_opt)->m_value_len == meta.size());
-	CHECK(std::memcmp((*meta_opt)->m_value, meta.data(), meta.size()) == 0);
+	CHECK((*meta_opt)->m_value == meta);
 
 	auto assoc = dst.get_option(option::eReturnFlowAssociation);
 	REQUIRE(assoc.has_value());

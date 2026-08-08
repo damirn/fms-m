@@ -121,11 +121,11 @@ namespace fms
 	{
 		// sanity check (3.6.3.1)
 		std::optional<option_ptr> opt = options().get_option(option::eMetadata);
-		if (opt && (*opt)->m_value_len >= 2)
+		if (opt && (*opt)->m_value.size() >= 2)
 		{
-			if (std::memcmp((*opt)->m_value, TC, 2) == 0)
+			if (std::memcmp((*opt)->m_value.data(), TC, 2) == 0)
 				m_stream_id = get_stream_id_from_option(*opt);
-			else if (std::memcmp((*opt)->m_value, GC, 2) == 0)
+			else if (std::memcmp((*opt)->m_value.data(), GC, 2) == 0)
 				m_type = eNetGroup;
 			else
 				state() = flow::eRejected;   // unknown metadata signature
@@ -145,9 +145,9 @@ namespace fms
 	{
 		// "TC" signature (2) + type byte (1) + at least one VLU byte. A shorter value
 		// would make skip(3)/read_vlu throw and drop the whole packet.
-		if (opt->m_value_len < 4)
+		if (opt->m_value.size() < 4)
 			return 0;
-		byte_reader tmp(opt->m_value, opt->m_value_len);
+		byte_reader tmp(opt->m_value.data(), opt->m_value.size());
 		tmp.skip(3);
 		vlu_t const id = tmp.read_vlu();
 		// stream_id() narrows to uint32 and that value keys both direction maps,
