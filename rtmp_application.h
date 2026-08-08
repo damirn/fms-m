@@ -143,18 +143,14 @@ namespace fms
 		// entry has its OWN mutex, so enqueues to different connections don't
 		// serialise. The mutex-in-value is safe: unordered_map never relocates nodes.
 		//
-		// `bytes` is the backpressure accounting (see send_queue_policy.h): a
-		// subscriber that stops reading stalls its in-flight write, and without this
-		// bound live media would pile up here without limit.
+		// `bytes` is the backpressure accounting -- see send_queue_policy.h.
 		struct async_queue
 		{
 			std::mutex mutex;
 			std::uint32_t count{0};
 			std::size_t bytes{0};
-			// A saturated queue sheds on nearly every frame, and it can oscillate
-			// across the threshold frame-by-frame, so a transition-only latch still
-			// floods. Rate-limit the log per queue instead. Kept here rather than in
-			// a side map so it dies with the queue -- no extra teardown path.
+			// A saturated queue sheds on nearly every frame, so the log is
+			// rate-limited per queue. Held here so it dies with the queue.
 			std::chrono::steady_clock::time_point last_shed_log{};
 			std::list<rtmp_message_ptr> msgs;
 		};

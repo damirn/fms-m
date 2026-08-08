@@ -11,15 +11,9 @@ namespace fms
 	// Tracks the callbacks waiting for a peer's `_result`, keyed by the invoke id
 	// they were sent under, and bounds how many any one connection may have
 	// outstanding.
-	//
-	// Both bounds matter: a handler is released only when the peer answers, and the
-	// invokes that create one (checkBandwidth / checkUploadBandwidth) are
-	// client-invokable, so an unauthenticated peer drives both the per-connection
-	// count and the lifetime of anything left outstanding at teardown.
-	//
-	// Templated on the handler pointer so this stays free of the application types
-	// and can be exercised on its own; the connection id is passed in rather than
-	// read out of the handler for the same reason.
+	// Bounded because the invokes that create a handler (checkBandwidth /
+	// checkUploadBandwidth) are client-invokable and a handler is only released when
+	// the peer answers.
 	//
 	// Thread-safe: every operation takes the internal mutex. Callers must invoke the
 	// callback AFTER take() returns, never under this lock -- a callback may

@@ -95,12 +95,9 @@ namespace fms
 		}
 	}
 
-	// Big-endian read of `n` bytes. istream::read leaves the destination UNTOUCHED on
-	// a short read, so the accumulator byte must start initialised: on a truncated
-	// file the loop would otherwise fold an indeterminate value into the result.
-	// Callers test the stream afterwards and discard the value, so this was UB
-	// without a visible consequence -- but it is still UB. Stop early once the
-	// stream fails, and return 0 rather than a half-composed length.
+	// Big-endian read of `n` bytes. istream::read leaves the destination untouched
+	// on a short read, so the accumulator must start initialised; returns 0 rather
+	// than a half-composed length.
 	std::uint32_t flv_reader::read_be(std::uint8_t n)
 	{
 		std::uint32_t tmp = 0;

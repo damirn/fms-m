@@ -8,37 +8,17 @@
 
 namespace fms
 {
-	// Backpressure policy for a connection's outbound (async) message queue.
+	// Backpressure policy for a connection's outbound (async) message queue: without
+	// a bound, a subscriber that stops reading accumulates live media in RAM without
+	// limit. Byte-bounded like FMS 4.5, but sheds droppable video before
+	// disconnecting rather than only disconnecting (docs/slow-consumer.md).
 	//
-	// Without a bound, a subscriber that stops reading applies TCP backpressure, the
-	// in-flight write never completes, and live media accumulates in RAM for that
-	// connection without limit -- the classic slow-consumer blow-up.
-	//
-	// Adobe FMS 4.5 (measured against a stock 4.5.0 r297 container, see
-	// docs/slow-consumer.md) bounds the per-subscriber backlog by BYTES -- roughly
-	// 8-10 MB regardless of bitrate -- and then simply disconnects: no onStatus, no
-	// user-control, just a TCP reset, logged as access-log status 416. It does NOT
-	// thin the stream to keep a slow client alive.
-	//
-	// We keep FMS's byte-bounded shape and its hard cap, but shed droppable video
-	// first and disconnect only if that isn't enough. That is strictly gentler than
-	// FMS and invisible on the wire: a client cannot tell the difference except by
-	// surviving congestion that FMS would have killed it for.
-	//
-	// Shedding order follows how expensive a message is to lose:
-	//   inter_video  -- an inter/disposable frame; the decoder resyncs at the next
-	//                   keyframe. Dropped first, oldest first (the client is behind,
-	//                   so the freshest content is the useful content).
-	//   key_video    -- a keyframe. Dropping it (with the inter frames already shed
-	//                   ahead of it) skips a whole GOP cleanly.
-	//   audio        -- small (~2% of a typical stream's bytes) and gaps are far more
-	//                   audible than a video stutter, so shedding it buys almost no
-	//                   headroom for a large perceptual cost. Never shed.
-	//   config       -- AVC/AAC sequence headers. Without them the stream is simply
-	//                   undecodable for the rest of the session. Never shed.
-	//   never        -- control/command/status (onStatus, ping, chunk size, ...).
-	//                   Dropping these desynchronises the protocol or the session
-	//                   state machine. Never shed.
+	// Shed order, cheapest loss first:
+	//   inter_video  -- decoder resyncs at the next keyframe; oldest first
+	//   key_video    -- skips a whole GOP, once the inter frames ahead of it are gone
+	//   audio        -- ~2% of the bytes, far more audible than a video stutter
+	//   config       -- AVC/AAC sequence headers; the stream is undecodable without
+	//   never        -- control/command/status; dropping desyncs the protocol
 	enum class shed_class
 	{
 		never,

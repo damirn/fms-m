@@ -12,16 +12,9 @@ namespace fms
 {
 	bool connect_router::match_app(const std::string &app_name, const std::string &app, std::string &instance)
 	{
-		// The connect "app" is a URL path, so normalize before matching -- accept what
-		// any RFC-3986 client sends, not just the one shape rtmfp-cpp happens to emit:
-		//   * a leading '/'  -- the raw path of rtmfp://host/media IS "/media".
-		//     rtmfp-cpp strips it client-side (TCConnection.cpp), but librtmfp passes
-		//     it through; without stripping it here the app name resolved to "" and the
-		//     connect was rejected with NetConnection.Connect.InvalidApp.
-		//   * a trailing "?query" -- rtmfp-cpp appends the URL query to "app"; it isn't
-		//     part of the app identity (publish likewise drops '?' from stream names).
-		// (Boost has no URL parser to reuse here: Beast treats the HTTP target as an
-		// opaque string, and Boost.URL needs >= 1.81 while we build against 1.76.)
+		// The connect "app" is a URL path: strip a leading '/' (rtmfp://host/media
+		// has the raw path "/media") and any trailing "?query", which is not part of
+		// the app identity. Hand-rolled -- Boost.URL needs >= 1.81, we build 1.76.
 		std::string_view view(app_name);
 		if (!view.empty() && view.front() == '/')
 			view.remove_prefix(1);

@@ -11,20 +11,11 @@ namespace fms
 {
 	/// A pool of io_context objects.
 	///
-	/// CONCURRENCY CONTRACT -- "one thread per io_context":
-	/// run() spawns exactly one thread per io_context (never more), so every handler
-	/// posted to a given io_context executes on a single, fixed thread. This is the
-	/// load-bearing invariant the rest of the server's lock-free design rests on:
-	///   - a connection is pinned to one io_context, so rtmp_connection's m_state /
-	///     m_write_in_progress / buffers are touched by only one thread and need no
-	///     lock (see rtmp_connection.cpp);
-	///   - the RTMFP service/session maps are unsynchronised because the service is
-	///     pinned to one io_context (see server::init_rtmfp_service, rtmfp/service.h);
-	///   - rtmp_app_manager's shared_mutex only has to guard cross-io_context access
-	///     (admin thread vs. connection threads), not intra-connection races.
-	/// Running more than one thread per io_context, or migrating a connection between
-	/// io_contexts, would silently break all of the above. Cross-thread hand-offs must
-	/// go through boost::asio::post onto the owning context (e.g. post_close()).
+	/// CONCURRENCY CONTRACT -- one thread per io_context, never more, so every
+	/// handler on a given context runs on one fixed thread. Objects are pinned to a
+	/// context for life and much of the server is lock-free on that basis; a
+	/// cross-thread hand-off must go through boost::asio::post onto the owning
+	/// context. See docs/concurrency.md.
 	class io_context_pool : boost::noncopyable
 	{
 	public:

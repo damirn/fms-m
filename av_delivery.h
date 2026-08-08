@@ -14,18 +14,11 @@ namespace fms
 	class stream_registry;
 	class media_host;
 
-	// The live audio/video fan-out path: takes a frame from a publisher and
-	// delivers a per-subscriber copy to each of that publisher's subscribers. It
-	// handles sequence-header (AVC/AAC config) priming, the keyframe-gated join, the
-	// enqueued-frame backlog for a subscriber that joined mid-GOP, per-subscriber
-	// timestamp rebasing, stream-metadata (onMetaData) fan-out, and the recording
-	// (flv) write.
+	// The live audio/video fan-out path: a publisher's frame to a per-subscriber
+	// copy for each of its subscribers.
 	//
-	// Stateless of itself: all mutable state lives in the broadcast_stream (reached
-	// through the registry) and in each stream_client. route_audio/route_video are
-	// caller-locked -- the RTMP handler takes the application's shared_mutex before
-	// calling in. The delivery primitives (enqueue / notify / connection lookup) come
-	// from the injected media_host; the channel mapping is the free stream_to_channel.
+	// Stateless: all mutable state lives in the broadcast_stream and each
+	// stream_client. route_audio/route_video are caller-locked (shared).
 	class av_delivery : boost::noncopyable
 	{
 	public:

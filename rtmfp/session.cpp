@@ -227,19 +227,15 @@ namespace fms
 		// RFC 7016 sec. 3.6.3.5: the receiver of one of our sending flows reports it has
 		// abnormally rejected/closed that flow, so the sender should stop transmitting
 		// on it. We deliberately do NOT tear the flow down here: a sending flow is also
-		// referenced by m_flow_id_to_stream_id / m_stream_id_to_flow_id and the owning
-		// app, so a correct teardown must be coordinated across all three (the deferred
-		// flow-lifecycle / NetGroup work). Ignoring the report is safe -- the flow keeps
-		// draining and is reaped normally when the stream ends -- so we leave it a
-		// documented no-op rather than risk a dangling reference on an untested path.
+		// referenced by m_flow_id_to_stream_id / m_stream_id_to_flow_id and the
+		// owning app, so tearing it down here would need all three coordinated
+		// (F5). The flow drains and is reaped when the stream ends.
 	}
 
 	void session::handle_ping(ping_chunk *pc)
 	{
-		// One control-reply slot per received packet (parse() resets it, and only one
-		// reply is flushed per packet). Don't clobber a reply already queued this
-		// packet -- e.g. a close-ack -- which would both leak it and drop the more
-		// important reply. The peer retransmits its ping, so we answer it next packet.
+		// One control-reply slot per received packet; don't clobber a queued reply.
+		// The peer retransmits its ping.
 		if (m_ready_chunk != nullptr)
 			return;
 		m_ready_chunk = new ping_reply_chunk(pc->data(), pc->data_len());
