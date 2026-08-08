@@ -97,9 +97,8 @@ namespace fms
 			// after the allocation.
 			if (len > buffer.available())
 				throw buffer_eof_exception();
-			ev->m_size = len;
-			ev->m_data = new std::uint8_t[len];
-			buffer.read(ev->m_data, len);
+			ev->m_data.resize(len);
+			buffer.read(ev->m_data.data(), len);
 		}
 	}
 
@@ -112,9 +111,9 @@ namespace fms
 			buffer << zero;
 		else if (ev->m_type == eSendMessage)
 		{
-			std::uint32_t const size = boost::asio::detail::socket_ops::host_to_network_long(ev->m_size);
+			std::uint32_t const size = boost::asio::detail::socket_ops::host_to_network_long(static_cast<std::uint32_t>(ev->m_data.size()));
 			buffer << size;
-			buffer.write(ev->m_data, ev->m_size);
+			buffer.write(ev->m_data.data(), ev->m_data.size());
 		}
 		else
 		{

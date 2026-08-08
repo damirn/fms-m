@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 
 #include <openssl/evp.h>
@@ -20,7 +21,6 @@ namespace fms
 	class rtmp_handshaker
 	{
 	public:
-		~rtmp_handshaker();
 
 		// Handshake framing constants the transport needs. 1536-byte C1/S1/C2 blocks;
 		// C0 is a single magic byte (0x03 plain, 0x06 encrypted/RTMPE).
@@ -61,8 +61,11 @@ namespace fms
 		bool m_is_fp9{false};
 		bool m_uses_crypto{false};
 		std::uint8_t m_validation_scheme{0};
-		EVP_CIPHER_CTX *m_key_in{nullptr};
-		EVP_CIPHER_CTX *m_key_out{nullptr};
+		// unique_ptr: the destructor becomes implicit, and a copy is a compile error
+		// rather than a double EVP_CIPHER_CTX_free.
+		using cipher_ctx = std::unique_ptr<EVP_CIPHER_CTX, decltype(&::EVP_CIPHER_CTX_free)>;
+		cipher_ctx m_key_in{nullptr, &::EVP_CIPHER_CTX_free};
+		cipher_ctx m_key_out{nullptr, &::EVP_CIPHER_CTX_free};
 		std::string m_sid;
 	};
 }
