@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "rtmp_so_message.h"
+#include "byte_order.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 
@@ -10,10 +11,10 @@ namespace fms
 		m_amf0.read_short_string(buffer, m_name, true);
 
 		buffer >> m_version;
-		m_version = boost::asio::detail::socket_ops::network_to_host_long(m_version);
+		m_version = to_host<std::uint32_t>(m_version);
 
 		buffer >> m_flags;
-		m_flags = boost::asio::detail::socket_ops::network_to_host_long(m_flags);
+		m_flags = to_host<std::uint32_t>(m_flags);
 
 		buffer.skip(4); // unknown
 
@@ -28,10 +29,10 @@ namespace fms
 	{
 		m_amf0.write_short_string(buffer, m_name, true);
 
-		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_version);
+		std::uint32_t tmp = to_network<std::uint32_t>(m_version);
 		buffer << tmp;
 
-		tmp = boost::asio::detail::socket_ops::host_to_network_long(m_flags);
+		tmp = to_network<std::uint32_t>(m_flags);
 		buffer << tmp;
 
 		tmp = 0;
@@ -49,7 +50,7 @@ namespace fms
 
 		std::uint32_t len;
 		buffer >> len;
-		len = boost::asio::detail::socket_ops::network_to_host_long(len);
+		len = to_host<std::uint32_t>(len);
 
 		switch (ev->m_type)
 		{
@@ -111,7 +112,7 @@ namespace fms
 			buffer << zero;
 		else if (ev->m_type == eSendMessage)
 		{
-			std::uint32_t const size = boost::asio::detail::socket_ops::host_to_network_long(static_cast<std::uint32_t>(ev->m_data.size()));
+			std::uint32_t const size = to_network<std::uint32_t>(static_cast<std::uint32_t>(ev->m_data.size()));
 			buffer << size;
 			buffer.write(ev->m_data.data(), ev->m_data.size());
 		}
@@ -124,7 +125,7 @@ namespace fms
 			m_amf0.write_short_string(buffer, ev->m_name, true);
 			if (ev->m_type != eSuccess && ev->m_type != eRemove)
 				m_amf0.write(buffer, ev->m_value);
-			std::uint32_t const size = boost::asio::detail::socket_ops::host_to_network_long(
+			std::uint32_t const size = to_network<std::uint32_t>(
 				static_cast<std::uint32_t>(buffer.mark() - pos - 4));
 			buffer.patch(pos, reinterpret_cast<const std::uint8_t *>(&size), sizeof(size));
 		}

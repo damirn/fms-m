@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "rtmp_message.h"
+#include "byte_order.h"
 #include "buffer_eof.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
@@ -89,7 +90,7 @@ namespace fms
 
 	void rtmp_message_chunk_size::serialize(byte_writer &buffer)
 	{
-		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_chunk_size);
+		std::uint32_t tmp = to_network<std::uint32_t>(m_chunk_size);
 		buffer << tmp;
 	}
 
@@ -97,12 +98,12 @@ namespace fms
 	{
 		std::uint32_t tmp;
 		buffer >> tmp;
-		m_chunk_size = boost::asio::detail::socket_ops::network_to_host_long(tmp);
+		m_chunk_size = to_host<std::uint32_t>(tmp);
 	}
 
 	void rtmp_message_abort::serialize(byte_writer &buffer)
 	{
-		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_chunk_stream_id);
+		std::uint32_t tmp = to_network<std::uint32_t>(m_chunk_stream_id);
 		buffer << tmp;
 	}
 
@@ -110,12 +111,12 @@ namespace fms
 	{
 		std::uint32_t tmp;
 		buffer >> tmp;
-		m_chunk_stream_id = boost::asio::detail::socket_ops::network_to_host_long(tmp);
+		m_chunk_stream_id = to_host<std::uint32_t>(tmp);
 	}
 
 	void rtmp_message_bytes_read::serialize(byte_writer &buffer)
 	{
-		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_bytes_read);
+		std::uint32_t tmp = to_network<std::uint32_t>(m_bytes_read);
 		buffer << tmp;
 	}
 
@@ -123,25 +124,25 @@ namespace fms
 	{
 		std::uint32_t tmp;
 		buffer >> tmp;
-		m_bytes_read = boost::asio::detail::socket_ops::network_to_host_long(tmp);
+		m_bytes_read = to_host<std::uint32_t>(tmp);
 	}
 
 	void rtmp_message_ping::deserialize(byte_reader &buffer)
 	{
 		buffer >> m_value1;
-		m_value1 = boost::asio::detail::socket_ops::network_to_host_short(m_value1);
+		m_value1 = to_host<std::uint16_t>(m_value1);
 		if (m_elements >= 2)
 		{
 			buffer >> m_value2;
-			m_value2 = boost::asio::detail::socket_ops::network_to_host_long(m_value2);
+			m_value2 = to_host<std::uint32_t>(m_value2);
 			if (m_elements >= 3)
 			{
 				buffer >> m_value3;
-				m_value3 = boost::asio::detail::socket_ops::network_to_host_long(m_value3);
+				m_value3 = to_host<std::uint32_t>(m_value3);
 				if (m_elements >= 4)
 				{
 					buffer >> m_value4;
-					m_value4 = boost::asio::detail::socket_ops::network_to_host_long(m_value4);
+					m_value4 = to_host<std::uint32_t>(m_value4);
 				}
 			}
 		}
@@ -151,16 +152,16 @@ namespace fms
 	{
 		// User-control fields are big-endian; emit as many elements as the event
 		// carries.
-		std::uint16_t const v1 = boost::asio::detail::socket_ops::host_to_network_short(m_value1);
-		std::uint32_t const v2 = boost::asio::detail::socket_ops::host_to_network_long(m_value2);
+		std::uint16_t const v1 = to_network<std::uint16_t>(m_value1);
+		std::uint32_t const v2 = to_network<std::uint32_t>(m_value2);
 		buffer << v1 << v2;
 		if (m_elements >= 3)
 		{
-			std::uint32_t const v3 = boost::asio::detail::socket_ops::host_to_network_long(m_value3);
+			std::uint32_t const v3 = to_network<std::uint32_t>(m_value3);
 			buffer << v3;
 			if (m_elements >= 4)
 			{
-				std::uint32_t const v4 = boost::asio::detail::socket_ops::host_to_network_long(m_value4);
+				std::uint32_t const v4 = to_network<std::uint32_t>(m_value4);
 				buffer << v4;
 			}
 		}
@@ -169,24 +170,24 @@ namespace fms
 	void rtmp_message_window_acknowledgement_size::deserialize(byte_reader &buffer)
 	{
 		buffer >> m_size;
-		m_size = boost::asio::detail::socket_ops::network_to_host_long(m_size);
+		m_size = to_host<std::uint32_t>(m_size);
 	}
 
 	void rtmp_message_window_acknowledgement_size::serialize(byte_writer &buffer)
 	{
-		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_size);
+		std::uint32_t tmp = to_network<std::uint32_t>(m_size);
 		buffer << tmp;
 	}
 
 	void rtmp_message_set_peer_bandwidth::deserialize(byte_reader &buffer)
 	{
 		buffer >> m_size >> m_limit_type;
-		m_size = boost::asio::detail::socket_ops::network_to_host_long(m_size);
+		m_size = to_host<std::uint32_t>(m_size);
 	}
 
 	void rtmp_message_set_peer_bandwidth::serialize(byte_writer &buffer)
 	{
-		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_size);
+		std::uint32_t tmp = to_network<std::uint32_t>(m_size);
 		buffer << tmp << m_limit_type;
 	}
 

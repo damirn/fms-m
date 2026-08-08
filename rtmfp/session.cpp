@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "session.h"
+#include "byte_order.h"
 #include "aes.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
@@ -416,7 +417,7 @@ namespace fms
 				rtmp_header h;
 				byte_reader s(data, len);
 				s >> h.message_type() >> h.timestamp();
-				h.timestamp() = boost::asio::detail::socket_ops::network_to_host_long(h.timestamp());
+				h.timestamp() = to_host<std::uint32_t>(h.timestamp());
 				auto const i = m_flow_id_to_stream_id.find(f->flow_id());
 				if (i != m_flow_id_to_stream_id.end())
 				{
@@ -527,7 +528,7 @@ namespace fms
 		std::uint8_t t = result->type();
 		temp << t;
 		std::uint32_t ts = result->timestamp();
-		ts = boost::asio::detail::socket_ops::host_to_network_long(ts);
+		ts = to_network<std::uint32_t>(ts);
 		temp << ts;
 		result->serialize(temp);
 
@@ -723,8 +724,8 @@ namespace fms
 
 		address a;
 		a.m_type = eAddressOriginLocal;
-		a.m_ip = boost::asio::detail::socket_ops::host_to_network_long(ad.to_uint());
-		a.m_port = boost::asio::detail::socket_ops::host_to_network_short(port);
+		a.m_ip = to_network<std::uint32_t>(ad.to_uint());
+		a.m_port = to_network<std::uint16_t>(port);
 		m_addresses.push_back(a);
 	}
 

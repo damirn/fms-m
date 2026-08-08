@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "header.h"
+#include "byte_order.h"
 
 #include <boost/asio.hpp>
 
@@ -21,12 +22,12 @@ namespace fms
 		if (m_timestamp_present)
 		{
 			data >> m_timestamp;
-			m_timestamp = boost::asio::detail::socket_ops::network_to_host_short(m_timestamp);
+			m_timestamp = to_host<std::uint16_t>(m_timestamp);
 		}
 		if (m_timestamp_echo_present)
 		{
 			data >> m_timestamp_echo;
-			m_timestamp_echo = boost::asio::detail::socket_ops::network_to_host_short(m_timestamp_echo);
+			m_timestamp_echo = to_host<std::uint16_t>(m_timestamp_echo);
 		}
 	}
 
@@ -48,13 +49,13 @@ namespace fms
 		std::uint16_t ts = 0;
 		if (m_timestamp_present)
 		{
-			ts = boost::asio::detail::socket_ops::host_to_network_short(m_timestamp);
+			ts = to_network<std::uint16_t>(m_timestamp);
 			to << ts;
 		}
 
 		if (m_timestamp_echo_present)
 		{
-			ts = boost::asio::detail::socket_ops::host_to_network_short(m_timestamp_echo);
+			ts = to_network<std::uint16_t>(m_timestamp_echo);
 			to << ts;
 		}
 	}

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "rtmp_header.h"
+#include "byte_order.h"
 
 #include <boost/asio/detail/socket_ops.hpp>
 
@@ -211,7 +212,7 @@ namespace fms
 
 		if (m_timestamp >= 0x00ffffff)
 		{
-			std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_timestamp);
+			std::uint32_t tmp = to_network<std::uint32_t>(m_timestamp);
 			buffer << tmp;
 		}
 	}
@@ -252,7 +253,7 @@ namespace fms
 
 		if (m_ts_delta_write >= 0x00ffffff)
 		{
-			std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_ts_delta_write);
+			std::uint32_t tmp = to_network<std::uint32_t>(m_ts_delta_write);
 			buffer << tmp;
 		}
 	}
@@ -287,7 +288,7 @@ namespace fms
 		else
 		{
 			buffer.write_uint32_3(0x00ffffff);
-			std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_ts_delta_write);
+			std::uint32_t tmp = to_network<std::uint32_t>(m_ts_delta_write);
 			buffer << tmp;
 		}
 	}
@@ -325,7 +326,7 @@ namespace fms
 		std::uint32_t const ts = (m_header_type == eHeaderNew) ? m_timestamp : m_ts_delta_write;
 		if (ts >= 0x00ffffff)
 		{
-			std::uint32_t const ext = boost::asio::detail::socket_ops::host_to_network_long(ts);
+			std::uint32_t const ext = to_network<std::uint32_t>(ts);
 			buffer << ext;
 		}
 	}

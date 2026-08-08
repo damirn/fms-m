@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "amf0.h"
+#include "byte_order.h"
 #include "amf3.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
@@ -27,7 +28,7 @@ namespace fms
 
 		std::uint16_t len;
 		buffer >> len;
-		len = boost::asio::detail::socket_ops::network_to_host_short(len);
+		len = to_host<std::uint16_t>(len);
 		if (buffer.available() < len)         // wire length must not exceed the buffer
 			throw buffer_eof_exception();
 		value->value() = std::string(reinterpret_cast<const char *>(buffer.read_pos()), len);
@@ -52,7 +53,7 @@ namespace fms
 		if (!skip_type)
 			buffer << b;
 
-		std::uint16_t const nlen = boost::asio::detail::socket_ops::host_to_network_short(n);
+		std::uint16_t const nlen = to_network<std::uint16_t>(n);
 		buffer << nlen;
 		buffer.write(value, n);
 	}
@@ -202,7 +203,7 @@ namespace fms
 		buffer << b;
 
 		auto size = static_cast<std::uint32_t>(value->value().size());
-		size = boost::asio::detail::socket_ops::host_to_network_long(size);
+		size = to_network<std::uint32_t>(size);
 		buffer << size;
 
 		amf0_ecma_array::array_t  const&array = value->value();
@@ -227,7 +228,7 @@ namespace fms
 
 		std::uint32_t cnt;
 		buffer >> cnt;
-		cnt = boost::asio::detail::socket_ops::network_to_host_long(cnt);
+		cnt = to_host<std::uint32_t>(cnt);
 
 		for (std::uint32_t i = 0; i < cnt; ++i)
 		{
@@ -244,7 +245,7 @@ namespace fms
 		buffer << b;
 
 		auto size = static_cast<std::uint32_t>(value->value().size());
-		size = boost::asio::detail::socket_ops::host_to_network_long(size);
+		size = to_network<std::uint32_t>(size);
 		buffer << size;
 
 		amf0_strict_array::array_t  const&array = value->value();
@@ -264,7 +265,7 @@ namespace fms
 
 		std::uint32_t cnt;
 		buffer >> cnt;
-		cnt = boost::asio::detail::socket_ops::network_to_host_long(cnt);
+		cnt = to_host<std::uint32_t>(cnt);
 		if (buffer.available() >= cnt)
 		{
 			value->initialize(buffer.read_pos(), cnt);
@@ -280,7 +281,7 @@ namespace fms
 		buffer << b;
 
 		auto size = value->size();
-		size = boost::asio::detail::socket_ops::host_to_network_long(size);
+		size = to_network<std::uint32_t>(size);
 		buffer << size;
 
 		buffer.write(value->data(), value->size());
@@ -334,7 +335,7 @@ namespace fms
 			throw buffer_eof_exception();
 		std::uint32_t len;
 		buffer >> len;
-		len = boost::asio::detail::socket_ops::network_to_host_long(len);
+		len = to_host<std::uint32_t>(len);
 		if (buffer.available() < len)
 			throw buffer_eof_exception();
 		value->value() = std::string(reinterpret_cast<const char *>(buffer.read_pos()), len);
@@ -348,7 +349,7 @@ namespace fms
 		std::uint8_t const b = amf0_type::eAMF0XMLDocument;
 		buffer << b;
 
-		std::uint32_t const len = boost::asio::detail::socket_ops::host_to_network_long(
+		std::uint32_t const len = to_network<std::uint32_t>(
 			static_cast<std::uint32_t>(value->value().size()));
 		buffer << len;
 		buffer.write(value->value().c_str(), value->value().size());
@@ -476,7 +477,7 @@ namespace fms
 					throw buffer_eof_exception();
 				std::uint16_t idx;
 				buffer >> idx;
-				idx = boost::asio::detail::socket_ops::network_to_host_short(idx);
+				idx = to_host<std::uint16_t>(idx);
 				if (idx >= m_ref_table.size())
 					throw amf0_read_exception();
 				return m_ref_table[idx];

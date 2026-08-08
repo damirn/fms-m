@@ -1,5 +1,7 @@
 #pragma once
 
+#include "byte_order.h"
+
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -70,7 +72,7 @@ namespace fms
 		// 24-bit big-endian (RTMP timestamps / lengths).
 		void write_uint32_3(std::uint32_t v)
 		{
-			std::uint32_t const tmp = boost::asio::detail::socket_ops::host_to_network_long(v);
+			std::uint32_t const tmp = to_network<std::uint32_t>(v);
 			const auto *b = reinterpret_cast<const std::uint8_t *>(&tmp);
 			m_buf.insert(m_buf.end(), b + 1, b + 4);
 		}

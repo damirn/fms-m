@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "flv_writer.h"
+#include "byte_order.h"
 
 #include <filesystem>
 #include <stdexcept>
@@ -120,13 +121,13 @@ namespace fms
 
 	void flv_writer::write_previos_tag_size()
 	{
-		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(m_prev_tag_size);
+		std::uint32_t tmp = to_network<std::uint32_t>(m_prev_tag_size);
 		m_file.write(reinterpret_cast<char *>(&tmp), sizeof(tmp));
 	}
 
 	void flv_writer::write_uint32_3(std::uint32_t v)
 	{
-		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(v);
+		std::uint32_t tmp = to_network<std::uint32_t>(v);
 
 		std::uint8_t  const*b = reinterpret_cast<std::uint8_t *> (&tmp);
 
@@ -138,7 +139,7 @@ namespace fms
 	{
 		write_uint32_3(timestamp);
 
-		std::uint32_t tmp = boost::asio::detail::socket_ops::host_to_network_long(timestamp);
+		std::uint32_t tmp = to_network<std::uint32_t>(timestamp);
 		std::uint8_t  const*b = reinterpret_cast<std::uint8_t *> (&tmp);
 
 		m_file << b[0];

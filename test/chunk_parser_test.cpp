@@ -2,6 +2,7 @@
 // bytes in, messages out. The harness feeds a std::vector<uint8_t> (optionally in
 // fragments, to exercise the partial-message path) and records the emitted messages.
 
+#include "byte_order.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 #include "channel_manager.h"
@@ -13,6 +14,7 @@
 #include "rtmp_parser.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <exception>
@@ -1037,4 +1039,29 @@ TEST_CASE("rtmp aggregate: a sub-message that fails to decode does not desync th
 	REQUIRE(audio->size() == good_audio.size());
 	CHECK(audio->data()[0] == 0xAF);
 	CHECK(audio->data()[3] == 0x22);
+}
+
+TEST_CASE("byte order: to_network/to_host round-trip and match the wire layout")
+{
+	// Replaces boost::asio::detail::socket_ops across every wire codec, so pin the
+	// actual byte layout, not just that the pair is self-inverse.
+	CHECK(to_host(to_network(std::uint16_t{0x1234})) == 0x1234);
+	CHECK(to_host(to_network(std::uint32_t{0x12345678})) == 0x12345678u);
+
+	std::uint16_t const be16 = to_network(std::uint16_t{0x1234});
+	std::array<std::uint8_t, 2> b16{};
+	std::memcpy(b16.data(), &be16, sizeof(be16));
+	CHECK(b16[0] == 0x12);   // most significant byte first
+	CHECK(b16[1] == 0x34);
+
+	std::uint32_t const be32 = to_network(std::uint32_t{0x12345678});
+	std::array<std::uint8_t, 4> b32{};
+	std::memcpy(b32.data(), &be32, sizeof(be32));
+	CHECK(b32[0] == 0x12);
+	CHECK(b32[3] == 0x78);
+
+	// edges
+	CHECK(to_network(std::uint16_t{0}) == 0);
+	CHECK(to_host(to_network(std::uint16_t{0xFFFF})) == 0xFFFF);
+	CHECK(to_host(to_network(std::uint32_t{0xFFFFFFFF})) == 0xFFFFFFFFu);
 }
