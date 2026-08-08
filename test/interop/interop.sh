@@ -100,6 +100,8 @@ start_server() {
 # wait_publishing <name> [timeout_secs] -- block until the server has actually
 # accepted the publish. A fixed sleep raced the publisher's connect + handshake
 # (RTMFP does DH keying first) and made cases 1/3/4/5/8/8b flaky under load.
+# NB: stream names must be unique across cases -- the log accumulates, so a reused
+# name matches the earlier case's line and returns immediately.
 wait_publishing() {
 	local name="$1" secs="${2:-15}"
 	for _ in $(seq 1 $((secs*10))); do
@@ -221,11 +223,11 @@ has_av "$WORK/tun.flv"                  && ok "rtmpt: valid A/V over the HTTP tu
 if have_rtmfp; then
 	echo "[4] RTMFP live: tcpublish -> tcconn (strict crypto, no -H -S)"
 	make_source "$WORK/rtmfp.flv" 6
-	PUB=$(publish_rtmfp live "$WORK/rtmfp.flv")
-	wait_publishing live
-	play_rtmfp live 3
+	PUB=$(publish_rtmfp rtmfplive "$WORK/rtmfp.flv")
+	wait_publishing rtmfplive
+	play_rtmfp rtmfplive 3
 	kill "$PUB" 2>/dev/null
-	saw_media "$WORK/rtmfp_play_live.log"  && ok "rtmfp: A/V received over RTMFP" || bad "rtmfp: media"
+	saw_media "$WORK/rtmfp_play_rtmfplive.log"  && ok "rtmfp: A/V received over RTMFP" || bad "rtmfp: media"
 
 	echo "[5] RTMFP->RTMP bridge: tcpublish -> rtmpdump"
 	PUB=$(publish_rtmfp bridge "$WORK/rtmfp.flv")
@@ -257,7 +259,7 @@ fi
 # closes cleanly on UnpublishNotify. Verified against a stock FMS 4.5 container.
 echo "[7] live unpublish: publisher stops mid-play -> UnpublishNotify, no StreamEOF"
 PUB=$(publish_live unp 3)          # short-lived publisher; ends on its own
-sleep 0.5
+wait_publishing unp
 play_rtmpdump "rtmp://127.0.0.1:$RTMP_PORT/media/unp" "$WORK/unp.flv" 8 -v
 kill "$PUB" 2>/dev/null
 has_av "$WORK/unp.flv"                          && ok "unpublish: media received before unpublish" || bad "unpublish: media"
