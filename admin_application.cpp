@@ -397,8 +397,8 @@ namespace fms
 		std::unique_lock const lock(m_admin_mutex);
 		if (m_clients.empty())
 			return false;
-		for (auto & m_client : m_clients)
-			if (m_client.second)
+		for (auto & client : m_clients)
+			if (client.second)
 				return true;
 		return false;
 	}

@@ -32,13 +32,11 @@ namespace fms
 		: client_session(reserved_sid, app_mngr)
 		, m_manager(app_mngr)
 		, m_service(srv)
-		, 
-		 m_outgoing_sid(reserved_sid)
+		, m_outgoing_sid(reserved_sid)
 		, m_endpoint(ep)
 		, m_timer(srv->io_context())
 		, m_alarm(srv->io_context())
 		, m_strand(srv->io_context())
-		 
 	{
 		m_parser = new parser(*this);
 		initialize_ts_flags();
@@ -781,9 +779,9 @@ namespace fms
 		{
 			m_data_packet_count = 0;
 			bool was_loss = false;
-			for (auto & m_sending_flow : m_sending_flows)
+			for (auto & sflow : m_sending_flows)
 			{
-				if (m_sending_flow.second->on_timeout_alarm())
+				if (sflow.second->on_timeout_alarm())
 					was_loss = true;
 			}
 			if (was_loss)

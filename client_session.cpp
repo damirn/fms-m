@@ -8,13 +8,11 @@ namespace fms
 	client_session::client_session(std::uint32_t id, app_host *app_mngr)
 		: m_id(id)
 		, m_app_manager(app_mngr)
-		, 
-		 m_time(std::chrono::system_clock::now())
+		, m_time(std::chrono::system_clock::now())
 		, m_bytes_read(0)
 		, m_bytes_written(0)
 		, m_messages_read(0)
 		, m_messages_written(0)
-		 
 	{}
 
 	void client_session::close()

@@ -13,8 +13,7 @@ namespace fms
 		: m_active(true)
 	{}
 
-	simple_mixer::~simple_mixer()
-	= default;
+	simple_mixer::~simple_mixer() = default;
 
 	void simple_mixer::add_source_stream(std::uint32_t id)
 	{
@@ -147,10 +146,10 @@ namespace fms
 
 		{
 			std::unique_lock const lock(m_streams_mutex);
-			for (auto & m_stream : m_streams)
+			for (auto & stream : m_streams)
 			{
-				m_stream.second->fill_frame();
-				const auto *src = reinterpret_cast<const short *>(m_stream.second->m_buffer.get());
+				stream.second->fill_frame();
+				const auto *src = reinterpret_cast<const short *>(stream.second->m_buffer.get());
 				for (std::size_t s = 0; s < samples; ++s)
 					acc[s] += src[s];
 			}

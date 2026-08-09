@@ -28,8 +28,7 @@ namespace fms
 		: m_app_manager(app_manager)
 		, m_io_context(io_context)
 		, m_socket(io_context, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port))
-		, 
-		 m_start(std::chrono::system_clock::now())
+		, m_start(std::chrono::system_clock::now())
 		, m_sessions_iterator(m_sessions.begin())
 	{
 		// A predictable secret defeats the authenticated-cookie check entirely.
