@@ -22,22 +22,24 @@ namespace fms
 		speex_bits_destroy(&m_enc_bits);
 	}
 
-	std::uint8_t *speex_codec::encode(std::uint8_t *data, std::uint32_t size, std::uint32_t &enc_size)
+	std::vector<std::uint8_t> speex_codec::encode(std::uint8_t *data, std::uint32_t size)
 	{
-		if (size == 0 || size != 640)
-			return nullptr;
+		if (size != eFrameBytes)
+			return {};
 
-		auto *enc_buff = new std::uint8_t[m_frame_size * sizeof(spx_int16_t) * 2 + m_reserved_for_header];
+		std::vector<std::uint8_t> out(m_frame_size * sizeof(spx_int16_t) * 2 + m_reserved_for_header);
 
 		speex_bits_reset(&m_enc_bits);
 
 		speex_encode_int(m_enc_state, reinterpret_cast<std::int16_t *>(data), &m_enc_bits);
 		speex_encode_int(m_enc_state, reinterpret_cast<std::int16_t *>(data + m_frame_size * sizeof(spx_int16_t)), &m_enc_bits);
 
-		enc_size = speex_bits_write(&m_enc_bits, reinterpret_cast<char *>(enc_buff + m_reserved_for_header), m_frame_size);
-		enc_size += m_reserved_for_header;
-
-		return enc_buff;
+		int const n = speex_bits_write(&m_enc_bits,
+			reinterpret_cast<char *>(out.data() + m_reserved_for_header), static_cast<int>(m_frame_size));
+		if (n <= 0)
+			return {};
+		out.resize(static_cast<std::size_t>(n) + m_reserved_for_header);
+		return out;
 	}
 
 	std::uint8_t *speex_codec::decode(char *to, std::uint8_t *data, std::uint32_t size, std::uint32_t &dec_size)

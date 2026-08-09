@@ -166,14 +166,14 @@ namespace fms
 			mix[s] = static_cast<short>(v);
 		}
 
-		std::uint32_t size = 0;
-		std::uint8_t *data = m_speex_codec->encode(reinterpret_cast<std::uint8_t *>(m_rec_buffer.get()), eBufferSize, size);
-		if (data != nullptr)
+		std::vector<std::uint8_t> enc =
+			m_speex_codec->encode(reinterpret_cast<std::uint8_t *>(m_rec_buffer.get()), eBufferSize);
+		if (!enc.empty())
 		{
-			data[0] = 0xb2;
+			enc[0] = 0xb2;   // FLV audio tag header: Speex, 16 kHz, mono
 			if (m_sink)
-				m_sink->write_audio(reinterpret_cast<char *>(data), size, m_timestamp);
-			delete[] data;
+				m_sink->write_audio(reinterpret_cast<const char *>(enc.data()),
+					static_cast<std::uint32_t>(enc.size()), m_timestamp);
 		}
 		m_timestamp += eTimeInterval;
 	}
