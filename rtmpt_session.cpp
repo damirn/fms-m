@@ -43,8 +43,8 @@ namespace fms
 			while(m_app->get_async_message(m_id, msg))
 				serialize_message(msg, buffer);
 
-			for (auto & m_result : m_results)
-				serialize_message(m_result, buffer);
+			for (auto & result : m_results)
+				serialize_message(result, buffer);
 			m_results.clear();
 
 		}

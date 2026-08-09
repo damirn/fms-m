@@ -74,8 +74,8 @@ namespace fms
 	{
 		static vlu_t const end_marker = 0;
 		std::uint16_t size = 0;
-		for (auto & m_option : m_options)
-			size += m_option->serialize(to);
+		for (auto & opt : m_options)
+			size += opt->serialize(to);
 		to.write_vlu(end_marker);
 		return size + 1;
 	}
@@ -96,9 +96,9 @@ namespace fms
 
 	std::optional<option_ptr> option_list::get_option(std::uint8_t type)
 	{
-		for (auto & m_option : m_options)
-			if (m_option->m_type == type)
-				return std::optional<option_ptr>(m_option);
+		for (auto & opt : m_options)
+			if (opt->m_type == type)
+				return std::optional<option_ptr>(opt);
 		return std::optional<option_ptr>();
 	}
 }

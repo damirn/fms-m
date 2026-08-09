@@ -370,13 +370,6 @@ namespace fms
 			: rtmp_message(eMessageAudioData), m_data(new std::uint8_t[size]), m_size(size)
 		{}
 
-		rtmp_message_audio_data(const rtmp_message_audio_data &audio_data)
-			 
-		= default;
-
-		~rtmp_message_audio_data() override
-		= default;
-
 		void deserialize(byte_reader &) override;
 
 		void serialize(byte_writer &) override;
@@ -445,13 +438,6 @@ namespace fms
 		explicit rtmp_message_video_data(std::uint32_t size)
 			: rtmp_message(eMessageVideoData), m_data(new std::uint8_t[size]), m_size(size)
 		{}
-
-		rtmp_message_video_data(const rtmp_message_video_data &video_data)
-			 
-		= default;
-
-		~rtmp_message_video_data() override
-		= default;
 
 		void deserialize(byte_reader &) override;
 

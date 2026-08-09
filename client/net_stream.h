@@ -23,8 +23,7 @@ namespace fms::rtmp_client
 	class av_sink
 	{
 	public:
-		av_sink()
-		= default;
+		av_sink() = default;
 		virtual ~av_sink()= default;
 		virtual void on_video_frame(rtmp_message_video_data_ptr) = 0;
 		virtual void on_audio_frame(rtmp_message_audio_data_ptr) = 0;

@@ -155,9 +155,9 @@ namespace fms
 	void connection_registry::list_clients(client_list_t &list)
 	{
 		std::unique_lock const lock(m_mutex);
-		for (auto & m_connection : m_connections)
+		for (auto & conn : m_connections)
 		{
-			client_data_ptr const data = get_client_data_impl(m_connection.first);
+			client_data_ptr const data = get_client_data_impl(conn.first);
 			if (data.get() != nullptr)
 				list.push_back(data);
 		}

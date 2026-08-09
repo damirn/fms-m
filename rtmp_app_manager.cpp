@@ -86,8 +86,8 @@ namespace fms
 
 	void rtmp_app_manager::list_applications(string_list_t &list)
 	{
-		for (auto & m_app : m_apps)
-			list.push_back(m_app.second->app_name());
+		for (auto & app : m_apps)
+			list.push_back(app.second->app_name());
 	}
 
 	void rtmp_app_manager::list_clients(client_list_t &list) { m_conn_registry->list_clients(list); }
@@ -109,8 +109,8 @@ namespace fms
 
 	void rtmp_app_manager::get_queue_stats(queue_stats_list_t &list)
 	{
-		for (auto & m_app : m_apps)
-			m_app.second->get_queue_stats(list);
+		for (auto & app : m_apps)
+			app.second->get_queue_stats(list);
 	}
 
 	// Thin delegators onto the netstream stats registry; the store, its mutex, and the

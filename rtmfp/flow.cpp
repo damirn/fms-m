@@ -333,14 +333,14 @@ namespace fms
 	bool flow::update_nak_count(const vlu_t &max_tsn)
 	{
 		bool retransmit = false;
-		for (auto & m_fragment : m_fragments)
+		for (auto & frag : m_fragments)
 		{
-			if (m_fragment.second->m_in_flight && m_fragment.second->m_tsn < max_tsn)
+			if (frag.second->m_in_flight && frag.second->m_tsn < max_tsn)
 			{
-				m_fragment.second->m_nak_count++;
-				if (m_fragment.second->m_nak_count >= 3) // 3.6.2.5
+				frag.second->m_nak_count++;
+				if (frag.second->m_nak_count >= 3) // 3.6.2.5
 				{
-					m_fragment.second->m_in_flight = false;   // fast retransmit -> a loss signal
+					frag.second->m_in_flight = false;   // fast retransmit -> a loss signal
 					retransmit = true;
 				}
 			}
@@ -350,20 +350,20 @@ namespace fms
 
 	std::optional<option_ptr> flow::metadata()
 	{
-		for (auto & m_option : m_options.m_options)
-			if (m_option->m_type == option::eMetadata)
-				return std::optional<option_ptr>(m_option);
+		for (auto & opt : m_options.m_options)
+			if (opt->m_type == option::eMetadata)
+				return std::optional<option_ptr>(opt);
 		return std::optional<option_ptr>();
 	}
 
 	bool flow::on_timeout_alarm()
 	{
 		bool ret = false;
-		for (auto & m_fragment : m_fragments)
+		for (auto & frag : m_fragments)
 		{
-			if (m_fragment.second->m_in_flight)
+			if (frag.second->m_in_flight)
 			{
-				m_fragment.second->m_in_flight = false;
+				frag.second->m_in_flight = false;
 				ret = true;
 			}
 		}
