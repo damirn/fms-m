@@ -348,7 +348,7 @@ namespace fms
 		return m_so_manager->handle_so(so, connection_id, result);
 	}
 
-	bool rtmp_application::handle_invoke_result(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
+	bool rtmp_application::handle_invoke_result(rtmp_message_invoke_ptr msg, std::uint32_t /*connection_id*/, rtmp_message_ptr &result)
 	{
 		// take() frees this connection's slot before the callback runs -- the
 		// bandwidth exchange re-registers the same handler under a fresh id from
@@ -359,7 +359,7 @@ namespace fms
 		return res->m_call_back(msg, res, result);
 	}
 
-	void rtmp_application::handle_invoke_check_bandwidth(rtmp_message_invoke_ptr msg, std::uint32_t connection_id, rtmp_message_ptr &result)
+	void rtmp_application::handle_invoke_check_bandwidth(rtmp_message_invoke_ptr /*msg*/, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		bwcheck_result_handler_ptr const res_handler = std::make_shared<bwcheck_result_handler>(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_download(std::move(a), std::move(b), c); });
 		std::uint32_t const id = ++m_invoke_id;
@@ -377,7 +377,7 @@ namespace fms
 		result = res;
 	}
 
-	void rtmp_application::handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr invoke, std::uint32_t connection_id, rtmp_message_ptr &result)
+	void rtmp_application::handle_invoke_check_upload_bandwidth(rtmp_message_invoke_ptr /*invoke*/, std::uint32_t connection_id, rtmp_message_ptr &result)
 	{
 		bwcheck_result_handler_ptr const res_handler = std::make_shared<bwcheck_result_handler>(connection_id, [this](rtmp_message_invoke_ptr a, result_handler_ptr b, rtmp_message_ptr &c) { return handle_result_bw_check_upload(std::move(a), std::move(b), c); });
 		std::uint32_t const id = ++m_invoke_id;
@@ -394,7 +394,7 @@ namespace fms
 		result = res;
 	}
 
-	bool rtmp_application::handle_result_bw_check_upload(rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, rtmp_message_ptr &result)
+	bool rtmp_application::handle_result_bw_check_upload(rtmp_message_invoke_ptr /*msg*/, result_handler_ptr res_handler, rtmp_message_ptr &result)
 	{
 		bwcheck_result_handler_ptr const bw_res = std::dynamic_pointer_cast<bwcheck_result_handler>(res_handler);
 		client_stats stats;
@@ -421,7 +421,7 @@ namespace fms
 		return true;
 	}
 
-	bool rtmp_application::handle_result_bw_check_download(rtmp_message_invoke_ptr msg, result_handler_ptr res_handler, rtmp_message_ptr &result)
+	bool rtmp_application::handle_result_bw_check_download(rtmp_message_invoke_ptr /*msg*/, result_handler_ptr res_handler, rtmp_message_ptr &result)
 	{
 		bwcheck_result_handler_ptr const bw_res = std::dynamic_pointer_cast<bwcheck_result_handler>(res_handler);
 		if (bw_res->m_num_called == 0) // first time we got this result set

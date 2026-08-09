@@ -74,11 +74,16 @@ if(APPLE)
   find_library(APPKIT AppKit REQUIRED)
 endif()
 
-# -fno-strict-aliasing was dropped: the amf0 double type-pun (the only real
-# aliasing UB) is now a std::memcpy, and the build is clean under -Wstrict-aliasing=2.
 # -Wno-deprecated-* only silences Boost 1.76 / libc++ C++23 header internals.
 # Optimization/-g come from CMAKE_BUILD_TYPE (see the default set above).
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -Wall -Wno-write-strings -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wstrict-aliasing=2 -Wno-write-strings -Wno-deprecated-declarations")
+
+# Warnings as errors, off by default so a toolchain with a new diagnostic does not
+# break someone's build; CI and the modernization work should turn it on.
+option(WERROR "Treat warnings as errors" OFF)
+if(WERROR)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # clang-only spellings; GCC doesn't recognise these and would warn.
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-builtins -Wno-#pragma-messages")
@@ -86,7 +91,11 @@ endif()
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp
+  ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp)
+
+# SYSTEM: third-party headers must not produce warnings we would then have to
+# silence globally. Boost 1.76 alone emits ~12k -Wold-style-cast.
+include_directories(SYSTEM
   ${Boost_INCLUDE_DIRS}
   ${SPEEX_INCLUDE_DIRS}
   ${CRYPTO_INCLUDE_DIRS}

@@ -92,7 +92,7 @@ namespace fms::rtmp_client
 
 		void register_invoke_handler(const std::string &, invoke_handler_t);
 
-		const bool connected() const
+		bool connected() const
 		{
 			return m_state == eReady;
 		}

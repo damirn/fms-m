@@ -512,7 +512,7 @@ namespace fms
 		send_stream_notify(connection_id, stream_id, code, desc, true);
 	}
 
-	void media_application::check_waiting_clients(std::uint32_t bcaster_id, const std::string &stream_name)
+	void media_application::check_waiting_clients(std::uint32_t /*bcaster_id*/, const std::string &stream_name)
 	{
 		auto const lock = m_registry.lock_exclusive();
 

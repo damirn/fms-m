@@ -302,7 +302,7 @@ namespace fms::rtmp_client
 		}
 	}
 
-	void net_connection::handle_write_data(bool ok, std::size_t bytes_transferred)
+	void net_connection::handle_write_data(bool ok, std::size_t /*bytes_transferred*/)
 	{
 		if (ok)
 		{

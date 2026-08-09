@@ -445,7 +445,8 @@ namespace fms
 			return;
 
 		std::uint16_t ipk_len = 0;
-		const std::uint8_t *ipk = find_cert_dh_pubkey(iikc->initator_cert(), iikc->cert_len(), 2 /*group we implement*/, ipk_len);
+		const std::uint8_t *ipk = find_cert_dh_pubkey(iikc->initator_cert(),
+			static_cast<std::uint32_t>(iikc->cert_len()), 2 /*group we implement*/, ipk_len);
 		if (ipk == nullptr)
 		{
 			// legacy Flash cert layout: DH public key at a fixed offset
@@ -527,9 +528,9 @@ namespace fms
 			m_serializer->finish_raw_packet(i->second->session_id(), i->second->get_aes());
 
 			auto rc = std::make_unique<redirect_chunk>(ic->tag_len(), ic->tag());
-			boost::asio::ip::address_v4 const tmp = i->second->end_point().address().to_v4();
-			a.m_type = 0x02;
-			a.m_ip = to_network<std::uint32_t>(tmp.to_uint());
+			boost::asio::ip::address_v4 const peer_v4 = i->second->end_point().address().to_v4();
+			a.m_type = eAddressOriginReported;
+			a.m_ip = to_network<std::uint32_t>(peer_v4.to_uint());
 			a.m_port = to_network<std::uint16_t>(i->second->end_point().port());
 
 			rc->addresses().push_back(a);

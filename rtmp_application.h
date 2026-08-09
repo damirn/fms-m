@@ -169,7 +169,7 @@ namespace fms
 		// message: enqueue runs on the per-frame fan-out path. 0 = unbounded.
 		std::size_t m_max_queue_bytes;
 
-		std::atomic<long> m_invoke_id;
+		std::atomic<std::uint32_t> m_invoke_id;
 
 
 		std::unique_ptr<so_manager> m_so_manager;
