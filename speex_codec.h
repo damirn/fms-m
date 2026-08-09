@@ -9,10 +9,12 @@ namespace fms
 	class speex_codec final : public audio_codec
 	{
 	public:
+		// One 40 ms block of 16 kHz mono 16-bit PCM -- what the mixer produces.
+		static constexpr std::uint32_t eFrameBytes = 640;
 		explicit speex_codec(std::uint16_t = 1);
 		~speex_codec() override;
 
-		std::uint8_t *encode(std::uint8_t *, std::uint32_t, std::uint32_t &) override;
+		std::vector<std::uint8_t> encode(std::uint8_t *, std::uint32_t) override;
 		std::uint8_t *decode(char *, std::uint8_t *, std::uint32_t, std::uint32_t &) override;
 
 		// returns frame size in bytes
