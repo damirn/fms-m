@@ -202,6 +202,37 @@ TEST_CASE("av_delivery: audio is gated by the AAC sequence header and rebased")
 	CHECK(a.front()->channel_id() == stream_to_channel(5, eAudio));
 }
 
+TEST_CASE("av_delivery: each delivered frame wakes the subscriber's writer")
+{
+	// fake_session counts notify() and recording_host counts notify_connection();
+	// neither was asserted, so delivery could have stopped waking the writer and
+	// every other test here would still pass. Note they are different paths: the
+	// per-frame send notifies the cached session, the metadata fan-out goes
+	// through the host.
+	fixture f;
+	auto *const sess = static_cast<fake_session *>(f.host.session.get());
+	CHECK(sess->m_notifies == 0);
+
+	f.av.route_video(vframe(KEY, AVC, 1, 100), f.bcid);
+	REQUIRE(!f.host.videos(2).empty());
+	int const after_first = sess->m_notifies;
+	CHECK(after_first > 0);
+
+	f.av.route_video(vframe(INTER, AVC, 1, 140), f.bcid);
+	CHECK(sess->m_notifies > after_first);
+}
+
+TEST_CASE("av_delivery: a suppressed frame does not wake the writer")
+{
+	fixture f;
+	auto *const sess = static_cast<fake_session *>(f.host.session.get());
+	f.sub->m_receive_video = false;
+	f.av.route_video(vframe(KEY, AVC, 1, 100), f.bcid);
+
+	CHECK(f.host.videos(2).empty());
+	CHECK(sess->m_notifies == 0);
+}
+
 TEST_CASE("av_delivery: onMetaData is fanned out to subscribers")
 {
 	fixture f;

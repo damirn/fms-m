@@ -1,17 +1,14 @@
 // Unit tests for rtmp_application driven through a fake app_host.
 //
-// The point of this file is as much structural as behavioural: it links
-// rtmp_application WITHOUT the transport stack. Before app_host existed,
-// rtmp_application.h included rtmp_app_manager.h, which included
-// rtmp_connection.h / http_connection.h / rtmpt_session.h -- so any test of the
-// application tier dragged in Boost.Beast, and this target could not exist. If a
-// future change reintroduces that dependency, this stops linking.
+// Structural as much as behavioural: it links rtmp_application WITHOUT the
+// transport stack, so if a change reintroduces that dependency this stops
+// linking.
 //
-// Behaviourally it covers the per-connection teardown that three separate leaks
-// were fixed in: the async send queue, the pending-result-handler table and the
-// shared objects are all released when a connection goes away.
+// Behaviourally: the async send queue's accounting and teardown, and the
+// backpressure policy's two outcomes (shed droppable video, then disconnect).
 
 #include "app_host.h"
+#include "config.h"
 #include "doctest.h"
 #include "rtmp_application.h"
 #include "rtmp_message.h"
@@ -85,6 +82,16 @@ namespace
 			v->data()[1] = 0x01;
 		return v;
 	}
+
+	// Audio is never shed (send_queue_policy), so this only ever grows the queue.
+	rtmp_message_ptr undroppable(std::uint32_t bytes)
+	{
+		auto a = std::make_shared<rtmp_message_audio_data>(bytes);
+		a->data()[0] = static_cast<std::uint8_t>(rtmp_message_audio_data::eAAC << 4);
+		if (bytes > 1)
+			a->data()[1] = 0x01;
+		return a;
+	}
 }
 
 TEST_CASE("enqueue respects the host's view of which connections are live")
@@ -126,6 +133,41 @@ TEST_CASE("connection teardown releases the queue")
 
 	CHECK(app.queued_bytes(1) == 0);
 	CHECK(!app.has_async_messages(1));
+}
+
+TEST_CASE("a queue past the hard cap disconnects the connection")
+{
+	// fake_host counts destroy_connection and add_dropped_messages_for_netstream;
+	// nothing asserted on either, so the shed path could have stopped calling them
+	// entirely and every test would still have passed.
+	fake_host h;
+	test_app app(&h);
+
+	// Undroppable messages only (send_queue_policy never sheds control/command),
+	// so the queue can only grow until the cap forces a disconnect.
+	std::size_t const cap = config::instance()->max_queue_bytes();
+	for (std::size_t queued = 0; queued <= cap && h.destroyed == 0; queued += 60000)
+		app.enqueue_async_message(1, undroppable(60000));
+
+	CHECK(h.destroyed == 1);
+	// destroy_connection is a request to the host; the queue is released when the
+	// host calls back into delete_connection, not by the shed path itself.
+	app.delete_connection(1);
+	CHECK(app.queued_bytes(1) == 0);
+}
+
+TEST_CASE("shed video is reported as dropped for the netstream")
+{
+	fake_host h;
+	test_app app(&h);
+
+	// Over half the cap, droppable video is shed rather than the connection killed.
+	std::size_t const half = config::instance()->max_queue_bytes() / 2;
+	for (std::size_t queued = 0; queued <= half; queued += 60000)
+		app.enqueue_async_message(1, frame(60000));
+
+	CHECK(h.dropped_reports > 0);
+	CHECK(h.destroyed == 0);
 }
 
 TEST_CASE("teardown of one connection leaves the others alone")

@@ -1,5 +1,6 @@
 #include "amf3.h"
 #include "byte_reader.h"
+#include "amf_helpers.h"
 #include "doctest.h"
 
 #include <cmath>
@@ -12,42 +13,16 @@ using namespace fms;
 
 namespace
 {
-	using bytes = std::vector<std::uint8_t>;
+	using amf_test::bytes;
 
 	// Encode one AMF3 value to bytes (fresh serializer -> fresh reference context).
-	bytes encode(const amf3_type_ptr &v)
-	{
-		amf3 a;
-		byte_writer buf;
-		a.write(buf, v);
-		return bytes(buf.data(), buf.data() + buf.size());
-	}
+	bytes encode(const amf3_type_ptr &v) { return amf_test::encode_with<amf3>(v); }
 
 	// Decode one AMF3 value from bytes.
-	amf3_type_ptr decode(const bytes &b)
-	{
-		amf3 a;
-		byte_reader buf(b.data(), b.size());
-		return a.read(buf);
-	}
+	amf3_type_ptr decode(const bytes &b) { return amf_test::decode_with<amf3>(b); }
 
 	// Parse a hex string ("09 05 01" or "090501") into bytes.
-	bytes hx(const std::string &s)
-	{
-		bytes out;
-		int hi = -1;
-		for (char c : s)
-		{
-			int v;
-			if (c >= '0' && c <= '9') v = c - '0';
-			else if (c >= 'a' && c <= 'f') v = c - 'a' + 10;
-			else if (c >= 'A' && c <= 'F') v = c - 'A' + 10;
-			else continue;
-			if (hi < 0) hi = v;
-			else { out.push_back(static_cast<std::uint8_t>((hi << 4) | v)); hi = -1; }
-		}
-		return out;
-	}
+	using amf_test::hx;
 
 	// amf-cpp-style helpers: assert exact serialization, and round-trip stability.
 	void is_equal(const bytes &expected, const amf3_type_ptr &v)

@@ -313,6 +313,8 @@ if(BUILD_FUZZERS)
   target_compile_options(fuzz_run PRIVATE -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined)
   target_link_options(fuzz_run PRIVATE -fsanitize=address,undefined)
   add_test(NAME fuzz_run COMMAND fuzz_run)
+  # 3M iterations under ASan+UBSan; ctest's default is 1500s.
+  set_tests_properties(fuzz_run PROPERTIES TIMEOUT 3600)
 
   # libFuzzer needs LLVM clang's -fsanitize=fuzzer runtime; GCC has no equivalent
   # driver and Apple's Xcode clang ("AppleClang") ships no libFuzzer runtime, so

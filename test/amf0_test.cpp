@@ -1,6 +1,7 @@
 #include "amf0.h"
 #include "amf3.h"
 #include "byte_reader.h"
+#include "amf_helpers.h"
 #include "doctest.h"
 
 #include <cstdint>
@@ -11,39 +12,13 @@ using namespace fms;
 
 namespace
 {
-	using bytes = std::vector<std::uint8_t>;
+	using amf_test::bytes;
 
-	bytes encode(const amf0_type_ptr &v)
-	{
-		amf0 a;
-		byte_writer buf;
-		a.write(buf, v);
-		return bytes(buf.data(), buf.data() + buf.size());
-	}
+	bytes encode(const amf0_type_ptr &v) { return amf_test::encode_with<amf0>(v); }
 
-	amf0_type_ptr decode(const bytes &b)
-	{
-		amf0 a;
-		byte_reader buf(b.data(), b.size());
-		return a.read(buf);
-	}
+	amf0_type_ptr decode(const bytes &b) { return amf_test::decode_with<amf0>(b); }
 
-	bytes hx(const std::string &s)
-	{
-		bytes out;
-		int hi = -1;
-		for (char c : s)
-		{
-			int v;
-			if (c >= '0' && c <= '9') v = c - '0';
-			else if (c >= 'a' && c <= 'f') v = c - 'a' + 10;
-			else if (c >= 'A' && c <= 'F') v = c - 'A' + 10;
-			else continue;
-			if (hi < 0) hi = v;
-			else { out.push_back(static_cast<std::uint8_t>((hi << 4) | v)); hi = -1; }
-		}
-		return out;
-	}
+	using amf_test::hx;
 
 	void is_equal(const bytes &expected, const amf0_type_ptr &v)
 	{
