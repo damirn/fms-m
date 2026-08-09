@@ -60,7 +60,7 @@ namespace fms
 		return s;
 	}
 
-	boost::tribool rtmp_application::handle_message(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
+	boost::tribool rtmp_application::handle_message(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
 		switch(msg->type())
 		{
@@ -304,7 +304,7 @@ namespace fms
 		}
 	}
 
-	boost::tribool rtmp_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
+	boost::tribool rtmp_application::handle_invoke(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr const invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 

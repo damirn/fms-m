@@ -55,7 +55,7 @@ namespace fms
 			return m_app_name;
 		}
 
-		virtual boost::tribool handle_message(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		virtual boost::tribool handle_message(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
 
 		virtual void delete_connection(std::uint32_t, const std::string & = "");
 
@@ -93,10 +93,10 @@ namespace fms
 		using optional_param_list_t = std::optional<amf0_parameter_list_t>;
 
 	protected:
-		virtual boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		virtual boost::tribool handle_invoke(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
 		virtual bool handle_shared_object(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
-		virtual void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) = 0;
-		virtual void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) = 0;
+		virtual void handle_audio_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) = 0;
+		virtual void handle_video_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) = 0;
 		virtual boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) = 0;
 
 		virtual void handle_ping(rtmp_message_ptr, std::uint32_t, const rtmp_header &);

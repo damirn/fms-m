@@ -99,7 +99,7 @@ namespace fms
 		}
 	}
 
-	boost::tribool media_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
+	boost::tribool media_application::handle_invoke(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr const invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
@@ -186,7 +186,7 @@ namespace fms
 			handle_notify_clear_data_frame(notify, connection_id);
 	}
 
-	void media_application::handle_audio_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
+	void media_application::handle_audio_data(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &)
 	{
 		rtmp_message_audio_data_ptr const audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
 
@@ -197,7 +197,7 @@ namespace fms
 		m_av.route_audio(audio, bcid);
 	}
 
-	void media_application::handle_video_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &)
+	void media_application::handle_video_data(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &)
 	{
 		rtmp_message_video_data_ptr const video = std::dynamic_pointer_cast<rtmp_message_video_data>(msg);
 		if (video->size() == 0)

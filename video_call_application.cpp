@@ -20,7 +20,7 @@ namespace fms
 		static const char call_end[] = "call_end";
 	}
 
-	boost::tribool video_call_application::handle_invoke(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
+	boost::tribool video_call_application::handle_invoke(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &header, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr const invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
 
@@ -40,7 +40,7 @@ namespace fms
 		return media_application::handle_invoke(msg, connection_id, header, result);
 	}
 
-	void video_call_application::handle_audio_data(rtmp_message_ptr msg, std::uint32_t connection_id, const rtmp_header &h)
+	void video_call_application::handle_audio_data(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &h)
 	{
 		rtmp_message_audio_data_ptr const audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
 		client_session_ptr const conn = get_connection(connection_id);
