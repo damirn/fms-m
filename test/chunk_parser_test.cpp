@@ -273,8 +273,26 @@ TEST_CASE("rtmp aggregate: deeply nested aggregates are bounded, not a stack ove
 	byte_reader r(body.data(), body.size());
 
 	rtmp_protocol p;
-	try { p.deserialize(r, h); } catch (...) {}   // bounded parse; eof on unwind is fine
-	CHECK(true);   // reaching here means the recursion was bounded
+	bool ok = false;
+	// eof on unwind is fine; the point is that it returns rather than recursing
+	// until the stack goes.
+	try { ok = p.deserialize(r, h); } catch (const std::exception &) { ok = false; }
+
+	// Assert the cap actually bit, not merely that we got here: count the nesting
+	// the parser was willing to build and require it to stop at eMaxAggregateDepth.
+	int depth = 0;
+	if (ok)
+	{
+		auto agg = std::dynamic_pointer_cast<rtmp_message_aggregate>(p.message());
+		while (agg)
+		{
+			++depth;
+			auto const &subs = agg->get_messages();
+			agg = subs.empty() ? nullptr
+			                   : std::dynamic_pointer_cast<rtmp_message_aggregate>(subs.front());
+		}
+	}
+	CHECK(depth <= 4);   // rtmp_protocol::eMaxAggregateDepth
 }
 
 TEST_CASE("chunk parser: basic-header channel-id encodings (1/2/3 byte)")
@@ -422,7 +440,11 @@ TEST_CASE("chunk parser: garbage input does not crash and yields no messages")
 	parser_harness h;
 	auto const junk = pattern(500, 123);
 	CHECK_NOTHROW(h.feed(junk));
-	// whatever it decides, it must not fabricate audio/video frames from noise
+
+	// The loop below runs zero times in practice, so on its own it asserted
+	// nothing. Pin the actual outcome first.
+	CHECK(h.messages.empty());
+	// and if that ever changes, noise must still not become audio/video frames
 	for (auto &m : h.messages)
 		CHECK((m.type != AUDIO && m.type != VIDEO));
 }
@@ -1064,4 +1086,68 @@ TEST_CASE("byte order: to_network/to_host round-trip and match the wire layout")
 	CHECK(to_network(std::uint16_t{0}) == 0);
 	CHECK(to_host(to_network(std::uint16_t{0xFFFF})) == 0xFFFF);
 	CHECK(to_host(to_network(std::uint32_t{0xFFFFFFFF})) == 0xFFFFFFFFu);
+}
+
+TEST_CASE("chunk parser: parse() reports all three states of its tribool")
+{
+	// parse() distinguishes "dispatched a message" / "nothing completed" /
+	// "stopped on a partial", and the connection drives its read loop off that.
+	// Nothing asserted on it before, so the contract could have been inverted and
+	// every test would still pass.
+	auto const payload = pattern(64, 7);
+
+	SUBCASE("true: a complete message was dispatched")
+	{
+		chunk_stream cs;
+		cs.message(5, AUDIO, 100, 1, payload);
+		parser_harness h;
+		boost::tribool const r = h.feed(cs.bytes);
+		CHECK(bool(r));
+		CHECK(h.messages.size() == 1);
+	}
+
+	SUBCASE("indeterminate: stopped on a partial message")
+	{
+		chunk_stream cs;
+		cs.message(5, AUDIO, 100, 1, payload);
+		cs.bytes.resize(cs.bytes.size() - 8);   // truncate the payload
+
+		parser_harness h;
+		boost::tribool const r = h.feed(cs.bytes);
+		CHECK(boost::indeterminate(r));
+		CHECK(h.messages.empty());
+	}
+
+	SUBCASE("indeterminate: a header split across two feeds")
+	{
+		chunk_stream cs;
+		cs.message(5, AUDIO, 100, 1, payload);
+		std::vector<std::uint8_t> const head(cs.bytes.begin(), cs.bytes.begin() + 3);
+
+		parser_harness h;
+		CHECK(boost::indeterminate(h.feed(head)));
+		CHECK(h.messages.empty());
+
+		// the rest completes it
+		std::vector<std::uint8_t> const tail(cs.bytes.begin() + 3, cs.bytes.end());
+		CHECK(bool(h.feed(tail)));
+		CHECK(h.messages.size() == 1);
+	}
+
+	SUBCASE("false: a whole chunk framed, but the message it belongs to is not done")
+	{
+		// Declare 200 bytes and hand over exactly one full 128-byte chunk: nothing
+		// is left partial (so not indeterminate), yet no message completed. This is
+		// the state the other two values have to be distinguished from.
+		auto const c1 = pattern(128, 2);
+		chunk_stream cs;
+		cs.hdr0(4, 0, 200, VIDEO, 1);
+		cs.raw(c1.data(), c1.size());
+
+		parser_harness h;
+		boost::tribool const r = h.feed(cs.bytes);
+		CHECK_FALSE(bool(r));
+		CHECK_FALSE(boost::indeterminate(r));
+		CHECK(h.messages.empty());
+	}
 }

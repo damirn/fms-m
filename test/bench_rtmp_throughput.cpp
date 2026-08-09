@@ -8,6 +8,7 @@
 //
 //   ./bench_rtmp_throughput [frame_B=16384] [seconds=15] [chunk_B=60000]
 //                           [n_streams=1] [server_threads=8] [base_port=26000]
+//                           [window_frames] [name_offset=0]
 //
 // Each publisher keeps at most WINDOW frames ahead of what its subscriber has
 // received (TCP-style flow control), so memory stays bounded and the run is
@@ -365,7 +366,12 @@ int main(int argc, char **argv)
 	std::printf("streams=%d  frame=%u B  chunk=%u B  srv_threads=%d  window=%.1fs\n",
 	            n_streams, frame_bytes, out_chunk, server_threads, win);
 	std::printf("  aggregate: %.2f GiB/s  (%.0f MiB/s)\n", gb / win, gb * 1024.0 / win);
-	std::printf("  cpu: server=%.2f cores  box=%.2f cores  (server %.0f%% of box)\n",
-	            srv_cores, box_cores, box_cores > 0 ? 100.0 * srv_cores / box_cores : 0.0);
+	// proc_cpu_secs/box_cpu_secs read /proc, which does not exist on macOS -- they
+	// return 0 there, and printing that as a measurement is worse than saying so.
+	if (box_cores > 0)
+		std::printf("  cpu: server=%.2f cores  box=%.2f cores  (server %.0f%% of box)\n",
+		            srv_cores, box_cores, 100.0 * srv_cores / box_cores);
+	else
+		std::printf("  cpu: unavailable (no /proc on this platform)\n");
 	return 0;
 }
