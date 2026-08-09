@@ -17,20 +17,28 @@ namespace fms
 	{
 		BIGNUM *p = BN_bin2bn(p_bytes, static_cast<int>(p_len), nullptr);
 		BIGNUM *gbn = BN_new();
-		BN_set_word(gbn, g);
 		BIGNUM *pub_bn = pub ? BN_bin2bn(pub, static_cast<int>(pub_len), nullptr) : nullptr;
-
 		OSSL_PARAM_BLD *bld = OSSL_PARAM_BLD_new();
-		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_FFC_P, p);
-		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_FFC_G, gbn);
-		if (pub_bn)
-			OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PUB_KEY, pub_bn);
-		OSSL_PARAM *params = OSSL_PARAM_BLD_to_param(bld);
+
+		// An allocation or push failing here would otherwise build a partial
+		// parameter set and yield a key derived from the wrong group.
+		bool ok = p != nullptr && gbn != nullptr && bld != nullptr
+			&& (pub == nullptr || pub_bn != nullptr)
+			&& BN_set_word(gbn, g) == 1
+			&& OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_FFC_P, p) == 1
+			&& OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_FFC_G, gbn) == 1;
+		if (ok && pub_bn != nullptr)
+			ok = OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PUB_KEY, pub_bn) == 1;
+
+		OSSL_PARAM *params = ok ? OSSL_PARAM_BLD_to_param(bld) : nullptr;
 
 		EVP_PKEY *key = nullptr;  // NOLINT(misc-const-correctness): written through OpenSSL C API out-param
 		EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_from_name(nullptr, "DH", nullptr);
-		if (ctx && params && EVP_PKEY_fromdata_init(ctx) > 0)
-			EVP_PKEY_fromdata(ctx, &key, selection, params);
+		if (ctx != nullptr && params != nullptr && EVP_PKEY_fromdata_init(ctx) > 0)
+		{
+			if (EVP_PKEY_fromdata(ctx, &key, selection, params) <= 0)
+				key = nullptr;
+		}
 
 		EVP_PKEY_CTX_free(ctx);
 		OSSL_PARAM_free(params);

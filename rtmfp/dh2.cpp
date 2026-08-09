@@ -67,7 +67,7 @@ namespace fms
 		return generate_rnonce();
 	}
 
-	void dh2::generate_symetric_keys(const std::uint8_t *inonce,
+	bool dh2::generate_symetric_keys(const std::uint8_t *inonce,
 		std::uint16_t inonce_size,
 		const std::uint8_t *rnonce,
 		std::uint16_t rnonce_size,
@@ -77,24 +77,25 @@ namespace fms
 		std::uint8_t mdp1[eAESKeySize];
 		std::uint8_t mdp2[eAESKeySize];
 
-		HMAC(EVP_sha256(), rnonce, rnonce_size, inonce, inonce_size, mdp1, nullptr);
-		HMAC(EVP_sha256(), inonce, inonce_size, rnonce, rnonce_size, mdp2, nullptr);
+		if (HMAC(EVP_sha256(), rnonce, rnonce_size, inonce, inonce_size, mdp1, nullptr) == nullptr
+			|| HMAC(EVP_sha256(), inonce, inonce_size, rnonce, rnonce_size, mdp2, nullptr) == nullptr)
+			return false;
 
-		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp1, eAESKeySize, dec_key, nullptr);
-		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp2, eAESKeySize, enc_key, nullptr);
+		return HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp1, eAESKeySize, dec_key, nullptr) != nullptr
+			&& HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp2, eAESKeySize, enc_key, nullptr) != nullptr;
 	}
 
-	void dh2::generate_hmac_keys(const std::uint8_t *enc_key, const std::uint8_t *dec_key,
+	bool dh2::generate_hmac_keys(const std::uint8_t *enc_key, const std::uint8_t *dec_key,
 		std::uint8_t *tx_hmac_key, std::uint8_t *rx_hmac_key)
 	{
 		// txHMAC = HMAC(secret, enc_key), rxHMAC = HMAC(secret, dec_key).
-		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, enc_key, eAESKeySize, tx_hmac_key, nullptr);
-		HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, dec_key, eAESKeySize, rx_hmac_key, nullptr);
+		return HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, enc_key, eAESKeySize, tx_hmac_key, nullptr) != nullptr
+			&& HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, dec_key, eAESKeySize, rx_hmac_key, nullptr) != nullptr;
 	}
 
-	void dh2::generate_peer_id(const std::uint8_t *data, std::uint16_t data_size, std::uint8_t *target)
+	bool dh2::generate_peer_id(const std::uint8_t *data, std::uint16_t data_size, std::uint8_t *target)
 	{
-		EVP_Digest(data, data_size, target, nullptr, EVP_sha256(), nullptr);
+		return EVP_Digest(data, data_size, target, nullptr, EVP_sha256(), nullptr) == 1;
 	}
 
 	bool dh2::generate_rnonce()

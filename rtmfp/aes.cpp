@@ -71,19 +71,24 @@ namespace fms
 		return true;
 	}
 
-	void aes::compute_tx_hmac(std::uint8_t *out, const std::uint8_t *ct, std::size_t len)
+	bool aes::compute_tx_hmac(std::uint8_t *out, const std::uint8_t *ct, std::size_t len)
 	{
 		std::uint8_t md[EVP_MAX_MD_SIZE];
 		unsigned int md_len = 0;
-		HMAC(EVP_sha256(), m_tx_hmac_key, sizeof(m_tx_hmac_key), ct, len, md, &md_len);
+		if (HMAC(EVP_sha256(), m_tx_hmac_key, sizeof(m_tx_hmac_key), ct, len, md, &md_len) == nullptr
+			|| md_len < eHmacLen)
+			return false;
 		std::memcpy(out, md, eHmacLen);   // truncate SHA-256 to the negotiated length
+		return true;
 	}
 
 	bool aes::verify_rx_hmac(const std::uint8_t *ct, std::size_t len, const std::uint8_t *mac)
 	{
 		std::uint8_t md[EVP_MAX_MD_SIZE];
 		unsigned int md_len = 0;
-		HMAC(EVP_sha256(), m_rx_hmac_key, sizeof(m_rx_hmac_key), ct, len, md, &md_len);
+		if (HMAC(EVP_sha256(), m_rx_hmac_key, sizeof(m_rx_hmac_key), ct, len, md, &md_len) == nullptr
+			|| md_len < m_rx_hmac_len)
+			return false;   // fail closed: never compare uninitialised bytes
 		return CRYPTO_memcmp(md, mac, m_rx_hmac_len) == 0;   // constant-time
 	}
 

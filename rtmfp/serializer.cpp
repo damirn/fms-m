@@ -87,7 +87,11 @@ namespace fms
 		{
 			std::size_t const ct_len = m_packet.size() - 4;
 			std::uint8_t *dst = m_packet.extend(aes::eHmacLen);
-			a->compute_tx_hmac(dst, m_packet.data() + 4, ct_len);
+			if (!a->compute_tx_hmac(dst, m_packet.data() + 4, ct_len))
+			{
+				m_packet.clear();   // no tag: write() drops it
+				return;
+			}
 		}
 		if (m_write_seq)
 			a->advance_tx_seq();
