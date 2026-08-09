@@ -311,7 +311,7 @@ namespace fms
 		return serialize_chunk_header(to, hdr);
 	}
 
-	bool flow_exception_report_chunk::deserialize(byte_reader &buff, std::uint16_t len)
+	bool flow_exception_report_chunk::deserialize(byte_reader &buff, std::uint16_t /*len*/)
 	{
 		try
 		{

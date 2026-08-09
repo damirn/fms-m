@@ -129,38 +129,38 @@ namespace fms
 		std::uint8_t b;
 		if ((value & 0xffffff80) == 0)
 		{
-			b = value & 0x7f;
+			b = static_cast<std::uint8_t>(value & 0x7f);
 			buffer << b;
 			return;
 		}
 
 		if ((value & 0xffffc000) == 0)
 		{
-			b = (value >> 7) | 0x80;
+			b = static_cast<std::uint8_t>((value >> 7) | 0x80);
 			buffer << b;
-			b = value & 0x7f;
+			b = static_cast<std::uint8_t>(value & 0x7f);
 			buffer << b;
 			return;
 		}
 
 		if ((value & 0xffe00000) == 0)
 		{
-			b = (value >> 14) | 0x80;
+			b = static_cast<std::uint8_t>((value >> 14) | 0x80);
 			buffer << b;
-			b = (value >> 7) | 0x80;
+			b = static_cast<std::uint8_t>((value >> 7) | 0x80);
 			buffer << b;
-			b = value & 0x7f;
+			b = static_cast<std::uint8_t>(value & 0x7f);
 			buffer << b;
 			return;
 		}
 
-		b = (value >> 22) | 0x80;
+		b = static_cast<std::uint8_t>((value >> 22) | 0x80);
 		buffer << b;
-		b = (value >> 15) | 0x80;
+		b = static_cast<std::uint8_t>((value >> 15) | 0x80);
 		buffer << b;
-		b = (value >> 8) | 0x80;
+		b = static_cast<std::uint8_t>((value >> 8) | 0x80);
 		buffer << b;
-		b = value & 0xff;
+		b = static_cast<std::uint8_t>(value & 0xff);
 		buffer << b;
 	}
 

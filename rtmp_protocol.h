@@ -15,7 +15,7 @@ namespace fms
 			: m_chunk_size(eChunkSize)
 		{}
 
-		explicit rtmp_protocol(std::uint16_t chunk_size)
+		explicit rtmp_protocol(std::uint32_t chunk_size)
 			: m_chunk_size(chunk_size)
 		{}
 
@@ -68,7 +68,7 @@ namespace fms
 		// stack-overflow risk.
 		enum { eMaxAggregateDepth = 4 };
 
-		std::uint16_t m_chunk_size;
+		std::uint32_t m_chunk_size;
 		int m_aggregate_depth{0};
 		rtmp_message_ptr m_message;
 	};

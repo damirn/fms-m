@@ -84,7 +84,7 @@ TEST_CASE("packet HMAC round-trips and rejects tampering")
 	for (int i = 0; i < 48; ++i)
 		ct[i] = static_cast<std::uint8_t>(i * 3 + 5);
 	std::uint8_t mac[aes::eHmacLen];
-	tx.compute_tx_hmac(mac, ct, sizeof(ct));
+	REQUIRE(tx.compute_tx_hmac(mac, ct, sizeof(ct)));
 
 	CHECK(rx.verify_rx_hmac(ct, sizeof(ct), mac));
 

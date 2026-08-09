@@ -33,7 +33,7 @@ namespace fms
 		amf0 a;
 		a.write(tmp, str);
 		a.write(tmp, meta);
-		m_flv->write_script(reinterpret_cast<const char *>(tmp.data()), tmp.size(), 0);
+		m_flv->write_script(reinterpret_cast<const char *>(tmp.data()), static_cast<std::uint32_t>(tmp.size()), 0);
 	}
 
 	void stream_recorder::close()
