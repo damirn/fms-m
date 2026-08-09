@@ -57,31 +57,33 @@ namespace fms
 		return m_parser->parse(data);
 	}
 
+	// parser::deserialize_chunk constructs exactly one class per wire type, so
+	// the type test below is the discriminator; no RTTI needed.
 	bool session::handle_chunk(chunk *c)
 	{
 		if (c->type() == chunk::eUserData)
 		{
-			auto *udc = dynamic_cast<user_data_chunk *>(c);
+			auto *udc = static_cast<user_data_chunk *>(c);
 			return handle_user_data(udc);
 		}
 		if (c->type() == chunk::eNextUserData)
 		{
-			auto *ndc = dynamic_cast<next_user_data_chunk *>(c);
+			auto *ndc = static_cast<next_user_data_chunk *>(c);
 			return handle_next_user_data(ndc);
 		}
 		if (c->type() == chunk::eDataAcknowledgementRanges)
 		{
-			auto *rac = dynamic_cast<range_ack_chunk *>(c);
+			auto *rac = static_cast<range_ack_chunk *>(c);
 			return handle_range_ack(rac);
 		}
 		if (c->type() == chunk::eFlowExceptionReportChunk)
 		{
-			auto *fec = dynamic_cast<flow_exception_report_chunk *>(c);
+			auto *fec = static_cast<flow_exception_report_chunk *>(c);
 			handle_flow_exception_report(fec);
 		}
 		else if (c->type() == chunk::ePing)
 		{
-			auto *pc = dynamic_cast<ping_chunk *>(c);
+			auto *pc = static_cast<ping_chunk *>(c);
 			handle_ping(pc);
 		}
 		else if (c->type() == chunk::eSessionClose)

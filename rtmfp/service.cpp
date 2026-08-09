@@ -258,12 +258,12 @@ namespace fms
 	{
 		if (c->type() == chunk::eInitiatorHello)
 		{
-			auto *ic = dynamic_cast<ihello_chunk *>(c);
+			auto *ic = static_cast<ihello_chunk *>(c);
 			handle_ihello(ic);
 		}
 		else if (c->type() == chunk::eInitiatorInitialKeying)
 		{
-			auto *iikc = dynamic_cast<iikeying_chunk *>(c);
+			auto *iikc = static_cast<iikeying_chunk *>(c);
 			handle_iikeying(iikc);
 		}
 		return false;

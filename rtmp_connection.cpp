@@ -322,7 +322,7 @@ namespace fms
 			m_app->update_stats(false, false, 1);
 		if (result->type() == rtmp_message::eMessageChunkSize)
 		{
-			rtmp_message_chunk_size_ptr const cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(result);
+			rtmp_message_chunk_size_ptr const cs = std::static_pointer_cast<rtmp_message_chunk_size>(result);
 			set_outgoing_chunk_size(cs->chunk_size());
 		}
 		p.serialize(m_output_buffer, result, h, channel->sent_header());

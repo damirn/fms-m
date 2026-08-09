@@ -64,12 +64,12 @@ namespace fms
 	{
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
-			rtmp_message_chunk_size_ptr const cs_msg = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg);
+			rtmp_message_chunk_size_ptr const cs_msg = std::static_pointer_cast<rtmp_message_chunk_size>(msg);
 			m_parser.set_chunk_size(cs_msg->chunk_size());
 		}
 		else if (msg->type() == rtmp_message::eMessageWindowAcknowledgementSize)
 		{
-			rtmp_message_window_acknowledgement_size_ptr const ack = std::dynamic_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
+			rtmp_message_window_acknowledgement_size_ptr const ack = std::static_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
 			m_win_ack = m_bytes_read_notify = ack->size();
 		}
 	}
