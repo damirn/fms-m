@@ -85,7 +85,7 @@ namespace fms
 		static constexpr std::uint8_t ePlainMagic = rtmp_handshaker::ePlainMagic;
 		static constexpr std::uint8_t eCryptoMagic = rtmp_handshaker::eCryptoMagic;
 
-		enum : std::uint32_t { eAckSize = eDefaultAckWindow };
+		static constexpr std::uint32_t eAckSize = eDefaultAckWindow;
 
 		std::uint32_t m_bytes_read_notify{eAckSize};
 		std::uint32_t m_win_ack{eAckSize};

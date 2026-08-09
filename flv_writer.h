@@ -46,7 +46,10 @@ namespace fms
 		bool m_first_audio_frame{true};
 		bool m_first_video_frame{true};
 
-		enum { eAudioFrame = 0x08, eVideoFrame = 0x09, eScriptFrame = 0x12 };
+		// FLV tag types.
+		static constexpr std::uint8_t eAudioFrame  = 0x08;
+		static constexpr std::uint8_t eVideoFrame  = 0x09;
+		static constexpr std::uint8_t eScriptFrame = 0x12;
 		static std::uint8_t m_header[];
 	};
 }

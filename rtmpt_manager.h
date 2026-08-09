@@ -97,7 +97,10 @@ namespace fms
 		// eMaxSessions bounds the id table against an unauthenticated /open flood;
 		// eMaxOutOfOrder bounds a single session's out-of-order backlog against a
 		// client that sends ever-increasing sequence numbers and never the next one.
-		enum { eIDSize = 16, eTimerInterval = 30, eMaxSessions = 4096, eMaxOutOfOrder = 64 };
-		enum : std::size_t { eMaxOutOfOrderBytes = 4u * 1024 * 1024 };   // aggregate byte cap
+		static constexpr std::uint16_t eIDSize            = 16;
+		static constexpr auto          eTimerInterval     = std::chrono::seconds{30};
+		static constexpr std::size_t   eMaxSessions       = 4096;
+		static constexpr std::size_t   eMaxOutOfOrder     = 64;
+		static constexpr std::size_t   eMaxOutOfOrderBytes = 4u * 1024 * 1024;
 	};
 }

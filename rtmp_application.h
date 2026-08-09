@@ -207,7 +207,7 @@ namespace fms
 		// Max replies one connection may have outstanding. Generous: a bandwidth
 		// check keeps exactly one handler alive at a time (each step of the
 		// three-step exchange re-registers the same object under a fresh id).
-		enum { eMaxResultHandlersPerConnection = 16 };
+		static constexpr std::size_t eMaxResultHandlersPerConnection = 16;
 
 		// Callbacks awaiting a peer `_result`, capped per connection and cleared on
 		// teardown -- see result_handler_registry.h for why both are load-bearing.
@@ -222,9 +222,9 @@ namespace fms
 		virtual bool handle_result_bw_check_download(rtmp_message_invoke_ptr, result_handler_ptr, rtmp_message_ptr &);
 		virtual void handle_invoke_set_peer_info(rtmp_message_invoke_ptr, std::uint32_t, rtmp_message_ptr &);
 
-		enum { eBWCheckStringSize = 32768 };
+		static constexpr std::uint16_t eBWCheckStringSize = 32768;
 		// Seconds between "shedding video" log lines for one connection.
-		enum { eShedLogInterval = 5 };
+		static constexpr auto eShedLogInterval = std::chrono::seconds{5};
 
 		class rtmp_illegal_parameter_exception : public std::runtime_error
 		{

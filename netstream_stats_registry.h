@@ -53,6 +53,6 @@ namespace fms
 		netstream_stats_map_t m_netstream_stats;
 
 		boost::asio::steady_timer m_timer;
-		enum { _eTimeout = 5 };
+		static constexpr auto eQosInterval = std::chrono::seconds{5};
 	};
 }

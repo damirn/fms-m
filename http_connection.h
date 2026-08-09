@@ -60,7 +60,8 @@ namespace fms
 		boost::asio::ip::tcp::socket m_socket;
 
 	private:
-		enum { eIdleTimeout = 60 };   // seconds a connection may wait for a full request
+		// How long a connection may wait for a full request.
+		static constexpr auto eIdleTimeout = std::chrono::seconds{60};
 
 		void do_read();
 		void on_read(const boost::system::error_code &, std::size_t);

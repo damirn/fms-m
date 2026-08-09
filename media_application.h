@@ -37,7 +37,7 @@ namespace fms
 	protected:
 		void start_timer()
 		{
-			m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eTimeout)));
+			m_timer.expires_after(eStatsInterval);
 			m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 		}
 
@@ -115,7 +115,7 @@ namespace fms
 		// by handle_timer under the lock.
 		qos_reporter m_qos{*this, m_registry, m_app_manager};
 
-		enum { _eTimeout = 1 };
+		static constexpr auto eStatsInterval = std::chrono::seconds{1};
 
 		bool add_recording_stream(const std::string &, std::uint32_t, std::uint32_t);
 		bool add_qos_stream(const std::string &, std::uint32_t, std::uint32_t);

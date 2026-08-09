@@ -24,8 +24,9 @@ namespace fms
 
 		// Handshake framing constants the transport needs. 1536-byte C1/S1/C2 blocks;
 		// C0 is a single magic byte (0x03 plain, 0x06 encrypted/RTMPE).
-		enum : std::size_t { eHandShakeSize = 1536 };
-		enum : std::uint8_t { ePlainMagic = 0x03, eCryptoMagic = 0x06 };
+		static constexpr std::size_t eHandShakeSize = 1536;
+		static constexpr std::uint8_t ePlainMagic  = 0x03;
+		static constexpr std::uint8_t eCryptoMagic = 0x06;
 
 		// Phase 1. Given C0 (magic) and C1 (client_sig points at the peer's 1536-byte
 		// C1 in the caller's buffer), build the reply: S0S1 into our own buffer

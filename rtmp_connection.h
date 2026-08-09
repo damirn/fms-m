@@ -105,7 +105,8 @@ namespace fms
 		boost::asio::steady_timer m_hs_timer;
 		boost::asio::steady_timer m_timer;
 
-		enum { eHandShakeTimeout = 5, ePingInterval = 30 };
+		static constexpr auto eHandShakeTimeout = std::chrono::seconds{5};
+		static constexpr auto ePingInterval      = std::chrono::seconds{30};
 
 		// Upper bound on how much handle_notify() serializes into m_output_buffer per
 		// async_write. Bounds the buffer and keeps one connection's backlog from

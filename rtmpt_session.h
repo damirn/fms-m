@@ -76,7 +76,7 @@ namespace fms
 
 		session_state m_sstate{eCSIdle};
 
-		enum { eMaxIdleTimes = 6};
+		static constexpr std::uint8_t eMaxIdleTimes = 6;
 		std::uint8_t m_poll_cnt{0};
 		std::uint8_t m_poll_index{0};
 

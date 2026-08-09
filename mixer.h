@@ -65,7 +65,9 @@ namespace fms
 
 		std::atomic<bool> m_active;   // written on asio threads, read on mixer thread
 
-		enum { eTimeInterval = 40, eBufferSize = 640, ePoolSize = 4096 };
+		static constexpr std::uint32_t eTimeInterval = 40;    // ms per mix tick
+		static constexpr std::uint32_t eBufferSize   = 640;   // bytes of 16-bit PCM per tick
+		static constexpr std::size_t   ePoolSize     = 4096;
 	};
 
 	class audio_sink;

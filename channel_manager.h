@@ -22,7 +22,7 @@ namespace fms
 		// Real RTMP peers use a handful of chunk streams (ffmpeg and rtmpdump stay
 		// under ~10); this is far above any legitimate use and exists only to stop
 		// the map being an amplifier.
-		enum : std::size_t { eMaxChannels = 4096 };
+		static constexpr std::size_t eMaxChannels = 4096;
 
 		rtmp_channel_ptr get_channel(std::uint32_t id)
 		{
