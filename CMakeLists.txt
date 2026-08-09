@@ -80,6 +80,15 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -Wall -Wextra -Wshadow -Wnon-virtu
 
 # Warnings as errors, off by default so a toolchain with a new diagnostic does not
 # break someone's build; CI and the modernization work should turn it on.
+# Sanitizers: -DSANITIZE=address|thread|undefined (or a comma-separated list).
+# The build-asan/ and build-tsan/ trees were hand-configured with raw
+# -DCMAKE_CXX_FLAGS before this existed.
+set(SANITIZE "" CACHE STRING "Sanitizers to enable (address, thread, undefined)")
+if(SANITIZE)
+  add_compile_options(-fsanitize=${SANITIZE} -fno-omit-frame-pointer -g)
+  add_link_options(-fsanitize=${SANITIZE})
+endif()
+
 option(WERROR "Treat warnings as errors" OFF)
 if(WERROR)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
@@ -196,12 +205,24 @@ endif()
 # ---------------------------------------------------------------------------
 enable_testing()
 
+# macOS: Boost.Log resolves ICU at its old keg path. Tests that link Boost.Log
+# need it on DYLD_FALLBACK_LIBRARY_PATH; override for a different install.
+if(APPLE)
+  set(FMS_TEST_DYLD_PATH "/opt/homebrew/opt/icu4c@74/lib" CACHE STRING
+      "DYLD_FALLBACK_LIBRARY_PATH for tests that link Boost.Log")
+endif()
+
 # ---------------------------------------------------------------------------
-# Unit tests (AMF): -DBUILD_AMF_TESTS=ON.  The AMF (de)serializers are the only
-# TUs pulled in, so tests build/run without the audio/RTMP/RTMFP stack.
+# Unit tests: -DBUILD_TESTS=ON. AMF, shared objects, RTMFP, av_delivery, the send
+# queue policy, app_host, result handlers, and the byte_writer bench.
 # ---------------------------------------------------------------------------
-option(BUILD_AMF_TESTS "Build AMF serialization unit tests" OFF)
+option(BUILD_TESTS "Build the unit tests" OFF)
+# Old spelling, kept so existing build dirs and scripts keep working.
+option(BUILD_AMF_TESTS "Deprecated alias for BUILD_TESTS" OFF)
 if(BUILD_AMF_TESTS)
+  set(BUILD_TESTS ON)
+endif()
+if(BUILD_TESTS)
   # The AMF serializers use Boost only for headers, so tests need Boost includes
   # but link no Boost libs — avoids dragging in Boost.Log/ICU.
   add_executable(amf_tests
@@ -258,7 +279,7 @@ if(BUILD_AMF_TESTS)
   if(APPLE)
     # Boost.Log wants icu4c@74 at its old keg path (as interop.sh does).
     set_tests_properties(app_host_test PROPERTIES
-      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/opt/icu4c@74/lib")
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
   # result_handler_registry: the table of callbacks awaiting a peer _result, its
@@ -355,7 +376,7 @@ if(BUILD_CLIENT)
   set_tests_properties(b2b_test PROPERTIES TIMEOUT 180)
   if(APPLE)
     set_tests_properties(b2b_test PROPERTIES
-      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/opt/icu4c@74/lib")
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
   # Interop matrix vs the reference clients (rtmpdump + ffmpeg): drives the real
@@ -391,7 +412,7 @@ if(BUILD_CLIENT)
   if(APPLE)
     # Links Boost.Log, which wants icu4c@74 at its old keg path (as interop.sh does).
     set_tests_properties(chunk_parser_test PROPERTIES
-      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/opt/icu4c@74/lib")
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
   if(NOT APPLE)
     find_package(Threads REQUIRED)

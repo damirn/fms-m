@@ -1,9 +1,15 @@
 build/
 build-*/
+cmake-build-debug/
 .git/
 .idea/
+.claude/
 .cache/
 .DS_Store
 *.log
 REVIEW_FINDINGS.md
+REVIEW_2026-09.md
 rec/
+# ~200 MB of proprietary FMS reference material used only as a local interop
+# oracle; COPY . . would otherwise ship it into the build context and the image.
+test/interop/fms-ref/
