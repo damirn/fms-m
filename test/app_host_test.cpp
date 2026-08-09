@@ -69,8 +69,8 @@ namespace
 	{
 		explicit test_app(app_host *h) : rtmp_application(h, "test") {}
 		using rtmp_application::queued_bytes;
-		void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override {}
-		void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override {}
+		void handle_audio_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override {}
+		void handle_video_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override {}
 		boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) override
 		{
 			return false;

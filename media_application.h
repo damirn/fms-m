@@ -43,10 +43,10 @@ namespace fms
 
 		void handle_timer(const boost::system::error_code &);
 
-		boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
+		boost::tribool handle_invoke(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
 		void handle_notify(rtmp_message_ptr, std::uint32_t) override;
-		void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
-		void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
+		void handle_audio_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override;
+		void handle_video_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override;
 		void handle_ping(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
 		boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) override;
 

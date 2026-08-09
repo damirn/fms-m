@@ -19,8 +19,8 @@ namespace fms
 			: media_application(app_manager, "video_call") {}
 
 	protected:
-		boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
-		void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override;
+		boost::tribool handle_invoke(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
+		void handle_audio_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override;
 
 
 		void handle_record_invoke(const rtmp_message_invoke_ptr&, std::uint32_t);

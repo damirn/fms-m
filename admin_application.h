@@ -31,15 +31,15 @@ namespace fms
 		void init();
 		void load_password_file();
 
-		boost::tribool handle_invoke(rtmp_message_ptr, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
+		boost::tribool handle_invoke(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
 
 		boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) override;
 		bool check_connect_params(std::uint32_t, const rtmp_message_invoke::parameters_list_t &) override;
 		bool check_user_and_password(const std::string &, const std::string &);
 		void delete_connection(std::uint32_t, const std::string & = "") override;
 
-		void handle_audio_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override {}
-		void handle_video_data(rtmp_message_ptr, std::uint32_t, const rtmp_header &) override {}
+		void handle_audio_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override {}
+		void handle_video_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override {}
 
 
 		void handle_invoke_get_apps(const rtmp_message_invoke_ptr&, std::uint32_t, rtmp_message_ptr &);
