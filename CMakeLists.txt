@@ -405,6 +405,14 @@ if(BUILD_CLIENT)
 
   # Characterization tests for the RTMP chunk parser (rtmp_parser::parse),
   # linked against the shared media lib. Bytes in, messages out.
+  # FP9 handshake crypto: pure functions over an attacker-supplied 1536-byte C1.
+  add_executable(handshake_test test/handshake_test.cpp test/test_main.cpp
+    rtmp_handshake.cpp crypto.cpp)
+  target_include_directories(handshake_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
+  target_link_libraries(handshake_test PRIVATE ${CRYPTO_LIBRARIES})
+  add_test(NAME handshake_test COMMAND handshake_test)
+
   add_executable(chunk_parser_test test/chunk_parser_test.cpp test/test_main.cpp)
   target_include_directories(chunk_parser_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
