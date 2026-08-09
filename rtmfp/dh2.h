@@ -20,16 +20,16 @@ namespace fms
 
 		// False if the keypair or the derivation failed.
 		[[nodiscard]] bool generate_shared_secret(const std::uint8_t *, std::uint16_t);
-		void generate_symetric_keys(const std::uint8_t *, std::uint16_t, const std::uint8_t *, std::uint16_t,
+		[[nodiscard]] bool generate_symetric_keys(const std::uint8_t *, std::uint16_t, const std::uint8_t *, std::uint16_t,
 			std::uint8_t *, std::uint8_t *);
 
 		// Derive the per-direction session-HMAC keys (RFC 7016 sec. 4.6.5) from the
 		// AES keys and the DH shared secret: hmac_key = HMAC-SHA256(secret, aes_key).
 		// enc_key/dec_key are the full 32-byte outputs of generate_symetric_keys.
-		void generate_hmac_keys(const std::uint8_t *enc_key, const std::uint8_t *dec_key,
+		[[nodiscard]] bool generate_hmac_keys(const std::uint8_t *enc_key, const std::uint8_t *dec_key,
 			std::uint8_t *tx_hmac_key, std::uint8_t *rx_hmac_key);
 
-		static void generate_peer_id(const std::uint8_t *, std::uint16_t, std::uint8_t *);
+		[[nodiscard]] static bool generate_peer_id(const std::uint8_t *, std::uint16_t, std::uint8_t *);
 
 		const std::uint8_t *rnonce(std::uint16_t &size) const
 		{

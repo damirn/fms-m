@@ -57,7 +57,8 @@ namespace fms
 		void advance_tx_seq() { ++m_tx_seq; }
 
 		// HMAC-SHA256 over the packet ciphertext, truncated to eHmacLen; out holds 16.
-		void compute_tx_hmac(std::uint8_t *out, const std::uint8_t *ct, std::size_t len);
+		// False on failure, leaving out untouched.
+		[[nodiscard]] bool compute_tx_hmac(std::uint8_t *out, const std::uint8_t *ct, std::size_t len);
 		// Constant-time verify of a received packet's trailing HMAC.
 		bool verify_rx_hmac(const std::uint8_t *ct, std::size_t len, const std::uint8_t *mac);
 

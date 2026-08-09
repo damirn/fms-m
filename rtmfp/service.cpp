@@ -442,7 +442,8 @@ namespace fms
  		s->session_id() = iikc->isid();
 
 		dh2 d;
-		d.generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data());
+		if (!d.generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data()))
+			return;
 
 		std::uint16_t ipk_len = 0;
 		const std::uint8_t *ipk = find_cert_dh_pubkey(iikc->initator_cert(), iikc->cert_len(), 2 /*group we implement*/, ipk_len);
@@ -466,7 +467,9 @@ namespace fms
 		ric.serialize(m_serializer->raw_packet());
 		m_serializer->finish_raw_packet(s->session_id(), m_parser->get_aes());
 
-		d.generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()), rnonce, size, s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data());
+		if (!d.generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()), rnonce, size,
+				s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data()))
+			return;   // no session keys: drop the keying rather than run with garbage
 
 		// Enable per-packet session HMAC / sequence numbers (RFC 7016 sec. 4.6) for
 		// this session per the initiator's flags. Our skrc advertised "send on
@@ -488,7 +491,8 @@ namespace fms
 		aes *const sa = s->get_aes();
 		sa->set_crypto_mode(hmac_send, hmac_recv, sseq_send, sseq_recv, rx_hmac_len);
 		if (hmac_send || hmac_recv)
-			d.generate_hmac_keys(sa->enc_key_data(), sa->dec_key_data(), sa->tx_hmac_key(), sa->rx_hmac_key());
+			if (!d.generate_hmac_keys(sa->enc_key_data(), sa->dec_key_data(), sa->tx_hmac_key(), sa->rx_hmac_key()))
+				return;
 
 		s->state() = session::eOpen;
 
@@ -551,7 +555,8 @@ namespace fms
 	{
 		std::uint32_t const addr = m_sender_endpoint.address().to_v4().to_uint();
 		std::uint16_t const port = m_sender_endpoint.port();
-		rtmfp_cookie::write(m_cookie_secret, addr, port, get_timestamp_ms(), cookie);
+		if (!rtmfp_cookie::write(m_cookie_secret, addr, port, get_timestamp_ms(), cookie))
+			return false;
 		// The pad is uninitialised stack until this fills it.
 		return RAND_bytes(cookie + rtmfp_cookie::header_len,
 		                  static_cast<int>(eCookieSize - rtmfp_cookie::header_len)) == 1;

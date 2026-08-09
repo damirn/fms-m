@@ -29,7 +29,7 @@ TEST_CASE("rtmfp cookie: validates for the same endpoint + secret, within the wi
 	std::uint8_t secret[32];
 	fill(secret, sizeof(secret), 0x11);
 	std::uint8_t cookie[64] = {0};
-	rtmfp_cookie::write(secret, addr, port, ts, cookie);
+	REQUIRE(rtmfp_cookie::write(secret, addr, port, ts, cookie));
 
 	CHECK(rtmfp_cookie::valid(secret, addr, port, ts, cookie));                              // now == ts
 	CHECK(rtmfp_cookie::valid(secret, addr, port, ts + rtmfp_cookie::max_age_ms, cookie));   // at the edge
@@ -40,7 +40,7 @@ TEST_CASE("rtmfp cookie: rejects a different address or port (return-routability
 	std::uint8_t secret[32];
 	fill(secret, sizeof(secret), 0x11);
 	std::uint8_t cookie[64] = {0};
-	rtmfp_cookie::write(secret, addr, port, ts, cookie);
+	REQUIRE(rtmfp_cookie::write(secret, addr, port, ts, cookie));
 
 	CHECK_FALSE(rtmfp_cookie::valid(secret, addr + 1, port, ts, cookie));   // off-path / spoofed address
 	CHECK_FALSE(rtmfp_cookie::valid(secret, addr, port + 1, ts, cookie));   // different port
@@ -51,7 +51,7 @@ TEST_CASE("rtmfp cookie: rejects the wrong secret and a tampered tag (unforgeabl
 	std::uint8_t secret[32];
 	fill(secret, sizeof(secret), 0x11);
 	std::uint8_t cookie[64] = {0};
-	rtmfp_cookie::write(secret, addr, port, ts, cookie);
+	REQUIRE(rtmfp_cookie::write(secret, addr, port, ts, cookie));
 
 	std::uint8_t other[32];
 	fill(other, sizeof(other), 0x22);
@@ -80,7 +80,7 @@ TEST_CASE("rtmfp cookie: rejects a stale timestamp")
 	std::uint8_t secret[32];
 	fill(secret, sizeof(secret), 0x11);
 	std::uint8_t cookie[64] = {0};
-	rtmfp_cookie::write(secret, addr, port, ts, cookie);
+	REQUIRE(rtmfp_cookie::write(secret, addr, port, ts, cookie));
 
 	CHECK_FALSE(rtmfp_cookie::valid(secret, addr, port, ts + rtmfp_cookie::max_age_ms + 1, cookie));
 }
@@ -90,9 +90,9 @@ TEST_CASE("rtmfp cookie: tag is deterministic and endpoint-sensitive")
 	std::uint8_t secret[32];
 	fill(secret, sizeof(secret), 0x11);
 	std::uint8_t a[32], b[32], c[32];
-	rtmfp_cookie::tag(secret, addr, port, ts, a);
-	rtmfp_cookie::tag(secret, addr, port, ts, b);
-	rtmfp_cookie::tag(secret, addr + 1, port, ts, c);
+	REQUIRE(rtmfp_cookie::tag(secret, addr, port, ts, a));
+	REQUIRE(rtmfp_cookie::tag(secret, addr, port, ts, b));
+	REQUIRE(rtmfp_cookie::tag(secret, addr + 1, port, ts, c));
 	CHECK(std::memcmp(a, b, sizeof(a)) == 0);   // deterministic
 	CHECK(std::memcmp(a, c, sizeof(a)) != 0);   // different endpoint -> different tag
 }

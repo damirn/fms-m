@@ -27,24 +27,26 @@ namespace fms::rtmfp_cookie
 	inline constexpr std::uint32_t max_age_ms = 95000;
 
 	// HMAC-SHA256(secret, addr || port || ts) -> out[tag_len].
-	inline void tag(const std::uint8_t *secret, std::uint32_t addr, std::uint16_t port,
-	                std::uint32_t ts, std::uint8_t *out)
+	// False if the HMAC failed, leaving `out` untouched -- a caller must not treat
+	// uninitialised bytes as a tag.
+	[[nodiscard]] inline bool tag(const std::uint8_t *secret, std::uint32_t addr, std::uint16_t port,
+	                              std::uint32_t ts, std::uint8_t *out)
 	{
 		std::uint8_t buf[sizeof(addr) + sizeof(port) + sizeof(ts)];
 		std::memcpy(buf, &addr, sizeof(addr));
 		std::memcpy(buf + sizeof(addr), &port, sizeof(port));
 		std::memcpy(buf + sizeof(addr) + sizeof(port), &ts, sizeof(ts));
 		unsigned int len = 0;
-		HMAC(EVP_sha256(), secret, static_cast<int>(secret_len), buf, sizeof(buf), out, &len);
+		return HMAC(EVP_sha256(), secret, static_cast<int>(secret_len), buf, sizeof(buf), out, &len) != nullptr;
 	}
 
 	// Write [ts][tag] into the first header_len bytes of `cookie`; the caller fills
 	// any remaining padding (random in production).
-	inline void write(const std::uint8_t *secret, std::uint32_t addr, std::uint16_t port,
-	                  std::uint32_t ts, std::uint8_t *cookie)
+	[[nodiscard]] inline bool write(const std::uint8_t *secret, std::uint32_t addr, std::uint16_t port,
+	                                std::uint32_t ts, std::uint8_t *cookie)
 	{
 		std::memcpy(cookie, &ts, sizeof(ts));
-		tag(secret, addr, port, ts, cookie + sizeof(ts));
+		return tag(secret, addr, port, ts, cookie + sizeof(ts));
 	}
 
 	// True iff `cookie`'s tag matches (addr, port, ts) under `secret` and ts is
@@ -57,7 +59,8 @@ namespace fms::rtmfp_cookie
 		if (now_ms - ts > max_age_ms)   // stale (forged future ts fails the tag check anyway)
 			return false;
 		std::uint8_t expected[tag_len];
-		tag(secret, addr, port, ts, expected);
+		if (!tag(secret, addr, port, ts, expected))
+			return false;   // fail closed rather than compare uninitialised bytes
 		return CRYPTO_memcmp(expected, cookie + sizeof(ts), tag_len) == 0;
 	}
 }
