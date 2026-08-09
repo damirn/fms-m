@@ -15,7 +15,9 @@ namespace fms
 	public:
 		// eMax stays below 256 so a uint8_t in-flight counter can reach it without
 		// wrapping (~150 KB in flight, ample for any real BDP here).
-		enum : std::uint32_t { eInit = 4, eMin = 2, eMax = 128 };
+		static constexpr std::uint32_t eInit = 4;
+		static constexpr std::uint32_t eMin  = 2;
+		static constexpr std::uint32_t eMax  = 128;
 
 		std::uint32_t window() const { return m_cwnd; }
 		std::uint32_t ssthresh() const { return m_ssthresh; }

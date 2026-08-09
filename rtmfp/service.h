@@ -110,9 +110,11 @@ namespace fms
 		static constexpr std::size_t eMaxQueuedRedirects = 1024;
 		std::queue<endpoint_chunk_pair_t> m_queue;
 
-		enum { ePacketMinLen = 13 };
+		static constexpr std::size_t ePacketMinLen = 13;
 
-		enum { eCertRandomLen = 64, eCookieSize = 64, eCertLen = 71 };
+		static constexpr std::size_t eCertRandomLen = 64;
+		static constexpr std::size_t eCookieSize     = 64;
+		static constexpr std::size_t eCertLen        = 71;
 		std::uint8_t m_cert[eCertLen];
 		static const std::uint8_t m_c1[];
 		static const std::uint8_t m_c2[];

@@ -41,7 +41,8 @@ namespace fms
 		void generate_public_key();
 		bool generate_rnonce();
 
-		enum { eAESKeySize = 0x20, eKeySize = 0x80 };
+		static constexpr std::size_t eAESKeySize = 0x20;
+		static constexpr std::size_t eKeySize    = 0x80;
 		static const std::uint8_t m_dh_key[eKeySize];
 		EVP_PKEY *m_pkey{nullptr};
 		int m_pub_key_size{0};

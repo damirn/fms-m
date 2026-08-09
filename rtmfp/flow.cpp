@@ -187,7 +187,7 @@ namespace fms
 	std::uint16_t flow::add_and_fragment_data(const std::uint8_t *data, const std::uint32_t &len)
 	{
 		std::uint16_t frags = 1;
-		if (len <= _eFragmentMaxSize)
+		if (len <= eFragmentMaxSize)
 		{
 			fragment_ptr const frag = std::make_shared<fragment>(next_sn(), data, len, static_cast<std::uint8_t>(fragment::eWhole), true);
 			frag->set_send_flags();
@@ -195,12 +195,12 @@ namespace fms
 		}
 		else
 		{
-			auto const cnt = static_cast<std::uint16_t>((len + _eFragmentMaxSize - 1) / _eFragmentMaxSize);
+			auto const cnt = static_cast<std::uint16_t>((len + eFragmentMaxSize - 1) / eFragmentMaxSize);
 			std::uint8_t ftype = fragment::eBegin;
-			std::uint32_t clen = _eFragmentMaxSize;
+			std::uint32_t clen = eFragmentMaxSize;
 			for (std::uint16_t i = 0; i < cnt; ++i)
 			{
-				fragment_ptr const frag = std::make_shared<fragment>(next_sn(), data + i * _eFragmentMaxSize, clen, ftype, true);
+				fragment_ptr const frag = std::make_shared<fragment>(next_sn(), data + i * eFragmentMaxSize, clen, ftype, true);
 				frag->set_send_flags();
 				add_fragment(frag);
 				if (i != cnt - 2)
@@ -208,7 +208,7 @@ namespace fms
 				else
 				{
 					ftype = fragment::eEnd;
-					clen = len - (i + 1) * _eFragmentMaxSize;
+					clen = len - (i + 1) * eFragmentMaxSize;
 				}
 			}
 			frags = cnt;

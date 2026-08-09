@@ -54,7 +54,11 @@ namespace fms
 		}
 
 		// fragment ctrl
-		enum { eWhole = 0, eBegin, eEnd, eMiddle };
+		// fragment control (RFC 7016 sec. 2.3.11)
+		static constexpr std::uint8_t eWhole  = 0;
+		static constexpr std::uint8_t eBegin  = 1;
+		static constexpr std::uint8_t eEnd    = 2;
+		static constexpr std::uint8_t eMiddle = 3;
 
 		vlu_t m_seq;
 		vlu_t m_tsn{0};
@@ -136,7 +140,10 @@ namespace fms
 			return m_type;
 		}
 
-		enum { eOpen, eRejected, eCompleteLinger, eClosed };
+		static constexpr std::uint8_t eOpen           = 0;
+		static constexpr std::uint8_t eRejected       = 1;
+		static constexpr std::uint8_t eCompleteLinger = 2;
+		static constexpr std::uint8_t eClosed         = 3;
 
 		const std::uint8_t &state() const
 		{
@@ -152,26 +159,23 @@ namespace fms
 		// flow that streams fragments and never sends an eEnd would otherwise buffer
 		// them without limit; and a huge fragmented message would drive one big
 		// new[]. Exceeding either rejects the flow and drops what it buffered.
-		enum : std::uint32_t
-		{
-			eMaxBufferedFragments = 8192,
-			eMaxReassembledMsgLen = 16u * 1024 * 1024
-		};
+		static constexpr std::uint32_t eMaxBufferedFragments = 8192;
+		static constexpr std::uint32_t eMaxReassembledMsgLen = 16u * 1024 * 1024;
 
 		// Cap on the un-acknowledged send backlog of a live A/V flow. Past this,
 		// abandon_stale_fragments() drops the oldest frames instead of retransmitting
 		// them forever, so a slow/lossy subscriber can't inflate latency without bound
 		// (head-of-line blocking). ~256 * 1160B ~= 290 KB / a few seconds of video.
-		enum : std::uint32_t { eMaxUnackedFragments = 256 };
+		static constexpr std::uint32_t eMaxUnackedFragments = 256;
 
 		// Assumed peer receive window (blocks) until the peer's first range-ack tells
 		// us otherwise; keeps the send path from stalling before any feedback arrives.
-		enum : std::uint16_t { eDefaultRwnd = 0xffff };
+		static constexpr std::uint16_t eDefaultRwnd = 0xffff;
 
 		// The receive window we advertise on a receiving flow: how many more blocks we
 		// can buffer before falling behind. Shrinks toward 0 as our reassembly backlog
 		// grows, giving the peer real send-side backpressure (RFC 7016 sec. 3.6.2.4).
-		enum : std::uint32_t { eRecvWindowBlocks = 127 };
+		static constexpr std::uint32_t eRecvWindowBlocks = 127;
 
 		std::uint32_t advertised_rwnd() const
 		{
@@ -296,7 +300,7 @@ namespace fms
 		vlu_t m_next_sn;
 		bool m_exception;
 
-		enum { _eFragmentMaxSize = 1160 };
+		static constexpr std::uint32_t eFragmentMaxSize = 1160;
 
 		vlu_seq_manager m_seq_manager;
 

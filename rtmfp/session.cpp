@@ -725,7 +725,7 @@ namespace fms
 
 	void session::arm_timer()
 	{
-		m_timer.expires_after(std::chrono::seconds(static_cast<long>(eTimeOut)));
+		m_timer.expires_after(eTimeOut);
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 	}
 
@@ -738,7 +738,7 @@ namespace fms
 		{
 			// Traffic during the last period: keep the session, arm another.
 			m_did_receive_data = false;
-			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(eTimeOut)));
+			m_timer.expires_at(m_timer.expiry() + eTimeOut);
 			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 			return;
 		}
@@ -749,7 +749,7 @@ namespace fms
 			// acknowledged before we reap (rather than vanishing on the peer).
 			begin_close();
 			m_did_receive_data = false;
-			m_timer.expires_after(std::chrono::seconds(static_cast<long>(eCloseLinger)));
+			m_timer.expires_after(eCloseLinger);
 			m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 			return;
 		}

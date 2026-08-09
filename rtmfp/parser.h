@@ -41,6 +41,7 @@ namespace fms
 		chunk_handler &m_chunk_handler;
 		aes *m_aes;
 
-		enum { ePad0 = 0x00, ePadff = 0xff };
+		static constexpr std::uint8_t ePad0  = 0x00;
+		static constexpr std::uint8_t ePadff = 0xff;
 	};
 }
