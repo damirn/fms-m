@@ -83,7 +83,8 @@ namespace fms
 		vlu_t m_type{0};
 		std::vector<std::uint8_t> m_value;
 
-		enum { eMetadata = 0, eReturnFlowAssociation = 10 };
+		static constexpr std::uint8_t eMetadata              = 0;
+		static constexpr std::uint8_t eReturnFlowAssociation = 10;
 	};
 
 	using option_ptr = std::shared_ptr<option>;
@@ -106,7 +107,7 @@ namespace fms
 	class item
 	{
 	public:
-		enum { eIDLength = 32 };
+		static constexpr std::size_t eIDLength = 32;
 
 		item() = default;
 

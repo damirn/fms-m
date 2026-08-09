@@ -213,12 +213,13 @@ namespace fms
 		void calculate_ts(const header &);
 		void serialize_header(serializer *);
 
-		enum { eTimeOut = 90, eCloseLinger = 5 };
+		static constexpr auto eTimeOut     = std::chrono::seconds{90};
+		static constexpr auto eCloseLinger = std::chrono::seconds{5};
 
 		// Cap receiving flows per session: a peer that completed the handshake could
 		// otherwise open one flow per distinct flow_id without bound and exhaust
 		// memory. No legitimate session comes near this.
-		enum : std::size_t { eMaxReceivingFlows = 1024 };
+		static constexpr std::size_t eMaxReceivingFlows = 1024;
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
 		void arm_alarm();

@@ -33,7 +33,8 @@ namespace fms
 		// Off by default: packets carry the legacy 16-bit checksum only, which is
 		// what Flash and any peer that doesn't negotiate expects. service turns
 		// these on per session from the keying-time negotiation.
-		enum { eHmacLen = 16 };   // RFC 2104 sec. 5 truncation; the DEFAULT_HMAC_LENGTH
+		// RFC 2104 sec. 5 truncation; the DEFAULT_HMAC_LENGTH
+		static constexpr std::size_t eHmacLen = 16;
 
 		void set_crypto_mode(bool hmac_send, bool hmac_recv, bool sseq_send, bool sseq_recv, std::size_t rx_hmac_len)
 		{
@@ -67,7 +68,7 @@ namespace fms
 		bool check_rx_seq(std::uint64_t seq);
 
 	protected:
-		enum { eKeySize = 16 };
+		static constexpr std::size_t eKeySize = 16;
 
 		static const std::uint8_t m_key[];
 		static const std::uint8_t m_iv[eKeySize];

@@ -47,7 +47,7 @@ namespace fms
 		std::uint16_t serialize_chunk_header(byte_writer &, std::size_t);
 
 		type_t m_type;
-		enum { eChunkHeaderSize = 3 };
+		static constexpr std::size_t eChunkHeaderSize = 3;
 	};
 
 	class fihello_chunk : public chunk

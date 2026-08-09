@@ -40,8 +40,11 @@ namespace fms
 		void deserialize(byte_reader &);
 		void serialize(byte_writer &) const;
 
-		// mode
-		enum { eForbidden = 0, eInitiator, eResponder, eStartup };
+		// packet mode (RFC 7016 sec. 2.2.2)
+		static constexpr std::uint8_t eForbidden = 0;
+		static constexpr std::uint8_t eInitiator = 1;
+		static constexpr std::uint8_t eResponder = 2;
+		static constexpr std::uint8_t eStartup   = 3;
 
 		bool &timestamp_present()
 		{
