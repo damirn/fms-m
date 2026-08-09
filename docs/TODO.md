@@ -10,87 +10,19 @@ interop matrix (see the *Interop test matrix* item). Legend: **[P1]**
 interop-breaking, or a correctness/resource-safety defect · **[P2]** meaningful
 capability · **[P3]** nice-to-have / hardening.
 
-Priority-sorted. Subsystem tag in parentheses. Updated 2026-08-01.
+Priority-sorted. Subsystem tag in parentheses. Updated 2026-09-03.
 
-> Recently landed (removed from this list): RTMFP security hardening pass
-> (auth'd cookie, bounded reassembly, read_vlu cap, half-open reap); AMF0 + AMF3
-> completeness (+ fuzz); VOD playback + pause/seek; FMLE/OBS publish verbs; digest
-> handshake, RTMPE/RTMPTE; **stream_array → byte_reader/byte_writer** retirement;
-> **Abort message (0x02)**; **StreamIsRecorded** emit for VOD; modern
-> `async_accept(executor)`; the architecture pass — `media_host` (no friends),
-> `netstream_observer` + `netstream_stats_registry` (manager de-godding),
-> `get_connection_opt`, timers pushed to `rtmp_connection` (P4), the
-> one-thread-per-`io_context` contract doc (P5, `docs/concurrency.md`);
-> **RTMFP strict crypto parity** — per-packet session HMAC + sequence numbers with
-> sliding-window anti-replay, negotiated from the peer's keying flags, so rtmfp-cpp
-> `tcconn`/`tcpublish` interop **without** `-H -S` (`33399f0`; the IIKeying signature
-> stays deliberately unverified — anonymous DH, no PKI).
->
-> Design-review architecture work (2026-07-30, all merged to `modernize`, ASan +
-> TSan clean incl. an 11-thread / 22-client TSan load run): **`stream_registry`
-> owns its lock** with compile-time `exclusive_guard` enforcement of the "no
-> structure-mutate under the shared lock" invariant; **media_application split finished**
-> — `stream_recorder` (FLV off the fan-out path) + `qos_reporter` extracted;
-> **`rtmp_app_manager` split** into `connect_router` + `connection_registry`, with
-> transport virtuals (`protocol_name`/`remote_address`) removing the admin-path RTTI;
-> a shared **`rtmp_handshake`** module (server + client) that fixes the client's
-> `std::rand()` → `RAND_bytes` handshake-filler divergence; and the **RTMPT global
-> lock narrowed** to the id table + sequencing, with a per-session mutex so tunnelled
-> clients no longer serialize (TSan-clean on the b2b RTMPT path).
->
-> Interop automation + VOD fast pull (2026-08-01): the **interop matrix**
-> (`test/interop/interop.sh`, wired as a ctest) drives real reference clients and
-> asserts on both media (ffprobe) and user-control events — RTMP live/VOD +
-> RTMPT via rtmpdump/ffmpeg, and **RTMFP live + RTMFP→RTMP bridge via the local
-> `rtmfp-cpp` `tcpublish`/`tcconn` in strict crypto (no `-H -S`)**; only RTMPE is
-> skipped (rtmpdump bus-errors on the encrypted handshake on this ARM platform).
-> **Act on `SetBufferLength`** — VOD now honours the client's requested buffer and
-> paces against an absolute origin, so rtmpdump's BUFX huge buffer pulls the whole
-> file at once (a 6s clip downloads in <1s vs 5–6s real-time), asserted by the
-> matrix. StreamBegin/StreamIsRecorded/StreamEOF confirmed sent+consumed.
-> **Connect `app` path normalization** (`7b4ed4b`) — `match_app` strips a leading
-> `/` and trailing `?query`, fixing the librtmfp `NetConnection.Connect.InvalidApp`
-> (it sent the raw RFC-3986 path `/media`; only rtmfp-cpp's client-side strip had
-> been masking it). Interop case 6 guards it via `rtmpdump -a`.
-> **Live BufferEmpty(31)/BufferReady(32)** (`ce436cb`) — Play.Start→31, 32 on first
-> frame; verified against a stock **FMS 4.5** container (run under Docker/amd64 as a
-> ground-truth oracle — saved at `test/interop/fms-ref/`). Interop case 1 asserts both.
-> **Live unpublish** (`11945e5`) now sends BufferEmpty drain + `Play.UnpublishNotify`
-> (not StreamEOF), matching FMS; rtmpdump + ffmpeg close cleanly. Interop case 7.
-> **RTMPS** (`491a167`) — RTMP over TLS via a virtualized transport seam in
-> `rtmp_connection` + an `ssl::stream` subclass + an optional TLS acceptor; rtmpdump
-> and ffmpeg play/publish over `rtmps://` (interop case 8).
-> **RTMPTS** (`0b7da26`) — the same seam applied to the beast RTMPT tunnel
-> (`http_connection` + `rtmpts_connection`); rtmpdump tunnels over `rtmpts://`
-> (interop case 8b). **This clears the transport P1** — the last missing transports
-> are in; RTMPE (legacy RC4) is now the only transport-encryption gap.
->
-> Resource-safety round (2.0.0): the **outbound send queue is bounded** — over half
-> of `--max-queue-bytes` (default 10 MB) droppable video is shed, past it the slow
-> consumer is dropped, modelled on measured FMS 4.5 behaviour
-> (`docs/slow-consumer.md`); the **pending-result-handler table** is capped per
-> connection and purged on teardown; **chunk-channel memory** no longer retains a
-> large message's reassembly capacity and the inbound channel map is capped;
-> **RTMPTS** negotiates TLS on the connection's own io_context rather than the
-> acceptor's; **VOD disk I/O** moved off the media-routing lock; and a
-> **half-configured TLS setup** is a startup error instead of a silent downgrade.
-> The first three were unbounded growth an unauthenticated peer could drive. This
-> also retired four inert config options in favour of `--max-queue-bytes` and
-> registered `chunk_parser_test` with ctest, which it never was.
->
-> Second review round: **shared objects are released on disconnect**
-> (`so_manager::remove_connection`) -- previously only an explicit Release event
-> ever removed a client, so using an object and disconnecting stranded it and
-> everything stored on it, unbounded and client-driven; and **flv_reader** no
-> longer composes tag lengths from a byte `istream::read` leaves untouched on a
-> short read (truncated recordings are an ordinary case, and VOD serves them).
+> **Recently landed** entries used to accumulate here with commit SHAs and dated
+> round headings -- 72 lines of it. That is `git log`, and this file is a
+> forward-looking gap analysis; the history was removed on 2026-09-03. For what
+> has shipped, read the log. For open review findings, see `REVIEW_2026-09.md`.
 
 ---
 
 ## P1 — correctness / resource safety
 
-*(The transport P1 is empty — RTMPS + RTMPTS both landed; see the recently-landed
-note. What remains here is correctness and resource safety.)*
+*(The transport P1 is empty — RTMPS and RTMPTS both landed. What remains here is
+correctness and resource safety.)*
 
 - **`std::atomic_load`/`atomic_store` on `shared_ptr` are REMOVED in C++26.** Used
   for the avc/aac config slots on the fan-out path. Deprecated in C++20, and we
@@ -211,54 +143,21 @@ note. What remains here is correctness and resource safety.)*
 
 Priority order within this block; the first item is the one the others hang off.
 
-**Finish the interface extraction — DONE** (`app_host`). Applications now hold
-   an `app_host *` (connection lookup/lifecycle, netstream bookkeeping, admin
-   introspection, io_context pool), implemented by `rtmp_app_manager`; no
-   app-layer TU includes a transport header (172 Boost.Beast headers → 0), and
-   `test/app_host_test.cpp` drives `rtmp_application` through a fake host, linking
-   without the transport stack. Fixed a latent remote null-deref found on the way:
-   `setPeerInfo` downcast every connection to the RTMFP `session` and dereferenced
-   the result, which is null for any RTMP client — now a virtual on
-   `client_session`. Remaining renumbered below.
-**Collapse the duplicated transport seam — DONE.** The `io_handler` /
-   `handshake_handler` aliases and the plaintext `transport_handshake` now live in a
-   `transport_seam` mixin shared by `rtmp_connection` and `http_connection`, and the
-   `ssl::context` + `ssl::stream` + server handshake in a `tls_stream` helper shared
-   by both TLS subclasses. The two base defaults had diverged over posting (the
-   RTMPTS bug); there is now one definition and the "must post in `start()`" contract
-   is documented in one place. Read/write ops stay per-class (byte-stream vs HTTP).
-
 1. **`rtmp_application` is a god base class** (~48 declarations). Every app inherits
    bandwidth-check, shared objects, result handlers, the async queue, the delay map
    and stats whether it uses them or not — `admin_application` needs none of the
    media machinery. Composition, not inheritance; the "invoke string-ladder" item
    below is a symptom of the same thing.
-**`basic_rtmp_connection` mixed-inheritance — DONE (partial).** Of its three
-   bases, two were legitimate (`client_session` is shared with the RTMFP session;
-   `enable_shared_from_this` is required by asio) and one was not: `rtmp_raw_data`
-   (chunk parsing) became a composed `rtmp_parser` component with an injected
-   `rtmp_message_sink`, converted on both the server and client connections and in
-   the parser test. MI on the server connection is now two correct bases. The
-   follow-on also landed: the RTMP handshake state (`m_tmp_buff`, the RC4 keys, the
-   negotiated flags, `create_keys`/`validate_client`) moved into an
-   `rtmp_handshaker` component with a two-phase `build_response`/`validate_c2` API
-   plus in-place `encrypt`/`decrypt`; `basic_rtmp_connection.cpp` dropped 238 to 78
-   lines. RTMPE round-trip verified on x86 (interop skips it on ARM).
-
 2. **RTMFP is the risk concentration**: a second full protocol stack with its own
    lock-free model, reaching into `rtmp_app_manager` directly, and no tests at any
    level. Ties to the testing item above and the RTMFP seam item below.
 
 ### Structural design debt (whole-project design review, 2026-07-30)
 - **Latent ownership defects (small, bounded fixes):**
-  - `shared_object::event` is copyable but frees `m_data` with `delete[]` in its dtor
-    → double-free on any copy; survives only because it's always wrapped in a
-    `shared_ptr`. Use `std::vector`/`unique_ptr<uint8_t[]>`. (`rtmp_so_message.h:69-90`)
-  - `amf0_util::get_ref<std::uint32_t>` does `reinterpret_cast<uint32_t&>(double&)` →
-    hands back garbage bytes. Delete this path; keep one typed accessor with a defined
-    failure contract (the value model has three overlapping extraction APIs today).
-    Confirmed to have **zero call sites**, so this is a deletion, not a repair.
-    (`amf0_types.h:198-204`)
+  - ~~`shared_object::event` double-free on copy~~ — **done** (2026-09, L1): now a
+    `std::vector`, so the destructor and the rule-of-3 hole are both gone.
+  - ~~`amf0_util::get_ref<std::uint32_t>` aliasing UB~~ — **done** (2026-09, D3):
+    the whole family was deleted, as it had no call sites.
   - `flv_reader::read_uint32_3`/`read_uint32` accumulate a byte that `istream::read`
     leaves untouched on a short read, so a truncated FLV composes the length from an
     indeterminate value. Callers currently discard it (they test the stream after),
@@ -272,7 +171,8 @@ Priority order within this block; the first item is the one the others hang off.
   - RTMFP control replies share one `m_ready_chunk` raw slot, hand-freed in six sites
     (already leaked once). Replace with an owning `deque<unique_ptr<chunk>>` drained in
     the send pass — also lifts the "one control reply per packet" limitation.
-    (`rtmfp/session.cpp`)
+    (`rtmfp/session.cpp`) — the *redirect* queue next to it became
+    `queue<pair<endpoint, unique_ptr<chunk>>>` in 2026-09 (M30); this slot did not.
 - **Layer the codec / data model / framing (RTMP).** The `amf0` codec (+ its per-decode
   reference table) is a member of *every* `rtmp_message`, so a ChunkSize/audio/video
   message drags AMF decode state; `rtmp_protocol::deserialize_*` is 15 boilerplate

@@ -65,8 +65,10 @@ The publish/play/record URL for the media app is
 
 - A C++23 compiler (Apple clang 16+, or GCC 12+)
 - CMake ≥ 3.16
-- **Boost** — `date_time`, `log`, `log_setup`, `program_options`, `system`,
-  `thread` (macOS builds pin Boost **1.76**; Linux uses the system Boost)
+- **Boost** — `date_time`, `log`, `log_setup`, `program_options`, `thread`
+  (macOS builds pin Boost **1.76**; Linux uses the system Boost). Boost.System is
+  header-only since 1.69 and is deliberately *not* a linked component — newer
+  distributions no longer ship the stub library.
 - **OpenSSL 3** — `libcrypto` (the **legacy provider** must be available for
   RTMPE, which uses RC4) and `libssl` (for the TLS transports, RTMPS / RTMPTS)
 - **Speex** — audio codec
@@ -261,11 +263,15 @@ author's implementation). Using its test tools, built from that repository:
 
 ```sh
 # play a live stream over RTMFP
-tcconn -4 -H -S 'rtmfp://127.0.0.1:1935/media#mystream'
+tcconn -4 'rtmfp://127.0.0.1:1935/media#mystream'
 
 # publish an FLV over RTMFP
-tcpublish -4 -H -S 'rtmfp://127.0.0.1:1935/media#mystream' input.flv
+tcpublish -4 'rtmfp://127.0.0.1:1935/media#mystream' input.flv
 ```
+
+`-H -S` relax the per-packet session HMAC and sequence-number requirement; the
+server implements both, so they are not needed and the interop matrix runs
+without them.
 
 The stream name is passed as the URL fragment (`#mystream`), and RTMFP listens on
 UDP `--rtmfp-port` (default `1935/udp`). The server implements the 1024-bit MODP
@@ -358,8 +364,34 @@ next remote-stream play.
 - **Auth plugin (interface only)** — a loader and plugin ABI exist for an
   external shared-library authenticator (`--auth-plugin <lib>`), intended to
   approve/reject connections and publishes against your own user directory or
-  token system. The loader works, but the hook is **not yet wired into the
-  connect/publish path**, so no plugin is consulted at runtime.
+  token system. The loader works in isolation, but `authentication_manager` is
+  **not instantiated anywhere**, so no plugin is loaded or consulted at runtime.
+  The plugin interface is also synchronous, so a plugin that returns
+  `indeterminate` has no way to complete.
+
+---
+
+## Testing
+
+```sh
+cmake -S . -B build -DBUILD_TESTS=ON      # unit tests
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+```
+
+`BUILD_CLIENT` (on by default) adds the end-to-end `b2b_test`, the chunk-parser
+tests, and the **interop matrix** — `test/interop/interop.sh`, which drives real
+reference clients (rtmpdump, ffmpeg, and rtmfp-cpp's `tcpublish`/`tcconn` when
+`RTMFP_CPP` points at their build directory) and asserts on both the media and
+the RTMP user-control events.
+
+Other options:
+
+| Option | Effect |
+|--------|--------|
+| `-DSANITIZE=address,undefined` | Build with the named sanitizers. |
+| `-DWERROR=ON` | Treat warnings as errors. |
+| `-DBUILD_FUZZERS=ON` | AMF fuzzers; `fuzz_run` is registered as a ctest. |
 
 ---
 
@@ -377,3 +409,6 @@ directory). Verbosity is controlled with `--log-level` (higher is more verbose).
 | [`docs/concurrency.md`](docs/concurrency.md) | The one-thread-per-`io_context` contract every connection relies on, and what may touch what from where. Read this before changing anything threading-related. |
 | [`docs/slow-consumer.md`](docs/slow-consumer.md) | What the server does when a subscriber stops reading, what Adobe FMS 4.5 does (measured against a stock 4.5 install), and why they differ. |
 | [`docs/TODO.md`](docs/TODO.md) | Protocol gap analysis against rtmpdump/librtmp and rtmfp-cpp, priority-sorted. |
+| [`docs/parsing.md`](docs/parsing.md) | How the RTMP chunk parser frames bytes into messages, and the one exception contract it relies on. |
+| [`docs/enhanced-rtmp-plan.md`](docs/enhanced-rtmp-plan.md) | Plan for Enhanced RTMP (E-RTMP v2) codec support. |
+| [`REVIEW_2026-09.md`](REVIEW_2026-09.md) | Open review findings, priority-sorted. |

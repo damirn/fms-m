@@ -38,13 +38,13 @@ the connect handshake. Codec decode/encode is explicitly out of scope.
 ## Current blockers (where the AVC/AAC assumption is baked in)
 
 1. `rtmp_message_video_data::get_codec()` / `get_frame_type()` read the **legacy**
-   first-byte layout — wrong the moment `IsExHeader` is set. (`rtmp_message.h:474-496`)
+   first-byte layout — wrong the moment `IsExHeader` is set. (`rtmp_message.h:467-480`)
 2. `rtmp_message_audio_data::get_codec()` — same, legacy sound-format nibble.
 3. Sequence-header detection is hard-coded AVC/AAC:
    `get_codec()==eAVC && data()[1]==0` (video), `eAAC && …` (audio).
    (`av_delivery.cpp:28,134-140`)
 4. The stream caches exactly **one** `avc_config` + **one** `aac_config`
-   (`stream_registry.h:74-75`) — no room for HEVC/AV1/Opus or per-track config.
+   (`stream_registry.h:72-73`) — no room for HEVC/AV1/Opus or per-track config.
 5. Keyframe-gated join keys off legacy `eKeyFrame` (`av_delivery.cpp:63-64`).
 6. The `connect` handler ignores `capsEx` / `videoFourCcInfoMap` /
    `audioFourCcInfoMap` and advertises nothing back.

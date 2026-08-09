@@ -1,122 +1,69 @@
-# RTMP / AMF parsing model
+# RTMP chunk parsing
 
-Design notes on how incoming data is parsed, why exceptions are used the way they
-are, and where the current model is fragile. This is developer-facing rationale,
-not user documentation (see `../README.md` for that).
+How received bytes become messages, and the one exception contract the path
+relies on. Entry point: `rtmp_parser::parse(byte_writer &)` in `rtmp_parser.cpp`.
 
-## How it works today
+## The committed-offset model
 
-Parsing is driven by `rtmp_raw_data::parse_data(stream_array &buffer)`, called
-each time bytes arrive from the socket. It is a **hybrid** of length-based
-framing and exception-based unwinding:
+`parse()` is **resumable and non-throwing**. A connection hands it whatever has
+arrived so far; it frames as much as it can and consumes exactly that much.
 
-1. **Chunk payload assembly — length-based (no exceptions).**
-   RTMP is length-prefixed at the chunk/message level, and the code uses that:
+It tracks a `committed` offset — the point up to which everything has been fully
+processed and is safe to drop. A partial chunk header, or a chunk whose payload
+has not fully arrived, ends the scan without advancing past it, so the unconsumed
+tail stays in the buffer for the next call. `byte_writer::consume()` then drops
+only the committed prefix.
 
-   ```cpp
-   size = h.message_length() - channel->data_size();
-   size = std::min(size, m_chunk_size);
-   if (size <= buffer.available()) {
-       channel->add_data(buffer, size);          // consume this chunk
-       if (channel->has_enough_data())
-           handle_message(channel);              // full message -> dispatch
-   } else {
-       buffer.compact();                         // partial chunk -> wait
-       return;                                   // (no throw)
-   }
-   ```
+The return value is a `boost::tribool` with three distinct meanings, and the
+connection's read loop depends on all three:
 
-   So the frequent case — a large media message arriving across many TCP
-   segments — never throws. It compacts the buffer and waits for the next read.
+| Value | Meaning |
+|-------|---------|
+| `true` | At least one complete message was assembled and dispatched. |
+| `false` | Everything readable was framed, but no message completed. |
+| `indeterminate` | Stopped on a partial chunk or header; call again with more bytes. |
 
-2. **Chunk header + AMF reads — optimistic parse + `buffer_eof_exception`.**
-   `stream_array::operator>>` / `read()` throw `buffer_eof_exception` when
-   `available() < needed`. `parse_data` wraps the loop in:
+`test/chunk_parser_test.cpp` pins all three.
 
-   ```cpp
-   buffer.mark();
-   channel->deserialize_header(buffer);   // may throw buffer_eof if header split
-   ...
-   catch (buffer_eof_exception &) { buffer.rewind(); }   // restore m_read, wait
-   ```
+## Where messages go
 
-   Chunk headers are ≤ 12 bytes and rarely split across reads, so the throw +
-   `rewind()` cost is negligible.
+`rtmp_parser` owns no sockets and no connection identity. It drives a
+`channel_manager` for per-channel header and reassembly state, and delivers what
+it assembles through an injected `rtmp_message_sink`:
 
-3. **Two other exception types** (`amf0_read_exception`, `amf3_read_exception`)
-   are thrown by AMF value parsing and are caught in
-   `rtmp_protocol::deserialize`. `buffer_eof_exception` is deliberately **not**
-   caught there — it must propagate up to `parse_data` so the loop can rewind.
+- `handle_message` — a decoded application message (invoke, audio, video, …)
+- `handle_internal_message` — a protocol-internal one. Set Chunk Size updates the
+  parser through `set_chunk_size`; Window Acknowledgement Size is connection
+  accounting and is delivered to **both**.
 
-## What's good about it
+That injection is what lets the parser be constructed and tested on its own with
+a recording sink, which is what `chunk_parser_test` does.
 
-- **The hot path avoids exceptions.** Length-based chunk assembly means the
-  common "message split across reads" case is handled by a length check and
-  `compact()`, not by throwing through a deep parse stack. This sidesteps both
-  the per-fragment exception cost and an O(N²) re-parse-from-scratch trap.
-- **Exceptions are confined to rare cases** (a chunk header that happens to be
-  split, or malformed AMF), where their cost doesn't matter.
-- The parser reads optimistically, so field-by-field `available()` checks don't
-  clutter the deeply recursive AMF code.
+## buffer_eof_exception
 
-## Where it's fragile
+`buffer_eof_exception` means a read ran past the end of a buffer. Its meaning
+depends on which buffer:
 
-### 1. `buffer_eof_exception` has two meanings
+- **During framing**, `parse()` never lets it escape — an incomplete chunk is
+  flow control, reported as `indeterminate`.
+- **During `deserialize`** of an assembled message body, the buffer is complete
+  by construction, so an over-read means the body is corrupt. `dispatch()` catches
+  it and drops that message; the chunk stream itself stays in sync.
 
-The same exception signals both:
+`rtmp_protocol::deserialize` catches `amf0_read_exception`, `amf3_read_exception`,
+`std::bad_alloc` and `std::length_error` and drops the message, but deliberately
+lets `buffer_eof_exception` through to the caller above.
 
-- **"the network hasn't delivered the rest yet"** (recoverable → rewind + wait),
-  and
-- **"an AMF length field points past the buffer"** (a *malformed* message that
-  should be rejected).
+## Framing guards
 
-The single `catch` treats both as "wait for more." For a **complete-but-
-malformed** message (all bytes present, but an internal length lies), waiting
-cannot help — at best it re-parses, at worst it can wedge the connection. This is
-a robustness / DoS-shaped concern. It has not been reproduced with a test; the
-concrete probe would be a message whose AMF length exceeds its own
-`message_length`.
+`framing_error()` latches when a chunk header abuses the framing, and the owning
+connection drops the connection when it does. It is set by:
 
-### 2. The "which exception propagates where" contract is invisible
-
-Three exception types with different catch-vs-propagate rules, enforced only by a
-comment in `rtmp_protocol.cpp`:
-
-> *an amf3_read_exception escapes to the io_context worker thread and
-> std::terminate()s the whole server (remote DoS). buffer_eof is deliberately NOT
-> caught here — parse_data needs it to rewind.*
-
-Getting this wrong once was already a remote-crash DoS (an uncaught
-`amf3_read_exception`). A contract this subtle, guarded only by a comment, is
-likely to break again during maintenance.
-
-### 3. `mark()` / `rewind()` only restore `m_read`
-
-Unwind correctness depends on every throw site between `mark()` and the length
-check being safe to **re-run** from the mark — no committed side effects
-(half-updated channel header, half-built object, stray allocation). This holds
-today but is an invariant nothing enforces.
-
-## Suggested direction (not yet done)
-
-Separate the two conditions that `buffer_eof_exception` currently conflates:
-
-- **Chunk assembly** stays length-based (already the case). This is the only true
-  "need more network data" path.
-- **AMF / message parsing** runs against the message's own **bounded** buffer
-  (its `message_length` is known), and an overrun becomes a distinct
-  **`malformed_message`** error → drop the message / close the connection, rather
-  than rewind-and-wait.
-
-That collapses the fragile three-way exception contract into:
-
-- `need_more_data` — thrown only by the chunk-header parse, caught only by the
-  loop; and
-- `malformed_message` — thrown by message/AMF parse, caught → reject.
-
-With that split, the "an AMF exception escaped and terminated the server" class of
-bug becomes structurally impossible, and incomplete-vs-malformed is no longer
-ambiguous.
-
-The length-based core is sound and worth keeping; the one high-value change is
-removing the `buffer_eof_exception` double meaning.
+- a Set Chunk Size below 1 (the per-chunk read length would degenerate to 0);
+- a header shrinking `message_length` below what is already buffered on that
+  channel;
+- a message longer than `eMaxMessageLength`;
+- the channel-map cap (`channel_manager::open_channel`) — the basic header can
+  address 65599 channels and they are never evicted, so peer-chosen ids go
+  through `find_channel`/`open_channel` rather than the find-or-insert
+  `get_channel` used for ids we pick.
