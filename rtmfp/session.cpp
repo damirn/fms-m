@@ -446,15 +446,9 @@ namespace fms
 		if (len > 0 && data)
 		{
 			byte_reader s(data, len);
-			group_ptr g;
-			try
-			{
-				g = group::deserialize(s);   // throws std::runtime_error on a malformed payload
-			}
-			catch (const std::exception &)
-			{
-				return;   // drop the malformed NetGroup message -- never crash the server
-			}
+			group_ptr g = group::deserialize(s);
+			if (!g)
+				return;   // malformed NetGroup message
 			m_service->handle_net_group(g, shared_from_this());
 			m_group_membership.push_back(g);
 			if (g->members().size() > 1)

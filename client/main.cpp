@@ -19,13 +19,15 @@ int main(int argc, char *argv[])
 		client->connect(config::instance()->url());
 		service.run();
 	}
-	catch (std::runtime_error &e)
+	catch (const std::exception &e)
 	{
-		std::cout << "Fatal: " << e.what() << std::endl;
+		std::cerr << "Fatal: " << e.what() << std::endl;
+		return 1;
 	}
 	catch (...)
 	{
-		std::cout << "Unknown exception!" << std::endl;
+		std::cerr << "Fatal: unknown exception" << std::endl;
+		return 1;
 	}
 	return 0;
 }

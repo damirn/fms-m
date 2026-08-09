@@ -36,16 +36,20 @@ namespace fms
 		{
 			if (!bs.qos_target)
 				return;
+			// Constant across the subscriber loop: hoisted so the stats-registry
+			// mutex is taken once per stream, not once per subscriber.
+			std::optional<netstream_stats_ptr> const stats = m_manager->get_stream_stats(real);
+			if (!stats)
+				return;
+			std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
+			std::chrono::system_clock::duration const td = now - (*stats)->m_start_streaming_time;
+			auto const secs = std::chrono::duration_cast<std::chrono::seconds>(td).count();
+			if (secs == 0)
+				return;
+			std::uint32_t const kbps = (*stats)->m_bytes / secs;
+
 			m_registry.for_each_subscriber(*bs.qos_target, [&](const stream_client_id_t &ssid, const stream_client_ptr &)
 			{
-				std::optional<netstream_stats_ptr> stats = m_manager->get_stream_stats(real);
-				if (!stats)
-					return;
-				std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
-				std::chrono::system_clock::duration const td = now - (*stats)->m_start_streaming_time;
-				if (std::chrono::duration_cast<std::chrono::seconds>(td).count() == 0)
-					return;
-				std::uint32_t const kbps = (*stats)->m_bytes / std::chrono::duration_cast<std::chrono::seconds>(td).count();
 				amf0_number_ptr const bw = std::make_shared<amf0_number>(kbps);
 				amf0_number_ptr const d = std::make_shared<amf0_number>((*stats)->m_delay);
 				rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>(onQOS);
