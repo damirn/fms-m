@@ -27,14 +27,16 @@ namespace fms
 			: item(id)
 		{}
 
+		// Null on a malformed payload -- routine for wire input, so not an
+		// exception the caller has to catch.
 		static group_ptr deserialize(byte_reader &s)
 		{
-			std::uint8_t cmnd;
+			std::uint8_t cmnd = 0;
 			s >> cmnd;
 			vlu_t const size = s.read_vlu();
 			if (s.available() >= size && size == (item::eIDLength + 1))
 			{
-				std::uint8_t type;
+				std::uint8_t type = 0;
 				s >> type;
 				if (type == 0x15)
 				{
@@ -43,7 +45,7 @@ namespace fms
 					return g;
 				}
 			}
-			throw std::runtime_error("Illegal group data");
+			return nullptr;
 		}
 
 		const std::uint8_t &command() const

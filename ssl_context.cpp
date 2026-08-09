@@ -13,14 +13,17 @@ namespace fms
 		auto ctx = std::make_shared<ssl::context>(ssl::context::tls_server);
 
 		boost::system::error_code ec;
-		// Disable SSLv2/SSLv3 and TLS 1.0/1.1 -- serve TLS 1.2+ only.
-		ctx->set_options(
-			ssl::context::default_workarounds | ssl::context::no_sslv2 |
-			ssl::context::no_sslv3 | ssl::context::no_tlsv1 | ssl::context::no_tlsv1_1,
-			ec);
+		ctx->set_options(ssl::context::default_workarounds, ec);
 		if (ec)
 		{
 			BOOST_LOG(lg::get()) << "TLS: set_options failed: " << ec.message();
+			return nullptr;
+		}
+		// State the floor directly rather than as a list of no_* options, which a
+		// later addition could undercut.
+		if (SSL_CTX_set_min_proto_version(ctx->native_handle(), TLS1_2_VERSION) != 1)
+		{
+			BOOST_LOG(lg::get()) << "TLS: could not set the minimum protocol version";
 			return nullptr;
 		}
 
