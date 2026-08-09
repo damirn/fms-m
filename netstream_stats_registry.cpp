@@ -115,11 +115,13 @@ namespace fms
 		return std::optional<netstream_stats_ptr>();
 	}
 
-	void netstream_stats_registry::list(netstream_list_t &streams)
+	netstream_list_t netstream_stats_registry::list()
 	{
+		netstream_list_t streams;
 		std::shared_lock const lock(m_mutex);
-		for (auto & i : m_netstream_stats)
-			streams.push_back(i.second);
+		for (auto const &[id, stats] : m_netstream_stats)
+			streams.push_back(stats);
+		return streams;
 	}
 
 	void netstream_stats_registry::start_timer()

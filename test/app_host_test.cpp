@@ -47,9 +47,9 @@ namespace
 		void add_dropped_messages_for_netstream(const stream_client_id_t &, std::size_t) override { ++dropped_reports; }
 		std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &) override { return std::nullopt; }
 
-		void list_applications(string_list_t &) override {}
-		void list_clients(client_list_t &) override {}
-		void list_streams(netstream_list_t &) override {}
+		string_list_t list_applications() override { return {}; }
+		client_list_t list_clients() override { return {}; }
+		netstream_list_t list_streams() override { return {}; }
 		client_data_ptr get_client_data(std::uint32_t) override { return nullptr; }
 		bool get_client_stats(std::uint32_t, client_stats &) override { return false; }
 		std::optional<app_stats> get_app_stats(const std::string &) override { return std::nullopt; }

@@ -556,9 +556,8 @@ namespace fms::rtmp_client
 			auto const i = m_net_streams.find(invoke->stream_id());
 			if (i != m_net_streams.end())
 			{
-				std::string code;
-				if (get_code(invoke, code))
-					i->second->event_handler().on_status(code);
+				if (auto const code = get_code(invoke))
+					i->second->event_handler().on_status(*code);
 			}
 		}
 		else if (invoke->function()->value() == "onBWDone")
@@ -631,12 +630,11 @@ namespace fms::rtmp_client
 
 	void net_connection::handle_connect_result(const rtmp_message_invoke_ptr& invoke, const result_handler_ptr&)
 	{
-		std::string code;
-		if (get_code(invoke, code))
+		if (auto const code = get_code(invoke))
 		{
-			if (code == connect_succes)
+			if (*code == connect_succes)
 				m_state = eReady;
-			m_event_handler.on_status(code);
+			m_event_handler.on_status(*code);
 		}
 	}
 
@@ -702,22 +700,17 @@ namespace fms::rtmp_client
 		send_message(p);
 	}
 
-	bool net_connection::get_code(const rtmp_message_invoke_ptr& invoke, std::string &code)
+	std::optional<std::string> net_connection::get_code(const rtmp_message_invoke_ptr& invoke)
 	{
-		bool ret = false;
-		rtmp_message_invoke::parameters_list_t  const&params = invoke->parameters();
-		for(auto & param : params)
-			if (param->type() == amf0_type::eAMF0Object)
-			{
-				amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(param);
-				auto const j = obj->value().find("code");
-				if (j != obj->value().end() && j->m_value->type() == amf0_type::eAMF0String)
-				{
-					amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(j->m_value);
-					code = str->value();
-					ret = true;
-				}
-			}
-		return ret;
+		for (auto const &param : invoke->parameters())
+		{
+			if (param->type() != amf0_type::eAMF0Object)
+				continue;
+			auto const obj = std::static_pointer_cast<amf0_object>(param);
+			auto const j = obj->value().find("code");
+			if (j != obj->value().end() && j->m_value->type() == amf0_type::eAMF0String)
+				return std::static_pointer_cast<amf0_string>(j->m_value)->value();
+		}
+		return std::nullopt;   // the loop used to keep scanning past a match
 	}
 }

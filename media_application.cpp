@@ -367,13 +367,13 @@ namespace fms
 			auto const lock = m_registry.lock_exclusive();
 
 			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
-			std::string stream_name;
-			std::string remote_srv;
-			bool const is_remote = remote_relay::is_remote_stream(str->value(), stream_name, remote_srv);
+			auto const target = remote_relay::parse_target(str->value());
+			std::string const &stream_name = target.m_stream;
+			bool const is_remote = !target.m_server.empty();
 
 			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << str->value() << "'";
 			if (is_remote)
-				BOOST_LOG(lg::get()) << "stream '" << stream_name << "' is on remote server (" << remote_srv << ")";
+				BOOST_LOG(lg::get()) << "stream '" << stream_name << "' is on remote server (" << target.m_server << ")";
 
 			std::optional<stream_client_id_t> const found = m_registry.broadcaster_for_name(stream_name);
 			bool const res = found.has_value();
@@ -387,7 +387,7 @@ namespace fms
 			if (!res) // we still don't have broadcaster for this stream
 			{
 				if (is_remote)
-					remote_relay::spawn_helper(remote_srv, stream_name);
+					remote_relay::spawn_helper(target.m_server, stream_name);
 			}
 			else
 			{

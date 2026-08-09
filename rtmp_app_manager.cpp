@@ -84,13 +84,15 @@ namespace fms
 		return false;
 	}
 
-	void rtmp_app_manager::list_applications(string_list_t &list)
+	string_list_t rtmp_app_manager::list_applications()
 	{
-		for (auto & app : m_apps)
-			list.push_back(app.second->app_name());
+		string_list_t list;
+		for (auto const &[name, app] : m_apps)
+			list.push_back(app->app_name());
+		return list;
 	}
 
-	void rtmp_app_manager::list_clients(client_list_t &list) { m_conn_registry->list_clients(list); }
+	client_list_t rtmp_app_manager::list_clients() { return m_conn_registry->list_clients(); }
 	client_data_ptr rtmp_app_manager::get_client_data(std::uint32_t connection_id) { return m_conn_registry->get_client_data(connection_id); }
 	bool rtmp_app_manager::get_client_stats(std::uint32_t cid, client_stats &stats) { return m_conn_registry->get_client_stats(cid, stats); }
 
@@ -102,10 +104,7 @@ namespace fms
 		return std::optional<app_stats>();
 	}
 
-	void rtmp_app_manager::list_streams(netstream_list_t &streams)
-	{
-		m_stats.list(streams);
-	}
+	netstream_list_t rtmp_app_manager::list_streams() { return m_stats.list(); }
 
 	void rtmp_app_manager::get_queue_stats(queue_stats_list_t &list)
 	{

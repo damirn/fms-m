@@ -40,7 +40,7 @@ namespace fms
 		void update_stats(const stream_client_id_t &, std::uint32_t bytes, std::uint32_t msgs, std::uint32_t ts);
 		void add_dropped(const stream_client_id_t &, std::size_t);
 		std::optional<netstream_stats_ptr> get(const stream_client_id_t &);
-		void list(netstream_list_t &);
+		netstream_list_t list();
 
 	private:
 		void start_timer();
