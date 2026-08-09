@@ -119,7 +119,7 @@ namespace fms
 			m_buffer.clear_and_shrink(eKeepBufferBytes);
 		}
 
-		enum : std::size_t { eKeepBufferBytes = 64u * 1024 };
+		static constexpr std::size_t eKeepBufferBytes = 64u * 1024;
 
 	protected:
 		std::uint32_t m_id;

@@ -126,7 +126,7 @@ namespace fms
 
 	void netstream_stats_registry::start_timer()
 	{
-		m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eTimeout)));
+		m_timer.expires_after(eQosInterval);
 		m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 	}
 

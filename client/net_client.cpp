@@ -32,7 +32,7 @@ namespace fms::rtmp_client
 	{
 		// async_connect walks the resolved endpoints itself, trying each until one
 		// connects; the deadline timer below bounds the whole attempt.
-		m_timer.expires_after(std::chrono::seconds(static_cast<long>(_eConnectTimeout)));
+		m_timer.expires_after(eConnectTimeout);
 		boost::asio::async_connect(m_socket, results, [self = shared_from_this()](const boost::system::error_code &ec, const boost::asio::ip::tcp::endpoint &ep) { self->handle_connect(ec, ep); });
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &) { self->check_deadline(); });
 	}

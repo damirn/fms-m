@@ -41,13 +41,13 @@ namespace fms
 	void rtmp_connection::arm_hs_timer()
 	{
 		// arm the handshake-timeout timer
-		m_hs_timer.expires_after(std::chrono::seconds(static_cast<long>(eHandShakeTimeout)));
+		m_hs_timer.expires_after(eHandShakeTimeout);
 		m_hs_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_hs_timer(ec); });
 	}
 
 	void rtmp_connection::arm_timer()
 	{
-		m_timer.expires_after(std::chrono::seconds(static_cast<long>(ePingInterval)));
+		m_timer.expires_after(ePingInterval);
 		m_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 	}
 
@@ -60,7 +60,7 @@ namespace fms
 				close();
 				return;
 			}
-			m_timer.expires_at(m_timer.expiry() + std::chrono::seconds(static_cast<long>(ePingInterval)));
+			m_timer.expires_at(m_timer.expiry() + ePingInterval);
 			m_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 
 			rtmp_message_ping_ptr const msg = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingRequest, get_timestamp());
@@ -219,7 +219,7 @@ namespace fms
 
 	void rtmp_connection::read_data()
 	{
-		m_rto_timer.expires_after(std::chrono::seconds(2 * ePingInterval));
+		m_rto_timer.expires_after(2 * ePingInterval);
 		m_rto_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_rto(ec); });
 
 		async_read_transport(m_buffer.write_buffer(), 1,
@@ -332,7 +332,7 @@ namespace fms
 	void rtmp_connection::perform_write()
 	{
 		m_write_in_progress = true;
-		m_wto_timer.expires_after(std::chrono::seconds(2 * ePingInterval));
+		m_wto_timer.expires_after(2 * ePingInterval);
 		m_wto_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_wto(ec); });
 
 		// encrypt outgoing data if needed (no-op if plaintext)

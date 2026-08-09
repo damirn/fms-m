@@ -95,7 +95,7 @@ namespace fms
 			m_decoded_string_bytes = 0;
 		}
 
-		enum { eMaxDepth = 32 };   // cap nested objects (untrusted input)
+		static constexpr unsigned eMaxDepth = 32;   // cap nested objects (untrusted input)
 		unsigned m_depth = 0;
 
 		// A string reference costs one wire byte but materializes a full copy;

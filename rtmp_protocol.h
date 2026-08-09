@@ -62,11 +62,11 @@ namespace fms
 
 		void deserialize_aggregate(byte_reader &, std::uint32_t);
 
-		enum { eChunkSize = 128 };
+		static constexpr std::uint32_t eChunkSize = 128;
 		// Aggregate messages nest in practice at depth 1 (a flat list of A/V/data
 		// sub-messages); deeper nesting is only an attack, so cap it well below any
 		// stack-overflow risk.
-		enum { eMaxAggregateDepth = 4 };
+		static constexpr int eMaxAggregateDepth = 4;
 
 		std::uint32_t m_chunk_size;
 		int m_aggregate_depth{0};

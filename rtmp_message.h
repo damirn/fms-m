@@ -117,7 +117,7 @@ namespace fms
 		std::uint32_t m_channel_id{eInvokeChannel};
 		std::uint32_t m_timestamp{0};
 
-		enum { eInvokeChannel = 3 };
+		static constexpr std::uint32_t eInvokeChannel = 3;
 	};
 
 	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;

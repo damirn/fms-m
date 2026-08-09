@@ -71,7 +71,7 @@ namespace fms
 		// be sent by reference). 0-based by occurrence, reset at top-level read.
 		std::vector<amf0_type_ptr> m_ref_table;
 
-		enum { eMaxDepth = 32 };   // cap nested objects/arrays (untrusted input)
+		static constexpr unsigned eMaxDepth = 32;   // cap nested objects/arrays (untrusted input)
 		unsigned m_depth = 0;
 	};
 }

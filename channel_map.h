@@ -13,13 +13,10 @@ namespace fms
 	// createStream, ...) on csid 3. Every live stream (id >= 1) then gets its own
 	// contiguous block of csids starting at 4; within a block the media kind selects
 	// the slot.
-	enum : std::uint32_t
-	{
-		eProtocolControlChannel = 2,   // stream 0: protocol control messages
-		eCommandChannel         = 3,   // stream 0: AMF command / invoke
-		eFirstStreamChannel     = 4,   // stream 1's block begins here (2 and 3 reserved)
-		eChannelsPerStream      = 5,   // csids reserved per stream (one slot goes unused)
-	};
+	inline constexpr std::uint32_t eProtocolControlChannel = 2;   // stream 0: protocol control
+	inline constexpr std::uint32_t eCommandChannel         = 3;   // stream 0: AMF command / invoke
+	inline constexpr std::uint32_t eFirstStreamChannel     = 4;   // stream 1's block begins here
+	inline constexpr std::uint32_t eChannelsPerStream      = 5;   // csids reserved per stream
 
 	// A media kind's value IS its slot offset within a stream's block, so the channel
 	// is simply (block base + type). eControl is 4, not 3, which leaves slot 3 unused.

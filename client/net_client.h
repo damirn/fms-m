@@ -75,7 +75,7 @@ namespace fms::rtmp_client
 		boost::asio::ip::tcp::resolver m_resolver;
 		boost::asio::steady_timer m_timer;
 
-		enum { _eConnectTimeout = 5 };
+		static constexpr auto eConnectTimeout = std::chrono::seconds{5};
 
 		bool m_connected{false};
 		bool m_stopped{false};
