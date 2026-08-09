@@ -152,15 +152,14 @@ namespace fms
 		return false;
 	}
 
-	void connection_registry::list_clients(client_list_t &list)
+	client_list_t connection_registry::list_clients()
 	{
+		client_list_t list;
 		std::unique_lock const lock(m_mutex);
-		for (auto & conn : m_connections)
-		{
-			client_data_ptr const data = get_client_data_impl(conn.first);
-			if (data.get() != nullptr)
-				list.push_back(data);
-		}
+		for (auto const &[id, conn] : m_connections)
+			if (client_data_ptr data = get_client_data_impl(id))
+				list.push_back(std::move(data));
+		return list;
 	}
 
 	client_data_ptr connection_registry::get_client_data(std::uint32_t connection_id)

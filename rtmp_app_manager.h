@@ -81,12 +81,12 @@ namespace fms
 			return m_rtmpt_manager.get();
 		}
 
-		void list_applications(string_list_t &) override;
-		void list_clients(client_list_t &) override;
+		string_list_t list_applications() override;
+		client_list_t list_clients() override;
 		client_data_ptr get_client_data(std::uint32_t) override;
 		bool get_client_stats(std::uint32_t, client_stats &) override;
 		std::optional<app_stats> get_app_stats(const std::string &) override;
-		void list_streams(netstream_list_t &) override;
+		netstream_list_t list_streams() override;
 		void get_queue_stats(queue_stats_list_t &) override;
 
 		void create_netstream(const stream_client_id_t &) override;

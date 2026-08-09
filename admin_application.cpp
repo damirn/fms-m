@@ -203,8 +203,7 @@ namespace fms
 		res->stream_id() = invoke->stream_id();
 
 		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
-		string_list_t apps;
-		m_app_manager->list_applications(apps);
+		string_list_t const apps = m_app_manager->list_applications();
 		for (auto & app : apps)
 		{
 			amf0_string_ptr const str = std::make_shared<amf0_string>(app);
@@ -222,8 +221,7 @@ namespace fms
 		res->stream_id() = invoke->stream_id();
 
 		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
-		client_list_t clients;
-		m_app_manager->list_clients(clients);
+		client_list_t const clients = m_app_manager->list_clients();
 		for (auto & client : clients)
 		{
 			amf0_object_ptr const obj = std::make_shared<amf0_object>();
@@ -319,8 +317,7 @@ namespace fms
 		res->stream_id() = invoke->stream_id();
 
 		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
-		netstream_list_t streams;
-		m_app_manager->list_streams(streams);
+		netstream_list_t const streams = m_app_manager->list_streams();
 
 		for (auto & stream : streams)
 			list->add_entry(create_stream_stat_obj(stream));

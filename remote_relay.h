@@ -4,10 +4,16 @@
 
 namespace fms::remote_relay
 {
-	// Parse a play/publish target of the form "streamname@remoteserver". When the
-	// '@' form is present and well-formed, fills sname + remote and returns true;
-	// otherwise sets sname = stream and returns false (a plain local stream).
-	bool is_remote_stream(const std::string &stream, std::string &sname, std::string &remote);
+	struct remote_target
+	{
+		std::string m_stream;   // the name to look up locally
+		std::string m_server;   // empty unless the "name@server" form was used
+	};
+
+	// Parse a play/publish target. "streamname@remoteserver" yields both halves;
+	// any other shape is a plain local stream, with m_server empty. m_stream is
+	// always set.
+	remote_target parse_target(const std::string &stream);
 
 	// If a --helper-app is configured, fork+exec it to pull `stream` from
 	// `remote_srv` and republish it into the matching local application (an

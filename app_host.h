@@ -51,9 +51,9 @@ namespace fms
 		virtual std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &) = 0;
 
 		// ---- introspection (the admin application) -----------------------------
-		virtual void list_applications(string_list_t &) = 0;
-		virtual void list_clients(client_list_t &) = 0;
-		virtual void list_streams(netstream_list_t &) = 0;
+		virtual string_list_t list_applications() = 0;
+		virtual client_list_t list_clients() = 0;
+		virtual netstream_list_t list_streams() = 0;
 		virtual client_data_ptr get_client_data(std::uint32_t) = 0;
 		virtual bool get_client_stats(std::uint32_t, client_stats &) = 0;
 		virtual std::optional<app_stats> get_app_stats(const std::string &) = 0;

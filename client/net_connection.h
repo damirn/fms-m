@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <queue>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -164,7 +165,7 @@ namespace fms::rtmp_client
 		void handle_connect_result(const rtmp_message_invoke_ptr&, const result_handler_ptr&);
 		void handle_create_stream_result(const rtmp_message_invoke_ptr&, const result_handler_ptr&);
 
-		static bool get_code(const rtmp_message_invoke_ptr&, std::string &);
+		static std::optional<std::string> get_code(const rtmp_message_invoke_ptr&);
 
 		std::unordered_map<std::uint32_t, result_handler_ptr> m_result_handlers;
 

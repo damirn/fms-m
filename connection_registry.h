@@ -66,7 +66,7 @@ namespace fms
 		void set_encoding_for_connection(std::uint32_t, bool);
 		bool is_amf3_encoding(std::uint32_t);
 
-		void list_clients(client_list_t &);
+		client_list_t list_clients();
 		client_data_ptr get_client_data(std::uint32_t);
 		bool get_client_stats(std::uint32_t, client_stats &);
 
