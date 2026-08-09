@@ -29,18 +29,22 @@ namespace fms
 #pragma pack(push)
 #pragma pack(1)
 
-	union address
+	// Wire layout: [flags][ipv4 (4)][port (2)], both numeric fields in network
+	// order. Serialized by writing the object representation, so the packing is
+	// load-bearing -- hence the static_assert below.
+	//
+	// This was a union with a parallel m_bytes[7] that nothing ever read; writing
+	// one member and reading the other is what made it type-punning.
+	struct address
 	{
-		struct
-		{
-			std::uint8_t m_type;
-			std::uint32_t m_ip;
-			std::uint16_t m_port;
-		};
-		std::uint8_t m_bytes[7];
+		std::uint8_t m_type{eAddressOriginUnknown};
+		std::uint32_t m_ip{0};
+		std::uint16_t m_port{0};
 	};
 
 #pragma pack(pop)
+
+	static_assert(sizeof(address) == 7, "address must match its 7-byte wire layout");
 
 	struct option
 	{
