@@ -15,6 +15,7 @@
 #include "rtmp_handshake.h"
 
 #include <array>
+#include <span>
 #include <cstdint>
 #include <cstring>
 #include <numeric>
@@ -53,12 +54,12 @@ TEST_CASE("handshake: digest_offset stays inside the buffer for every input")
 		for (int i = 0; i < 4; ++i) { b[i] = static_cast<std::uint8_t>(rest > 255 ? 255 : rest); rest -= b[i]; }
 
 		std::memcpy(s.data() + 8, b.data(), 4);
-		std::uint32_t const off0 = digest_offset(s.data(), 0);
+		std::uint32_t const off0 = digest_offset(s, 0);
 		CHECK(off0 >= 12);
 		CHECK(off0 + eDigestLen <= eHandshakeSize);
 
 		std::memcpy(s.data() + 772, b.data(), 4);
-		std::uint32_t const off1 = digest_offset(s.data(), 1);
+		std::uint32_t const off1 = digest_offset(s, 1);
 		CHECK(off1 >= 776);
 		CHECK(off1 + eDigestLen <= eHandshakeSize);
 	}
@@ -76,12 +77,12 @@ TEST_CASE("handshake: dh_offset stays inside the buffer for every input")
 		for (int i = 0; i < 4; ++i) { b[i] = static_cast<std::uint8_t>(rest > 255 ? 255 : rest); rest -= b[i]; }
 
 		std::memcpy(s.data() + 1532, b.data(), 4);
-		std::uint32_t const off0 = dh_offset(s.data(), 0);
+		std::uint32_t const off0 = dh_offset(s, 0);
 		CHECK(off0 >= 772);
 		CHECK(off0 + dh_len <= eHandshakeSize);
 
 		std::memcpy(s.data() + 768, b.data(), 4);
-		std::uint32_t const off1 = dh_offset(s.data(), 1);
+		std::uint32_t const off1 = dh_offset(s, 1);
 		CHECK(off1 >= 8);
 		CHECK(off1 + dh_len <= eHandshakeSize);
 	}
@@ -90,29 +91,29 @@ TEST_CASE("handshake: dh_offset stays inside the buffer for every input")
 TEST_CASE("handshake: an unknown scheme yields offset 0")
 {
 	auto const s = make_sig();
-	CHECK(digest_offset(s.data(), 2) == 0);
-	CHECK(dh_offset(s.data(), 2) == 0);
+	CHECK(digest_offset(s, 2) == 0);
+	CHECK(dh_offset(s, 2) == 0);
 }
 
 TEST_CASE("handshake: compute_digest excludes the digest window")
 {
 	auto s = make_sig();
-	std::uint32_t const off = digest_offset(s.data(), 0);
+	std::uint32_t const off = digest_offset(s, 0);
 
 	std::uint8_t a[eDigestLen];
-	compute_digest(s.data(), off, test_key, test_key_len, a);
+	compute_digest(s, off, {test_key, test_key_len}, a);
 
 	// Scribbling inside the 32-byte window must not change the result...
 	for (std::uint32_t i = off; i < off + eDigestLen; ++i)
 		s[i] = static_cast<std::uint8_t>(~s[i]);
 	std::uint8_t b[eDigestLen];
-	compute_digest(s.data(), off, test_key, test_key_len, b);
+	compute_digest(s, off, {test_key, test_key_len}, b);
 	CHECK(std::memcmp(a, b, eDigestLen) == 0);
 
 	// ...but a byte outside it must.
 	s[off == 12 ? off + eDigestLen : 0] ^= 0xFF;
 	std::uint8_t c[eDigestLen];
-	compute_digest(s.data(), off, test_key, test_key_len, c);
+	compute_digest(s, off, {test_key, test_key_len}, c);
 	CHECK(std::memcmp(a, c, eDigestLen) != 0);
 }
 
@@ -121,19 +122,19 @@ TEST_CASE("handshake: a digest written in place validates, and one bit flip brea
 	for (std::uint8_t scheme : {std::uint8_t{0}, std::uint8_t{1}})
 	{
 		auto s = make_sig(static_cast<std::uint8_t>(scheme + 1));
-		std::uint32_t const off = digest_offset(s.data(), scheme);
+		std::uint32_t const off = digest_offset(s, scheme);
 
 		// compute_digest is documented to allow out to point into sig at off
-		compute_digest(s.data(), off, test_key, test_key_len, s.data() + off);
-		CHECK(validate_digest(s.data(), scheme, test_key, test_key_len));
+		compute_digest(s, off, {test_key, test_key_len}, std::span{s}.subspan(off).first<eDigestLen>());
+		CHECK(validate_digest(s, scheme, {test_key, test_key_len}));
 
 		auto flipped = s;
 		flipped[off] ^= 0x01;
-		CHECK_FALSE(validate_digest(flipped.data(), scheme, test_key, test_key_len));
+		CHECK_FALSE(validate_digest(flipped, scheme, {test_key, test_key_len}));
 
 		auto other_key = s;
 		std::uint8_t const wrong[] = "a different key";
-		CHECK_FALSE(validate_digest(other_key.data(), scheme, wrong, sizeof(wrong) - 1));
+		CHECK_FALSE(validate_digest(other_key, scheme, {wrong, sizeof(wrong) - 1}));
 	}
 }
 
@@ -142,10 +143,10 @@ TEST_CASE("handshake: detect_scheme finds the scheme that was signed")
 	for (std::uint8_t scheme : {std::uint8_t{0}, std::uint8_t{1}})
 	{
 		auto s = make_sig(static_cast<std::uint8_t>(scheme + 10));
-		std::uint32_t const off = digest_offset(s.data(), scheme);
-		compute_digest(s.data(), off, test_key, test_key_len, s.data() + off);
+		std::uint32_t const off = digest_offset(s, scheme);
+		compute_digest(s, off, {test_key, test_key_len}, std::span{s}.subspan(off).first<eDigestLen>());
 
-		CHECK(detect_scheme(s.data(), test_key, test_key_len) == scheme);
+		CHECK(detect_scheme(s, {test_key, test_key_len}) == scheme);
 	}
 }
 
@@ -154,27 +155,27 @@ TEST_CASE("handshake: detect_scheme rejects a C1 that was never signed")
 	// What an unsigned (simple-handshake) or hostile C1 looks like: the odds of
 	// either scheme's window happening to hold a valid HMAC are negligible.
 	auto const s = make_sig(42);
-	CHECK(detect_scheme(s.data(), test_key, test_key_len) == -1);
+	CHECK(detect_scheme(s, {test_key, test_key_len}) == -1);
 
 	c1_buf zeros{};
-	CHECK(detect_scheme(zeros.data(), test_key, test_key_len) == -1);
+	CHECK(detect_scheme(zeros, {test_key, test_key_len}) == -1);
 }
 
 TEST_CASE("handshake: the genuine FP key round-trips like any other")
 {
 	// Production uses genuine_keys::FP_key truncated to 30 bytes.
 	auto s = make_sig(7);
-	std::uint32_t const off = digest_offset(s.data(), 1);
-	compute_digest(s.data(), off, genuine_keys::FP_key, 30, s.data() + off);
+	std::uint32_t const off = digest_offset(s, 1);
+	compute_digest(s, off, {genuine_keys::FP_key, 30}, std::span{s}.subspan(off).first<eDigestLen>());
 
-	CHECK(validate_digest(s.data(), 1, genuine_keys::FP_key, 30));
-	CHECK(detect_scheme(s.data(), genuine_keys::FP_key, 30) == 1);
+	CHECK(validate_digest(s, 1, {genuine_keys::FP_key, 30}));
+	CHECK(detect_scheme(s, {genuine_keys::FP_key, 30}) == 1);
 }
 
 TEST_CASE("handshake: fill_random fills the whole buffer")
 {
 	std::vector<std::uint8_t> buf(256, 0);
-	REQUIRE(fill_random(buf.data(), buf.size()));
+	REQUIRE(fill_random(buf));
 	// not a randomness test -- just that it wrote something across the range
 	CHECK(std::accumulate(buf.begin(), buf.end(), 0ULL) > 0);
 }

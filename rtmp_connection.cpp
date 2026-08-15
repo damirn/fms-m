@@ -140,10 +140,14 @@ namespace fms
 				m_buffer.update(bytes_transferred);
 				handle_bytes_read(bytes_transferred);
 				m_state = eStateHSResponseReceived;
-				if (!m_handshaker.validate_c2(m_buffer.data()))
 				{
-					close();
-					return;
+					auto const c2 = rtmp_handshake::as_c1(
+						static_cast<const std::uint8_t *>(m_buffer.data()), m_buffer.size());
+					if (!c2 || !m_handshaker.validate_c2(*c2))
+					{
+						close();
+						return;
+					}
 				}
 				m_buffer.consume(eHandShakeSize);
 				on_handshake_complete();
@@ -349,9 +353,9 @@ namespace fms
 		m_buffer.update(bytes_transferred);
 		m_state = eStateWriteHSBlock1;
 
-		std::uint8_t *client_sig = m_buffer.data() + 1;   // C1
-		std::uint8_t const magic = m_buffer.data()[0];    // C0 (consumed together with C1 after block2)
-		if (!m_handshaker.build_response(magic, client_sig))
+		std::uint8_t const magic = m_buffer.data()[0];    // C0 (consumed with C1 after block2)
+		auto const client_sig = rtmp_handshake::as_c1(m_buffer.data() + 1, m_buffer.size() - 1);
+		if (!client_sig || !m_handshaker.build_response(magic, *client_sig))
 		{
 			close();
 			return;

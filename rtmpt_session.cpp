@@ -163,7 +163,9 @@ namespace fms
 				serialize_poll_time(output);
 				return boost::indeterminate;
 			}
-			if (!m_handshaker.validate_c2(m_remaining_data.data()))
+			auto const c2 = rtmp_handshake::as_c1(
+				static_cast<const std::uint8_t *>(m_remaining_data.data()), m_remaining_data.size());
+			if (!c2 || !m_handshaker.validate_c2(*c2))
 			{
 				close();
 				return false;
@@ -215,9 +217,9 @@ namespace fms
 		if (input.size() < eHandShakeSize + 1)
  			return false;
 
-		std::uint8_t *client_sig = input.data() + 1;   // C1
 		std::uint8_t const magic = input.data()[0];    // C0
-		if (!m_handshaker.build_response(magic, client_sig))
+		auto const client_sig = rtmp_handshake::as_c1(input.data() + 1, input.size() - 1);
+		if (!client_sig || !m_handshaker.build_response(magic, *client_sig))
 			return false;
 		m_sid = m_handshaker.sid();
 

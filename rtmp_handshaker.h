@@ -1,5 +1,7 @@
 #pragma once
 
+#include "rtmp_handshake.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -34,7 +36,7 @@ namespace fms
 		// S2. Negotiates signed(fp9)/encrypted(RTMPE) from magic + C1. On the crypto
 		// path this also derives the RC4 keys and the session id. Returns false to
 		// refuse the handshake (bad magic, no usable randomness, or a broken cipher).
-		bool build_response(std::uint8_t magic, std::uint8_t *client_sig);
+		bool build_response(std::uint8_t magic, rtmp_handshake::c1_span client_sig);
 
 		// The S0+S1 block to send (1 + 1536 bytes), valid after build_response.
 		const std::uint8_t *response() const { return m_tmp_buff.data(); }
@@ -42,7 +44,7 @@ namespace fms
 
 		// Phase 2. Validate the client's C2 (`c2` must point at >= eHandShakeSize
 		// readable bytes). Pure -- the caller owns the success/failure side effects.
-		bool validate_c2(const std::uint8_t *c2);
+		bool validate_c2(rtmp_handshake::c1_view c2);
 
 		// RC4 crypto applied in place. No-ops when the handshake was plaintext, so the
 		// transports call them unconditionally on every packet.
@@ -55,8 +57,8 @@ namespace fms
 		const std::string &sid() const { return m_sid; }
 
 	private:
-		bool validate_client(std::uint8_t *client_sig);
-		bool create_keys(std::uint8_t *client_sig, std::uint8_t *server_sig);
+		bool validate_client(rtmp_handshake::c1_view client_sig);
+		bool create_keys(rtmp_handshake::c1_view client_sig, rtmp_handshake::c1_span server_sig);
 
 		std::array<std::uint8_t, eHandShakeSize + 1> m_tmp_buff;
 		bool m_is_fp9{false};
