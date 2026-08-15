@@ -48,15 +48,15 @@ namespace fms
 		{
 			if (((m_prev_header_type == rtmp_header::eHeaderTimerChange || m_prev_header_type == rtmp_header::eHeaderSameSource || m_prev_header_type == rtmp_header::eHeaderContinue) && m_prev_message_complete && m_received_header.header_type() == rtmp_header::eHeaderContinue))
 			{
-				m_received_header.timestamp() += m_prev_time_delta;
+				m_received_header.set_timestamp(m_received_header.timestamp() + m_prev_time_delta);
 				m_uses_continuation = true;
 				return;
 			}
 			if (m_prev_header_type == rtmp_header::eHeaderNew && m_prev_message_complete && m_received_header.header_type() == rtmp_header::eHeaderContinue)
 			{
 				m_uses_continuation = true;
-				m_received_header.timestamp() += m_prev_timestamp;
-				m_received_header.time_delta() = m_prev_timestamp;
+				m_received_header.set_timestamp(m_received_header.timestamp() + m_prev_timestamp);
+				m_received_header.set_time_delta(m_prev_timestamp);
 				return;
 			}
 			if (m_uses_continuation && m_received_header.header_type() != rtmp_header::eHeaderContinue)

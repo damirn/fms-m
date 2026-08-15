@@ -53,7 +53,7 @@ namespace fms
 				amf0_number_ptr const bw = std::make_shared<amf0_number>(kbps);
 				amf0_number_ptr const d = std::make_shared<amf0_number>((*stats)->m_delay);
 				rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>(onQOS);
-				msg->stream_id() = ssid.second;
+				msg->set_stream_id(ssid.second);
 				msg->add_parameter(d);
 				msg->add_parameter(bw);
 				m_host.enqueue(ssid.first, msg);

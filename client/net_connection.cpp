@@ -108,7 +108,7 @@ namespace fms::rtmp_client
 
 	void net_connection::add_net_stream(const net_stream_ptr& stream)
 	{
-		stream->id() = m_stream_cnt;
+		stream->set_id(m_stream_cnt);
 		m_tmp_net_streams[m_stream_cnt++] = stream;
 	}
 
@@ -128,7 +128,7 @@ namespace fms::rtmp_client
 	void net_connection::close_stream(const net_stream_ptr& stream)
 	{
 		rtmp_message_invoke_ptr const p = std::make_shared<rtmp_message_invoke>("closeStream", 0.0f);
-		p->stream_id() = stream->stream_id();
+		p->set_stream_id(stream->stream_id());
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		p->add_parameter(null);
@@ -667,7 +667,7 @@ namespace fms::rtmp_client
 		std::string func;
 		std::uint32_t const sid = static_cast<std::uint32_t>(stream_id->value());
 		m_net_streams[sid] = ns;
-		ns->stream_id() = sid;
+		ns->set_stream_id(sid);
 
 		if (ns->get_role() == net_stream::ePublishing)
 		{
@@ -682,7 +682,7 @@ namespace fms::rtmp_client
 		}
 
 		rtmp_message_invoke_ptr const p = std::make_shared<rtmp_message_invoke>(func, 0.0f);
-		p->stream_id() = static_cast<std::uint32_t>(stream_id->value());
+		p->set_stream_id(static_cast<std::uint32_t>(stream_id->value()));
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		p->add_parameter(null);

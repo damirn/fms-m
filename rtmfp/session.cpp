@@ -416,13 +416,16 @@ namespace fms
 			{
 				rtmp_header h;
 				byte_reader s(data, len);
-				s >> h.message_type() >> h.timestamp();
-				h.timestamp() = to_host<std::uint32_t>(h.timestamp());
+				std::uint8_t msg_type = 0;
+				std::uint32_t ts = 0;
+				s >> msg_type >> ts;
+				h.set_message_type(msg_type);
+				h.set_timestamp(to_host<std::uint32_t>(ts));
 				auto const i = m_flow_id_to_stream_id.find(f->flow_id());
 				if (i != m_flow_id_to_stream_id.end())
 				{
-					h.stream_id() = i->second;
-					h.message_length() = len - 5; // msg type + timestamp
+					h.set_stream_id(i->second);
+					h.set_message_length(len - 5); // msg type + timestamp
 					rtmp_protocol p;
 					byte_reader r(s.read_pos(), s.available());
 					if (p.deserialize(r, h))

@@ -152,7 +152,7 @@ namespace
 	{
 		if (r->pub_h.ns_h.ns)   // guard: publish stream exists
 		{
-			v->channel_id() = 6;
+			v->set_channel_id(6);
 			r->pub_h.ns_h.ns->send_msg(v);
 		}
 	}
@@ -161,7 +161,7 @@ namespace
 	{
 		if (r->pub_h.ns_h.ns)
 		{
-			a->channel_id() = 4;
+			a->set_channel_id(4);
 			r->pub_h.ns_h.ns->send_msg(a);
 		}
 	}

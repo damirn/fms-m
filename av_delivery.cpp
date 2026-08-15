@@ -92,7 +92,7 @@ namespace fms
 		if (bs && bs->metadata)
 		{
 			rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>("onMetaData");
-			msg->stream_id() = stream_id;
+			msg->set_stream_id(stream_id);
 			msg->parameters().push_back(bs->metadata);
 			m_host.enqueue(connection_id, msg);
 			m_host.notify_connection(connection_id);
@@ -179,8 +179,8 @@ namespace fms
 		client->m_key_frame_sent = true;
 
 		rtmp_message_video_data_ptr const tmp = std::make_shared<rtmp_message_video_data>(*video);
-		tmp->stream_id() = client->m_stream_id;
-		tmp->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
+		tmp->set_stream_id(client->m_stream_id);
+		tmp->set_channel_id(stream_to_channel(client->m_stream_id, eVideo));
 
 		if (!client->m_first_video_packet_seen)
 		{
@@ -210,7 +210,7 @@ namespace fms
 				client->m_video_time = video->timestamp() - client->m_start_epoch;
 			else
 				client->m_video_time = 0;
-			tmp->timestamp() = client->m_video_time;
+			tmp->set_timestamp(client->m_video_time);
 		}
 		else
 		{
@@ -221,7 +221,7 @@ namespace fms
 			{
 				client->m_video_time++;
 			}
-			tmp->timestamp() = client->m_video_time;
+			tmp->set_timestamp(client->m_video_time);
 			client->m_video_epoch = video->timestamp();
 		}
 
@@ -241,9 +241,9 @@ namespace fms
 		if (cfg)   // slot pre-exists; may still be null
 		{
 			rtmp_message_video_data_ptr const conf = std::make_shared<rtmp_message_video_data>(*cfg);
-			conf->timestamp() = 0;
-			conf->stream_id() = client->m_stream_id;
-			conf->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
+			conf->set_timestamp(0);
+			conf->set_stream_id(client->m_stream_id);
+			conf->set_channel_id(stream_to_channel(client->m_stream_id, eVideo));
 			m_host.enqueue(client->m_connection_id, conf);
 		}
 	}
@@ -262,25 +262,25 @@ namespace fms
 		std::uint8_t const tag = (static_cast<std::uint8_t>(rtmp_message_video_data::eVideoInfo) << 4) | video->get_codec();
 		info_msg->data()[0] = tag;
 		info_msg->data()[1] = 0x00;
-		info_msg->timestamp() = 0;
-		info_msg->stream_id() = client->m_stream_id;
-		info_msg->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
+		info_msg->set_timestamp(0);
+		info_msg->set_stream_id(client->m_stream_id);
+		info_msg->set_channel_id(stream_to_channel(client->m_stream_id, eVideo));
 		m_host.enqueue(client->m_connection_id, info_msg);
 
 		rtmp_message_video_data_ptr const info_msg2 = std::make_shared<rtmp_message_video_data>(2);
 		info_msg2->data()[0] = tag;
 		info_msg2->data()[1] = 0x01;
-		info_msg2->timestamp() = 0;
-		info_msg2->stream_id() = client->m_stream_id;
-		info_msg2->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
+		info_msg2->set_timestamp(0);
+		info_msg2->set_stream_id(client->m_stream_id);
+		info_msg2->set_channel_id(stream_to_channel(client->m_stream_id, eVideo));
 
 		auto it = list.begin();
 		for (std::uint32_t cnt = 0; cnt < size; ++cnt)
 		{
 			rtmp_message_video_data_ptr const tmp2 = std::make_shared<rtmp_message_video_data>(**it);
-			tmp2->stream_id() = client->m_stream_id;
-			tmp2->channel_id() = stream_to_channel(client->m_stream_id, eVideo);
-			tmp2->timestamp() = 0;
+			tmp2->set_stream_id(client->m_stream_id);
+			tmp2->set_channel_id(stream_to_channel(client->m_stream_id, eVideo));
+			tmp2->set_timestamp(0);
 			m_host.enqueue(client->m_connection_id, tmp2);
 			// Count the GOP burst in the subscriber's stats too, or the QoS timer
 			// undercounts a mid-GOP joiner's bytes/messages.
@@ -296,8 +296,8 @@ namespace fms
 	void av_delivery::send_audio_frame(const rtmp_message_audio_data_ptr &audio, const stream_client_ptr &client, const stream_client_id_t &src)
 	{
 		rtmp_message_audio_data_ptr const tmp = std::make_shared<rtmp_message_audio_data>(*audio);
-		tmp->stream_id() = client->m_stream_id;
-		tmp->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
+		tmp->set_stream_id(client->m_stream_id);
+		tmp->set_channel_id(stream_to_channel(client->m_stream_id, eAudio));
 
 		if (!client->m_first_audio_packet_seen)
 		{
@@ -314,12 +314,12 @@ namespace fms
 				start_time = client->m_audio_time = audio->timestamp() - client->m_start_epoch;
 			else
 				start_time = client->m_audio_time = 0;
-			tmp->timestamp() = client->m_audio_time;
+			tmp->set_timestamp(client->m_audio_time);
 
 			rtmp_message_audio_data_ptr const tmp2 = std::make_shared<rtmp_message_audio_data>();
-			tmp2->stream_id() = client->m_stream_id;
-			tmp2->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
-			tmp2->timestamp() = start_time;
+			tmp2->set_stream_id(client->m_stream_id);
+			tmp2->set_channel_id(stream_to_channel(client->m_stream_id, eAudio));
+			tmp2->set_timestamp(start_time);
 			m_host.enqueue(client->m_connection_id, tmp2);
 		}
 		else
@@ -328,7 +328,7 @@ namespace fms
 			// (mirrors the video path).
 			std::int32_t const t = audio->timestamp() - client->m_audio_epoch;
 			client->m_audio_time += t >= 0 ? t : 0;
-			tmp->timestamp() = client->m_audio_time;
+			tmp->set_timestamp(client->m_audio_time);
 			client->m_audio_epoch = audio->timestamp();
 		}
 
@@ -348,9 +348,9 @@ namespace fms
 		if (cfg)   // slot pre-exists; may still be null
 		{
 			rtmp_message_audio_data_ptr const conf = std::make_shared<rtmp_message_audio_data>(*cfg);
-			conf->timestamp() = 0;
-			conf->stream_id() = client->m_stream_id;
-			conf->channel_id() = stream_to_channel(client->m_stream_id, eAudio);
+			conf->set_timestamp(0);
+			conf->set_stream_id(client->m_stream_id);
+			conf->set_channel_id(stream_to_channel(client->m_stream_id, eAudio));
 			m_host.enqueue(client->m_connection_id, conf);
 		}
 	}

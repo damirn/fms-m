@@ -226,8 +226,8 @@ namespace fms
 			std::uint8_t c;
 			buffer >> c;
 
-			h.message_type() = c;
-			h.message_length() = buffer.read_uint32_3();
+			h.set_message_type(c);
+			h.set_message_length(buffer.read_uint32_3());
 			// FLV tag header: Timestamp(3) + TimestampExtended(1) high byte, then a
 			// 3-byte StreamID (always 0).
 			std::uint32_t ts = buffer.read_uint32_3();
@@ -238,15 +238,15 @@ namespace fms
 			{
 				first = false;
 				prev_ts = ts;
-				h.timestamp() = m_ts;
+				h.set_timestamp(m_ts);
 			}
 			else
 			{
-				h.timestamp() = prev_calc_ts + ts - prev_ts;
+				h.set_timestamp(prev_calc_ts + ts - prev_ts);
 				prev_calc_ts = h.timestamp();
 				prev_ts = ts;
 			}
-			h.stream_id() = buffer.read_uint32_3();
+			h.set_stream_id(buffer.read_uint32_3());
 
 			// a sub-message can't be longer than what's left of the aggregate;
 			// stop on a bogus length instead of over-allocating / over-reading

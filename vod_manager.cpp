@@ -92,8 +92,8 @@ namespace fms
 
 		rtmp_message_ptr const frame = session->m_next;
 		bool const is_video = std::dynamic_pointer_cast<rtmp_message_video_data>(frame) != nullptr;
-		frame->stream_id() = session->m_stream_id;
-		frame->channel_id() = stream_to_channel(session->m_stream_id, is_video ? eVideo : eAudio);
+		frame->set_stream_id(session->m_stream_id);
+		frame->set_channel_id(stream_to_channel(session->m_stream_id, is_video ? eVideo : eAudio));
 		std::uint32_t const cur_ts = frame->timestamp();
 
 		// Anchor pacing to an absolute origin on the first frame after any

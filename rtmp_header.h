@@ -29,76 +29,70 @@ namespace fms
 			return m_header_size;
 		}
 
-		const std::uint32_t &header_size() const
+		std::uint32_t header_size() const
 		{
 			return m_header_size;
 		}
 
-		std::uint32_t &channel_id()
+		std::uint32_t channel_id() const
 		{
 			return m_channel_id;
 		}
 
-		const std::uint32_t &channel_id() const
+		void set_channel_id(std::uint32_t v)
 		{
-			return m_channel_id;
+			m_channel_id = v;
 		}
-
-		std::uint32_t &timestamp()
-		{
-			return m_timestamp;
-		}
-
-		const std::uint32_t &timestamp() const
+		std::uint32_t timestamp() const
 		{
 			return m_timestamp;
 		}
 
-		std::uint32_t &message_length()
+		void set_timestamp(std::uint32_t v)
+		{
+			m_timestamp = v;
+		}
+		std::uint32_t message_length() const
 		{
 			return m_message_length;
 		}
 
-		const std::uint32_t &message_length() const
+		void set_message_length(std::uint32_t v)
 		{
-			return m_message_length;
+			m_message_length = v;
 		}
-
-		std::uint32_t &stream_id()
-		{
-			return m_stream_id;
-		}
-
-		const std::uint32_t &stream_id() const
+		std::uint32_t stream_id() const
 		{
 			return m_stream_id;
 		}
 
-		std::uint8_t &message_type()
+		void set_stream_id(std::uint32_t v)
+		{
+			m_stream_id = v;
+		}
+		std::uint8_t message_type() const
 		{
 			return m_message_type;
 		}
 
-		const std::uint8_t &message_type() const
+		void set_message_type(std::uint8_t v)
 		{
-			return m_message_type;
+			m_message_type = v;
 		}
-
-		const std::uint8_t &header_type() const
+		std::uint8_t header_type() const
 		{
 			return m_header_type;
 		}
 
-		const std::uint32_t &time_delta() const
+		std::uint32_t time_delta() const
 		{
 			return m_ts_delta_read;
 		}
 
-		std::uint32_t &time_delta()
+		void set_time_delta(std::uint32_t v)
 		{
-			return m_ts_delta_read;
+			m_ts_delta_read = v;
 		}
-
 		void serialize_header_continue_size(byte_writer &);
 
 	protected:

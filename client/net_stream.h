@@ -70,24 +70,24 @@ namespace fms::rtmp_client
 				m_sink->on_meta_data(std::move(msg));
 		}
 
-		std::uint32_t &id()
+		std::uint32_t id() const
 		{
 			return m_id;
 		}
 
-		const std::uint32_t &id() const
+		void set_id(std::uint32_t v)
 		{
-			return m_id;
+			m_id = v;
 		}
 
-		std::uint32_t &stream_id()
+		std::uint32_t stream_id() const
 		{
 			return m_stream_id;
 		}
 
-		const std::uint32_t &stream_id() const
+		void set_stream_id(std::uint32_t v)
 		{
-			return m_stream_id;
+			m_stream_id = v;
 		}
 
 		const std::string &stream_name() const

@@ -58,11 +58,11 @@ namespace fms::rtmp_client
 			fms::rtmp_message_ptr const msg = m_reader.get_frame();
 			if (config::instance()->send_only_audio() && msg->type() != fms::rtmp_message::eMessageAudioData)
 				continue;
-			msg->stream_id() = m_ns->stream_id();
+			msg->set_stream_id(m_ns->stream_id());
 			if (msg->type() == fms::rtmp_message::eMessageAudioData)
-				msg->channel_id() = 4;
+				msg->set_channel_id(4);
 			else if (msg->type() == fms::rtmp_message::eMessageVideoData)
-				msg->channel_id() = 6;
+				msg->set_channel_id(6);
 
 			if ((msg->timestamp() - m_ts) < 50 || m_ts > msg->timestamp())
 			{
