@@ -3,6 +3,7 @@
 #include "buffer_eof.h"
 
 #include <cstdint>
+#include <span>
 #include <cstring>
 
 namespace fms
@@ -17,6 +18,11 @@ namespace fms
 	public:
 		byte_reader(const std::uint8_t *data, std::size_t len)
 			: m_data(data), m_len(len)
+		{}
+
+		// Preferred: the pointer and the length cannot disagree.
+		explicit byte_reader(std::span<const std::uint8_t> b)
+			: m_data(b.data()), m_len(b.size())
 		{}
 
 		std::size_t remaining() const { return m_len - m_pos; }

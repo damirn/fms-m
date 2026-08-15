@@ -44,7 +44,7 @@ TEST_CASE("session checksum is the byte-swap of RFC 7016 in_cksum for every leng
 		buf.clear();
 		for (std::size_t i = 0; i < n; ++i)
 			buf.push_back(static_cast<std::uint8_t>((i * 37 + 11) & 0xff));
-		std::uint16_t const ours = parser::calculate_checksum(buf.data(), n);
+		std::uint16_t const ours = parser::calculate_checksum({buf.data(), n});
 		std::uint16_t const theirs = ref_in_cksum(buf.data(), n);
 		CHECK(ours == bswap16(theirs));
 	}

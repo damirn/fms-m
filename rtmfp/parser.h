@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 
 namespace fms
 {
@@ -31,7 +32,7 @@ namespace fms
 			return m_aes;
 		}
 
-		static std::uint16_t calculate_checksum(const std::uint8_t *, size_t);
+		static std::uint16_t calculate_checksum(std::span<const std::uint8_t>);
 
 	protected:
 		bool parse_chunks(byte_reader &);

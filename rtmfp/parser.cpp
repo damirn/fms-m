@@ -138,11 +138,13 @@ namespace fms
 	{
 		std::uint16_t c;
 		raw >> c;
-		return c == calculate_checksum(raw.read_pos(), raw.available());
+		return c == calculate_checksum({raw.read_pos(), raw.available()});
 	}
 
-	std::uint16_t parser::calculate_checksum(const std::uint8_t *data, size_t size)
+	std::uint16_t parser::calculate_checksum(std::span<const std::uint8_t> in)
 	{
+		const std::uint8_t *data = in.data();
+		std::size_t const size = in.size();
 		std::uint32_t sum = 0;   // signed would overflow on a maximal payload
 		std::uint8_t  const*end = data + size;
 		while (data < end)

@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <span>
 
 #include <openssl/crypto.h>   // CRYPTO_memcmp (constant-time)
 #include <openssl/evp.h>      // EVP_sha256
@@ -26,41 +27,54 @@ namespace fms::rtmfp_cookie
 	inline constexpr std::size_t header_len = sizeof(std::uint32_t) + tag_len;    // ts + tag = 36
 	inline constexpr std::uint32_t max_age_ms = 95000;
 
+	// The secret and the tag are exactly sized, so those extents are fixed and
+	// checked at compile time. A cookie buffer is larger than its header (opaque
+	// padding follows), so those stay dynamic with a runtime guard.
+	using secret_view = std::span<const std::uint8_t, secret_len>;
+	using tag_out     = std::span<std::uint8_t, tag_len>;
+	using cookie_span = std::span<std::uint8_t>;
+	using cookie_view = std::span<const std::uint8_t>;
+
 	// HMAC-SHA256(secret, addr || port || ts) -> out[tag_len].
 	// False if the HMAC failed, leaving `out` untouched -- a caller must not treat
 	// uninitialised bytes as a tag.
-	[[nodiscard]] inline bool tag(const std::uint8_t *secret, std::uint32_t addr, std::uint16_t port,
-	                              std::uint32_t ts, std::uint8_t *out)
+	[[nodiscard]] inline bool tag(secret_view secret, std::uint32_t addr, std::uint16_t port,
+	                              std::uint32_t ts, tag_out out)
 	{
 		std::uint8_t buf[sizeof(addr) + sizeof(port) + sizeof(ts)];
 		std::memcpy(buf, &addr, sizeof(addr));
 		std::memcpy(buf + sizeof(addr), &port, sizeof(port));
 		std::memcpy(buf + sizeof(addr) + sizeof(port), &ts, sizeof(ts));
 		unsigned int len = 0;
-		return HMAC(EVP_sha256(), secret, static_cast<int>(secret_len), buf, sizeof(buf), out, &len) != nullptr;
+		return HMAC(EVP_sha256(), secret.data(), static_cast<int>(secret.size()),
+			buf, sizeof(buf), out.data(), &len) != nullptr;
 	}
 
 	// Write [ts][tag] into the first header_len bytes of `cookie`; the caller fills
 	// any remaining padding (random in production).
-	[[nodiscard]] inline bool write(const std::uint8_t *secret, std::uint32_t addr, std::uint16_t port,
-	                                std::uint32_t ts, std::uint8_t *cookie)
+	[[nodiscard]] inline bool write(secret_view secret, std::uint32_t addr, std::uint16_t port,
+	                                std::uint32_t ts, cookie_span cookie)
 	{
-		std::memcpy(cookie, &ts, sizeof(ts));
-		return tag(secret, addr, port, ts, cookie + sizeof(ts));
+		if (cookie.size() < header_len)
+			return false;
+		std::memcpy(cookie.data(), &ts, sizeof(ts));
+		return tag(secret, addr, port, ts, cookie.subspan(sizeof(ts)).first<tag_len>());
 	}
 
 	// True iff `cookie`'s tag matches (addr, port, ts) under `secret` and ts is
 	// within max_age_ms of now_ms. Constant-time tag comparison.
-	inline bool valid(const std::uint8_t *secret, std::uint32_t addr, std::uint16_t port,
-	                  std::uint32_t now_ms, const std::uint8_t *cookie)
+	inline bool valid(secret_view secret, std::uint32_t addr, std::uint16_t port,
+	                  std::uint32_t now_ms, cookie_view cookie)
 	{
-		std::uint32_t ts;
-		std::memcpy(&ts, cookie, sizeof(ts));
+		if (cookie.size() < header_len)
+			return false;
+		std::uint32_t ts = 0;
+		std::memcpy(&ts, cookie.data(), sizeof(ts));
 		if (now_ms - ts > max_age_ms)   // stale (forged future ts fails the tag check anyway)
 			return false;
 		std::uint8_t expected[tag_len];
 		if (!tag(secret, addr, port, ts, expected))
 			return false;   // fail closed rather than compare uninitialised bytes
-		return CRYPTO_memcmp(expected, cookie + sizeof(ts), tag_len) == 0;
+		return CRYPTO_memcmp(expected, cookie.data() + sizeof(ts), tag_len) == 0;
 	}
 }
