@@ -132,11 +132,11 @@ namespace fms
 		boost::program_options::variables_map m_vm;
 		boost::program_options::options_description m_description;
 
-		std::uint32_t m_speex_quality{_eSpeexQuality};
-		std::uint32_t m_threads{_eDefaultThreads};
-		std::uint32_t m_log_level{_eDefaultLogLevel};
-		std::size_t m_max_queue_bytes{_eDefaultMaxQueueBytes};
-		std::uint32_t m_admin_data_keep_time{_eAdminDataKeepTime};
+		std::uint32_t m_speex_quality{eSpeexQuality};
+		std::uint32_t m_threads{eDefaultThreads};
+		std::uint32_t m_log_level{eDefaultLogLevel};
+		std::size_t m_max_queue_bytes{eDefaultMaxQueueBytes};
+		std::uint32_t m_admin_data_keep_time{eAdminDataKeepTime};
 
 		std::string m_bind_address;
 		std::string m_rtmp_port;
@@ -154,16 +154,13 @@ namespace fms
 		std::string m_helper_app;
 		std::string m_password_file;
 
-		enum
-		{
-			_eDefaultThreads = 1,
-			_eDefaultLogLevel = 3,
-			_eSpeexQuality = 6,
-			_eAdminDataKeepTime = 600,
-			_eRTMFPDefaultPort = 1935
-		};
+		static constexpr std::uint32_t eDefaultThreads     = 1;
+		static constexpr std::uint32_t eDefaultLogLevel    = 3;
+		static constexpr std::uint32_t eSpeexQuality       = 6;
+		static constexpr std::uint32_t eAdminDataKeepTime  = 600;
+		static constexpr std::uint16_t eRTMFPDefaultPort   = 1935;
 		// 10 MB -- the middle of the 8-10 MB band FMS 4.5 was measured to enforce.
-		static constexpr std::size_t _eDefaultMaxQueueBytes = 10u * 1024 * 1024;
+		static constexpr std::size_t   eDefaultMaxQueueBytes = 10u * 1024 * 1024;
 
 	private:
 		config()

@@ -212,9 +212,10 @@ namespace fms::rtmp_client
 		message_queue_t m_queue;
 
 		enum state { eNotConnected, eConnected, eHandshake1Sent, eHandshake2Sent, eReady };
-		enum { eHandshakeSize = 1536 };
-		enum { ePlainMagic = 0x03, eCryptoMagic = 0x06 };
-		enum { eAckSize = 2500000 };
+		static constexpr std::size_t  eHandshakeSize = 1536;
+		static constexpr std::uint8_t ePlainMagic    = 0x03;
+		static constexpr std::uint8_t eCryptoMagic   = 0x06;
+		static constexpr std::uint32_t eAckSize      = 2500000;
 
 		state m_state{eNotConnected};
 	};
