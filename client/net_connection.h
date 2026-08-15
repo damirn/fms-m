@@ -2,6 +2,7 @@
 
 #include "channel_manager.h"
 #include "net_client.h"
+#include "rtmp_handshake.h"
 #include "rtmp_message.h"
 #include "rtmp_parser.h"
 
@@ -109,7 +110,7 @@ namespace fms::rtmp_client
 	protected:
 		// False on CSPRNG failure: never ship a partially-built handshake.
 		[[nodiscard]] bool prepare_handshake();
-		[[nodiscard]] bool write_signed_c2(const std::uint8_t *s1);   // FP9 signed C2 from the received S1
+		[[nodiscard]] bool write_signed_c2(rtmp_handshake::c1_view s1);   // FP9 signed C2 from the received S1
 		void send_connect_invoke();
 
 		void read_data(std::size_t = 1);

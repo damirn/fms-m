@@ -265,10 +265,11 @@ namespace fms::rtmp_client
 			if (m_state == eHandshake1Sent)
 			{
 				m_output_buffer->clear();
-				std::uint8_t const *s1 = m_input_buffer->data() + 1;   // skip S0
+				auto const s1 = rtmp_handshake::as_c1(
+					static_cast<const std::uint8_t *>(m_input_buffer->data()) + 1, eHandshakeSize);
 				if (m_use_fp9_hs)
 				{
-					if (!write_signed_c2(s1))
+					if (!s1 || !write_signed_c2(*s1))
 					{
 						m_output_buffer->clear();
 						close();
@@ -276,7 +277,7 @@ namespace fms::rtmp_client
 					}
 				}
 				else
-					m_output_buffer->write(s1, eHandshakeSize);            // simple: echo S1
+					m_output_buffer->write(m_input_buffer->data() + 1, eHandshakeSize);   // simple: echo S1
 				// consume, not clear: the server may coalesce Window Ack Size /
 				// Set Chunk Size behind S2 in the same segment.
 				m_input_buffer->consume(2 * eHandshakeSize + 1);
@@ -362,44 +363,49 @@ namespace fms::rtmp_client
 	{
 		std::uint8_t *data = m_output_buffer->extend(eHandshakeSize + 1);
 		*data = ePlainMagic;                 // C0
-		std::uint8_t *c1 = data + 1;         // C1 (eHandshakeSize bytes)
+		auto const opt = rtmp_handshake::as_c1(data + 1, eHandshakeSize);
+		if (!opt)
+			return false;
+		rtmp_handshake::c1_span const c1 = *opt;
 
-		std::memset(c1, 0, 4);               // time = 0
+		std::memset(c1.data(), 0, 4);        // time = 0
 
 		if (m_use_fp9_hs)
 		{
 			// A non-zero version signals the FP9 (digest) handshake to the server.
 			c1[4] = 0x80; c1[5] = 0x00; c1[6] = 0x07; c1[7] = 0x02;   // "128.0.7.2"
-			if (!rtmp_handshake::fill_random(c1 + 8, eHandshakeSize - 8))
+			if (!rtmp_handshake::fill_random(c1.subspan(8)))
 				return false;   // no CSPRNG -> don't ship a predictable handshake
 
 			// digest = HMAC-SHA256(C1 with the 32 digest bytes removed, FP_key[0:30]),
 			// written into C1 at the scheme's digest offset.
 			std::uint32_t const off = rtmp_handshake::digest_offset(c1, m_hs_scheme);
-			rtmp_handshake::compute_digest(c1, off, genuine_keys::FP_key, 30, c1 + off);
+			rtmp_handshake::compute_digest(c1, off, {genuine_keys::FP_key, 30},
+				c1.subspan(off).first<rtmp_handshake::eDigestLen>());
 			return true;
 		}
-		else
-		{
-			std::memset(c1 + 4, 0, 4);       // version = 0 -> simple handshake
-			if (!rtmp_handshake::fill_random(c1 + 8, eHandshakeSize - 8))
-				return false;
-		}
-		return true;
+
+		std::memset(c1.data() + 4, 0, 4);    // version = 0 -> simple handshake
+		return rtmp_handshake::fill_random(c1.subspan(8));
 	}
 
-	bool net_connection::write_signed_c2(const std::uint8_t *s1)
+	bool net_connection::write_signed_c2(rtmp_handshake::c1_view s1)
 	{
 		// FP9 signed C2: key = HMAC(server's S1 digest, full FP key);
 		// C2 = 1504 random bytes + HMAC(those bytes, key). The server verifies this
 		// in check_hand_shake_response.
-		std::uint8_t *c2 = m_output_buffer->extend(eHandshakeSize);
+		auto const opt = rtmp_handshake::as_c1(m_output_buffer->extend(eHandshakeSize), eHandshakeSize);
+		if (!opt)
+			return false;
+		rtmp_handshake::c1_span const c2 = *opt;
+
 		std::uint32_t const off = rtmp_handshake::digest_offset(s1, m_hs_scheme);
 		std::uint8_t key[SHA256_DIGEST_LENGTH];
-		HMAC_SHA256(s1 + off, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, key);
-		if (!rtmp_handshake::fill_random(c2, eHandshakeSize - SHA256_DIGEST_LENGTH))
+		HMAC_SHA256(s1.data() + off, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, key);
+		if (!rtmp_handshake::fill_random(c2.first(eHandshakeSize - SHA256_DIGEST_LENGTH)))
 			return false;
-		HMAC_SHA256(c2, eHandshakeSize - SHA256_DIGEST_LENGTH, key, SHA256_DIGEST_LENGTH, c2 + eHandshakeSize - SHA256_DIGEST_LENGTH);
+		HMAC_SHA256(c2.data(), eHandshakeSize - SHA256_DIGEST_LENGTH, key, SHA256_DIGEST_LENGTH,
+			c2.data() + eHandshakeSize - SHA256_DIGEST_LENGTH);
 		return true;
 	}
 
