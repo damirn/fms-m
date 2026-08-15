@@ -56,7 +56,8 @@ namespace fms
 				front.write_vlu(m_seq_value);
 			if (m_has_checksum)
 			{
-				std::uint16_t const ch = parser::calculate_checksum(m_raw_packet.data() + m_front_len, m_raw_packet.size() - m_front_len);
+				std::uint16_t const ch = parser::calculate_checksum(
+					{m_raw_packet.data() + m_front_len, m_raw_packet.size() - m_front_len});
 				front.write(reinterpret_cast<const std::uint8_t *>(&ch), sizeof(ch));
 			}
 			m_raw_packet.patch(0, front.data(), front.size());

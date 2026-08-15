@@ -12,6 +12,7 @@
 #include <optional>
 #include <queue>
 #include <set>
+#include <span>
 
 #include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
@@ -70,7 +71,8 @@ namespace fms
 
 		// Handshake cookie (see rtmfp/cookie.h): HMAC-bound to the initiator's
 		// endpoint for return-routability / anti-DoS (RFC 7016 sec. 2.3.4).
-		[[nodiscard]] bool create_cookie(std::uint8_t *);
+		// Fills the whole cookie buffer; false if it is short or the CSPRNG fails.
+		[[nodiscard]] bool create_cookie(std::span<std::uint8_t>);
 		bool echo_cookie_valid(const std::uint8_t *, const vlu_t &);
 
 		rtmp_app_manager *m_app_manager;

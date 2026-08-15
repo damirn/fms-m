@@ -548,18 +548,21 @@ namespace fms
 			return false;
 		std::uint32_t const addr = m_sender_endpoint.address().to_v4().to_uint();
 		std::uint16_t const port = m_sender_endpoint.port();
-		return rtmfp_cookie::valid(m_cookie_secret, addr, port, get_timestamp_ms(), cookie);
+		return rtmfp_cookie::valid(m_cookie_secret, addr, port, get_timestamp_ms(),
+			{cookie, eCookieSize});
 	}
 
-	bool service::create_cookie(std::uint8_t *cookie)
+	bool service::create_cookie(std::span<std::uint8_t> cookie)
 	{
+		if (cookie.size() < eCookieSize)
+			return false;
 		std::uint32_t const addr = m_sender_endpoint.address().to_v4().to_uint();
 		std::uint16_t const port = m_sender_endpoint.port();
 		if (!rtmfp_cookie::write(m_cookie_secret, addr, port, get_timestamp_ms(), cookie))
 			return false;
 		// The pad is uninitialised stack until this fills it.
-		return RAND_bytes(cookie + rtmfp_cookie::header_len,
-		                  static_cast<int>(eCookieSize - rtmfp_cookie::header_len)) == 1;
+		auto const pad = cookie.subspan(rtmfp_cookie::header_len);
+		return RAND_bytes(pad.data(), static_cast<int>(pad.size())) == 1;
 	}
 
 	std::uint32_t service::get_timestamp_ms()
