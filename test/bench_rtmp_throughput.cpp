@@ -207,7 +207,7 @@ namespace
 				return;
 			}
 			started = true;
-			frame->stream_id() = ns->stream_id();
+			frame->set_stream_id(ns->stream_id());
 			if (out_chunk > 128 && conn)
 				conn->set_output_chunk_size(out_chunk);
 			timer = std::make_shared<boost::asio::steady_timer>(io);
@@ -294,7 +294,7 @@ int main(int argc, char **argv)
 		auto f = std::make_shared<fms::rtmp_message_video_data>(frame_bytes);
 		f->data()[0] = 0x17; f->data()[1] = 0x01;   // keyframe + AVC NALU -> always relayed
 		for (std::uint32_t i = 2; i < frame_bytes; ++i) f->data()[i] = static_cast<std::uint8_t>(i);
-		f->channel_id() = 6; f->stream_id() = 0; f->timestamp() = 0;
+		f->set_channel_id(6); f->set_stream_id(0); f->set_timestamp(0);
 		return f;
 	};
 

@@ -57,7 +57,7 @@ namespace fms::rtmp_client
 			return;
 		// ["pause", 0, null, pauseFlag, milliseconds]
 		rtmp_message_invoke_ptr const p = std::make_shared<rtmp_message_invoke>("pause", 0.0f);
-		p->stream_id() = m_stream_id;
+		p->set_stream_id(m_stream_id);
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		amf0_boolean_ptr const flag = std::make_shared<amf0_boolean>(paused);
 		amf0_number_ptr const ts = std::make_shared<amf0_number>(ms);
@@ -74,7 +74,7 @@ namespace fms::rtmp_client
 			return;
 		// ["seek", 0, null, milliseconds]
 		rtmp_message_invoke_ptr const p = std::make_shared<rtmp_message_invoke>("seek", 0.0f);
-		p->stream_id() = m_stream_id;
+		p->set_stream_id(m_stream_id);
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		amf0_number_ptr const target = std::make_shared<amf0_number>(ms);
 		p->add_parameter(null);
@@ -84,7 +84,7 @@ namespace fms::rtmp_client
 
 	void net_stream::send_msg(const rtmp_message_ptr& msg)
 	{
-		msg->stream_id() = m_stream_id;
+		msg->set_stream_id(m_stream_id);
 		if (net_connection_ptr const nc = m_connection.lock())
 			nc->send_rtmp_message(msg);
 	}

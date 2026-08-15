@@ -66,9 +66,9 @@ namespace fms
 			if (!m_message)
 				return false;
 
-			m_message->stream_id() = h.stream_id();
-			m_message->channel_id() = h.channel_id();
-			m_message->timestamp() = h.timestamp();
+			m_message->set_stream_id(h.stream_id());
+			m_message->set_channel_id(h.channel_id());
+			m_message->set_timestamp(h.timestamp());
 
 			return true;
 		}
@@ -117,11 +117,11 @@ namespace fms
 		}
 
 		// write header
-		new_header.message_length() = payload_len;
-		new_header.message_type() = msg->type();
-		new_header.stream_id() = msg->stream_id();
-		new_header.channel_id() = msg->channel_id();
-		new_header.timestamp() = msg->timestamp();
+		new_header.set_message_length(payload_len);
+		new_header.set_message_type(msg->type());
+		new_header.set_stream_id(msg->stream_id());
+		new_header.set_channel_id(msg->channel_id());
+		new_header.set_timestamp(msg->timestamp());
 
 		new_header.serialize(buffer, previous_header);
 		chunk_buffer(buffer, payload, payload_len, new_header);

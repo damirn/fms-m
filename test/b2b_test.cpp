@@ -194,9 +194,9 @@ namespace
 			while (reader.read_frame())
 			{
 				fms::rtmp_message_ptr const msg = reader.get_frame();
-				msg->stream_id() = ns->stream_id();
-				if (msg->type() == fms::rtmp_message::eMessageAudioData)      msg->channel_id() = 4;
-				else if (msg->type() == fms::rtmp_message::eMessageVideoData) msg->channel_id() = 6;
+				msg->set_stream_id(ns->stream_id());
+				if (msg->type() == fms::rtmp_message::eMessageAudioData)      msg->set_channel_id(4);
+				else if (msg->type() == fms::rtmp_message::eMessageVideoData) msg->set_channel_id(6);
 				ns->send_msg(msg);
 				++sent;
 			}

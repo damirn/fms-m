@@ -94,7 +94,7 @@ namespace
 		auto v = std::make_shared<rtmp_message_video_data>(8);
 		v->data()[0] = static_cast<std::uint8_t>((ftype << 4) | codec);
 		v->data()[1] = second;   // 0 == sequence header (config), else a NALU
-		v->timestamp() = ts;
+		v->set_timestamp(ts);
 		return v;
 	}
 	rtmp_message_audio_data_ptr aframe(std::uint8_t codec, std::uint8_t second, std::uint32_t ts)
@@ -102,7 +102,7 @@ namespace
 		auto a = std::make_shared<rtmp_message_audio_data>(8);
 		a->data()[0] = static_cast<std::uint8_t>(codec << 4);   // audio codec is the high nibble
 		a->data()[1] = second;
-		a->timestamp() = ts;
+		a->set_timestamp(ts);
 		return a;
 	}
 

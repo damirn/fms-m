@@ -61,7 +61,7 @@ namespace fms
 			if (!m_f)   // payload read failed
 				return false;
 
-			m_frame->timestamp() = ts;
+			m_frame->set_timestamp(ts);
 			m_f.seekg(4, std::ios_base::cur);   // prev_tag_size
 			return true;
 		}

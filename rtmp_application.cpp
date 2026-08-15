@@ -587,8 +587,8 @@ namespace fms
 		m_app_manager->create_netstream(std::make_pair(connection_id, stream_id));
 
 		rtmp_message_invoke_ptr result = std::make_shared<rtmp_message_invoke>(invoke_functions::result, invoke->invoke_id()->value());
-		result->channel_id() = invoke->channel_id();
-		result->stream_id() = invoke->stream_id();
+		result->set_channel_id(invoke->channel_id());
+		result->set_stream_id(invoke->stream_id());
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		result->add_parameter(null);
@@ -679,8 +679,8 @@ namespace fms
 		enqueue_async_message(connection_id, ping);
 
 		rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
-		result->stream_id() = stream_id;
-		result->channel_id() = channel_id;
+		result->set_stream_id(stream_id);
+		result->set_channel_id(channel_id);
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		result->add_parameter(null);
@@ -698,8 +698,8 @@ namespace fms
 		enqueue_async_message(connection_id, result);
 
 		rtmp_message_invoke_ptr const result2 = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
-		result2->stream_id() = stream_id;
-		result2->channel_id() = channel_id;
+		result2->set_stream_id(stream_id);
+		result2->set_channel_id(channel_id);
 
 		result2->add_parameter(null);
 
@@ -767,8 +767,8 @@ namespace fms
 	rtmp_message_invoke_ptr rtmp_application::create_error_status(std::uint32_t channel_id, std::uint32_t stream_id, const char *err)
 	{
 		rtmp_message_invoke_ptr result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
-		result->channel_id() = channel_id;
-		result->stream_id() = stream_id;
+		result->set_channel_id(channel_id);
+		result->set_stream_id(stream_id);
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		result->add_parameter(null);

@@ -268,8 +268,8 @@ TEST_CASE("rtmp aggregate: deeply nested aggregates are bounded, not a stack ove
 	auto const body = nested_aggregate_body(40000);
 
 	rtmp_header h;
-	h.message_type() = rtmp_message::eMessageAggregate;
-	h.message_length() = static_cast<std::uint32_t>(body.size());
+	h.set_message_type(rtmp_message::eMessageAggregate);
+	h.set_message_length(static_cast<std::uint32_t>(body.size()));
 	byte_reader r(body.data(), body.size());
 
 	rtmp_protocol p;
@@ -532,11 +532,11 @@ namespace
 	                        std::uint8_t type, std::uint32_t sid)
 	{
 		rtmp_header h;
-		h.channel_id() = cid;
-		h.timestamp() = ts;
-		h.message_length() = len;
-		h.message_type() = type;
-		h.stream_id() = sid;
+		h.set_channel_id(cid);
+		h.set_timestamp(ts);
+		h.set_message_length(len);
+		h.set_message_type(type);
+		h.set_stream_id(sid);
 		return h;
 	}
 }
@@ -845,9 +845,9 @@ TEST_CASE("rtmp_protocol serialize: single-chunk video frame round-trips (direct
 	auto const payload = pattern(20, 3);
 	auto v = std::make_shared<rtmp_message_video_data>(static_cast<std::uint32_t>(payload.size()));
 	std::memcpy(v->data(), payload.data(), payload.size());
-	v->stream_id() = 7;
-	v->channel_id() = 6;
-	v->timestamp() = 1234;
+	v->set_stream_id(7);
+	v->set_channel_id(6);
+	v->set_timestamp(1234);
 
 	parser_harness h;
 	h.feed(serialize_to_bytes(v, 128));
@@ -865,9 +865,9 @@ TEST_CASE("rtmp_protocol serialize: multi-chunk video frame round-trips (payload
 	auto const payload = pattern(300, 11);   // > 128 -> 3 chunks, 2 continuation headers
 	auto v = std::make_shared<rtmp_message_video_data>(static_cast<std::uint32_t>(payload.size()));
 	std::memcpy(v->data(), payload.data(), payload.size());
-	v->stream_id() = 1;
-	v->channel_id() = 6;
-	v->timestamp() = 42;
+	v->set_stream_id(1);
+	v->set_channel_id(6);
+	v->set_timestamp(42);
 
 	parser_harness h;
 	h.feed(serialize_to_bytes(v, 128));
@@ -882,9 +882,9 @@ TEST_CASE("rtmp_protocol serialize: audio frame on a different channel/stream ro
 	auto const payload = pattern(30, 5);
 	auto a = std::make_shared<rtmp_message_audio_data>(static_cast<std::uint32_t>(payload.size()));
 	std::memcpy(a->data(), payload.data(), payload.size());
-	a->stream_id() = 3;
-	a->channel_id() = 4;
-	a->timestamp() = 555;
+	a->set_stream_id(3);
+	a->set_channel_id(4);
+	a->set_timestamp(555);
 
 	parser_harness h;
 	h.feed(serialize_to_bytes(a, 128));
@@ -1045,8 +1045,8 @@ TEST_CASE("rtmp aggregate: a sub-message that fails to decode does not desync th
 	agg_sub(body, rtmp_message::eMessageAudioData, good_audio);
 
 	rtmp_header h;
-	h.message_type() = rtmp_message::eMessageAggregate;
-	h.message_length() = static_cast<std::uint32_t>(body.size());
+	h.set_message_type(rtmp_message::eMessageAggregate);
+	h.set_message_length(static_cast<std::uint32_t>(body.size()));
 	byte_reader r(body.data(), body.size());
 
 	rtmp_protocol p;

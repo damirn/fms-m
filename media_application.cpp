@@ -280,8 +280,8 @@ namespace fms
 			}
 
 			rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
-			result->channel_id() = invoke->channel_id();
-			result->stream_id() = invoke->stream_id();
+			result->set_channel_id(invoke->channel_id());
+			result->set_stream_id(invoke->stream_id());
 
 			amf0_null_ptr const null = std::make_shared<amf0_null>();
 			result->add_parameter(null);
@@ -329,8 +329,8 @@ namespace fms
 	void media_application::handle_publish_record(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, const std::string &stream)
 	{
 		rtmp_message_invoke_ptr const rec_result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
-		rec_result->channel_id() = invoke->channel_id();
-		rec_result->stream_id() = invoke->stream_id();
+		rec_result->set_channel_id(invoke->channel_id());
+		rec_result->set_stream_id(invoke->stream_id());
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		rec_result->add_parameter(null);
@@ -484,7 +484,7 @@ namespace fms
 	rtmp_message_ptr media_application::send_stream_notify(std::uint32_t connection_id, std::uint32_t stream_id, const std::string &code, const std::string &description, bool enqueue)
 	{
 		rtmp_message_invoke_ptr result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
-		result->stream_id() = stream_id;
+		result->set_stream_id(stream_id);
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		result->add_parameter(null);
 
@@ -721,8 +721,8 @@ namespace fms
 		// what releaseStream / FCUnpublish / FCSubscribe all reply with.
 		double const txn = invoke->invoke_id() ? invoke->invoke_id()->value() : 0.0;
 		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>(invoke_functions::result, txn);
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
+		res->set_channel_id(invoke->channel_id());
+		res->set_stream_id(invoke->stream_id());
 		res->add_parameter(std::make_shared<amf0_null>());
 		res->add_parameter(std::make_shared<amf0_undefined>());
 		enqueue_async_message(connection_id, res);
@@ -748,8 +748,8 @@ namespace fms
 		}
 
 		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>("onFCPublish", 0.0);
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
+		res->set_channel_id(invoke->channel_id());
+		res->set_stream_id(invoke->stream_id());
 		res->add_parameter(std::make_shared<amf0_null>());
 		amf0_object_ptr const obj = std::make_shared<amf0_object>();
 		obj->add_entry("level", "status");

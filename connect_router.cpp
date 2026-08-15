@@ -60,7 +60,7 @@ namespace fms
 
 		// we don't have the requested app
 		rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("_error", 1.0f);
-		result->channel_id() = header.channel_id();
+		result->set_channel_id(header.channel_id());
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		result->add_parameter(null);

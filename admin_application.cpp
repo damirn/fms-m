@@ -199,8 +199,8 @@ namespace fms
 	void admin_application::handle_invoke_get_apps(const rtmp_message_invoke_ptr& invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
+		res->set_channel_id(invoke->channel_id());
+		res->set_stream_id(invoke->stream_id());
 
 		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
 		string_list_t const apps = m_app_manager->list_applications();
@@ -217,8 +217,8 @@ namespace fms
 	void admin_application::handle_invoke_get_clients(const rtmp_message_invoke_ptr& invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
+		res->set_channel_id(invoke->channel_id());
+		res->set_stream_id(invoke->stream_id());
 
 		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
 		client_list_t const clients = m_app_manager->list_clients();
@@ -254,8 +254,8 @@ namespace fms
 		amf0_number_ptr const id = std::dynamic_pointer_cast<amf0_number>(*i);
 
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
+		res->set_channel_id(invoke->channel_id());
+		res->set_stream_id(invoke->stream_id());
 
 		client_stats stats;
 		if (m_app_manager->get_client_stats(static_cast<std::uint32_t>(id->value()), stats))
@@ -289,8 +289,8 @@ namespace fms
 		amf0_string_ptr const app = std::dynamic_pointer_cast<amf0_string>(*i);
 
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
+		res->set_channel_id(invoke->channel_id());
+		res->set_stream_id(invoke->stream_id());
 
 		std::optional<app_stats> stats = m_app_manager->get_app_stats(app->value());
 		if (stats)
@@ -313,8 +313,8 @@ namespace fms
 	void admin_application::handle_invoke_get_streams(const rtmp_message_invoke_ptr& invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
+		res->set_channel_id(invoke->channel_id());
+		res->set_stream_id(invoke->stream_id());
 
 		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
 		netstream_list_t const streams = m_app_manager->list_streams();
@@ -350,8 +350,8 @@ namespace fms
 	void admin_application::handle_invoke_get_queue_stats(const rtmp_message_invoke_ptr& invoke, std::uint32_t, rtmp_message_ptr &result)
 	{
 		rtmp_message_invoke_ptr const res = rtmp_message_invoke::create_message(invoke_functions::result, invoke->invoke_id()->value());
-		res->channel_id() = invoke->channel_id();
-		res->stream_id() = invoke->stream_id();
+		res->set_channel_id(invoke->channel_id());
+		res->set_stream_id(invoke->stream_id());
 
 		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
 		queue_stats_list_t queue_stats;

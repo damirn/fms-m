@@ -80,34 +80,34 @@ namespace fms
 			return m_type;
 		}
 
-		std::uint32_t &stream_id()
+		std::uint32_t stream_id() const
 		{
 			return m_stream_id;
 		}
 
-		const std::uint32_t &stream_id() const
+		void set_stream_id(std::uint32_t v)
 		{
-			return m_stream_id;
+			m_stream_id = v;
 		}
 
-		std::uint32_t &channel_id()
+		std::uint32_t channel_id() const
 		{
 			return m_channel_id;
 		}
 
-		const std::uint32_t &channel_id() const
+		void set_channel_id(std::uint32_t v)
 		{
-			return m_channel_id;
+			m_channel_id = v;
 		}
 
-		std::uint32_t &timestamp()
+		std::uint32_t timestamp() const
 		{
 			return m_timestamp;
 		}
 
-		const std::uint32_t &timestamp() const
+		void set_timestamp(std::uint32_t v)
 		{
-			return m_timestamp;
+			m_timestamp = v;
 		}
 
 	protected:
