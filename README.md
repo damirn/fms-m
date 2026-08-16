@@ -210,7 +210,6 @@ a CA-signed cert in production (clients that verify will reject self-signed).
 | `-l`  | `--log-level <n>`                 | `3`       | Log verbosity level.                                   |
 | `-a`  | `--auth-plugin <path>`            | *(none)*  | Path to an authentication plugin shared library.       |
 | `-F`  | `--password-file <path>`          | `./passwd`| Password file used by the `admin` application.         |
-| `-A`  | `--admin-data-keep-time <sec>`    | `600`     | How long admin statistics are retained, in seconds.    |
 | `-H`  | `--helper-app <path>`             | *(none)*  | Relay helper spawned for origin-pull play (`fms_helper`). |
 | `-q`  | `--quality <0..10>`               | `6`       | Speex encoder quality.                                 |
 | `-e`  | `--max-queue-bytes <n>`           | `10485760`| Queued outbound bytes per connection before a slow consumer is shed, then dropped (`0` = unbounded). See [Slow consumers](#slow-consumers). |

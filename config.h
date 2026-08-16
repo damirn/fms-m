@@ -88,11 +88,6 @@ namespace fms
 			return m_max_queue_bytes;
 		}
 
-		std::uint32_t admin_data_keep_time() const
-		{
-			return m_admin_data_keep_time;
-		}
-
 		const std::string &log_file() const
 		{
 			return m_log_file;
@@ -137,7 +132,6 @@ namespace fms
 		std::uint32_t m_threads{eDefaultThreads};
 		std::uint32_t m_log_level{eDefaultLogLevel};
 		std::size_t m_max_queue_bytes{eDefaultMaxQueueBytes};
-		std::uint32_t m_admin_data_keep_time{eAdminDataKeepTime};
 
 		std::string m_bind_address;
 		std::string m_rtmp_port;
@@ -158,7 +152,6 @@ namespace fms
 		static constexpr std::uint32_t eDefaultThreads     = 1;
 		static constexpr std::uint32_t eDefaultLogLevel    = 3;
 		static constexpr std::uint32_t eSpeexQuality       = 6;
-		static constexpr std::uint32_t eAdminDataKeepTime  = 600;
 		static constexpr std::uint16_t eRTMFPDefaultPort   = 1935;
 		// 10 MB -- the middle of the 8-10 MB band FMS 4.5 was measured to enforce.
 		static constexpr std::size_t   eDefaultMaxQueueBytes = 10u * 1024 * 1024;

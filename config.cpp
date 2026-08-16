@@ -60,8 +60,7 @@ namespace fms
 			("threads,t", boost::program_options::value<std::uint32_t>(&m_threads)->default_value(eDefaultThreads), "number of I/O threads to use")
 			("version,v", "version information")
 			("helper-app,H", boost::program_options::value<std::string>(&m_helper_app)->default_value(""), "helper app")
-			("password-file,F", boost::program_options::value<std::string>(&m_password_file)->default_value("./passwd"), "password file for admin app")
-			("admin-data-keep-time,A", boost::program_options::value<std::uint32_t>(&m_admin_data_keep_time)->default_value(eAdminDataKeepTime), "keep time for admin data");
+			("password-file,F", boost::program_options::value<std::string>(&m_password_file)->default_value("./passwd"), "password file for admin app");
 	}
 
 	bool config::check_params()
