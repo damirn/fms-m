@@ -1,11 +1,16 @@
 #include "pch.h"
 #include "remote_relay.h"
 #include "config.h"
+#include "logging.h"
 
 #include <csignal>
+#include <cstring>
 #include <mutex>
+#include <spawn.h>
 #include <unistd.h>
 #include <vector>
+
+extern char **environ;
 
 namespace fms::remote_relay
 {
@@ -46,11 +51,6 @@ namespace fms::remote_relay
 			args.emplace_back("-s");
 			args.push_back(stream);
 
-			// Build argv in the PARENT: between fork() and execvp() a child of a
-			// multithreaded process may call only async-signal-safe functions, so no
-			// allocation (vector/string) is allowed there -- if another thread held the
-			// malloc lock at fork() the child would deadlock. The c_str() pointers stay
-			// valid across fork() (the child gets a copy of `args`).
 			std::vector<char *> argv;
 			argv.reserve(args.size() + 1);
 			for (const std::string &a : args)
@@ -62,11 +62,13 @@ namespace fms::remote_relay
 			static std::once_flag sigchld_once;
 			std::call_once(sigchld_once, [] { ::signal(SIGCHLD, SIG_IGN); });
 
-			if (::fork() == 0)
-			{
-				::execvp(argv[0], argv.data());   // async-signal-safe; no allocation here
-				::_exit(127);                     // exec failed
-			}
+			// posix_spawnp rather than fork()+execvp(): between the two, a child of a
+			// multithreaded process may call only async-signal-safe functions, and it
+			// reports failure instead of leaving the parent to mistake -1 for "I am
+			// the parent" and carry on with no helper and no diagnostic.
+			::pid_t pid = 0;
+			if (int const rc = ::posix_spawnp(&pid, argv[0], nullptr, nullptr, argv.data(), environ); rc != 0)
+				BOOST_LOG(lg::get()) << "cannot spawn helper '" << args[0] << "': " << std::strerror(rc);
 		}
 	}
 }
