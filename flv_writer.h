@@ -3,6 +3,7 @@
 #include "audio_sink.h"
 #include "video_sink.h"
 
+#include <cstdint>
 #include <fstream>
 #include <string>
 

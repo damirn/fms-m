@@ -3,6 +3,7 @@
 #include "rtmp_connection.h"
 #include "tls_stream.h"
 
+#include <cstdint>
 #include <memory>
 
 #include <boost/asio/ssl.hpp>

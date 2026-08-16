@@ -3,6 +3,7 @@
 #include "random_string.h"
 #include "rtmpt_session.h"
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>

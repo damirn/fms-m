@@ -3,6 +3,7 @@
 #include "amf0_types.h"
 #include "byte_writer.h"
 
+#include <cstddef>
 #include <stdexcept>
 #include <vector>
 

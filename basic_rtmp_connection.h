@@ -7,6 +7,7 @@
 #include "rtmp_parser.h"
 
 #include <chrono>
+#include <cstdint>
 #include <memory>
 
 #include <boost/asio.hpp>

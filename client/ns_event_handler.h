@@ -5,6 +5,7 @@
 #include "net_stream.h"
 #include "rtmp_message.h"
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
