@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "admin_application.h"
+#include "client_session.h"
 #include "config.h"
 #include "crypto.h"
 #include "logging.h"
@@ -158,7 +159,13 @@ namespace fms
 		str = std::dynamic_pointer_cast<amf0_string>(*i);
 		std::string const pass = str->value();
 
-		return check_user_and_password(user, pass);
+		if (!check_user_and_password(user, pass))
+			return false;
+
+		// The authenticated identity is what get_clients reports as "user".
+		if (client_session_ptr const conn = get_connection_opt(connection_id))
+			conn->set_username(user);
+		return true;
 	}
 
 	bool admin_application::check_user_and_password(const std::string &user, const std::string &pass)
