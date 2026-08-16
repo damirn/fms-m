@@ -282,6 +282,21 @@ if(BUILD_TESTS)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
+  # admin_application login: credentials are parsed and checked here, and the
+  # authenticated name has to reach the session for get_clients to report it.
+  add_executable(admin_login_test
+    test/test_main.cpp test/admin_login_test.cpp
+    admin_application.cpp rtmp_application.cpp so_manager.cpp random_string.cpp
+    client_session.cpp rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp
+    rtmp_so_message.cpp amf0.cpp amf3.cpp config.cpp logging.cpp crypto.cpp
+    util.cpp)
+  target_link_libraries(admin_login_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME admin_login_test COMMAND admin_login_test)
+  if(APPLE)
+    set_tests_properties(admin_login_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   # result_handler_registry: the table of callbacks awaiting a peer _result, its
   # per-connection cap and its teardown purge. Templated on the handler pointer,
   # so it needs nothing but doctest.

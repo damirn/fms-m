@@ -101,9 +101,9 @@ namespace fms
 			return m_username;
 		}
 
-		std::string &username()
+		void set_username(std::string u)
 		{
-			return m_username;
+			m_username = std::move(u);
 		}
 
 		const std::chrono::system_clock::time_point &create_time() const
