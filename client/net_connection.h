@@ -6,11 +6,12 @@
 #include "rtmp_message.h"
 #include "rtmp_parser.h"
 
+#include <cstdint>
 #include <list>
 #include <map>
 #include <memory>
-#include <queue>
 #include <optional>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -151,7 +152,7 @@ namespace fms::rtmp_client
 				  , m_id(id)
 			{}
 
-			const std::uint32_t &id() const
+			std::uint32_t id() const
 			{
 				return m_id;
 			}

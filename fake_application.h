@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "rtmp_application.h"
 
 namespace fms

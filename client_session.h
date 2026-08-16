@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
@@ -37,7 +38,7 @@ namespace fms
 			return m_app;
 		}
 
-		const std::uint32_t &id() const
+		std::uint32_t id() const
 		{
 			return m_id;
 		}

@@ -89,12 +89,12 @@ namespace fms
 
 			if (channel->has_enough_data())
 			{
-				channel->prev_message_complete() = true;
+				channel->set_prev_message_complete(true);
 				seen_complete_msg = true;
 				dispatch(channel);
 			}
 			else
-				channel->prev_message_complete() = false;
+				channel->set_prev_message_complete(false);
 		}
 
 		buffer.consume(committed);

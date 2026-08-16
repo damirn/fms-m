@@ -5,10 +5,11 @@
 #include "stats.h"
 
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <map>
-#include <vector>
 #include <memory>
+#include <vector>
 
 namespace fms
 {
