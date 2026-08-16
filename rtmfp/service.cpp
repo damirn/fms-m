@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "service.h"
+#include "session_id.h"
 #include "byte_order.h"
 #include "aes.h"
 #include "chunk.h"
@@ -169,7 +170,7 @@ namespace fms
 		std::uint32_t x = 0;
 		std::uint32_t y = 0;
 		r >> sid >> x >> y;
-		return sid ^ x ^ y;
+		return scramble_session_id(sid, x, y);
 	}
 
 	std::optional<session_ptr> service::get_session(std::uint32_t sid)

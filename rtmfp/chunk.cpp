@@ -142,7 +142,8 @@ namespace fms
 		std::size_t const hdr = to.mark();
 		to.extend(eChunkHeaderSize);
 
-		// Host order, matching how service::get_sid reads it back (see F4).
+		// Host order, symmetric with service::get_sid's read of the scramble
+		// words: the swap cancels, so a spec peer interoperates either way.
 		to << m_rsid;
 
 		to.write_vlu(m_skrc_len);
