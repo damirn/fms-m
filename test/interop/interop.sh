@@ -86,9 +86,8 @@ start_server() {
 			-days 2 -nodes -subj "/CN=localhost" >/dev/null 2>&1 \
 			&& tls_args=(--rtmps-port "$RTMPS_PORT" --rtmpts-port "$RTMPTS_PORT" --tls-cert "$TLS_CERT" --tls-key "$TLS_KEY")
 	fi
-	# CWD is $WORK so the live (pre-rotation) log lands there for wait_publishing.
-	( cd "$WORK" && exec "$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" "${tls_args[@]}" \
-		-o "$WORK" -P "$WORK/logs" -t 4 ) >"$WORK/server.out" 2>&1 &
+	"$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" "${tls_args[@]}" \
+		-o "$WORK" -P "$WORK/logs" -t 4 >"$WORK/server.out" 2>&1 &
 	SRV=$!
 	for _ in $(seq 1 40); do
 		lsof -nP -iTCP:"$RTMP_PORT" -sTCP:LISTEN >/dev/null 2>&1 && return 0
@@ -105,7 +104,7 @@ start_server() {
 wait_publishing() {
 	local name="$1" secs="${2:-15}"
 	for _ in $(seq 1 $((secs*10))); do
-		grep -qs "is publishing stream '$name'" "$WORK"/*.log && return 0
+		grep -qs "is publishing stream '$name'" "$WORK"/logs/*.log && return 0
 		sleep 0.1
 	done
 	echo "  (timed out waiting for publish of '$name')"
