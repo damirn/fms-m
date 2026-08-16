@@ -41,22 +41,23 @@ namespace fms
 				if (type == 0x15)
 				{
 					group_ptr g = std::make_shared<group>(s.read_pos());
-					g->command() = cmnd;
+					g->set_command(cmnd);
 					return g;
 				}
 			}
 			return nullptr;
 		}
 
-		const std::uint8_t &command() const
+		std::uint8_t command() const
 		{
 			return m_cmnd;
 		}
 
-		std::uint8_t &command()
+		void set_command(std::uint8_t v)
 		{
-			return m_cmnd;
+			m_cmnd = v;
 		}
+
 
 		struct less
 		{

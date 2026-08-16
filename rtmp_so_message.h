@@ -47,25 +47,27 @@ namespace fms
 			return m_name;
 		}
 
-		const std::uint32_t &version() const
+		std::uint32_t version() const
 		{
 			return m_version;
 		}
 
-		std::uint32_t &version()
+		void set_version(std::uint32_t v)
 		{
-			return m_version;
+			m_version = v;
 		}
 
-		const std::uint32_t &flags() const
+
+		std::uint32_t flags() const
 		{
 			return m_flags;
 		}
 
-		std::uint32_t &flags()
+		void set_flags(std::uint32_t v)
 		{
-			return m_flags;
+			m_flags = v;
 		}
+
 
 		struct event
 		{

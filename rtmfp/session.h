@@ -58,27 +58,28 @@ namespace fms
 		using address_list_t = std::list<address>;
 
 		enum state_t { eInitialState, eIHelloSent, eKeyingSent, eOpen, eNearClose, eFarCloseLinger, eClosed, eOpenFailed };
-		const state_t &state() const
+		state_t state() const
 		{
 			return m_state;
 		}
 
-		state_t &state()
+		void set_state(state_t v)
 		{
-			return m_state;
+			m_state = v;
 		}
 
 		bool parse(byte_reader &);
 
-		const std::uint32_t &session_id() const
+		std::uint32_t session_id() const
 		{
 			return m_session_id;
 		}
 
-		std::uint32_t &session_id()
+		void set_session_id(std::uint32_t v)
 		{
-			return m_session_id;
+			m_session_id = v;
 		}
+
 
 		const std::uint8_t *peer_id_data() const
 		{
@@ -95,7 +96,7 @@ namespace fms
 			return m_peer_id;
 		}
 
-		const std::uint32_t &outgoing_sid() const
+		std::uint32_t outgoing_sid() const
 		{
 			return m_outgoing_sid;
 		}
@@ -114,15 +115,16 @@ namespace fms
 		std::string remote_address() const override { return m_endpoint.address().to_string(); }
 		std::uint16_t remote_port() const override { return m_endpoint.port(); }
 
-		const bool &ack_now() const
+		bool ack_now() const
 		{
 			return m_ack_now;
 		}
 
-		bool &ack_now()
+		void set_ack_now(bool v)
 		{
-			return m_ack_now;
+			m_ack_now = v;
 		}
+
 
 		bool has_data_to_send(serializer *);
 
@@ -153,12 +155,12 @@ namespace fms
 
 	public:
 
-		const std::uint16_t &ts_echo_tx() const
+		std::uint16_t ts_echo_tx() const
 		{
 			return m_ts_echo_tx;
 		}
 
-		const bool &should_include_ts_echo() const
+		bool should_include_ts_echo() const
 		{
 			return m_should_include_ts_echo;
 		}

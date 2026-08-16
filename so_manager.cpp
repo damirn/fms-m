@@ -74,7 +74,7 @@ namespace fms
 		else
 			i->second->m_clients.insert(connection_id);
 
-		result->flags() = 0x20;
+		result->set_flags(0x20);
 
 		rtmp_message_shared_object::event_ptr const use_event = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eUseSuccess);
 		result->add_event(use_event);
@@ -140,7 +140,7 @@ namespace fms
 			increase_version(s);
 			s->m_values[e->m_name->value()] = e->m_value;
 
-			result->version() = s->m_version;
+			result->set_version(s->m_version);
 			rtmp_message_shared_object::event_ptr const ev = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eSuccess);
 			ev->m_name = e->m_name;
 			result->add_event(ev);
