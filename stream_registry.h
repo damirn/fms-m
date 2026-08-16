@@ -5,6 +5,7 @@
 #include "stats.h"          // stream_client_id_t, stream_client_id_map
 #include "stream_client.h"
 
+#include <cstdint>
 #include <list>
 #include <map>
 #include <optional>

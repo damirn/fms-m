@@ -1,6 +1,7 @@
 #pragma once
 
 #include <condition_variable>
+#include <cstddef>
 #include <mutex>
 #include <queue>
 

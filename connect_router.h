@@ -3,6 +3,7 @@
 #include "client_session.h"   // client_session_ptr
 #include "rtmp_message.h"     // rtmp_message_invoke_ptr, rtmp_message_ptr
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>

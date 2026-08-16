@@ -2,6 +2,7 @@
 
 #include "rtmp_message.h"
 
+#include <cstdint>
 #include <utility>
 #include <vector>
 

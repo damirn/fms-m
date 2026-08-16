@@ -3,6 +3,7 @@
 #include "basic_rtmp_connection.h"
 #include "byte_writer.h"
 
+#include <cstdint>
 #include <list>
 #include <string>
 

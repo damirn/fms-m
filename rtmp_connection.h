@@ -4,6 +4,7 @@
 #include "byte_writer.h"
 #include "transport_seam.h"
 
+#include <cstdint>
 #include <deque>
 #include <utility>
 

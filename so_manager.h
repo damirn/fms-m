@@ -2,6 +2,7 @@
 
 #include "rtmp_so_message.h"
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>

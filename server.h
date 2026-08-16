@@ -2,6 +2,7 @@
 
 #include "io_context_pool.h"
 
+#include <cstddef>
 #include <memory>
 #include <stdexcept>
 #include <string>

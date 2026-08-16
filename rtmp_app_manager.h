@@ -10,6 +10,7 @@
 #include "rtmpt_session.h"
 #include "stats.h"
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>

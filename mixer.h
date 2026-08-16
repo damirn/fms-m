@@ -5,6 +5,7 @@
 #include "speex_codec.h"
 
 #include <atomic>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>

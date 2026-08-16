@@ -2,6 +2,7 @@
 
 #include "audio_codec.h"
 
+#include <cstdint>
 #include <speex/speex.h>
 
 namespace fms

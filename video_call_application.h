@@ -2,6 +2,7 @@
 
 #include "media_application.h"
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
