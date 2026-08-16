@@ -2,6 +2,7 @@
 
 #include "byte_writer.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
@@ -22,7 +23,7 @@ namespace fms::rtmp_client
 
 		virtual void connect(const std::string &, const std::string &);
 
-		const bool &is_connected() const
+		bool is_connected() const
 		{
 			return m_connected;
 		}
@@ -52,7 +53,7 @@ namespace fms::rtmp_client
 			return &m_output_buffer;
 		}
 
-		const bool &write_in_progress() const
+		bool write_in_progress() const
 		{
 			return m_write_in_progress;
 		}

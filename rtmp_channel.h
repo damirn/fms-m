@@ -3,6 +3,7 @@
 #include "byte_writer.h"
 #include "rtmp_header.h"
 
+#include <cstdint>
 #include <memory>
 
 namespace fms
@@ -14,19 +15,20 @@ namespace fms
 			: m_id(id)
 		{}
 
-		const std::uint32_t &id() const
+		std::uint32_t id() const
 		{
 			return m_id;
 		}
 
-		bool &prev_message_complete()
+
+		bool prev_message_complete() const
 		{
 			return m_prev_message_complete;
 		}
 
-		const bool &prev_message_complete() const
+		void set_prev_message_complete(bool v)
 		{
-			return m_prev_message_complete;
+			m_prev_message_complete = v;
 		}
 
 		// Non-throwing, peek-then-commit header parse. Returns false (nothing

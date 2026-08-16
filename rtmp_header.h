@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "byte_reader.h"
 #include "byte_writer.h"
 
@@ -24,14 +26,15 @@ namespace fms
 
 		void serialize(byte_writer &, rtmp_header &);
 
-		std::uint32_t &header_size()
-		{
-			return m_header_size;
-		}
 
 		std::uint32_t header_size() const
 		{
 			return m_header_size;
+		}
+
+		void set_header_size(std::uint32_t v)
+		{
+			m_header_size = v;
 		}
 
 		std::uint32_t channel_id() const

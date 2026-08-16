@@ -3,6 +3,7 @@
 #include "amf0.h"
 #include "amf0_types.h"
 
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <string>
@@ -309,7 +310,7 @@ namespace fms
 
 		void serialize(byte_writer &) override;
 
-		const std::uint32_t &size() const
+		std::uint32_t size() const
 		{
 			return m_size;
 		}
@@ -341,7 +342,7 @@ namespace fms
 
 		void serialize(byte_writer &) override;
 
-		const std::uint32_t &size() const
+		std::uint32_t size() const
 		{
 			return m_size;
 		}

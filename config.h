@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 #include <boost/noncopyable.hpp>
@@ -14,12 +15,12 @@ namespace fms
 
 		bool parse_cli(int, char **);
 
-		const std::uint32_t &speex_quality() const
+		std::uint32_t speex_quality() const
 		{
 			return m_speex_quality;
 		}
 
-		const std::uint32_t &threads() const
+		std::uint32_t threads() const
 		{
 			return m_threads;
 		}
@@ -39,7 +40,7 @@ namespace fms
 			return m_rtmpt_port;
 		}
 
-		const std::uint16_t &rtmpf_port() const
+		std::uint16_t rtmpf_port() const
 		{
 			return m_rtmpf_port;
 		}
@@ -71,7 +72,7 @@ namespace fms
 			return !m_tls_cert.empty() && !m_tls_key.empty();
 		}
 
-		const std::uint32_t &log_level() const
+		std::uint32_t log_level() const
 		{
 			return m_log_level;
 		}
@@ -82,12 +83,12 @@ namespace fms
 		//
 		// The default matches what Adobe FMS 4.5 was measured to enforce (~8-10 MB,
 		// byte-based and independent of bitrate -- see docs/slow-consumer.md).
-		const std::size_t &max_queue_bytes() const
+		std::size_t max_queue_bytes() const
 		{
 			return m_max_queue_bytes;
 		}
 
-		const std::uint32_t &admin_data_keep_time() const
+		std::uint32_t admin_data_keep_time() const
 		{
 			return m_admin_data_keep_time;
 		}
