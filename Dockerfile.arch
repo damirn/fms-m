@@ -5,6 +5,9 @@
 #   docker build -f Dockerfile.arch -t fms-arch-gcc .
 # Clang build:
 #   docker build -f Dockerfile.arch -t fms-arch-clang --build-arg CXX=clang++ .
+# Run the unit tests as part of the build (interop needs client binaries
+# this image does not carry):
+#   docker build -f Dockerfile.arch -t fms-arch-gcc --build-arg RUN_TESTS=1 .
 # AddressSanitizer (either compiler):
 #   ... --build-arg CXXFLAGS_EXTRA="-fsanitize=address -fno-omit-frame-pointer -g -O1" \
 #       --build-arg LDFLAGS_EXTRA="-fsanitize=address"
@@ -29,15 +32,24 @@ COPY . .
 ARG CXX=g++
 ARG CXXFLAGS_EXTRA=""
 ARG LDFLAGS_EXTRA=""
+ARG RUN_TESTS=0
 
 RUN cmake -S . -B build \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DCMAKE_CXX_COMPILER="${CXX}" \
         -DCMAKE_CXX_FLAGS="${CXXFLAGS_EXTRA}" \
         -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS_EXTRA}" \
-    && cmake --build build -j"$(nproc)"
+        -DBUILD_TESTS=ON \
+    && cmake --build build -j"$(nproc)" \
+    && if [ "${RUN_TESTS}" != "0" ]; then ctest --test-dir build --output-on-failure -E interop; fi
 
-RUN mkdir -p /rec /logs
+# Unprivileged: the server binds 1935/8080, neither of which needs root.
+RUN groupadd --gid 10001 fms \
+    && useradd --no-create-home --uid 10001 --gid 10001 --shell /usr/sbin/nologin fms \
+    && mkdir -p /rec /logs \
+    && chown fms:fms /rec /logs
+
+USER fms
 
 # RTMP/RTMPE (TCP), RTMPT (HTTP tunnel, TCP), RTMFP (UDP)
 EXPOSE 1935/tcp 8080/tcp 1935/udp
