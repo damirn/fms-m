@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "serializer.h"
+#include "session_id.h"
 #include "aes.h"
 #include "header.h"
 #include "parser.h"
@@ -72,13 +73,12 @@ namespace fms
 			return;
 		}
 
-		// scramble the session id into the first 4 bytes:
-		// ssid = sid ^ (first 4 ciphertext bytes) ^ (next 4 ciphertext bytes)
+		// scramble the session id into the first 4 bytes
 		std::uint32_t x = 0;
 		std::uint32_t y = 0;
 		std::memcpy(&x, m_packet.data() + 4, sizeof(x));
 		std::memcpy(&y, m_packet.data() + 8, sizeof(y));
-		std::uint32_t const ssid = sid ^ x ^ y;
+		std::uint32_t const ssid = scramble_session_id(sid, x, y);
 		m_packet.patch(0, reinterpret_cast<const std::uint8_t *>(&ssid), sizeof(ssid));
 
 		// append the per-packet session HMAC over the ciphertext (session-id slot
