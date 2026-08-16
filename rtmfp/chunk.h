@@ -64,7 +64,7 @@ namespace fms
 
 		~fihello_chunk() override= default;
 
-		const vlu_t &epd_len() const
+		vlu_t epd_len() const
 		{
 			return m_epd_len;
 		}
@@ -74,7 +74,7 @@ namespace fms
 			return m_epd;
 		}
 
-		const std::uint16_t &tag_len() const
+		std::uint16_t tag_len() const
 		{
 			return m_tag_len;
 		}
@@ -107,7 +107,7 @@ namespace fms
 
 		enum type { eServerIHello = 0x0a, eRemotePeerIHello = 0x0f };
 
-		const vlu_t &epd_len() const
+		vlu_t epd_len() const
 		{
 			return m_epd_len;
 		}
@@ -217,12 +217,12 @@ namespace fms
 			: chunk(eInitiatorInitialKeying)
 		{}
 
-		const std::uint32_t &isid() const
+		std::uint32_t isid() const
 		{
 			return m_isid;
 		}
 
-		const vlu_t &cookie_len() const
+		vlu_t cookie_len() const
 		{
 			return m_cookie_len;
 		}
@@ -232,7 +232,7 @@ namespace fms
 			return m_cookie_echo;
 		}
 
-		const vlu_t &cert_len() const
+		vlu_t cert_len() const
 		{
 			return m_cert_len;
 		}
@@ -242,7 +242,7 @@ namespace fms
 			return m_initiator_cert;
 		}
 
-		const vlu_t &skic_len() const
+		vlu_t skic_len() const
 		{
 			return m_skic_len;
 		}
@@ -252,7 +252,7 @@ namespace fms
 			return m_skic;
 		}
 
-		const std::uint16_t &signature_len() const
+		std::uint16_t signature_len() const
 		{
 			return m_signature_len;
 		}
@@ -324,7 +324,7 @@ namespace fms
 			, m_user_data_len(data_len)
 		{}
 
-		const std::uint8_t &flags() const
+		std::uint8_t flags() const
 		{
 			return m_flags;
 		}
@@ -339,17 +339,17 @@ namespace fms
 			return m_option_list;
 		}
 
-		const bool &should_abandon() const
+		bool should_abandon() const
 		{
 			return m_abandon;
 		}
 
-		const bool &is_final() const
+		bool is_final() const
 		{
 			return m_final;
 		}
 
-		const std::uint8_t &frag_ctl() const
+		std::uint8_t frag_ctl() const
 		{
 			return m_frag_ctl;
 		}
@@ -359,7 +359,7 @@ namespace fms
 			return m_user_data;
 		}
 
-		const std::uint16_t &user_data_len() const
+		std::uint16_t user_data_len() const
 		{
 			return m_user_data_len;
 		}
@@ -404,17 +404,17 @@ namespace fms
 		bool deserialize(byte_reader &, std::uint16_t) override;
 		std::uint16_t serialize(byte_writer &) override;
 
-		const vlu_t &flow_id() const
+		vlu_t flow_id() const
 		{
 			return m_flow_id;
 		}
 
-		const vlu_t &seq_number() const
+		vlu_t seq_number() const
 		{
 			return m_seq_number;
 		}
 
-		const vlu_t &fsn_offset() const
+		vlu_t fsn_offset() const
 		{
 			return m_fsn_offset;
 		}
@@ -462,17 +462,17 @@ namespace fms
 		bool deserialize(byte_reader &, std::uint16_t) override;
 		std::uint16_t serialize(byte_writer &) override;
 
-		const vlu_t &flow_id() const
+		vlu_t flow_id() const
 		{
 			return m_flowid;
 		}
 
-		const vlu_t &buff_blocks_available() const
+		vlu_t buff_blocks_available() const
 		{
 			return m_buff_blocks_available;
 		}
 
-		const vlu_t &cumulative_ack() const
+		vlu_t cumulative_ack() const
 		{
 			return m_cumulative_ack;
 		}
@@ -515,12 +515,12 @@ namespace fms
 			return 0;
 		} // not implemented
 
-		const vlu_t &flow_id() const
+		vlu_t flow_id() const
 		{
 			return m_flowid;
 		}
 
-		const vlu_t &exception() const
+		vlu_t exception() const
 		{
 			return m_exception;
 		}
@@ -543,7 +543,7 @@ namespace fms
 			return 0;
 		} // not implemented
 
-		const std::uint16_t &data_len() const
+		std::uint16_t data_len() const
 		{
 			return m_data_len;
 		}

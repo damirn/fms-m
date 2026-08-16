@@ -145,15 +145,16 @@ namespace fms
 		static constexpr std::uint8_t eCompleteLinger = 2;
 		static constexpr std::uint8_t eClosed         = 3;
 
-		const std::uint8_t &state() const
+		std::uint8_t state() const
 		{
 			return m_state;
 		}
 
-		std::uint8_t &state()
+		void set_state(std::uint8_t v)
 		{
-			return m_state;
+			m_state = v;
 		}
+
 
 		// Reassembly bounds (RFC 7016 sec. 3.4: limit reassembly buffers/size). A
 		// flow that streams fragments and never sends an eEnd would otherwise buffer
@@ -183,17 +184,18 @@ namespace fms
 			return n < eRecvWindowBlocks ? static_cast<std::uint32_t>(eRecvWindowBlocks - n) : 0;
 		}
 
-		const bool &should_ack() const
+		bool should_ack() const
 		{
 			return m_should_ack;
 		}
 
-		bool &should_ack()
+		void set_should_ack(bool v)
 		{
-			return m_should_ack;
+			m_should_ack = v;
 		}
 
-		const bool &has_associated_flow_id() const
+
+		bool has_associated_flow_id() const
 		{
 			return m_has_associated_flow_id;
 		}
@@ -233,7 +235,7 @@ namespace fms
 			m_options.m_options.clear();
 		}
 
-		const vlu_t &flow_id() const
+		vlu_t flow_id() const
 		{
 			return m_flow_id;
 		}
@@ -243,15 +245,16 @@ namespace fms
 			return m_fragments.size();
 		}
 
-		const std::uint16_t &prev_rwnd() const
+		std::uint16_t prev_rwnd() const
 		{
 			return m_prev_rwnd;
 		}
 
-		std::uint16_t &prev_rwnd()
+		void set_prev_rwnd(std::uint16_t v)
 		{
-			return m_prev_rwnd;
+			m_prev_rwnd = v;
 		}
+
 
 		vlu_t next_sn()
 		{
@@ -268,7 +271,7 @@ namespace fms
 			return static_cast<std::uint32_t>(m_stream_id);
 		}
 
-		const vlu_t &associated_flow_id() const
+		vlu_t associated_flow_id() const
 		{
 			return m_assoc_flow_id;
 		}

@@ -46,27 +46,28 @@ namespace fms
 		static constexpr std::uint8_t eResponder = 2;
 		static constexpr std::uint8_t eStartup   = 3;
 
-		bool &timestamp_present()
+
+		bool timestamp_present() const
 		{
 			return m_timestamp_present;
 		}
 
-		const bool &timestamp_present() const
+		void set_timestamp_present(bool v)
 		{
-			return m_timestamp_present;
+			m_timestamp_present = v;
 		}
 
-		const bool &timestamp_echo_present() const
+		bool timestamp_echo_present() const
 		{
 			return m_timestamp_echo_present;
 		}
 
-		const std::uint16_t &timestamp() const
+		std::uint16_t timestamp() const
 		{
 			return m_timestamp;
 		}
 
-		const std::uint16_t &timestamp_echo() const
+		std::uint16_t timestamp_echo() const
 		{
 			return m_timestamp_echo;
 		}

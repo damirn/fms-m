@@ -128,10 +128,10 @@ namespace fms
 			else if (std::memcmp((*opt)->m_value.data(), GC, 2) == 0)
 				m_type = eNetGroup;
 			else
-				state() = flow::eRejected;   // unknown metadata signature
+				set_state(flow::eRejected);   // unknown metadata signature
 		}
 		else
-			state() = flow::eRejected;
+			set_state(flow::eRejected);
 
 		opt = options().get_option(option::eReturnFlowAssociation);
 		if (opt)

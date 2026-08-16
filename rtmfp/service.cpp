@@ -438,7 +438,7 @@ namespace fms
 			m_initial_sessions[m_sender_endpoint] = s;
 		}
 
- 		s->session_id() = iikc->isid();
+ 		s->set_session_id(iikc->isid());
 
 		dh2 d;
 		if (!d.generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data()))
@@ -494,7 +494,7 @@ namespace fms
 			if (!d.generate_hmac_keys(sa->enc_key_data(), sa->dec_key_data(), sa->tx_hmac_key(), sa->rx_hmac_key()))
 				return;
 
-		s->state() = session::eOpen;
+		s->set_state(session::eOpen);
 
 		m_app_manager->register_session(s);
 		write(m_serializer->packet(), m_sender_endpoint);

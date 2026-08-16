@@ -202,7 +202,7 @@ namespace fms
 
 		// Remember the receiver's advertised buffer (blocks) so we don't overrun it
 		// (RFC 7016 sec. 3.6.2.4 receive-window flow control).
-		i->second->prev_rwnd() = static_cast<std::uint16_t>(rac->buff_blocks_available());
+		i->second->set_prev_rwnd(static_cast<std::uint16_t>(rac->buff_blocks_available()));
 
 		// 3.6.2.5
 		vlu_t max_tsn = i->second->ack_fragments_until(rac->cumulative_ack());
@@ -257,7 +257,7 @@ namespace fms
 					vlu_t const assoc_fid = f->associated_flow_id();
 					auto const i = m_sending_flows.find(assoc_fid);
 					if (i == m_sending_flows.end() || i->second->state() != flow::eOpen)
-						f->state() = flow::eRejected;
+						f->set_state(flow::eRejected);
 				}
 				if (f->state() == flow::eOpen)
 				{
@@ -482,7 +482,7 @@ namespace fms
 
 	void session::flow_sanity_check(const flow_ptr& f, bool should_abandon)
 	{
-		f->should_ack() = true;
+		f->set_should_ack(true);
 
 		// check for unknown options
 
@@ -573,7 +573,7 @@ namespace fms
 		}
 
 		header h(false, true, ts, header::eResponder);
-		h.timestamp_present() = ts_present;
+		h.set_timestamp_present(ts_present);
 		h.set_optional_ts_echo(m_should_include_ts_echo, m_ts_echo_tx);
 
 		s->prepare_raw_packet(h, m_parser->get_aes());
@@ -616,7 +616,7 @@ namespace fms
 					range_ack_chunk rac(f->flow_id(), f->advertised_rwnd(), high_seq);
 					rac.ranges() = list;
 					rac.serialize(s->raw_packet());
-					f->should_ack() = false;
+					f->set_should_ack(false);
 					has_data = true;
 				}
 			}
