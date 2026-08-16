@@ -119,7 +119,7 @@ namespace fms::rtmp_client
 			rtmp_message_invoke_ptr const cs = std::make_shared<rtmp_message_invoke>("createStream", get_invoke_id());
 			amf0_null_ptr const null = std::make_shared<amf0_null>();
 			cs->add_parameter(null);
-			create_stream_result_handler_ptr const rs = std::make_shared<create_stream_result_handler>([self = shared_from_this()](const rtmp_message_invoke_ptr& inv, const result_handler_ptr& rs) { self->handle_create_stream_result(inv, rs); }, stream->id());
+			create_stream_result_handler_ptr const rs = std::make_shared<create_stream_result_handler>([self = shared_from_this()](const rtmp_message_invoke_ptr& inv, const result_handler_ptr& handler) { self->handle_create_stream_result(inv, handler); }, stream->id());
 
 			send_message(cs, rs);
 		}
@@ -241,7 +241,7 @@ namespace fms::rtmp_client
 			connect->add_parameter(num);
 		}
 
-		result_handler_ptr const rs = std::make_shared<result_handler>([self = shared_from_this()](const rtmp_message_invoke_ptr& inv, const result_handler_ptr& rs) { self->handle_connect_result(inv, rs); });
+		result_handler_ptr const rs = std::make_shared<result_handler>([self = shared_from_this()](const rtmp_message_invoke_ptr& inv, const result_handler_ptr& handler) { self->handle_connect_result(inv, handler); });
 		send_message(connect, rs);
 		read_data();
 	}
