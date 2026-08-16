@@ -8,6 +8,7 @@
 
 #include <boost/core/null_deleter.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/log/attributes.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/ref.hpp>
@@ -25,7 +26,12 @@ namespace fms
 
 	void logging::init_logging(const std::string &path)
 	{
-		backend_ptr const bp = boost::make_shared<backend_t>(keywords::file_name = "%Y%m%d_%H%M%S_%5N.log",
+		// The pattern has to carry the directory: file_name places the file being
+		// written, while the collector target below only governs rotated files.
+		boost::filesystem::path pattern(path);
+		pattern /= "%Y%m%d_%H%M%S_%5N.log";
+
+		backend_ptr const bp = boost::make_shared<backend_t>(keywords::file_name = pattern,
 			keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0));
 		bp->auto_flush(true);
 
