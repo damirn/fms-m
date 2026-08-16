@@ -10,6 +10,13 @@
 
 namespace fms
 {
+	std::string_view strip_query(std::string_view s)
+	{
+		if (std::size_t const q = s.find('?'); q != std::string_view::npos)
+			s = s.substr(0, q);
+		return s;
+	}
+
 	std::string to_simple_string(std::chrono::system_clock::time_point tp)
 	{
 		std::time_t const t = std::chrono::system_clock::to_time_t(tp);

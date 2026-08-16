@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "media_application.h"
+#include "util.h"
 #include "client_session.h"
 #include "config.h"
 #include "io_context_pool.h"
@@ -260,10 +261,7 @@ namespace fms
 			auto i = params.begin();
 			++i;
 			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
-			std::string stream_name = str->value();
-			std::string::size_type const pos = stream_name.find('?');
-			if (pos != std::string::npos)
-				stream_name.erase(pos);
+			std::string const stream_name(strip_query(str->value()));
 
 			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is publishing stream '" << stream_name << "'";
 			m_app_manager->update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, true);
@@ -367,11 +365,11 @@ namespace fms
 			auto const lock = m_registry.lock_exclusive();
 
 			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
-			auto const target = remote_relay::parse_target(str->value());
+			auto const target = remote_relay::parse_target(std::string(strip_query(str->value())));
 			std::string const &stream_name = target.m_stream;
 			bool const is_remote = !target.m_server.empty();
 
-			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << str->value() << "'";
+			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << stream_name << "'";
 			if (is_remote)
 				BOOST_LOG(lg::get()) << "stream '" << stream_name << "' is on remote server (" << target.m_server << ")";
 

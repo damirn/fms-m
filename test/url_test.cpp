@@ -80,3 +80,17 @@ TEST_CASE("url::parse: a string with no scheme yields an empty url")
 	CHECK(u.m_host.empty());
 	CHECK(u.m_path.empty());
 }
+
+// strip_query -- publish and play must resolve a query-bearing stream name to
+// the same stream, or a token-auth URL publishes under one name and plays under
+// another.
+TEST_CASE("strip_query: drops the query, keeps the name")
+{
+	CHECK(strip_query("tok?token=abc123") == "tok");
+	CHECK(strip_query("tok") == "tok");
+	CHECK(strip_query("tok?") == "tok");
+	CHECK(strip_query("?token=abc") == "");
+	CHECK(strip_query("") == "");
+	CHECK(strip_query("a?b?c") == "a");
+	CHECK(strip_query("with/slash?x=1") == "with/slash");
+}
