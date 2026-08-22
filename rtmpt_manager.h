@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <map>
+#include <vector>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -64,15 +65,6 @@ namespace fms
 			explicit rtmpt_session_data(const boost::asio::ip::address &address)
 				: m_address(address)
 			{}
-			// Free any still-pending out-of-order buffers. They are otherwise deleted
-			// only on the in-order drain path, so a session torn down with a sequence
-			// gap outstanding (remove_session / idle reaper / manager teardown) leaked
-			// every stashed block.
-			~rtmpt_session_data()
-			{
-				for (auto &kv : m_out_of_order_data)
-					delete[] kv.second.first;
-			}
 			// Serializes this ONE session's work so sessions run concurrently.
 			// LOCK ORDER: the global m_mutex is taken before this; the request paths
 			// take the global lock, release it, then take this -- never both at once.
@@ -84,8 +76,7 @@ namespace fms
 			std::uint8_t m_open_ticks{0};
 			boost::asio::ip::address m_address;
 			rtmpt_session_ptr m_session;
-			// length is size_t, not uint16_t: a >64 KB body was truncated on replay.
-			using unoreder_data_t = std::map<std::uint32_t, std::pair<std::uint8_t *, std::size_t>>;
+			using unoreder_data_t = std::map<std::uint32_t, std::vector<std::uint8_t>>;
 			unoreder_data_t m_out_of_order_data;
 			std::size_t m_ooo_bytes{0};   // total bytes stashed above, capped (not just count)
 		};

@@ -84,9 +84,8 @@ namespace fms
 					j = sd->m_out_of_order_data.find(sd->m_sequence);
 					if (j == sd->m_out_of_order_data.end())
 						break;
-					input.write(j->second.first, j->second.second);
-					delete[] j->second.first;
-					sd->m_ooo_bytes -= j->second.second;
+					input.write(j->second.data(), j->second.size());
+					sd->m_ooo_bytes -= j->second.size();
 					sd->m_out_of_order_data.erase(j);
 					sd->m_sequence++;
 				}
@@ -101,9 +100,8 @@ namespace fms
 					sd->m_ooo_bytes + input.size() <= eMaxOutOfOrderBytes &&
 					!sd->m_out_of_order_data.contains(seq))
 				{
-					auto *data = new std::uint8_t[input.size()];
-					std::memcpy(data, input.data(), input.size());
-					sd->m_out_of_order_data[seq] = std::make_pair(data, input.size());
+					sd->m_out_of_order_data.emplace(seq,
+						std::vector<std::uint8_t>(input.data(), input.data() + input.size()));
 					sd->m_ooo_bytes += input.size();
 				}
 			}
