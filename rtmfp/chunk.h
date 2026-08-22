@@ -177,16 +177,8 @@ namespace fms
 	public:
 		redirect_chunk(std::uint16_t tag_len, const std::uint8_t *tag)
 			: chunk(eResponderRedirect)
-			, m_tag_len(tag_len)
-			, m_tag(new std::uint8_t[m_tag_len])
-		{
-			std::memcpy(const_cast<std::uint8_t *>(m_tag), tag, m_tag_len);
-		}
-
-		~redirect_chunk() override
-		{
-			delete[] m_tag;
-		}
+			, m_tag(tag, tag + tag_len)
+		{}
 
 		const std::list<address> &addresses() const
 		{
@@ -205,8 +197,7 @@ namespace fms
 		std::uint16_t serialize(byte_writer &) override;
 
 	protected:
-		std::uint16_t m_tag_len;
-		const std::uint8_t *m_tag;
+		std::vector<std::uint8_t> m_tag;
 		std::list<address> m_addresses;
 	};
 
