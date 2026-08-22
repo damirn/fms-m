@@ -680,6 +680,19 @@ namespace fms
 		boost::asio::post(m_strand, [self = shared_from_this()]() { self->notify_impl(); });
 	}
 
+	void session::unreserve_stream_id(std::uint32_t stream_id)
+	{
+		client_session::unreserve_stream_id(stream_id);
+		boost::asio::post(m_strand, [self = shared_from_this(), stream_id]()
+			{ self->unreserve_stream_id_impl(stream_id); });
+	}
+
+	void session::unreserve_stream_id_impl(std::uint32_t stream_id)
+	{
+		purge_stream_flows(stream_id, m_flow_id_to_stream_id, m_stream_id_to_flow_id,
+			m_receiving_flows, m_sending_flows, m_receiving_to_sending_flow);
+	}
+
 	void session::notify_impl()
 	{
 		if (m_app != nullptr)
