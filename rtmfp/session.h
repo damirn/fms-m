@@ -3,6 +3,7 @@
 #include "byte_reader.h"
 #include "client_session.h"
 #include "congestion_window.h"
+#include "flow_maps.h"
 #include "parser.h"
 #include "types.h"
 
@@ -136,6 +137,11 @@ namespace fms
 		void start() override{}
 		void notify() override;
 
+		// Called on the application thread; the flow maps belong to the strand, so
+		// only the purge is posted. The base's stream-id set stays on the caller's
+		// thread, where reserve_stream_id also runs.
+		void unreserve_stream_id(std::uint32_t) override;
+
 		// Initiate a graceful close (RFC 7016 sec. 2.3.11): queue a SessionClose to
 		// the peer and enter near-close. The peer replies with a close-ack, or the
 		// idle timer reaps us if it has gone away.
@@ -184,6 +190,7 @@ namespace fms
 
 	protected:
 		void notify_impl();
+		void unreserve_stream_id_impl(std::uint32_t);
 		bool handle_user_data(user_data_chunk *);
 		bool handle_next_user_data(next_user_data_chunk *);
 		bool handle_range_ack(range_ack_chunk *);
@@ -266,19 +273,14 @@ namespace fms
 		vlu_t m_max_tsn_ack{0};
 
 		std::uint32_t m_next_flow_id{2};
-		using flow_map_t = std::map<vlu_t, flow_ptr>;
 		flow_map_t m_receiving_flows;
 		flow_map_t m_sending_flows;
 
-		using flow_assoc_map_t = std::map<vlu_t, vlu_t>;
 		flow_assoc_map_t m_receiving_to_sending_flow;
 
 		std::function<void ()> m_notifier;
 
-		using flow_id_to_stream_id_map_t = std::map<vlu_t, std::uint32_t>;
 		flow_id_to_stream_id_map_t m_flow_id_to_stream_id;
-
-		using stream_id_to_flow_id_map_t = std::map<std::uint32_t, std::set<flow_ptr>>;
 		stream_id_to_flow_id_map_t m_stream_id_to_flow_id;
 
 		address_list_t m_addresses;
