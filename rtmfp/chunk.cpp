@@ -95,8 +95,8 @@ namespace fms
 		std::size_t const hdr = to.mark();
 		to.extend(eChunkHeaderSize);
 
-		to.write_vlu(m_tag_len);
-		to.write(m_tag, static_cast<std::size_t>(m_tag_len));
+		to.write_vlu(static_cast<vlu_t>(m_tag.size()));
+		to.write(m_tag.data(), m_tag.size());
 
 		for (auto & addr : m_addresses)
 			to << addr;
