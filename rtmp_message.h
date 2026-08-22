@@ -113,7 +113,6 @@ namespace fms
 
 	protected:
 		std::uint8_t m_type;
-		amf0 m_amf0;
 		std::uint32_t m_stream_id{0};
 		std::uint32_t m_channel_id{eInvokeChannel};
 		std::uint32_t m_timestamp{0};
@@ -490,6 +489,13 @@ namespace fms
 	{
 	public:
 		using parameters_list_t = std::list<amf0_type_ptr>;
+
+	protected:
+		// Only the AMF-bearing messages need a codec: it carries a reference table,
+		// so keeping it in the base put 32 unused bytes on every A/V frame.
+		amf0 m_amf0;
+
+	public:
 
 		explicit rtmp_message_with_params(rtmp_message::message_type type)
 			: rtmp_message(type), m_function(new amf0_string)

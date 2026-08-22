@@ -10,6 +10,9 @@ namespace fms
 {
 	class rtmp_message_shared_object final : public rtmp_message
 	{
+	protected:
+		amf0 m_amf0;   // see rtmp_message_with_params
+
 	public:
 		rtmp_message_shared_object()
 			: rtmp_message(eMessageSharedObject)
