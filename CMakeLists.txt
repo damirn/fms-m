@@ -429,6 +429,19 @@ if(BUILD_CLIENT)
   target_link_libraries(handshake_test PRIVATE ${CRYPTO_LIBRARIES})
   add_test(NAME handshake_test COMMAND handshake_test)
 
+  # The handshake state machine itself, including the RTMPE branch interop skips.
+  add_executable(handshaker_test test/handshaker_test.cpp test/test_main.cpp
+    rtmp_handshaker.cpp rtmp_handshake.cpp crypto.cpp dh.cpp evp_dh.cpp)
+  target_include_directories(handshaker_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
+  target_link_libraries(handshaker_test PRIVATE ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME handshaker_test COMMAND handshaker_test)
+  if(APPLE)
+    # dh.cpp logs, so this links Boost.Log and needs ICU at its old keg path.
+    set_tests_properties(handshaker_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   add_executable(chunk_parser_test test/chunk_parser_test.cpp test/test_main.cpp)
   target_include_directories(chunk_parser_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
