@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
+#include <vector>
 
 #include <openssl/evp.h>
 
@@ -13,9 +15,9 @@ namespace fms
 		dh2();
 		~dh2();
 
-		const std::uint8_t *pub_key(int &pub_key_size) const
+		// Empty if keygen failed.
+		std::span<const std::uint8_t> pub_key() const
 		{
-			pub_key_size = m_pub_key_size;
 			return m_pub_key;
 		}
 
@@ -32,9 +34,8 @@ namespace fms
 
 		[[nodiscard]] static bool generate_peer_id(const std::uint8_t *, std::uint16_t, std::uint8_t *);
 
-		const std::uint8_t *rnonce(std::uint16_t &size) const
+		std::span<const std::uint8_t> rnonce() const
 		{
-			size = m_rnonce_size;
 			return m_rnonce;
 		}
 
@@ -46,11 +47,9 @@ namespace fms
 		static constexpr std::size_t eKeySize    = 0x80;
 		static const std::uint8_t m_dh_key[eKeySize];
 		EVP_PKEY *m_pkey{nullptr};
-		int m_pub_key_size{0};
-		std::uint8_t *m_pub_key{nullptr};
+		std::vector<std::uint8_t> m_pub_key;
 		int m_shared_secret_size{0};
 		std::uint8_t *m_shared_secret{nullptr};
-		std::uint8_t *m_rnonce{nullptr};
-		std::uint16_t m_rnonce_size{0};
+		std::vector<std::uint8_t> m_rnonce;
 	};
 }

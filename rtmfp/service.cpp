@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "service.h"
+
+#include <span>
 #include "session_id.h"
 #include "byte_order.h"
 #include "aes.h"
@@ -457,9 +459,8 @@ namespace fms
 		if (!d.generate_shared_secret(ipk, ipk_len))
 			return;   // no usable secret: drop the keying rather than reply with none
 
-		std::uint16_t size = 0;
-		const std::uint8_t *rnonce = d.rnonce(size);
-		rikeying_chunk ric(s->outgoing_sid(), size, rnonce);
+		std::span<const std::uint8_t> const rnonce = d.rnonce();
+		rikeying_chunk ric(s->outgoing_sid(), static_cast<std::uint16_t>(rnonce.size()), rnonce.data());
 
 		std::uint16_t const ts = get_timestamp();
 		header h(false, false, ts, header::eStartup);
@@ -468,7 +469,8 @@ namespace fms
 		ric.serialize(m_serializer->raw_packet());
 		m_serializer->finish_raw_packet(s->session_id(), m_parser->get_aes());
 
-		if (!d.generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()), rnonce, size,
+		if (!d.generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()),
+				rnonce.data(), static_cast<std::uint16_t>(rnonce.size()),
 				s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data()))
 			return;   // no session keys: drop the keying rather than run with garbage
 
