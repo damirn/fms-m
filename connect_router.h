@@ -34,10 +34,6 @@ namespace fms
 			const client_session_ptr &conn, const rtmp_header &header, rtmp_message_ptr &res);
 
 	private:
-		// Match a client's "app" string (which may be "name/instance") against a
-		// registered app name; on success, fills `instance` with the trailing part.
-		static bool match_app(const std::string &app_name, const std::string &app, std::string &instance);
-
 		app_map_t &m_apps;
 		fake_application &m_fake;
 	};

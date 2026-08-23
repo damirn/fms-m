@@ -17,6 +17,23 @@ namespace fms
 		return s;
 	}
 
+	bool match_app_name(std::string_view view, std::string_view app, std::string &instance)
+	{
+		// The connect "app" is a URL path: strip a leading '/' (rtmfp://host/media
+		// has the raw path "/media") and any trailing "?query", which is not part of
+		// the app identity. Hand-rolled -- Boost.URL needs >= 1.81, we build 1.76.
+		if (!view.empty() && view.front() == '/')
+			view.remove_prefix(1);
+		view = strip_query(view);
+
+		std::size_t const pos = view.find('/');
+		if (view.substr(0, pos) != app)
+			return false;
+		if (pos != std::string_view::npos)
+			instance = std::string(view.substr(pos + 1));
+		return true;
+	}
+
 	std::string to_simple_string(std::chrono::system_clock::time_point tp)
 	{
 		std::time_t const t = std::chrono::system_clock::to_time_t(tp);
