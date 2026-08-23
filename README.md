@@ -407,7 +407,7 @@ directory). Verbosity is controlled with `--log-level` (higher is more verbose).
 |----------|----------|
 | [`docs/concurrency.md`](docs/concurrency.md) | The one-thread-per-`io_context` contract every connection relies on, and what may touch what from where. Read this before changing anything threading-related. |
 | [`docs/slow-consumer.md`](docs/slow-consumer.md) | What the server does when a subscriber stops reading, what Adobe FMS 4.5 does (measured against a stock 4.5 install), and why they differ. |
-| [`docs/TODO.md`](docs/TODO.md) | Protocol gap analysis against rtmpdump/librtmp and rtmfp-cpp, priority-sorted. |
+| [`docs/TODO.md`](docs/TODO.md) | The whole open backlog in one place: protocol gaps against rtmpdump/librtmp and rtmfp-cpp, structural debt, and the unfinished review findings. Priority-sorted. |
 | [`docs/parsing.md`](docs/parsing.md) | How the RTMP chunk parser frames bytes into messages, and the one exception contract it relies on. |
 | [`docs/enhanced-rtmp-plan.md`](docs/enhanced-rtmp-plan.md) | Plan for Enhanced RTMP (E-RTMP v2) codec support. |
 | [`REVIEW_2026-09.md`](REVIEW_2026-09.md) | Open review findings, priority-sorted. |
