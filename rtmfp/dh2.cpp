@@ -36,9 +36,7 @@ namespace fms
 		if (m_pkey)
 			EVP_PKEY_free(m_pkey);
 
-		delete[] m_pub_key;
 		delete[] m_shared_secret;
-		delete[] m_rnonce;
 	}
 
 	void dh2::generate_public_key()
@@ -48,9 +46,9 @@ namespace fms
 			return;   // m_pub_key_size stays 0; every user checks it
 
 		// Our public part as big-endian bytes (at most the prime size).
-		m_pub_key = new std::uint8_t[eKeySize];
-		int const n = evp_dh_pub(m_pkey, m_pub_key, eKeySize);
-		m_pub_key_size = n > 0 ? n : 0;   // evp_dh_pub returns -1 on failure
+		m_pub_key.resize(eKeySize);
+		int const n = evp_dh_pub(m_pkey, m_pub_key.data(), eKeySize);
+		m_pub_key.resize(n > 0 ? static_cast<std::size_t>(n) : 0);   // -1 on failure
 	}
 
 	bool dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size)
@@ -112,16 +110,13 @@ namespace fms
 		// the initiator's own flags (see service::handle_iikeying) so it always agrees
 		// with what this advertisement promises.
 		static constexpr std::uint8_t salt[] = { 0x03, 0x1A, 0x02, 0x10, 0x02, 0x1E, 0x02, 0x81, 0x02, 0x0D, 0x02 };
-		int size = 0;
-		const std::uint8_t *pk = pub_key(size);
-		// A failed keygen leaves size <= 0.
-		if (pk == nullptr || size <= 0)
-			return false;
-		delete[] m_rnonce;
-		m_rnonce = new std::uint8_t[static_cast<std::size_t>(size) + sizeof(salt)];
-		std::memcpy(m_rnonce, salt, sizeof(salt));
-		std::memcpy(m_rnonce + sizeof(salt), pk, static_cast<std::size_t>(size));
-		m_rnonce_size = static_cast<std::uint16_t>(size + sizeof(salt));
+		std::span<const std::uint8_t> const pk = pub_key();
+		if (pk.empty())
+			return false;   // keygen failed
+		m_rnonce.clear();
+		m_rnonce.reserve(sizeof(salt) + pk.size());
+		m_rnonce.insert(m_rnonce.end(), std::begin(salt), std::end(salt));
+		m_rnonce.insert(m_rnonce.end(), pk.begin(), pk.end());
 		return true;
 	}
 }
