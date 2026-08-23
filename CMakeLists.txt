@@ -235,7 +235,7 @@ if(BUILD_TESTS)
   # so_manager unit tests: the shared-object state machine + fan-out, driven
   # through an injected recording delivery sink (no server / rtmp_application).
   add_executable(so_tests
-    test/test_main.cpp test/so_test.cpp
+    test/test_main.cpp test/so_test.cpp test/so_message_test.cpp
     so_manager.cpp rtmp_so_message.cpp amf0.cpp amf3.cpp)
   add_test(NAME so_tests COMMAND so_tests)
 
