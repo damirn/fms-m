@@ -228,6 +228,7 @@ if(BUILD_TESTS)
   add_executable(amf_tests
     test/test_main.cpp test/amf0_test.cpp test/amf3_test.cpp test/media_path_test.cpp
     test/url_test.cpp test/amf_depth_test.cpp test/match_app_test.cpp
+    test/byte_reader_test.cpp
     amf0.cpp amf3.cpp util.cpp)
   add_test(NAME amf_tests COMMAND amf_tests)
 
