@@ -85,10 +85,10 @@ namespace fms
 		string_list_t list_applications() override;
 		client_list_t list_clients() override;
 		client_data_ptr get_client_data(std::uint32_t) override;
-		bool get_client_stats(std::uint32_t, client_stats &) override;
+		std::optional<client_stats> get_client_stats(std::uint32_t) override;
 		std::optional<app_stats> get_app_stats(const std::string &) override;
 		netstream_list_t list_streams() override;
-		void get_queue_stats(queue_stats_list_t &) override;
+		queue_stats_list_t get_queue_stats() override;
 
 		void create_netstream(const stream_client_id_t &) override;
 		void delete_netstream(const stream_client_id_t &) override;

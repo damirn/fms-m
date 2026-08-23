@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <vector>
 
 using namespace fms;
@@ -98,10 +99,8 @@ TEST_CASE("rtmfp flow: a buffered whole fragment copies its data (no dangle into
 	// The packet buffer is gone / reused: scribble it.
 	std::fill(pkt.begin(), pkt.end(), std::uint8_t{0xEE});
 
-	std::uint32_t len = 0;
-	const std::uint8_t *data = f.message_data(len);
-	REQUIRE(data != nullptr);
-	REQUIRE(len == pkt.size());
+	std::span<const std::uint8_t> const data = f.message_data();
+	REQUIRE(data.size() == pkt.size());
 	CHECK(data[0] == 10);   // original bytes, not the 0xEE scribble
 	CHECK(data[7] == 80);
 }

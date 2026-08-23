@@ -55,9 +55,9 @@ namespace fms
 		virtual client_list_t list_clients() = 0;
 		virtual netstream_list_t list_streams() = 0;
 		virtual client_data_ptr get_client_data(std::uint32_t) = 0;
-		virtual bool get_client_stats(std::uint32_t, client_stats &) = 0;
+		virtual std::optional<client_stats> get_client_stats(std::uint32_t) = 0;
 		virtual std::optional<app_stats> get_app_stats(const std::string &) = 0;
-		virtual void get_queue_stats(queue_stats_list_t &) = 0;
+		virtual queue_stats_list_t get_queue_stats() = 0;
 
 		// ---- infrastructure ----------------------------------------------------
 		virtual io_context_pool &get_io_context_pool() = 0;

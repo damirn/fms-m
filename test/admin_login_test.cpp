@@ -53,9 +53,9 @@ namespace
 		client_list_t list_clients() override { return {}; }
 		netstream_list_t list_streams() override { return {}; }
 		client_data_ptr get_client_data(std::uint32_t) override { return nullptr; }
-		bool get_client_stats(std::uint32_t, client_stats &) override { return false; }
+		std::optional<client_stats> get_client_stats(std::uint32_t) override { return std::nullopt; }
 		std::optional<app_stats> get_app_stats(const std::string &) override { return std::nullopt; }
-		void get_queue_stats(queue_stats_list_t &) override {}
+		queue_stats_list_t get_queue_stats() override { return {}; }
 
 		io_context_pool &get_io_context_pool() override { throw std::logic_error("unused"); }
 

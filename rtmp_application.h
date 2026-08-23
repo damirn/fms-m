@@ -83,7 +83,7 @@ namespace fms
 			return m_stats;
 		}
 
-		void get_queue_stats(queue_stats_list_t &);
+		queue_stats_list_t get_queue_stats();
 
 		void update_stats(bool, bool, std::uint32_t);
 

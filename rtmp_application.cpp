@@ -278,11 +278,13 @@ namespace fms
 		return true;
 	}
 
-	void rtmp_application::get_queue_stats(queue_stats_list_t &list)
+	queue_stats_list_t rtmp_application::get_queue_stats()
 	{
+		queue_stats_list_t list;
 		std::unique_lock const lock(m_async_map_mutex);   // exclusive: safe to read every entry's count
 		for (auto &kv : m_async_messages)
 			list.emplace_back(kv.first, kv.second.count);
+		return list;
 	}
 
 	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, std::uint32_t value)
@@ -365,8 +367,9 @@ namespace fms
 		std::uint32_t const id = ++m_invoke_id;
 		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>("onBWCheck", id);
 
-		client_stats stats;
-		m_app_manager->get_client_stats(connection_id, stats);
+		// Zeros for an unknown connection, as before: the bw check reports no bytes
+		// rather than failing.
+		client_stats const stats = m_app_manager->get_client_stats(connection_id).value_or(client_stats{});
 		res_handler->m_bytes = stats.m_bytes_written;
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
@@ -383,8 +386,7 @@ namespace fms
 		std::uint32_t const id = ++m_invoke_id;
 		rtmp_message_invoke_ptr const res = std::make_shared<rtmp_message_invoke>("onBWCheckU", id);
 
-		client_stats stats;
-		m_app_manager->get_client_stats(connection_id, stats);
+		client_stats const stats = m_app_manager->get_client_stats(connection_id).value_or(client_stats{});
 		res_handler->m_bytes = stats.m_bytes_read;
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
@@ -397,8 +399,7 @@ namespace fms
 	bool rtmp_application::handle_result_bw_check_upload(rtmp_message_invoke_ptr /*msg*/, result_handler_ptr res_handler, rtmp_message_ptr &result)
 	{
 		bwcheck_result_handler_ptr const bw_res = std::dynamic_pointer_cast<bwcheck_result_handler>(res_handler);
-		client_stats stats;
-		m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
+		client_stats const stats = m_app_manager->get_client_stats(bw_res->m_connection_id).value_or(client_stats{});
 
 		std::chrono::system_clock::time_point const now = std::chrono::system_clock::now();
 		std::chrono::system_clock::duration const delta = now - bw_res->m_time;
@@ -448,8 +449,7 @@ namespace fms
 			std::chrono::system_clock::time_point const now = std::chrono::system_clock::now();
 			bw_res->m_latency = now - bw_res->m_time;
 			bw_res->m_time = now;
-			client_stats stats;
-			m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
+			client_stats const stats = m_app_manager->get_client_stats(bw_res->m_connection_id).value_or(client_stats{});
 			bw_res->m_bytes = stats.m_bytes_written;
 
 			std::uint32_t const id = ++m_invoke_id;
@@ -463,8 +463,7 @@ namespace fms
 			return true;
 		}
 
-		client_stats stats;
-		m_app_manager->get_client_stats(bw_res->m_connection_id, stats);
+		client_stats const stats = m_app_manager->get_client_stats(bw_res->m_connection_id).value_or(client_stats{});
 
 		std::chrono::system_clock::time_point const now = std::chrono::system_clock::now();
 		std::chrono::system_clock::duration dt = now - bw_res->m_time;

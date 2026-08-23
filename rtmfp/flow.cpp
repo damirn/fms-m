@@ -56,7 +56,7 @@ namespace fms
 		m_fragments.erase(seq);
 	}
 
-	const std::uint8_t *flow::message_data(std::uint32_t &len)
+	std::span<const std::uint8_t> flow::message_data()
 	{
 		vlu_t const csn = m_seq_manager.csn();
 		auto i = m_fragments.begin();
@@ -66,8 +66,7 @@ namespace fms
 			if (f->m_frag_ctrl == fragment::eWhole)
 			{
 				m_msg_is_fragmented = false;
-				len = f->m_data_len;
-				return f->m_data;
+				return {f->m_data, f->m_data_len};
 			}
 			if (f->m_frag_ctrl == fragment::eEnd || f->m_frag_ctrl == fragment::eMiddle)
 			{
@@ -84,9 +83,8 @@ namespace fms
 					m_msg_len += j->second->m_data_len;
 					if (j->second->m_frag_ctrl == fragment::eEnd)
 					{
-						len = m_msg_len;
 						m_msg_is_fragmented = true;
-						return create_message(i, j);
+						return {create_message(i, j), m_msg_len};
 					}
 					if (j->second->m_frag_ctrl == fragment::eWhole || j->second->m_frag_ctrl == fragment::eBegin)
 					{
@@ -99,8 +97,7 @@ namespace fms
 				break;
 			}
 		}
-		len = 0;
-		return nullptr;
+		return {};
 	}
 
 	void flow::remove_last_message()
