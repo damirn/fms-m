@@ -23,15 +23,6 @@ Priority-sorted. Updated 2026-09-03.
 
 ## P1 — correctness / resource safety
 
-- **`std::atomic_load`/`atomic_store` on `shared_ptr` are REMOVED in C++26.** Used
-  for the avc/aac config slots on the fan-out path. Deprecated in C++20 and we build
-  at `-std=c++23`, so this is a dated build break, not a style point. The
-  replacement `std::atomic<std::shared_ptr<T>>` is **not implemented by the libc++
-  this builds against** (Xcode 15 SDK: "_Atomic cannot be applied to type … which is
-  not trivially copyable") — attempted and reverted. Revisit when the macOS toolchain
-  ships it, or add a feature-tested wrapper if C++26 lands first.
-  (`av_delivery.cpp:32,139,140,240,347`, `stream_registry.h:67-74`) — review F6 / L8
-
 - **Origin-pull helper spawning is unbounded and runs under the media lock.**
   `spawn_helper` is called from `handle_invoke_play` while the registry's EXCLUSIVE
   lock is held. There is no dedup, rate limit or cap, so repeated plays spawn
@@ -158,11 +149,6 @@ Priority-sorted. Updated 2026-09-03.
   is the prerequisite. This is what makes the deferred RTMFP fixes unsafe to attempt.
   (`docs/concurrency.md`) — review T7
 
-- **`flv_reader.cpp` sees only well-formed input.** No truncated/malformed FLV
-  coverage. — review T7
-
-- **`rtmp_so_message.cpp` beyond what `so_test.cpp` reaches.** — review T7
-
 ### Structural design debt
 
 Priority order; the first item is the one the others hang off.
@@ -256,6 +242,14 @@ Priority order; the first item is the one the others hang off.
 - **`rtmpt_manager` lock scope across re-entrant app callbacks.** The global lock was
   narrowed to the id table + sequencing with a per-session mutex; reducing scope
   across the callbacks themselves is still open. — 2026-07 M7
+- **Shared Object codec: an unknown event type is not skipped.**
+  `rtmp_message_shared_object::deserialize_event` reads an unknown event's type and
+  32-bit length and then does not skip the body, so the next read starts mid-event
+  and the whole message is refused. Safe (it throws, nothing is delivered) but not
+  forward compatible: a peer sending any newer SO event type loses every event in
+  that message. `buffer.skip(len)` in the `default:` arm would fix it; it changes
+  wire behaviour, so it is a decision, not a cleanup. (`rtmp_so_message.cpp`)
+  — review N6
 - **librtmp connect-param coverage** (`auth`/`token`/`subscribe`/`tcUrl`/`swfUrl`/…)
   and command verbs we don't handle: `secureTokenResponse`, `set_playlist`/
   `playlist_ready`, client-initiated `_checkbw`, `onFCSubscribe`/`onFCUnsubscribe`.
