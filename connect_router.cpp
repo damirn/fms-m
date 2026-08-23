@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "connect_router.h"
+#include "util.h"
 #include "amf0_types.h"
 #include "fake_application.h"
 #include "logging.h"
@@ -10,25 +11,6 @@
 
 namespace fms
 {
-	bool connect_router::match_app(const std::string &app_name, const std::string &app, std::string &instance)
-	{
-		// The connect "app" is a URL path: strip a leading '/' (rtmfp://host/media
-		// has the raw path "/media") and any trailing "?query", which is not part of
-		// the app identity. Hand-rolled -- Boost.URL needs >= 1.81, we build 1.76.
-		std::string_view view(app_name);
-		if (!view.empty() && view.front() == '/')
-			view.remove_prefix(1);
-		if (std::size_t const q = view.find('?'); q != std::string_view::npos)
-			view = view.substr(0, q);
-
-		std::size_t const pos = view.find('/');
-		if (view.substr(0, pos) != app)
-			return false;
-		if (pos != std::string_view::npos)
-			instance = std::string(view.substr(pos + 1));
-		return true;
-	}
-
 	boost::tribool connect_router::route(const rtmp_message_invoke_ptr &invoke, std::uint32_t connection_id,
 		const client_session_ptr &conn, const rtmp_header &header, rtmp_message_ptr &res)
 	{
@@ -46,7 +28,7 @@ namespace fms
 			for (auto &a : m_apps)
 			{
 				std::string instance;
-				if (match_app(app_name->value(), a.first, instance))
+				if (match_app_name(app_name->value(), a.first, instance))
 				{
 					BOOST_LOG(lg::get()) << "cid: " << connection_id << " connecting to " << app_name->value();
 					conn->set_app(a.second.get());
