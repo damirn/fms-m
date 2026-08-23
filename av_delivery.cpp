@@ -29,7 +29,7 @@ namespace fms
 			&& audio->size() > 1
 			&& audio->data()[1] == 0x00)
 		{
-			std::atomic_store(&bs->aac_config, audio);
+			bs->aac_config.store(audio);
 		}
 
 		m_registry.for_each_subscriber(bcid, [&](const stream_client_id_t &, const stream_client_ptr &client)
@@ -136,8 +136,8 @@ namespace fms
 			if (video->get_codec() == rtmp_message_video_data::eAVC)
 			{
 				// "not yet stored" == null value
-				if (!std::atomic_load(&bc->avc_config) && video->size() > 1 && video->data()[1] == 0)
-					std::atomic_store(&bc->avc_config, video);
+				if (!bc->avc_config.load() && video->size() > 1 && video->data()[1] == 0)
+					bc->avc_config.store(video);
 			}
 			vq.clear();
 			vq.push_back(video);
@@ -237,7 +237,7 @@ namespace fms
 	void av_delivery::send_avc_config(const stream_client_id_t &bcid, const stream_client_ptr &client)
 	{
 		stream_registry::broadcast_stream *const b = m_registry.find_broadcast(bcid);
-		rtmp_message_video_data_ptr const cfg = b ? std::atomic_load(&b->avc_config) : nullptr;
+		rtmp_message_video_data_ptr const cfg = b ? b->avc_config.load() : nullptr;
 		if (cfg)   // slot pre-exists; may still be null
 		{
 			rtmp_message_video_data_ptr const conf = std::make_shared<rtmp_message_video_data>(*cfg);
@@ -344,7 +344,7 @@ namespace fms
 	void av_delivery::send_aac_config(const stream_client_id_t &src, const stream_client_ptr &client)
 	{
 		stream_registry::broadcast_stream *const b = m_registry.find_broadcast(src);
-		rtmp_message_audio_data_ptr const cfg = b ? std::atomic_load(&b->aac_config) : nullptr;
+		rtmp_message_audio_data_ptr const cfg = b ? b->aac_config.load() : nullptr;
 		if (cfg)   // slot pre-exists; may still be null
 		{
 			rtmp_message_audio_data_ptr const conf = std::make_shared<rtmp_message_audio_data>(*cfg);
