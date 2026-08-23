@@ -136,7 +136,9 @@ namespace fms
 
 		flow_sanity_check(f, udc->should_abandon());
 
-		fragment_ptr const frag = std::make_shared<fragment>(udc->seq_number(), udc->user_data(), udc->user_data_len(), udc->frag_ctl());
+		auto const ud = udc->user_data();
+		fragment_ptr const frag = std::make_shared<fragment>(udc->seq_number(), ud.data(),
+			static_cast<std::uint16_t>(ud.size()), udc->frag_ctl());
 		if (!udc->should_abandon() && f->state() == flow::eOpen)
 		{
 			if (needs_prompt_ack(f->add_fragment(frag)))
@@ -174,7 +176,9 @@ namespace fms
 			f = i->second;
 			flow_sanity_check(f, ndc->should_abandon());
 
-			fragment_ptr const frag = std::make_shared<fragment>(m_next_seq, ndc->user_data(), ndc->user_data_len(), ndc->frag_ctl());
+			auto const ud = ndc->user_data();
+			fragment_ptr const frag = std::make_shared<fragment>(m_next_seq, ud.data(),
+				static_cast<std::uint16_t>(ud.size()), ndc->frag_ctl());
 			++m_next_seq;
 			if (!ndc->should_abandon() && f->state() == flow::eOpen)
 			{
@@ -239,7 +243,7 @@ namespace fms
 		// The peer retransmits its ping.
 		if (m_ready_chunk != nullptr)
 			return;
-		m_ready_chunk = new ping_reply_chunk(pc->data(), pc->data_len());
+		m_ready_chunk = new ping_reply_chunk(pc->data());
 		m_has_data_ready = true;
 	}
 

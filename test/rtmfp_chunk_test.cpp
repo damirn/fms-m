@@ -68,8 +68,8 @@ TEST_CASE("rtmfp user_data: body without options round-trips deserialize->serial
 	CHECK(c.forward_seq_number() == 993);   // seq - fsn_offset
 	CHECK(c.is_final());
 	CHECK(c.frag_ctl() == 3);
-	CHECK(c.user_data_len() == payload.size());
-	CHECK(std::memcmp(c.user_data(), payload.data(), payload.size()) == 0);
+	CHECK(c.user_data().size() == payload.size());
+	CHECK(std::memcmp(c.user_data().data(), payload.data(), payload.size()) == 0);
 
 	byte_writer out;
 	c.serialize(out);
@@ -99,8 +99,8 @@ TEST_CASE("rtmfp user_data: body with an options block round-trips")
 	REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(body.size())));
 	CHECK((c.flags() & 0x80) != 0);
 	REQUIRE(c.options().m_options.size() == 1);
-	CHECK(c.user_data_len() == payload.size());
-	CHECK(std::memcmp(c.user_data(), payload.data(), payload.size()) == 0);
+	CHECK(c.user_data().size() == payload.size());
+	CHECK(std::memcmp(c.user_data().data(), payload.data(), payload.size()) == 0);
 
 	byte_writer out;
 	c.serialize(out);
@@ -171,8 +171,8 @@ TEST_CASE("rtmfp next_user_data: flags + trailing user data")
 	REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(body.size())));
 	CHECK(c.type() == chunk::eNextUserData);
 	CHECK(c.is_final());
-	CHECK(c.user_data_len() == payload.size());
-	CHECK(std::memcmp(c.user_data(), payload.data(), payload.size()) == 0);
+	CHECK(c.user_data().size() == payload.size());
+	CHECK(std::memcmp(c.user_data().data(), payload.data(), payload.size()) == 0);
 }
 
 // --------------------------------------------------------------------------
@@ -226,8 +226,8 @@ TEST_CASE("rtmfp ping: captures the whole chunk payload")
 	byte_reader r(payload.data(), payload.size());
 	ping_chunk c;
 	REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(payload.size())));
-	CHECK(c.data_len() == payload.size());
-	CHECK(std::memcmp(c.data(), payload.data(), payload.size()) == 0);
+	CHECK(c.data().size() == payload.size());
+	CHECK(std::memcmp(c.data().data(), payload.data(), payload.size()) == 0);
 	CHECK(r.available() == 0);
 }
 
@@ -286,7 +286,7 @@ TEST_CASE("rtmfp ping_reply_chunk copies its payload (no dangle into the freed p
 	// packet buffer, which is freed when parse() returns -- long before the reply is
 	// serialized. The chunk must own a copy, or serialize() reads freed heap.
 	std::vector<std::uint8_t> pkt = {0x11, 0x22, 0x33, 0x44};
-	ping_reply_chunk reply(pkt.data(), static_cast<std::uint16_t>(pkt.size()));
+	ping_reply_chunk reply(pkt);
 
 	std::fill(pkt.begin(), pkt.end(), std::uint8_t{0xEE});   // packet buffer gone / reused
 
@@ -311,10 +311,10 @@ TEST_CASE("rtmfp ihello: epd + tag split at the declared chunk length")
 	ihello_chunk ic;
 	REQUIRE(ic.deserialize(r, static_cast<std::uint16_t>(body.size())));
 
-	CHECK(ic.epd_len() == 1);
+	CHECK(ic.epd().size() == 1);
 	CHECK(ic.epd()[0] == 0x0A);
-	REQUIRE(ic.tag_len() == 4);
-	CHECK(std::memcmp(ic.tag(), body.data() + 2, 4) == 0);
+	REQUIRE(ic.tag().size() == 4);
+	CHECK(std::memcmp(ic.tag().data(), body.data() + 2, 4) == 0);
 }
 
 TEST_CASE("rtmfp ihello: the tag is owned, not a pointer into the packet buffer")
@@ -330,7 +330,7 @@ TEST_CASE("rtmfp ihello: the tag is owned, not a pointer into the packet buffer"
 
 	std::fill(pkt.begin(), pkt.end(), std::uint8_t{0xEE});   // packet buffer gone / reused
 
-	REQUIRE(ic.tag_len() == 4);
+	REQUIRE(ic.tag().size() == 4);
 	CHECK(ic.tag()[0] == 0xDE);
 	CHECK(ic.tag()[3] == 0xEF);
 }
@@ -348,7 +348,7 @@ TEST_CASE("rtmfp ihello: a truncated body is rejected and leaves no tag to free"
 
 		ihello_chunk ic;
 		CHECK_FALSE(ic.deserialize(r, 2));
-		CHECK(ic.tag_len() == 0);
+		CHECK(ic.tag().size() == 0);
 	}
 
 	SUBCASE("epd_len runs past the end of the datagram")
@@ -359,7 +359,7 @@ TEST_CASE("rtmfp ihello: a truncated body is rejected and leaves no tag to free"
 
 		ihello_chunk ic;
 		CHECK_FALSE(ic.deserialize(r, static_cast<std::uint16_t>(body.size())));
-		CHECK(ic.tag_len() == 0);
+		CHECK(ic.tag().size() == 0);
 	}
 
 	SUBCASE("empty body")
@@ -367,6 +367,6 @@ TEST_CASE("rtmfp ihello: a truncated body is rejected and leaves no tag to free"
 		ihello_chunk ic;
 		byte_reader r(nullptr, 0);
 		CHECK_FALSE(ic.deserialize(r, 0));
-		CHECK(ic.tag_len() == 0);
+		CHECK(ic.tag().size() == 0);
 	}
 }
