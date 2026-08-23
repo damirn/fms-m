@@ -31,6 +31,10 @@ namespace fms
 		amf3_type_ptr read(byte_reader &);
 		void write(byte_writer &, const amf3_type_ptr&);
 
+		// Recursion bound on untrusted input; public so a test can pin both sides of
+		// it without hardcoding the value.
+		static constexpr unsigned eMaxDepth = 32;
+
 	protected:
 		static amf3_empty_type_ptr read_empty_type(byte_reader &, std::uint8_t);
 		static void write_empty_type(byte_writer &, const amf3_empty_type_ptr&);
@@ -95,7 +99,6 @@ namespace fms
 			m_decoded_string_bytes = 0;
 		}
 
-		static constexpr unsigned eMaxDepth = 32;   // cap nested objects (untrusted input)
 		unsigned m_depth = 0;
 
 		// A string reference costs one wire byte but materializes a full copy;

@@ -67,12 +67,15 @@ namespace fms
 		amf0_type_ptr read(byte_reader &);
 		static void write(byte_writer &, const amf0_type_ptr&);
 
+		// Recursion bound on untrusted input; public so a test can pin both sides of
+		// it without hardcoding the value.
+		static constexpr unsigned eMaxDepth = 32;
+
 	private:
 		// AMF0 object reference table (spec: anonymous/typed objects and arrays can
 		// be sent by reference). 0-based by occurrence, reset at top-level read.
 		std::vector<amf0_type_ptr> m_ref_table;
 
-		static constexpr unsigned eMaxDepth = 32;   // cap nested objects/arrays (untrusted input)
 		unsigned m_depth = 0;
 	};
 }
