@@ -264,15 +264,14 @@ namespace fms
 		res->set_channel_id(invoke->channel_id());
 		res->set_stream_id(invoke->stream_id());
 
-		client_stats stats;
-		if (m_app_manager->get_client_stats(static_cast<std::uint32_t>(id->value()), stats))
+		if (auto const stats = m_app_manager->get_client_stats(static_cast<std::uint32_t>(id->value())))
 		{
 			amf0_object_ptr const obj = std::make_shared<amf0_object>();
-			obj->add_entry("time", stats.m_online_time);
-			obj->add_entry("bytes_in", stats.m_bytes_read);
-			obj->add_entry("bytes_out", stats.m_bytes_written);
-			obj->add_entry("msgs_in", stats.m_messages_read);
-			obj->add_entry("msgs_out", stats.m_messages_written);
+			obj->add_entry("time", stats->m_online_time);
+			obj->add_entry("bytes_in", stats->m_bytes_read);
+			obj->add_entry("bytes_out", stats->m_bytes_written);
+			obj->add_entry("msgs_in", stats->m_messages_read);
+			obj->add_entry("msgs_out", stats->m_messages_written);
 			res->add_parameter(obj);
 		}
 		else
@@ -361,8 +360,7 @@ namespace fms
 		res->set_stream_id(invoke->stream_id());
 
 		amf0_strict_array_ptr const list = std::make_shared<amf0_strict_array>();
-		queue_stats_list_t queue_stats;
-		m_app_manager->get_queue_stats(queue_stats);
+		queue_stats_list_t const queue_stats = m_app_manager->get_queue_stats();
 		for (auto & queue_stat : queue_stats)
 		{
 			amf0_object_ptr const obj = std::make_shared<amf0_object>();

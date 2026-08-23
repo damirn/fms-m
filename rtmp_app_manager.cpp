@@ -94,7 +94,7 @@ namespace fms
 
 	client_list_t rtmp_app_manager::list_clients() { return m_conn_registry->list_clients(); }
 	client_data_ptr rtmp_app_manager::get_client_data(std::uint32_t connection_id) { return m_conn_registry->get_client_data(connection_id); }
-	bool rtmp_app_manager::get_client_stats(std::uint32_t cid, client_stats &stats) { return m_conn_registry->get_client_stats(cid, stats); }
+	std::optional<client_stats> rtmp_app_manager::get_client_stats(std::uint32_t cid) { return m_conn_registry->get_client_stats(cid); }
 
 	std::optional<app_stats> rtmp_app_manager::get_app_stats(const std::string &app)
 	{
@@ -106,10 +106,15 @@ namespace fms
 
 	netstream_list_t rtmp_app_manager::list_streams() { return m_stats.list(); }
 
-	void rtmp_app_manager::get_queue_stats(queue_stats_list_t &list)
+	queue_stats_list_t rtmp_app_manager::get_queue_stats()
 	{
+		queue_stats_list_t list;
 		for (auto & app : m_apps)
-			app.second->get_queue_stats(list);
+		{
+			queue_stats_list_t per_app = app.second->get_queue_stats();
+			list.splice(list.end(), per_app);
+		}
+		return list;
 	}
 
 	// Thin delegators onto the netstream stats registry; the store, its mutex, and the

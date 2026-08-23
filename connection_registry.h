@@ -68,7 +68,7 @@ namespace fms
 
 		client_list_t list_clients();
 		client_data_ptr get_client_data(std::uint32_t);
-		bool get_client_stats(std::uint32_t, client_stats &);
+		std::optional<client_stats> get_client_stats(std::uint32_t);
 
 	private:
 		client_data_ptr get_client_data_impl(std::uint32_t);

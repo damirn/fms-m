@@ -411,15 +411,14 @@ namespace fms
 
 	void session::handle_rtmp_flow_message(const flow_ptr& f)
 	{
-		std::uint32_t len;
-		const std::uint8_t *data = f->message_data(len);
+		std::span<const std::uint8_t> data = f->message_data();
 
-		while (data)
+		while (!data.empty())
 		{
-			if (len > 5) // rtmp message min size
+			if (data.size() > 5) // rtmp message min size
 			{
 				rtmp_header h;
-				byte_reader s(data, len);
+				byte_reader s(data);
 				std::uint8_t msg_type = 0;
 				std::uint32_t ts = 0;
 				s >> msg_type >> ts;
@@ -429,7 +428,7 @@ namespace fms
 				if (i != m_flow_id_to_stream_id.end())
 				{
 					h.set_stream_id(i->second);
-					h.set_message_length(len - 5); // msg type + timestamp
+					h.set_message_length(static_cast<std::uint32_t>(data.size()) - 5); // msg type + timestamp
 					rtmp_protocol p;
 					byte_reader r(s.read_pos(), s.available());
 					if (p.deserialize(r, h))
@@ -440,7 +439,7 @@ namespace fms
 				}
 			}
 			f->remove_last_message();
-			data = f->message_data(len);
+			data = f->message_data();
 		}
 	}
 
@@ -448,11 +447,10 @@ namespace fms
 	{
 		static std::uint8_t marker = 0x0b;
 
-		std::uint32_t len;
-		const std::uint8_t *data = f->message_data(len);
-		if (len > 0 && data)
+		std::span<const std::uint8_t> const data = f->message_data();
+		if (!data.empty())
 		{
-			byte_reader s(data, len);
+			byte_reader s(data);
 			group_ptr g = group::deserialize(s);
 			if (!g)
 				return;   // malformed NetGroup message

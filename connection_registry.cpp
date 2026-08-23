@@ -195,19 +195,19 @@ namespace fms
 		return client_data_ptr();
 	}
 
-	bool connection_registry::get_client_stats(std::uint32_t cid, client_stats &stats)
+	std::optional<client_stats> connection_registry::get_client_stats(std::uint32_t cid)
 	{
 		std::shared_lock const lock(m_mutex);
 		auto const i = m_connections.find(cid);
-		if (i != m_connections.end())
-		{
-			stats.m_bytes_read = i->second->get_bytes_read();
-			stats.m_bytes_written = i->second->get_bytes_written();
-			stats.m_online_time = i->second->get_timestamp();
-			stats.m_messages_read = i->second->get_messages_read();
-			stats.m_messages_written = i->second->get_messages_written();
-			return true;
-		}
-		return false;
+		if (i == m_connections.end())
+			return std::nullopt;
+
+		client_stats stats;
+		stats.m_bytes_read = i->second->get_bytes_read();
+		stats.m_bytes_written = i->second->get_bytes_written();
+		stats.m_online_time = i->second->get_timestamp();
+		stats.m_messages_read = i->second->get_messages_read();
+		stats.m_messages_written = i->second->get_messages_written();
+		return stats;
 	}
 }
