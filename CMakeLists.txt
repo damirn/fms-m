@@ -244,6 +244,7 @@ if(BUILD_TESTS)
     test/test_main.cpp test/rtmfp_test.cpp test/rtmfp_chunk_test.cpp test/rtmfp_cookie_test.cpp
     test/rtmfp_flow_test.cpp test/rtmfp_session_crypto_test.cpp test/rtmfp_congestion_test.cpp
     test/rtmfp_session_id_test.cpp test/rtmfp_flow_maps_test.cpp test/rtmfp_parser_test.cpp
+    test/rtmfp_keying_options_test.cpp
     rtmfp/types.cpp rtmfp/header.cpp rtmfp/chunk.cpp rtmfp/flow.cpp
     rtmfp/parser.cpp rtmfp/aes.cpp)   # session-crypto test needs the checksum + aes helpers
   target_link_libraries(rtmfp_tests ${CRYPTO_LIBRARIES})   # cookie HMAC (rtmfp/cookie.h) + aes/HMAC
