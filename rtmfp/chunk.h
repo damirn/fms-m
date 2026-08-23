@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <vector>
 
 namespace fms
@@ -53,35 +54,25 @@ namespace fms
 	class fihello_chunk : public chunk
 	{
 	public:
-		fihello_chunk(const std::uint16_t &epd_len, const std::uint8_t *epd, const address &a, const std::uint16_t &tag_len, const std::uint8_t *tag)
+		fihello_chunk(std::span<const std::uint8_t> epd, const address &a, std::span<const std::uint8_t> tag)
 			: chunk(eForwardedInitiatorHello)
-			, m_epd_len(epd_len)
-			, m_epd(const_cast<std::uint8_t *>(epd))
+			, m_epd_len(static_cast<vlu_t>(epd.size()))
+			, m_epd(const_cast<std::uint8_t *>(epd.data()))
 			, m_address(a)
-			, m_tag_len(tag_len)
-			, m_tag(const_cast<std::uint8_t *>(tag))
+			, m_tag_len(static_cast<std::uint16_t>(tag.size()))
+			, m_tag(const_cast<std::uint8_t *>(tag.data()))
 		{}
 
 		~fihello_chunk() override= default;
 
-		vlu_t epd_len() const
+		std::span<const std::uint8_t> epd() const
 		{
-			return m_epd_len;
+			return {m_epd, static_cast<std::size_t>(m_epd_len)};
 		}
 
-		const std::uint8_t *epd() const
+		std::span<const std::uint8_t> tag() const
 		{
-			return m_epd;
-		}
-
-		std::uint16_t tag_len() const
-		{
-			return m_tag_len;
-		}
-
-		const std::uint8_t *tag() const
-		{
-			return m_tag;
+			return {m_tag, m_tag_len};
 		}
 
 		bool deserialize(byte_reader &, std::uint16_t) override
@@ -107,24 +98,14 @@ namespace fms
 
 		enum type { eServerIHello = 0x0a, eRemotePeerIHello = 0x0f };
 
-		vlu_t epd_len() const
+		std::span<const std::uint8_t> epd() const
 		{
-			return m_epd_len;
+			return {m_epd, static_cast<std::size_t>(m_epd_len)};
 		}
 
-		const std::uint8_t *epd() const
+		std::span<const std::uint8_t> tag() const
 		{
-			return m_epd;
-		}
-
-		std::uint16_t tag_len() const
-		{
-			return static_cast<std::uint16_t>(m_tag.size());
-		}
-
-		const std::uint8_t *tag() const
-		{
-			return m_tag.data();
+			return m_tag;
 		}
 
 		bool deserialize(byte_reader &, std::uint16_t) override;
@@ -147,14 +128,15 @@ namespace fms
 			: chunk(eResponderHello)
 		{}
 
-		rhello_chunk(const std::uint16_t &tag_len, const std::uint8_t *tag, const std::uint16_t &cookie_len, const std::uint8_t *cookie, const std::uint16_t &cert_len, const std::uint8_t *cert)
+		rhello_chunk(std::span<const std::uint8_t> tag, std::span<const std::uint8_t> cookie,
+			std::span<const std::uint8_t> cert)
 			: chunk(eResponderHello)
-			, m_tag_len(tag_len)
-			, m_tag(tag)
-			, m_cookie_len(cookie_len)
-			, m_cookie(cookie)
-			, m_cert_len(cert_len)
-			, m_cert(cert)
+			, m_tag_len(static_cast<std::uint16_t>(tag.size()))
+			, m_tag(tag.data())
+			, m_cookie_len(static_cast<std::uint16_t>(cookie.size()))
+			, m_cookie(cookie.data())
+			, m_cert_len(static_cast<std::uint16_t>(cert.size()))
+			, m_cert(cert.data())
 		{}
 
 		bool deserialize(byte_reader &, std::uint16_t) override
@@ -175,9 +157,9 @@ namespace fms
 	class redirect_chunk : public chunk
 	{
 	public:
-		redirect_chunk(std::uint16_t tag_len, const std::uint8_t *tag)
+		explicit redirect_chunk(std::span<const std::uint8_t> tag)
 			: chunk(eResponderRedirect)
-			, m_tag(tag, tag + tag_len)
+			, m_tag(tag.begin(), tag.end())
 		{}
 
 		const std::list<address> &addresses() const
@@ -213,44 +195,24 @@ namespace fms
 			return m_isid;
 		}
 
-		vlu_t cookie_len() const
+		std::span<const std::uint8_t> cookie_echo() const
 		{
-			return m_cookie_len;
+			return {m_cookie_echo, static_cast<std::size_t>(m_cookie_len)};
 		}
 
-		const std::uint8_t *cookie_echo() const
+		std::span<const std::uint8_t> initiator_cert() const
 		{
-			return m_cookie_echo;
+			return {m_initiator_cert, static_cast<std::size_t>(m_cert_len)};
 		}
 
-		vlu_t cert_len() const
+		std::span<const std::uint8_t> skic() const
 		{
-			return m_cert_len;
+			return {m_skic, static_cast<std::size_t>(m_skic_len)};
 		}
 
-		const std::uint8_t *initator_cert() const
+		std::span<const std::uint8_t> signature() const
 		{
-			return m_initiator_cert;
-		}
-
-		vlu_t skic_len() const
-		{
-			return m_skic_len;
-		}
-
-		const std::uint8_t *skic() const
-		{
-			return m_skic;
-		}
-
-		std::uint16_t signature_len() const
-		{
-			return m_signature_len;
-		}
-
-		const std::uint8_t *signature() const
-		{
-			return m_signature;
+			return {m_signature, m_signature_len};
 		}
 
 		bool deserialize(byte_reader &, std::uint16_t) override;
@@ -345,15 +307,11 @@ namespace fms
 			return m_frag_ctl;
 		}
 
-		const std::uint8_t *user_data() const
+		std::span<const std::uint8_t> user_data() const
 		{
-			return m_user_data;
+			return {m_user_data, m_user_data_len};
 		}
 
-		std::uint16_t user_data_len() const
-		{
-			return m_user_data_len;
-		}
 
 	protected:
 		void parse_flags();
@@ -534,14 +492,9 @@ namespace fms
 			return 0;
 		} // not implemented
 
-		std::uint16_t data_len() const
+		std::span<const std::uint8_t> data() const
 		{
-			return m_data_len;
-		}
-
-		const std::uint8_t *data() const
-		{
-			return m_data;
+			return {m_data, m_data_len};
 		}
 
 	protected:
@@ -554,9 +507,9 @@ namespace fms
 	public:
 		// Owns a copy: `data` points into the packet buffer, freed when parse()
 		// returns, long before this reply is serialized.
-		ping_reply_chunk(const std::uint8_t *data, const std::uint16_t &data_len)
+		explicit ping_reply_chunk(std::span<const std::uint8_t> data)
 			: chunk(ePingReply)
-			, m_data(data, data + data_len)
+			, m_data(data.begin(), data.end())
 		{}
 
 		bool deserialize(byte_reader &, std::uint16_t) override

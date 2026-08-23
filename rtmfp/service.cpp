@@ -279,7 +279,7 @@ namespace fms
 		if (m_write_in_progress)
 			return;
 
-		byte_reader s(ic->epd(), static_cast<std::size_t>(ic->epd_len()));
+		byte_reader s(ic->epd());
 		s.read_vlu();
 		std::uint8_t ihellotype;
 		s >> ihellotype;
@@ -293,7 +293,7 @@ namespace fms
 		if (!create_cookie(cookie))
 			return;   // no RHello rather than one carrying uninitialised pad bytes
 
-		rhello_chunk rc(ic->tag_len(), ic->tag(), eCookieSize, cookie, eCertLen, m_cert);
+		rhello_chunk rc(ic->tag(), {cookie, eCookieSize}, {m_cert, eCertLen});
 		std::uint16_t const ts = get_timestamp();
 		header h(false, false, ts, header::eStartup);
 		m_serializer->prepare_raw_packet(h, m_parser->get_aes());
@@ -408,9 +408,9 @@ namespace fms
 		if (m_write_in_progress)
 			return;
 
-		if (!echo_cookie_valid(iikc->cookie_echo(), iikc->cookie_len()))
+		if (!echo_cookie_valid(iikc->cookie_echo().data(), iikc->cookie_echo().size()))
 			return;
-		if (iikc->cert_len() < 0x84)
+		if (iikc->initiator_cert().size() < 0x84)
 			return;
 
 		// NOTE: iikc->signature() is intentionally NOT verified. This crypto profile
@@ -444,17 +444,18 @@ namespace fms
  		s->set_session_id(iikc->isid());
 
 		dh2 d;
-		if (!d.generate_peer_id(iikc->initator_cert(), static_cast<std::uint16_t>(iikc->cert_len()), s->peer_id_data()))
+		if (!d.generate_peer_id(iikc->initiator_cert().data(),
+				static_cast<std::uint16_t>(iikc->initiator_cert().size()), s->peer_id_data()))
 			return;
 
 		std::uint16_t ipk_len = 0;
-		const std::uint8_t *ipk = find_cert_dh_pubkey(iikc->initator_cert(),
-			static_cast<std::uint32_t>(iikc->cert_len()), 2 /*group we implement*/, ipk_len);
+		const std::uint8_t *ipk = find_cert_dh_pubkey(iikc->initiator_cert().data(),
+			static_cast<std::uint32_t>(iikc->initiator_cert().size()), 2 /*group we implement*/, ipk_len);
 		if (ipk == nullptr)
 		{
 			// legacy Flash cert layout: DH public key at a fixed offset
-			ipk = iikc->initator_cert() + 4;
-			ipk_len = static_cast<std::uint16_t>(iikc->cert_len() - 4);
+			ipk = iikc->initiator_cert().data() + 4;
+			ipk_len = static_cast<std::uint16_t>(iikc->initiator_cert().size() - 4);
 		}
 		if (!d.generate_shared_secret(ipk, ipk_len))
 			return;   // no usable secret: drop the keying rather than reply with none
@@ -469,7 +470,7 @@ namespace fms
 		ric.serialize(m_serializer->raw_packet());
 		m_serializer->finish_raw_packet(s->session_id(), m_parser->get_aes());
 
-		if (!d.generate_symetric_keys(iikc->skic(), static_cast<std::uint16_t>(iikc->skic_len()),
+		if (!d.generate_symetric_keys(iikc->skic().data(), static_cast<std::uint16_t>(iikc->skic().size()),
 				rnonce.data(), static_cast<std::uint16_t>(rnonce.size()),
 				s->get_aes()->dec_key_data(), s->get_aes()->enc_key_data()))
 			return;   // no session keys: drop the keying rather than run with garbage
@@ -483,7 +484,7 @@ namespace fms
 		// since these keys only come into effect for the now-open session.
 		constexpr std::uint8_t eFlagSnd = 0x04;   // KEYING_NEGOTIATE_FLAG_SND
 		constexpr std::uint8_t eFlagReq = 0x01;   // KEYING_NEGOTIATE_FLAG_REQ
-		keying_negotiation const neg = parse_keying_negotiation(iikc->skic(), static_cast<std::uint32_t>(iikc->skic_len()));
+		keying_negotiation const neg = parse_keying_negotiation(iikc->skic().data(), static_cast<std::uint32_t>(iikc->skic().size()));
 		bool const hmac_send = (neg.hmac_flags & eFlagReq) != 0;
 		bool const hmac_recv = (neg.hmac_flags & eFlagSnd) != 0;
 		bool const sseq_send = (neg.sseq_flags & eFlagReq) != 0;
@@ -526,11 +527,11 @@ namespace fms
 			a.m_ip = to_network<std::uint32_t>(m_sender_endpoint.address().to_v4().to_uint());
 			a.m_port = to_network<std::uint16_t>(m_sender_endpoint.port());
 
-			fihello_chunk fi(static_cast<std::uint16_t>(ic->epd_len()), ic->epd(), a, ic->tag_len(), ic->tag());
+			fihello_chunk fi(ic->epd(), a, ic->tag());
 			fi.serialize(m_serializer->raw_packet());
 			m_serializer->finish_raw_packet(i->second->session_id(), i->second->get_aes());
 
-			auto rc = std::make_unique<redirect_chunk>(ic->tag_len(), ic->tag());
+			auto rc = std::make_unique<redirect_chunk>(ic->tag());
 			boost::asio::ip::address_v4 const peer_v4 = i->second->end_point().address().to_v4();
 			a.m_type = eAddressOriginReported;
 			a.m_ip = to_network<std::uint32_t>(peer_v4.to_uint());
