@@ -13,9 +13,12 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>
+
+#include <unistd.h>
 
 using namespace fms;
 
@@ -86,7 +89,13 @@ namespace
 	const std::string &passwd_path()
 	{
 		static const std::string path = [] {
-			std::string const p = std::string(std::tmpnam(nullptr)) + ".passwd";
+			// mkstemp, not tmpnam: this writes credentials, and tmpnam leaves a
+			// window between picking the name and creating the file.
+			std::string tmpl = (std::filesystem::temp_directory_path() / "fms_passwd_XXXXXX").string();
+			int const fd = ::mkstemp(tmpl.data());
+			REQUIRE(fd >= 0);
+			::close(fd);
+			std::string const p = tmpl;
 			std::ofstream f(p);
 			f << "alice:" << sha256("s3cret") << "\n";
 			f << "bob:NaCl$" << sha256("NaCl" + std::string("hunter2")) << "\n";
