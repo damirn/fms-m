@@ -1,6 +1,7 @@
 #pragma once
 
 #include "amf0_types.h"
+#include "atomic_shared_ptr.h"
 #include "rtmp_message.h"
 #include "stats.h"          // stream_client_id_t, stream_client_id_map
 #include "stream_client.h"
@@ -64,14 +65,14 @@ namespace fms
 		// together. The data path only ever find()s an existing entry and mutates its
 		// own fields; the map STRUCTURE changes only under the exclusive lock.
 		// avc_config/aac_config are read+written on the data path, so they are
-		// accessed via std::atomic_load/atomic_store on the shared_ptr (deprecated
-		// in C++20, removed in C++26; libc++ still has no std::atomic<shared_ptr>
-		// specialization to move to -- see F6).
+		// atomic slots (see atomic_shared_ptr.h). That makes broadcast_stream neither
+		// copyable nor movable, which the map does not need: entries are default-
+		// constructed in place by operator[].
 		struct broadcast_stream
 		{
 			std::list<rtmp_message_video_data_ptr> video_queue;
-			rtmp_message_video_data_ptr avc_config;   // atomic_load/store
-			rtmp_message_audio_data_ptr aac_config;   // atomic_load/store
+			atomic_shared_ptr<rtmp_message_video_data> avc_config;
+			atomic_shared_ptr<rtmp_message_audio_data> aac_config;
 			amf0_object_ptr metadata;
 			std::optional<stream_client_id_t> qos_target;   // real stream -> its qos stream
 			std::unique_ptr<stream_recorder> recorder;                // set only when recording (owns the flv_writer)
