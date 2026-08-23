@@ -444,7 +444,8 @@ if(BUILD_CLIENT)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
-  add_executable(chunk_parser_test test/chunk_parser_test.cpp test/test_main.cpp)
+  add_executable(chunk_parser_test test/chunk_parser_test.cpp test/flv_reader_test.cpp
+    test/test_main.cpp)
   target_include_directories(chunk_parser_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
   target_link_libraries(chunk_parser_test PRIVATE fms_media_client ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
