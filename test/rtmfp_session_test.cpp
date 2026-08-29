@@ -48,6 +48,7 @@ namespace
 		using session::session;
 		using session::handle_chunk;
 		using session::flow_sanity_check;
+		using session::m_receiving_flows;
 	};
 	using testable_session_ptr = std::shared_ptr<testable_session>;
 
@@ -104,9 +105,78 @@ TEST_CASE("rtmfp session: a close chunk moves the session to a closing state")
 	CHECK(s->state() != session::eOpen);
 }
 
-TEST_CASE("rtmfp session: an unrecognised session id does not open a flow")
+// A user-data chunk carrying `payload` on `flow_id` at `seq`, built the way the
+// wire codec produces one so handle_user_data sees a real chunk.
+namespace
+{
+	std::vector<std::uint8_t> user_data_wire(vlu_t flow_id, vlu_t seq,
+		const std::vector<std::uint8_t> &payload, std::uint8_t frag_ctl = 3)
+	{
+		byte_writer w;
+		std::uint8_t const flags = static_cast<std::uint8_t>((frag_ctl & 0x03) << 4);
+		w << flags;
+		w.write_vlu(flow_id);
+		w.write_vlu(seq);
+		w.write_vlu(0);                 // fsn offset
+		if (!payload.empty())
+			w.write(payload.data(), payload.size());
+		return {w.data(), w.data() + w.size()};
+	}
+
+	bool feed_user_data(const testable_session_ptr &s, vlu_t flow_id, vlu_t seq,
+		const std::vector<std::uint8_t> &payload)
+	{
+		std::vector<std::uint8_t> const wire = user_data_wire(flow_id, seq, payload);
+		byte_reader r(wire.data(), wire.size());
+		user_data_chunk c;
+		REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(wire.size())));
+		return s->handle_chunk(&c);
+	}
+}
+
+TEST_CASE("rtmfp session: user data opens a receiving flow, and reusing the id does not")
 {
 	fake_host h;
 	auto const s = make_session(h);
-	CHECK(s->state() == session::eInitialState);
+	CHECK(s->m_receiving_flows.size() == 0);
+
+	CHECK(feed_user_data(s, 5, 1, {0xAA}));
+	CHECK(s->m_receiving_flows.size() == 1);
+
+	CHECK(feed_user_data(s, 5, 2, {0xBB}));
+	CHECK(s->m_receiving_flows.size() == 1);   // same flow, not a second
+
+	CHECK(feed_user_data(s, 6, 1, {0xCC}));
+	CHECK(s->m_receiving_flows.size() == 2);
+}
+
+TEST_CASE("rtmfp session: the receiving-flow cap bounds a session")
+{
+	// Past eMaxReceivingFlows the chunk is dropped rather than growing the table --
+	// the bound that made F5's missing cleanup a functional bug, not just a leak.
+	fake_host h;
+	auto const s = make_session(h);
+
+	for (vlu_t id = 1; id <= 1100; ++id)
+		feed_user_data(s, id, 1, {0x01});
+
+	CHECK(s->m_receiving_flows.size() == 1024);
+}
+
+TEST_CASE("rtmfp session: a flow with no options is rejected, but still occupies a slot")
+{
+	// A receiving flow is only eOpen once its option list says so; a bare
+	// user-data chunk carries none, so the flow is created, marked eRejected and
+	// its fragments are dropped. It still counts against eMaxReceivingFlows, which
+	// is worth knowing: the cap is on flows created, not on flows carrying data.
+	//
+	// It is also why the cases above stop where they do. Anything that reaches the
+	// fragment machinery -- reassembly, gap acks, the RTMP demux -- needs chunks
+	// carrying real metadata options, which is the next increment on this tier.
+	fake_host h;
+	auto const s = make_session(h);
+
+	feed_user_data(s, 5, 1, {0xAA});
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	CHECK(s->m_receiving_flows.begin()->second->state() == flow::eRejected);
 }
