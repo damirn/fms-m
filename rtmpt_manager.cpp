@@ -6,9 +6,9 @@
 
 namespace fms
 {
-	rtmpt_manager::rtmpt_manager(rtmp_app_manager *app_manager)
-		: m_app_manager(app_manager)
-		, m_timer(app_manager->get_io_context_pool().get_io_context())
+	rtmpt_manager::rtmpt_manager(rtmpt_host *host)
+		: m_host(host)
+		, m_timer(host->rtmpt_io_context())
 		, m_version(std::string("fms/") + config::instance()->version_string())
 	{
 		arm_timer();
@@ -27,10 +27,10 @@ namespace fms
 			return;
 		}
 
-		rtmpt_session_ptr const session = m_app_manager->create_rtmpt_session();
+		rtmpt_session_iface_ptr const session = m_host->create_rtmpt_session();
 		id = create_id(remote.address(), session);
-		session->cid() = id;
-		session->address() = remote.address();
+		session->set_cid(id);
+		session->set_address(remote.address());
 	}
 
 	void rtmpt_manager::remove_session(const std::string &id)
@@ -153,7 +153,7 @@ namespace fms
 			sd->m_session->handle_bytes_written(bytes_transferred);
 	}
 
-	std::string rtmpt_manager::create_id(const boost::asio::ip::address &address, const rtmpt_session_ptr& session)
+	std::string rtmpt_manager::create_id(const boost::asio::ip::address &address, const rtmpt_session_iface_ptr &session)
 	{
 		while(true)
 		{

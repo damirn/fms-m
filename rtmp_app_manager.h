@@ -7,6 +7,7 @@
 #include "io_context_pool.h"
 #include "netstream_stats_registry.h"
 #include "rtmp_connection.h"
+#include "rtmpt_host.h"
 #include "rtmpt_session.h"
 #include "stats.h"
 
@@ -37,7 +38,7 @@ namespace fms
 	class amf0_type;
 	using amf0_type_ptr = std::shared_ptr<amf0_type>;
 
-	class rtmp_app_manager : public app_host, boost::noncopyable
+	class rtmp_app_manager : public app_host, public rtmpt_host, boost::noncopyable
 	{
 	public:
 		explicit rtmp_app_manager(io_context_pool &);
@@ -48,7 +49,9 @@ namespace fms
 
 		rtmp_connection_ptr create_connection(boost::asio::io_context &);
 		rtmp_connection_ptr create_rtmps_connection(boost::asio::io_context &, std::shared_ptr<boost::asio::ssl::context>);
-		rtmpt_session_ptr create_rtmpt_session();
+		// rtmpt_host: the two things rtmpt_manager needs from the server.
+		rtmpt_session_iface_ptr create_rtmpt_session() override;
+		boost::asio::io_context &rtmpt_io_context() override { return m_io_context_pool.get_io_context(); }
 		void register_session(const client_session_ptr&);
 
 		std::uint32_t reserve_connection_id();
