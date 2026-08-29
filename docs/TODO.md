@@ -163,12 +163,13 @@ Priority order; the first item is the one the others hang off.
    lock-free model, reaching into `rtmp_app_manager` directly. Ties to the testing
    item above and the seam item below.
 
-3. **Give the RTMFP transport a testable seam** (prereq for the testing item).
-   `session` is both the RFC-7016 transport engine and the RTMP demux/dispatch (it
-   includes `rtmp_protocol.h`/`rtmp_app_manager.h`), constructed only against live
-   sockets/timers — which is *why* the tier has no state-machine tests. Introduce a
-   narrow `flow_message_sink(stream_id, bytes)` boundary, split I/O binding
-   (`open()`/`start()`) out of the constructors, inject the app-manager and a clock.
+3. **Finish the RTMFP testable seam.** Done: `session` takes an `rtmfp_host` instead
+   of a `service` (which needed a bound UDP socket), and `handle_message` moved to
+   `app_host`, so neither transport names `rtmp_app_manager` any more. A session now
+   builds with no service, no app manager and no transport stack, and has its first
+   tests. Still open: `service` itself is unchanged -- its handshake state machine is
+   only reachable through a live socket -- and the RTMP demux inside `session` would
+   still sit better behind a `flow_message_sink(stream_id, bytes)` boundary.
    (`rtmfp/session.cpp`, `rtmfp/service.cpp`)
 
 4. **RTMFP chunk memory has an unwritten "view vs. copy" rule.** Some chunks hold
