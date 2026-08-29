@@ -1,7 +1,7 @@
 #pragma once
 
 #include "random_string.h"
-#include "rtmpt_session.h"
+#include "rtmpt_host.h"
 
 #include <cstdint>
 #include <map>
@@ -16,12 +16,10 @@
 
 namespace fms
 {
-	class rtmp_app_manager;
-
 	class rtmpt_manager : boost::noncopyable
 	{
 	public:
-		explicit rtmpt_manager(rtmp_app_manager *);
+		explicit rtmpt_manager(rtmpt_host *);
 
 		void create_session(const boost::asio::ip::tcp::endpoint &, std::string &);
 		void remove_session(const std::string &);
@@ -47,11 +45,11 @@ namespace fms
 		}
 
 	protected:
-		std::string create_id(const boost::asio::ip::address &, const rtmpt_session_ptr&);
+		std::string create_id(const boost::asio::ip::address &, const rtmpt_session_iface_ptr &);
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
 
-		rtmp_app_manager *m_app_manager;
+		rtmpt_host *m_host;
 
 		std::mutex m_mutex;
 
@@ -75,7 +73,7 @@ namespace fms
 			// so a session that polls but never completes the handshake still ages out.
 			std::uint8_t m_open_ticks{0};
 			boost::asio::ip::address m_address;
-			rtmpt_session_ptr m_session;
+			rtmpt_session_iface_ptr m_session;
 			using unoreder_data_t = std::map<std::uint32_t, std::vector<std::uint8_t>>;
 			unoreder_data_t m_out_of_order_data;
 			std::size_t m_ooo_bytes{0};   // total bytes stashed above, capped (not just count)

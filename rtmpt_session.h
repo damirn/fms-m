@@ -1,6 +1,7 @@
 #pragma once
 
 #include "basic_rtmp_connection.h"
+#include "rtmpt_host.h"
 #include "byte_writer.h"
 
 #include <cstdint>
@@ -16,7 +17,7 @@ namespace fms
 	class byte_writer;
 
 	// Represents a single connection from a client.
-	class rtmpt_session : public basic_rtmp_connection, boost::noncopyable
+	class rtmpt_session : public basic_rtmp_connection, public rtmpt_session_iface, boost::noncopyable
 	{
 	public:
 		// Construct a connection with the given io_context.
@@ -35,9 +36,9 @@ namespace fms
 			return m_cid;
 		}
 
-		std::string &cid()
+		void set_cid(const std::string &v) override
 		{
-			return m_cid;
+			m_cid = v;
 		}
 
 		const boost::asio::ip::address &address() const
@@ -45,9 +46,9 @@ namespace fms
 			return m_address;
 		}
 
-		boost::asio::ip::address &address()
+		void set_address(const boost::asio::ip::address &v) override
 		{
-			return m_address;
+			m_address = v;
 		}
 
 		std::string protocol_name() const override { return "rtmpt"; }
@@ -55,13 +56,19 @@ namespace fms
 
 		// True once the tunneled RTMP handshake is done and commands are flowing. The
 		// manager uses this to reap a session that keeps polling but never handshakes.
-		bool handshake_complete() const { return m_sstate == eCSReadCommands; }
+		bool handshake_complete() const override { return m_sstate == eCSReadCommands; }
 
-		boost::tribool handle_data(byte_writer &, byte_writer &);
-		void serialize_result(byte_writer &);
+		boost::tribool handle_data(byte_writer &, byte_writer &) override;
+		void serialize_result(byte_writer &) override;
 
 		// Only used when result is not needed
-		void serialize_poll_time(byte_writer &);
+		void serialize_poll_time(byte_writer &) override;
+
+		// basic_rtmp_connection already implements these; the forwarders exist only
+		// because a base's virtual does not override a second base's.
+		void handle_bytes_read(std::size_t n) override { basic_rtmp_connection::handle_bytes_read(n); }
+		void handle_bytes_written(std::size_t n) override { basic_rtmp_connection::handle_bytes_written(n); }
+		void close() override { basic_rtmp_connection::close(); }
 
 	protected:
 		// Handle application's result
