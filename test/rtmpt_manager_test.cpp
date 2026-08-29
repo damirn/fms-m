@@ -431,9 +431,9 @@ namespace
 			// returns, and joining would hang the run instead of failing it.
 			auto const done = std::make_shared<std::atomic<bool>>(false);
 			rtmpt_manager *const manager = mgr;
-			std::string const cid = id;
-			std::thread([manager, cid, done] {
-				(void)manager->validate(ep("10.0.0.7"), cid, 1);
+			std::string const session_id = id;
+			std::thread([manager, session_id, done] {
+				(void)manager->validate(ep("10.0.0.7"), session_id, 1);
 				done->store(true);
 			}).detach();
 
