@@ -3,6 +3,7 @@
 #include "byte_writer.h"
 #include "group.h"
 #include "parser.h"
+#include "rtmfp_host.h"
 #include "session.h"
 
 #include <chrono>
@@ -24,7 +25,7 @@ namespace fms
 	class serializer;
 	class rtmp_app_manager;
 
-	class service : boost::noncopyable, public chunk_handler
+	class service : boost::noncopyable, public chunk_handler, public rtmfp_host
 	{
 	public:
 		service(boost::asio::io_context &, std::uint16_t, rtmp_app_manager *);
@@ -35,17 +36,17 @@ namespace fms
 			boost::asio::post(m_io_context, [this]() { handle_notify(); });
 		}
 
-		void handle_net_group(group_ptr &, const session_ptr&);
+		void handle_net_group(group_ptr &, const session_ptr &) override;
 
-		boost::asio::io_context &io_context() const
+		boost::asio::io_context &io_context() const override
 		{
 			return m_io_context;
 		}
 
-		void remove(const session_ptr &);
+		void remove(const session_ptr &) override;
 
 		std::uint32_t get_timestamp_ms();
-		std::uint16_t get_timestamp();
+		std::uint16_t get_timestamp() override;
 
 	protected:
 		void create_certificate();

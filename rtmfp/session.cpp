@@ -15,7 +15,6 @@
 #include "rtmp_message.h"
 #include "rtmp_protocol.h"
 #include "serializer.h"
-#include "service.h"
 #include "util.h"
 
 #include <charconv>
@@ -28,15 +27,15 @@
 
 namespace fms
 {
-	session::session(service *srv, const boost::asio::ip::udp::endpoint &ep, std::uint32_t reserved_sid, rtmp_app_manager *app_mngr)
+	session::session(rtmfp_host *host, const boost::asio::ip::udp::endpoint &ep, std::uint32_t reserved_sid, rtmp_app_manager *app_mngr)
 		: client_session(reserved_sid, app_mngr)
 		, m_manager(app_mngr)
-		, m_service(srv)
+		, m_service(host)
 		, m_outgoing_sid(reserved_sid)
 		, m_endpoint(ep)
-		, m_timer(srv->io_context())
-		, m_alarm(srv->io_context())
-		, m_strand(srv->io_context())
+		, m_timer(host->io_context())
+		, m_alarm(host->io_context())
+		, m_strand(host->io_context())
 	{
 		m_parser = new parser(*this);
 		initialize_ts_flags();
