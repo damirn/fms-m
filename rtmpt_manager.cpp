@@ -2,7 +2,6 @@
 #include "rtmpt_manager.h"
 #include "byte_writer.h"
 #include "config.h"
-#include "rtmp_app_manager.h"
 
 namespace fms
 {

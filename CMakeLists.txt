@@ -444,6 +444,19 @@ if(BUILD_CLIENT)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
+  # rtmpt_manager: the RTMPT id table, sequencing, backlog caps and idle reaper,
+  # driven through the injected rtmpt_host seam -- no socket, app or parser.
+  add_executable(rtmpt_manager_test test/rtmpt_manager_test.cpp test/test_main.cpp
+    rtmpt_manager.cpp random_string.cpp config.cpp)
+  target_include_directories(rtmpt_manager_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
+  target_link_libraries(rtmpt_manager_test PRIVATE ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME rtmpt_manager_test COMMAND rtmpt_manager_test)
+  if(APPLE)
+    set_tests_properties(rtmpt_manager_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   add_executable(chunk_parser_test test/chunk_parser_test.cpp test/flv_reader_test.cpp
     test/test_main.cpp)
   target_include_directories(chunk_parser_test PRIVATE
