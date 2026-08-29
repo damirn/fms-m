@@ -46,6 +46,7 @@ namespace fms
 
 	protected:
 		std::string create_id(const boost::asio::ip::address &, const rtmpt_session_iface_ptr &);
+
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
 
@@ -80,6 +81,10 @@ namespace fms
 		};
 
 		using rtmpt_session_data_ptr = std::shared_ptr<rtmpt_session_data>;
+
+		// Advance past `seq` and append any stashed bodies that are now contiguous to
+		// `drained`. Caller holds m_mutex. False if `seq` is not the expected one.
+		static bool advance_sequence(rtmpt_session_data &, std::uint32_t, byte_writer &);
 		using id_map_t = std::unordered_map<std::string, rtmpt_session_data_ptr>;
 
 		id_map_t m_ids;
