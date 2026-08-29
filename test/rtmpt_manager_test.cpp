@@ -490,3 +490,84 @@ TEST_CASE("rtmpt: remove_session also closes outside the lock")
 	REQUIRE(h.session->closed);
 	CHECK(h.session->reentered_ok);
 }
+
+// --- concurrency: poll threads against the reaper (H4) ---------------------------
+//
+// The single-threaded cases above pin the semantics; this one pins the locking.
+// --threads defaults to 1 but the shipped Dockerfiles run 4, so in the published
+// container several HTTP poll threads call handle_data/serialize_result/
+// update_stats while the reaper tick walks the same table. Run under TSan
+// (-DSANITIZE=thread) this is the case that would report a data race; run plain it
+// still catches a deadlock or a torn container.
+TEST_CASE("rtmpt: poll threads and the reaper run concurrently without racing")
+{
+	fake_host h;
+	testable_manager m(&h);
+
+	constexpr int eSessions = 24;
+	std::vector<std::string> ids;
+	for (int i = 0; i < eSessions; ++i)
+	{
+		std::string id;
+		m.create_session(ep("10.0.0.7"), id);
+		REQUIRE_FALSE(id.empty());
+		ids.push_back(id);
+	}
+	for (auto const &s : h.made)
+		s->handshaken = true;   // otherwise the reaper drops them all on tick two
+
+	std::atomic<bool> stop{false};
+	std::atomic<int> ops{0};
+	std::vector<std::thread> threads;
+
+	// Poll threads: what http_connection does per request.
+	for (int t = 0; t < 4; ++t)
+	{
+		threads.emplace_back([&, t] {
+			std::uint32_t seq = 0;
+			for (int i = 0; !stop.load() && i < 4000; ++i)
+			{
+				std::string const &id = ids[static_cast<std::size_t>((i + t) % eSessions)];
+				byte_writer in = buf({0x01, 0x02}), out;
+				m.handle_data(id, seq, in, out);
+				byte_writer r;
+				m.serialize_result(id, seq, r);
+				m.update_bytes_read(id, 8);
+				m.update_bytes_written(id, 16);
+				(void)m.validate(ep("10.0.0.7"), id, 0);
+				++seq;
+				ops.fetch_add(1);
+			}
+		});
+	}
+
+	// The reaper, far faster than its real 30s interval.
+	threads.emplace_back([&] {
+		for (int i = 0; i < 200 && !stop.load(); ++i)
+		{
+			m.tick();
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+	});
+
+	// Churn: sessions appearing and going away underneath both.
+	threads.emplace_back([&] {
+		for (int i = 0; i < 200 && !stop.load(); ++i)
+		{
+			std::string id;
+			m.create_session(ep("10.0.0.9"), id);
+			if (!id.empty())
+				m.remove_session(id);
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+	});
+
+	for (auto &t : threads)
+		t.join();
+
+	CHECK(ops.load() > 0);
+	// The table survived: whatever is left is still answerable, and nothing wedged.
+	std::string probe;
+	m.create_session(ep("10.0.0.7"), probe);
+	CHECK_FALSE(probe.empty());
+}
