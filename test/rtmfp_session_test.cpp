@@ -10,7 +10,11 @@
 #include "doctest.h"
 #include "rtmfp/chunk.h"
 #include "rtmfp/flow.h"
+#include "app_host.h"
 #include "rtmfp/session.h"
+#include "rtmfp/types.h"
+#include "rtmp_header.h"
+#include "rtmp_message.h"
 
 #include <cstdint>
 #include <memory>
@@ -35,6 +39,52 @@ namespace
 		boost::asio::io_context &io_context() const override { return io; }
 	};
 
+	// Records what the session routes up. handle_message is the only call the
+	// session makes on the host; the rest are here because app_host is one wide
+	// interface.
+	struct recording_app_host : app_host
+	{
+		int routed = 0;
+		std::uint8_t last_type = 0;
+		std::uint32_t last_stream_id = 0;
+
+		boost::tribool handle_message(const rtmp_message_ptr &m, std::uint32_t,
+			const rtmp_header &h, rtmp_message_ptr &) override
+		{
+			++routed;
+			if (m) last_type = m->type();
+			last_stream_id = h.stream_id();
+			return false;
+		}
+
+		client_session_ptr get_connection(std::uint32_t) override { return nullptr; }
+		client_session_ptr get_connection_opt(std::uint32_t) override { return nullptr; }
+		bool has_connection(std::uint32_t) override { return true; }
+		void destroy_connection(std::uint32_t) override {}
+		void delete_connection(std::uint32_t) override {}
+		const std::string &get_app_instance(std::uint32_t) override { return m_empty; }
+		void set_encoding_for_connection(std::uint32_t, bool) override {}
+		bool is_amf3_encoding(std::uint32_t) override { return false; }
+		void create_netstream(const stream_client_id_t &) override {}
+		void delete_netstream(const stream_client_id_t &) override {}
+		void delete_netstreams(std::uint32_t) override {}
+		void update_netstream(const stream_client_id_t &, const std::string &, bool) override {}
+		void update_netstream_stats(const stream_client_id_t &, std::uint32_t, std::uint32_t, std::uint32_t) override {}
+		void add_dropped_messages_for_netstream(const stream_client_id_t &, std::size_t) override {}
+		std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &) override { return std::nullopt; }
+		string_list_t list_applications() override { return {}; }
+		client_list_t list_clients() override { return {}; }
+		netstream_list_t list_streams() override { return {}; }
+		client_data_ptr get_client_data(std::uint32_t) override { return nullptr; }
+		std::optional<client_stats> get_client_stats(std::uint32_t) override { return std::nullopt; }
+		std::optional<app_stats> get_app_stats(const std::string &) override { return std::nullopt; }
+		queue_stats_list_t get_queue_stats() override { return {}; }
+		io_context_pool &get_io_context_pool() override { throw std::logic_error("unused"); }
+
+	private:
+		std::string m_empty;
+	};
+
 	boost::asio::ip::udp::endpoint peer()
 	{
 		return {boost::asio::ip::make_address("10.0.0.7"), 1935};
@@ -57,6 +107,11 @@ namespace
 	testable_session_ptr make_session(fake_host &h)
 	{
 		return std::make_shared<testable_session>(&h, peer(), 1u, nullptr);
+	}
+
+	testable_session_ptr make_session(fake_host &h, recording_app_host &app)
+	{
+		return std::make_shared<testable_session>(&h, peer(), 1u, &app);
 	}
 }
 
@@ -179,4 +234,176 @@ TEST_CASE("rtmfp session: a flow with no options is rejected, but still occupies
 	feed_user_data(s, 5, 1, {0xAA});
 	REQUIRE(s->m_receiving_flows.size() == 1);
 	CHECK(s->m_receiving_flows.begin()->second->state() == flow::eRejected);
+}
+
+// --- flows that actually open ---------------------------------------------------
+//
+// A receiving flow is eOpen only once its metadata option carries the "TC"
+// signature plus a stream id; without that parse_option_list rejects it and every
+// fragment is dropped. These build that option, which is what puts the fragment
+// machinery and the RTMP demux in reach.
+namespace
+{
+	// [flags|options][flow_id][seq][fsn][options...][end marker][payload]
+	// fsn_offset is how far the sender's forward sequence number trails `seq`:
+	// forward_seq = seq - fsn_offset, and the receiver catches its cumulative
+	// sequence up to that. 0 therefore asserts "nothing outstanding", which is what
+	// makes a gap invisible -- see the gap case below.
+	std::vector<std::uint8_t> open_flow_wire(vlu_t flow_id, vlu_t seq, vlu_t stream_id,
+		const std::vector<std::uint8_t> &payload, std::uint8_t frag_ctl = fragment::eWhole,
+		vlu_t fsn_offset = 0)
+	{
+		option_list opts;
+		byte_writer meta;
+		meta.write(flow::TC, 2);          // the signature parse_option_list matches
+		meta << std::uint8_t{0x04};       // metadata type byte
+		meta.write_vlu(stream_id);
+		opts.create_option(option::eMetadata, meta.data(), static_cast<std::uint16_t>(meta.size()));
+
+		byte_writer w;
+		std::uint8_t const flags = static_cast<std::uint8_t>(0x80 | ((frag_ctl & 0x03) << 4));
+		w << flags;
+		w.write_vlu(flow_id);
+		w.write_vlu(seq);
+		w.write_vlu(fsn_offset);
+		opts.serialize(w);
+		if (!payload.empty())
+			w.write(payload.data(), payload.size());
+		return {w.data(), w.data() + w.size()};
+	}
+
+	bool feed_open_flow(const testable_session_ptr &s, vlu_t flow_id, vlu_t seq,
+		vlu_t stream_id, const std::vector<std::uint8_t> &payload,
+		std::uint8_t frag_ctl = fragment::eWhole, vlu_t fsn_offset = 0)
+	{
+		std::vector<std::uint8_t> const wire =
+			open_flow_wire(flow_id, seq, stream_id, payload, frag_ctl, fsn_offset);
+		byte_reader r(wire.data(), wire.size());
+		user_data_chunk c;
+		REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(wire.size())));
+		return s->handle_chunk(&c);
+	}
+
+	// The smallest thing the RTMP demux will accept out of a flow:
+	// [msg type][4-byte timestamp][body]. handle_rtmp_flow_message needs > 5 bytes.
+	std::vector<std::uint8_t> rtmp_payload(std::uint8_t type, const std::vector<std::uint8_t> &body)
+	{
+		std::vector<std::uint8_t> v{type, 0, 0, 0, 0};
+		v.insert(v.end(), body.begin(), body.end());
+		return v;
+	}
+}
+
+TEST_CASE("rtmfp session: a metadata option opens the flow and sets its stream id")
+{
+	// An open flow delivers, and delivery routes through the host, so this needs a
+	// real one -- a session with a null host segfaults on the first message. That is
+	// a harness constraint, not a defect: production always has one.
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	feed_open_flow(s, 5, 1, 42, rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0x02}));
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	flow_ptr const f = s->m_receiving_flows.begin()->second;
+	CHECK(f->state() == flow::eOpen);
+	CHECK(f->stream_id() == 42);
+}
+
+TEST_CASE("rtmfp session: an unknown metadata signature rejects the flow")
+{
+	// parse_option_list only accepts "TC" (a stream) or "GC" (a NetGroup).
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	option_list opts;
+	byte_writer meta;
+	meta.write(reinterpret_cast<const std::uint8_t *>("XY"), 2);
+	meta << std::uint8_t{0x04};
+	meta.write_vlu(1);
+	opts.create_option(option::eMetadata, meta.data(), static_cast<std::uint16_t>(meta.size()));
+
+	byte_writer w;
+	w << std::uint8_t{0x80};
+	w.write_vlu(5);
+	w.write_vlu(1);
+	w.write_vlu(0);
+	opts.serialize(w);
+	std::vector<std::uint8_t> const wire(w.data(), w.data() + w.size());
+
+	byte_reader r(wire.data(), wire.size());
+	user_data_chunk c;
+	REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(wire.size())));
+	s->handle_chunk(&c);
+
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	CHECK(s->m_receiving_flows.begin()->second->state() == flow::eRejected);
+}
+
+TEST_CASE("rtmfp session: a whole message on an open flow reaches the RTMP demux")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	// An RTMP message the protocol layer will decode: a 0-length invoke body is
+	// enough for the demux to hand it up.
+	feed_open_flow(s, 5, 1, 7, rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0x21}));
+
+	CHECK(app.routed == 1);
+	CHECK(app.last_stream_id == 7);   // the demux stamps the flow's stream id
+}
+
+TEST_CASE("rtmfp session: a fragmented message is reassembled before it is routed")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	std::vector<std::uint8_t> const whole =
+		rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0x33, 0x44});
+	std::vector<std::uint8_t> const first(whole.begin(), whole.begin() + 4);
+	std::vector<std::uint8_t> const rest(whole.begin() + 4, whole.end());
+
+	feed_open_flow(s, 5, 1, 7, first, fragment::eBegin);
+	CHECK(app.routed == 0);           // nothing routed on a partial message
+
+	feed_open_flow(s, 5, 2, 7, rest, fragment::eEnd);
+	CHECK(app.routed == 1);           // the reassembled message goes up once
+}
+
+TEST_CASE("rtmfp session: the forward sequence number is what closes a gap")
+{
+	fake_host h;
+	recording_app_host app;
+
+	std::vector<std::uint8_t> const whole =
+		rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0xCC, 0xDD});
+	std::vector<std::uint8_t> const first(whole.begin(), whole.begin() + 4);
+	std::vector<std::uint8_t> const rest(whole.begin() + 4, whole.end());
+
+	SUBCASE("an fsn offset of 0 asserts nothing is outstanding, so a skipped sequence is not a gap")
+	{
+		// The end fragment arrives at seq 3 with seq 2 never sent, but its forward
+		// sequence number is 3 too, which tells the receiver everything up to 3 is
+		// accounted for. Reassembly proceeds. This is the sender's declaration being
+		// honoured, not a missed check.
+		auto const s = make_session(h, app);
+		feed_open_flow(s, 5, 1, 7, first, fragment::eBegin);
+		feed_open_flow(s, 5, 3, 7, rest, fragment::eEnd);
+		CHECK(app.routed == 1);
+	}
+
+	SUBCASE("an fsn offset that leaves the gap open holds the message back")
+	{
+		// Same sequences, but forward_seq = 3 - 2 = 1, so 2 stays outstanding and the
+		// cumulative sequence never reaches the end fragment.
+		auto const s = make_session(h, app);
+		feed_open_flow(s, 5, 1, 7, first, fragment::eBegin);
+		s->set_ack_now(false);
+		feed_open_flow(s, 5, 3, 7, rest, fragment::eEnd, 2);
+		CHECK(app.routed == 0);
+		CHECK(s->ack_now());          // and it is acknowledged promptly
+	}
 }
