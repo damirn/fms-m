@@ -183,31 +183,50 @@ namespace fms
 			m_timer.expires_at(m_timer.expiry() + eTimerInterval);
 			m_timer.async_wait([this](const boost::system::error_code &ec) { handle_timer(ec); });
 
-			std::unique_lock const lock(m_mutex);
-			for (auto i = m_ids.begin(); i != m_ids.end(); )
+			// Decide under the global lock, close outside it. close() re-enters the
+			// application (client_session::close -> delete_connection -> the app's own
+			// teardown, which takes the connection registry and stream registry locks),
+			// and running that under the id-table lock stalls every other poll thread
+			// in handle_data/serialize_result for the length of a full teardown -- and
+			// puts an app callback inside our lock, where a path back into the manager
+			// would self-deadlock on a non-recursive mutex. Every other method here
+			// already drops the lock before touching a session; this one did not.
+			std::vector<rtmpt_session_data_ptr> dead;
 			{
-				// Idle reaping (polling resets m_not_alive), OR a session that keeps
-				// polling but never finishes the tunneled handshake (m_open_ticks is not
-				// reset by polling) -- the latter replaces the per-session handshake timer.
-				// m_not_alive/m_open_ticks are guarded by the global lock (held here);
-				// handshake_complete()/close() touch session state -> per-session lock
-				// (global-then-per-session, the same order remove_session uses).
-				bool dead = i->second->m_not_alive > 3;
+				std::unique_lock const lock(m_mutex);
+				for (auto i = m_ids.begin(); i != m_ids.end(); )
 				{
-					std::lock_guard const s(i->second->m_session_mutex);
-					if (!dead && !i->second->m_session->handshake_complete() && i->second->m_open_ticks >= 1)
-						dead = true;
-					if (dead)
-						i->second->m_session->close();
+					// Idle reaping (polling resets m_not_alive), OR a session that keeps
+					// polling but never finishes the tunneled handshake (m_open_ticks is not
+					// reset by polling) -- the latter replaces the per-session handshake timer.
+					// m_not_alive/m_open_ticks are guarded by the global lock (held here);
+					// handshake_complete() reads session state -> per-session lock
+					// (global-then-per-session, the same order remove_session uses).
+					bool is_dead = i->second->m_not_alive > 3;
+					if (!is_dead)
+					{
+						std::lock_guard const s(i->second->m_session_mutex);
+						if (!i->second->m_session->handshake_complete() && i->second->m_open_ticks >= 1)
+							is_dead = true;
+					}
+					if (is_dead)
+					{
+						dead.push_back(i->second);
+						i = m_ids.erase(i);
+					}
+					else
+					{
+						i->second->m_not_alive++;
+						i->second->m_open_ticks++;
+						++i;
+					}
 				}
-				if (dead)
-					i = m_ids.erase(i);
-				else
-				{
-					i->second->m_not_alive++;
-					i->second->m_open_ticks++;
-					++i;
-				}
+			}
+
+			for (const rtmpt_session_data_ptr &sd : dead)
+			{
+				std::lock_guard const s(sd->m_session_mutex);   // serialize with in-flight handle_data
+				sd->m_session->close();
 			}
 		}
 	}

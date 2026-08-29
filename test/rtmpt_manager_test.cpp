@@ -18,6 +18,10 @@
 #include <string>
 #include <vector>
 
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include <boost/asio/io_context.hpp>
 
 using namespace fms;
@@ -397,4 +401,92 @@ TEST_CASE("rtmpt: sessions are reaped independently")
 	CHECK_FALSE(m.validate(ep("10.0.0.2"), drop, 1));
 	CHECK_FALSE(h.made[0]->closed);
 	CHECK(h.made[1]->closed);
+}
+
+// --- re-entrancy: the reaper must not hold the id-table lock across close() ------
+//
+// close() re-enters the application (client_session::close -> delete_connection ->
+// the app's teardown, taking the connection- and stream-registry locks). Holding
+// the manager's global lock across that stalls every other poll thread for the
+// length of a teardown, and any path back into the manager would self-deadlock on
+// a non-recursive mutex.
+//
+// A regression here is a hang, not a wrong value, so the re-entrant call runs on
+// another thread with a deadline: if it cannot complete, the lock was still held.
+namespace
+{
+	struct reentrant_session : fake_session
+	{
+		rtmpt_manager *mgr = nullptr;
+		std::string id;
+		bool reentered_ok = false;
+
+		void close() override
+		{
+			fake_session::close();
+			if (mgr == nullptr)
+				return;
+			// Anything that takes the manager's global lock will do. The thread is
+			// detached rather than joined: if the lock IS held this call never
+			// returns, and joining would hang the run instead of failing it.
+			auto const done = std::make_shared<std::atomic<bool>>(false);
+			rtmpt_manager *const manager = mgr;
+			std::string const cid = id;
+			std::thread([manager, cid, done] {
+				(void)manager->validate(ep("10.0.0.7"), cid, 1);
+				done->store(true);
+			}).detach();
+
+			for (int i = 0; i < 500 && !done->load(); ++i)
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			reentered_ok = done->load();
+		}
+	};
+
+	struct reentrant_host : rtmpt_host
+	{
+		boost::asio::io_context io;
+		std::shared_ptr<reentrant_session> session;
+
+		rtmpt_session_iface_ptr create_rtmpt_session() override
+		{
+			session = std::make_shared<reentrant_session>();
+			return session;
+		}
+		boost::asio::io_context &rtmpt_io_context() override { return io; }
+	};
+}
+
+TEST_CASE("rtmpt: the reaper closes a session without holding the id table lock")
+{
+	reentrant_host h;
+	testable_manager m(&h);
+
+	std::string id;
+	m.create_session(ep("10.0.0.7"), id);
+	h.session->mgr = &m;
+	h.session->id = id;
+	h.session->handshaken = true;
+
+	for (int i = 0; i < 5; ++i)
+		m.tick();                    // the fifth tick reaps it
+
+	REQUIRE(h.session->closed);
+    CHECK(h.session->reentered_ok);  // false => close() ran under the global lock
+}
+
+TEST_CASE("rtmpt: remove_session also closes outside the lock")
+{
+	// remove_session already did this; the test keeps it that way.
+	reentrant_host h;
+	testable_manager m(&h);
+
+	std::string id;
+	m.create_session(ep("10.0.0.7"), id);
+	h.session->mgr = &m;
+	h.session->id = id;
+
+	m.remove_session(id);
+	REQUIRE(h.session->closed);
+	CHECK(h.session->reentered_ok);
 }
