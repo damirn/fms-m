@@ -32,6 +32,8 @@ namespace
 
 		client_session_ptr get_connection(std::uint32_t) override { return nullptr; }
 		client_session_ptr get_connection_opt(std::uint32_t) override { return nullptr; }
+		boost::tribool handle_message(const rtmp_message_ptr &, std::uint32_t,
+			const rtmp_header &, rtmp_message_ptr &) override { return false; }
 		bool has_connection(std::uint32_t id) override { return live.contains(id); }
 		void destroy_connection(std::uint32_t) override { ++destroyed; }
 		void delete_connection(std::uint32_t id) override { live.erase(id); }

@@ -72,7 +72,7 @@ namespace fms
 		std::uint32_t get_timestamp(std::uint32_t);
 
 		bool has_async_messages(std::uint32_t);
-		bool get_async_message(std::uint32_t, rtmp_message_ptr &);
+		virtual bool get_async_message(std::uint32_t, rtmp_message_ptr &);
 
 		// Takes m_stats_mutex: update_stats mutates these four counters from every
 		// connection thread on every read and write, and this is read from the
@@ -85,7 +85,7 @@ namespace fms
 
 		queue_stats_list_t get_queue_stats();
 
-		void update_stats(bool, bool, std::uint32_t);
+		virtual void update_stats(bool, bool, std::uint32_t);
 
 		void gracefully_close_connection(std::uint32_t, bool = true);
 		void gracefully_close_connection_with_reason(std::uint32_t, std::uint32_t);

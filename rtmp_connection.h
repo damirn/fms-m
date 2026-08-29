@@ -17,7 +17,7 @@ namespace fms
 	{
 	public:
 		// Construct a connection with the given io_context.
-		rtmp_connection(std::uint32_t, boost::asio::io_context &, rtmp_app_manager *);
+		rtmp_connection(std::uint32_t, boost::asio::io_context &, app_host *);
 
 		~rtmp_connection() override;
 

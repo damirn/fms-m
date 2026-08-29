@@ -3,6 +3,7 @@
 #include "client_session.h"
 #include "io_context_pool.h"
 #include "logging.h"
+#include "rtmp_app_manager.h"
 #include "rtmp_application.h"
 #include "rtmps_connection.h"
 #include "rtmpt_manager.h"

@@ -8,12 +8,18 @@
 #include <optional>
 #include <string>
 
+#include <boost/logic/tribool.hpp>
+
 namespace fms
 {
 	class client_session;
 	using client_session_ptr = std::shared_ptr<client_session>;
 
 	class io_context_pool;
+
+	class rtmp_message;
+	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
+	class rtmp_header;
 
 	// Everything an rtmp_application may ask of the server it runs inside.
 	// Implemented by rtmp_app_manager. Names no transport, so an application (or a
@@ -26,6 +32,12 @@ namespace fms
 	{
 	public:
 		virtual ~app_host() = default;
+
+		// Route a message that arrived before an application was assigned -- in
+		// practice the `connect`. Both transports need this, and needing it was the
+		// only reason either held a pointer to the concrete manager.
+		virtual boost::tribool handle_message(const rtmp_message_ptr &, std::uint32_t,
+			const rtmp_header &, rtmp_message_ptr &) = 0;
 
 		// ---- connections ------------------------------------------------------
 		// get_connection throws when the id is gone; get_connection_opt returns

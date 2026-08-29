@@ -451,6 +451,25 @@ if(BUILD_CLIENT)
 
   # rtmpt_manager: the RTMPT id table, sequencing, backlog caps and idle reaper,
   # driven through the injected rtmpt_host seam -- no socket, app or parser.
+  # The RTMFP session's packet/flow tier. Heavier than rtmfp_tests on purpose:
+  # session drives the RTMP dispatch path, so it links the server side too. Kept a
+  # separate target so rtmfp_tests stays codec-only.
+  add_executable(rtmfp_session_test test/rtmfp_session_test.cpp test/test_main.cpp
+    rtmfp/session.cpp rtmfp/flow.cpp rtmfp/chunk.cpp rtmfp/parser.cpp rtmfp/header.cpp
+    rtmfp/types.cpp rtmfp/aes.cpp rtmfp/serializer.cpp rtmfp/dh2.cpp
+    evp_dh.cpp client_session.cpp rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp
+    rtmp_so_message.cpp amf0.cpp amf3.cpp logging.cpp config.cpp crypto.cpp util.cpp
+)
+  target_include_directories(rtmfp_session_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test)
+  target_link_libraries(rtmfp_session_test PRIVATE ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME rtmfp_session_test COMMAND rtmfp_session_test)
+  if(APPLE)
+    set_tests_properties(rtmfp_session_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   add_executable(rtmpt_manager_test test/rtmpt_manager_test.cpp test/test_main.cpp
     rtmpt_manager.cpp random_string.cpp config.cpp)
   target_include_directories(rtmpt_manager_test PRIVATE

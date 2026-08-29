@@ -11,7 +11,7 @@
 
 namespace fms
 {
-	rtmp_connection::rtmp_connection(std::uint32_t id, boost::asio::io_context &io_context, rtmp_app_manager *app_manager)
+	rtmp_connection::rtmp_connection(std::uint32_t id, boost::asio::io_context &io_context, app_host *app_manager)
 		: basic_rtmp_connection(id, io_context, app_manager)
 		, m_socket(io_context)
 		, m_rto_timer(io_context)

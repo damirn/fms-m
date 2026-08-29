@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "session.h"
+#include "app_host.h"
 #include "byte_order.h"
 #include "aes.h"
 #include "byte_reader.h"
@@ -9,7 +10,6 @@
 #include "flow.h"
 #include "group.h"
 #include "header.h"
-#include "rtmp_app_manager.h"
 #include "rtmp_application.h"
 #include "rtmp_header.h"
 #include "rtmp_message.h"
@@ -27,9 +27,8 @@
 
 namespace fms
 {
-	session::session(rtmfp_host *host, const boost::asio::ip::udp::endpoint &ep, std::uint32_t reserved_sid, rtmp_app_manager *app_mngr)
+	session::session(rtmfp_host *host, const boost::asio::ip::udp::endpoint &ep, std::uint32_t reserved_sid, app_host *app_mngr)
 		: client_session(reserved_sid, app_mngr)
-		, m_manager(app_mngr)
 		, m_service(host)
 		, m_outgoing_sid(reserved_sid)
 		, m_endpoint(ep)
@@ -511,7 +510,7 @@ namespace fms
 		}
 		else
 		{
-			ret = m_manager->handle_message(msg, m_id, h, result);
+			ret = m_app_manager->handle_message(msg, m_id, h, result);
 			if (m_app != nullptr) // if app has been selected, update stats
 				m_app->update_stats(true, false, 1);
 		}
