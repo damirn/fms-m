@@ -5,6 +5,7 @@
 #include "congestion_window.h"
 #include "flow_maps.h"
 #include "parser.h"
+#include "rtmfp_host.h"
 #include "types.h"
 
 #include <chrono>
@@ -48,7 +49,7 @@ namespace fms
 	class session : boost::noncopyable, public client_session, public chunk_handler, public std::enable_shared_from_this<session>
 	{
 	public:
-		session(service *, const boost::asio::ip::udp::endpoint &, std::uint32_t, rtmp_app_manager *);
+		session(rtmfp_host *, const boost::asio::ip::udp::endpoint &, std::uint32_t, rtmp_app_manager *);
 		~session() override;
 
 		void init()
@@ -234,7 +235,7 @@ namespace fms
 		void arm_alarm();
 		void handle_alarm(const boost::system::error_code &);
 
-		service *m_service;
+		rtmfp_host *m_service;
 		parser *m_parser;
 		std::uint32_t m_session_id{0};
 		std::uint32_t m_outgoing_sid;
