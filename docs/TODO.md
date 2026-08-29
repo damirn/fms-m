@@ -237,20 +237,6 @@ Priority order; the first item is the one the others hang off.
 - **Partial handshake split across POSTs** (real clients send it whole). The
   out-of-order stash drain itself is now covered by `test/rtmpt_manager_test.cpp`;
   what is untested is the multi-connection reordering that produces the gap.
-- **RTMPT poll-thread vs reaper races.** The original H4 headline -- a cross-thread
-  `m_hs_timer.cancel()` -- is already gone: `rtmpt_session::start()` runs no timers at
-  all ("the session is driven by HTTP requests on a different pool thread than its own
-  io_context, so a timer callback would race handle_data"), and the manager's reaper
-  replaces the per-session handshake timer. What remains is the manager's reaper tick
-  against `handle_data`/`serialize_result` on the poll threads, which the global +
-  per-session locks are meant to order. Now testable: `test/rtmpt_manager_test.cpp`
-  covers the single-threaded semantics, so a concurrency test can build on it.
-  (`rtmpt_manager.cpp`) — 2026-07 H4, partly stale
-- **`rtmpt_manager` lock scope across re-entrant app callbacks.** The global lock was
-  narrowed to the id table + sequencing with a per-session mutex; reducing scope
-  across the callbacks themselves is still open. Unblocked: the manager now has an
-  injected seam (`rtmpt_host`) and 17 tests pinning its semantics, so the lock work
-  has something to fail against. — 2026-07 M7
 - **Shared Object codec: an unknown event type is not skipped.**
   `rtmp_message_shared_object::deserialize_event` reads an unknown event's type and
   32-bit length and then does not skip the body, so the next read starts mid-event
@@ -299,7 +285,9 @@ Priority order; the first item is the one the others hang off.
   `server::stop()`); needs the acceptor + app/manager timers cancelled first.
 - **CI — nothing runs the tests.** There is no `.github/workflows`. Unit, fuzz, b2b,
   bench, and both interop matrices all exist and are run by hand. The Dockerfiles
-  take `RUN_TESTS=1` and would make a reasonable CI job.
+  take `RUN_TESTS=1` and would make a reasonable CI job. A sanitized run is now worth
+  wiring in too: `-DSANITIZE=address` / `=thread` sets `halt_on_error`, so a finding
+  fails ctest instead of printing a warning into a green log.
 - **Prometheus-style metrics endpoint** (admin stats exist over RTMP).
 
 ## Auth: wire it or prune it
