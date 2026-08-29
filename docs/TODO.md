@@ -234,14 +234,23 @@ Priority order; the first item is the one the others hang off.
 
 - **RTMP simple-handshake fallback** for a versioned C1 with no valid digest (all
   real clients sign; `build_response` refuses it today — see `handshaker_test`).
-- **RTMPT out-of-order stash drain** on an `/idle` gap-filler (needs multi-connection
-  reordering); **partial handshake split across POSTs** (real clients send it whole).
-- **RTMPT poll-thread vs timer-thread races**; cross-thread `m_hs_timer.cancel()`.
-  Threads>1 only; restructuring the RTMPT thread model is non-trivial and risky
-  without tests. (`rtmpt_manager.cpp`, `basic_rtmp_connection.cpp`) — 2026-07 H4
+- **Partial handshake split across POSTs** (real clients send it whole). The
+  out-of-order stash drain itself is now covered by `test/rtmpt_manager_test.cpp`;
+  what is untested is the multi-connection reordering that produces the gap.
+- **RTMPT poll-thread vs reaper races.** The original H4 headline -- a cross-thread
+  `m_hs_timer.cancel()` -- is already gone: `rtmpt_session::start()` runs no timers at
+  all ("the session is driven by HTTP requests on a different pool thread than its own
+  io_context, so a timer callback would race handle_data"), and the manager's reaper
+  replaces the per-session handshake timer. What remains is the manager's reaper tick
+  against `handle_data`/`serialize_result` on the poll threads, which the global +
+  per-session locks are meant to order. Now testable: `test/rtmpt_manager_test.cpp`
+  covers the single-threaded semantics, so a concurrency test can build on it.
+  (`rtmpt_manager.cpp`) — 2026-07 H4, partly stale
 - **`rtmpt_manager` lock scope across re-entrant app callbacks.** The global lock was
   narrowed to the id table + sequencing with a per-session mutex; reducing scope
-  across the callbacks themselves is still open. — 2026-07 M7
+  across the callbacks themselves is still open. Unblocked: the manager now has an
+  injected seam (`rtmpt_host`) and 17 tests pinning its semantics, so the lock work
+  has something to fail against. — 2026-07 M7
 - **Shared Object codec: an unknown event type is not skipped.**
   `rtmp_message_shared_object::deserialize_event` reads an unknown event's type and
   32-bit length and then does not skip the body, so the next read starts mid-event
