@@ -234,9 +234,12 @@ Priority order; the first item is the one the others hang off.
 
 - **RTMP simple-handshake fallback** for a versioned C1 with no valid digest (all
   real clients sign; `build_response` refuses it today — see `handshaker_test`).
-- **Partial handshake split across POSTs** (real clients send it whole). The
-  out-of-order stash drain itself is now covered by `test/rtmpt_manager_test.cpp`;
-  what is untested is the multi-connection reordering that produces the gap.
+- **Partial handshake split across POSTs** (real clients send it whole).
+- **RTMPT reordering is only tested at the manager.** The stash, its caps and the
+  gap-fill drain (including the /idle path) are covered by
+  `test/rtmpt_manager_test.cpp`, but nothing exercises the multi-connection HTTP
+  reordering that produces a gap in the first place -- interop drives one connection
+  at a time, so the whole stash is dead code from the matrix's point of view.
 - **Shared Object codec: an unknown event type is not skipped.**
   `rtmp_message_shared_object::deserialize_event` reads an unknown event's type and
   32-bit length and then does not skip the body, so the next read starts mid-event
