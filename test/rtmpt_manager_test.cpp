@@ -37,6 +37,7 @@ namespace
 		int data_calls = 0, poll_calls = 0, result_calls = 0;
 		std::size_t bytes_read = 0, bytes_written = 0;
 		std::vector<std::uint8_t> last_input;
+		std::vector<std::vector<std::uint8_t>> delivered;
 
 		void set_cid(const std::string &v) override { cid = v; }
 		void set_address(const boost::asio::ip::address &v) override { addr = v; }
@@ -46,6 +47,7 @@ namespace
 		{
 			++data_calls;
 			last_input.assign(in.data(), in.data() + in.size());
+			delivered.emplace_back(in.data(), in.data() + in.size());
 			out << std::uint8_t{0x01};      // a byte, so the caller sees a non-zero size
 			return true;
 		}
@@ -216,6 +218,82 @@ TEST_CASE("rtmpt: a duplicate out-of-order sequence does not displace the stashe
 	byte_writer in = buf({0x00}), out;
 	m.handle_data(id, 0, in, out);
 	CHECK(h.made[0]->last_input == std::vector<std::uint8_t>{0x00, 0xAA});   // first wins
+}
+
+TEST_CASE("rtmpt: an /idle that closes a gap delivers what it releases")
+{
+	// An /idle carries no body but still occupies a sequence, so it can be the
+	// request that fills a gap. If it only bumps the counter, the stashed bodies are
+	// dropped AND the sequence walks past a number the client will never resend --
+	// every later request then looks out of order and the tunnel is wedged for good.
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.7"), id);
+
+	byte_writer i0 = buf({0xA0}), o0;
+	m.handle_data(id, 0, i0, o0);              // in order
+	byte_writer i2 = buf({0xC2}), o2;
+	m.handle_data(id, 2, i2, o2);              // stashed, gap at 1
+
+	byte_writer poll;
+	m.serialize_result(id, 1, poll);           // the /idle fills the gap
+
+	byte_writer i3 = buf({0xD3}), o3;
+	m.handle_data(id, 3, i3, o3);              // must still be in order
+
+	REQUIRE(h.made[0]->delivered.size() == 3);
+	CHECK(h.made[0]->delivered[0] == std::vector<std::uint8_t>{0xA0});
+	CHECK(h.made[0]->delivered[1] == std::vector<std::uint8_t>{0xC2});   // released by the /idle
+	CHECK(h.made[0]->delivered[2] == std::vector<std::uint8_t>{0xD3});
+}
+
+TEST_CASE("rtmpt: an /idle that closes a gap drains a whole run")
+{
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.7"), id);
+
+	for (std::uint32_t seq : {2u, 3u, 4u})
+	{
+		byte_writer in = buf({static_cast<std::uint8_t>(0xB0 + seq)}), out;
+		m.handle_data(id, seq, in, out);
+	}
+	byte_writer i0 = buf({0xA0}), o0;
+	m.handle_data(id, 0, i0, o0);              // 0 in order; 1 is still missing
+	CHECK(h.made[0]->delivered.size() == 1);
+
+	byte_writer poll;
+	m.serialize_result(id, 1, poll);           // /idle releases 2, 3 and 4 together
+
+	REQUIRE(h.made[0]->delivered.size() == 2);
+	CHECK(h.made[0]->delivered[1] == std::vector<std::uint8_t>{0xB2, 0xB3, 0xB4});
+
+	byte_writer i5 = buf({0xB5}), o5;
+	m.handle_data(id, 5, i5, o5);              // the sequence really did reach 5
+	CHECK(h.made[0]->delivered.size() == 3);
+}
+
+TEST_CASE("rtmpt: an /idle off the expected sequence changes nothing")
+{
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.7"), id);
+
+	byte_writer i1 = buf({0xC1}), o1;
+	m.handle_data(id, 1, i1, o1);              // stashed, expected is 0
+
+	byte_writer poll;
+	m.serialize_result(id, 7, poll);           // not the gap filler
+	CHECK(h.made[0]->delivered.empty());
+	CHECK(h.made[0]->result_calls == 1);       // an ordinary poll response
+
+	byte_writer i0 = buf({0xC0}), o0;
+	m.handle_data(id, 0, i0, o0);              // 0 still fills it, 1 still drains
+	REQUIRE(h.made[0]->delivered.size() == 1);
+	CHECK(h.made[0]->delivered[0] == std::vector<std::uint8_t>{0xC0, 0xC1});
 }
 
 TEST_CASE("rtmpt: the out-of-order backlog is capped by entry count")

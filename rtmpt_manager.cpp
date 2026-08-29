@@ -61,6 +61,25 @@ namespace fms
 		return true;
 	}
 
+	bool rtmpt_manager::advance_sequence(rtmpt_session_data &sd, std::uint32_t seq, byte_writer &drained)
+	{
+		if (sd.m_sequence != seq)
+			return false;
+
+		sd.m_sequence++;
+		for (;;)
+		{
+			auto const j = sd.m_out_of_order_data.find(sd.m_sequence);
+			if (j == sd.m_out_of_order_data.end())
+				break;
+			drained.write(j->second.data(), j->second.size());
+			sd.m_ooo_bytes -= j->second.size();
+			sd.m_out_of_order_data.erase(j);
+			sd.m_sequence++;
+		}
+		return true;
+	}
+
 	std::uint32_t rtmpt_manager::handle_data(const std::string &cid, std::uint32_t seq, byte_writer &input, byte_writer &output)
 	{
 		rtmpt_session_data_ptr sd;
@@ -74,23 +93,8 @@ namespace fms
 				return 0;
 			sd = i->second;
 			sd->m_not_alive = 0;
-			if (sd->m_sequence == seq)
-			{
-				sd->m_sequence++;
-				rtmpt_session_data::unoreder_data_t::iterator j;
-				while (true)
-				{
-					j = sd->m_out_of_order_data.find(sd->m_sequence);
-					if (j == sd->m_out_of_order_data.end())
-						break;
-					input.write(j->second.data(), j->second.size());
-					sd->m_ooo_bytes -= j->second.size();
-					sd->m_out_of_order_data.erase(j);
-					sd->m_sequence++;
-				}
-				in_order = true;
-			}
-			else
+			in_order = advance_sequence(*sd, seq, input);
+			if (!in_order)
 			{
 				// Stash out-of-order data for later, in-order replay -- but bounded, so a
 				// client that never sends the expected sequence can't grow this without
@@ -120,6 +124,7 @@ namespace fms
 	std::uint32_t rtmpt_manager::serialize_result(const std::string &cid, std::uint32_t seq, byte_writer &buffer)
 	{
 		rtmpt_session_data_ptr sd;
+		byte_writer drained;
 		{
 			std::unique_lock const lock(m_mutex);
 			auto const i = m_ids.find(cid);
@@ -127,11 +132,17 @@ namespace fms
 				return 0;
 			sd = i->second;
 			sd->m_not_alive = 0;
-			if (sd->m_sequence == seq)
-				sd->m_sequence++;
+			advance_sequence(*sd, seq, drained);
 		}
 		std::lock_guard const s(sd->m_session_mutex);
-		sd->m_session->serialize_result(buffer);
+		// An /idle carries no body of its own, but it still occupies a sequence -- so
+		// it can be the request that closes a gap. Anything it releases from the stash
+		// has to be delivered here, or those bodies are dropped and the sequence walks
+		// past a number the client will never send again, wedging the tunnel.
+		if (drained.size() > 0)
+			sd->m_session->handle_data(drained, buffer);
+		else
+			sd->m_session->serialize_result(buffer);
 		return buffer.size();
 	}
 
