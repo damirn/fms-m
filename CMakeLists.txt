@@ -87,6 +87,11 @@ set(SANITIZE "" CACHE STRING "Sanitizers to enable (address, thread, undefined)"
 if(SANITIZE)
   add_compile_options(-fsanitize=${SANITIZE} -fno-omit-frame-pointer -g)
   add_link_options(-fsanitize=${SANITIZE})
+  # TSan and UBSan only warn by default, so a sanitized ctest run stays green while
+  # printing the very thing it was built to find. Make them fail the test instead.
+  set(FMS_SANITIZER_ENV
+      "TSAN_OPTIONS=halt_on_error=1"
+      "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1")
 endif()
 
 option(WERROR "Treat warnings as errors" OFF)
@@ -481,4 +486,13 @@ if(BUILD_CLIENT)
   target_include_directories(mixer_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
   add_test(NAME mixer_tests COMMAND mixer_tests)
+
+  # Applied last so it lands on every test registered above, appending rather than
+  # replacing the ENVIRONMENT some of them already set.
+  if(SANITIZE)
+    get_property(FMS_ALL_TESTS DIRECTORY PROPERTY TESTS)
+    foreach(t ${FMS_ALL_TESTS})
+      set_property(TEST ${t} APPEND PROPERTY ENVIRONMENT ${FMS_SANITIZER_ENV})
+    endforeach()
+  endif()
 endif()
