@@ -452,6 +452,8 @@ if(BUILD_CLIENT)
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
   target_link_libraries(rtmpt_manager_test PRIVATE ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
   add_test(NAME rtmpt_manager_test COMMAND rtmpt_manager_test)
+  # A lock-scope regression shows up as a hang, so bound it.
+  set_tests_properties(rtmpt_manager_test PROPERTIES TIMEOUT 60)
   if(APPLE)
     set_tests_properties(rtmpt_manager_test PROPERTIES
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
