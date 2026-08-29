@@ -1,6 +1,7 @@
 #pragma once
 
 #include "channel_manager.h"
+#include "app_host.h"
 #include "client_session.h"
 #include "rtmp_handshaker.h"
 #include "rtmp_message.h"
@@ -15,7 +16,6 @@
 namespace fms
 {
 	class rtmp_application;
-	class rtmp_app_manager;
 
 	class rtmp_message;
 	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
@@ -26,7 +26,7 @@ namespace fms
 	class basic_rtmp_connection : public client_session, public rtmp_message_sink, public std::enable_shared_from_this<basic_rtmp_connection>
 	{
 	public:
-		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, rtmp_app_manager *);
+		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, app_host *);
 
 		~basic_rtmp_connection() override = default;
 
@@ -63,12 +63,6 @@ namespace fms
 		virtual void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr) = 0;
 
 		boost::asio::io_context &m_io_context;
-
-		// The concrete manager, for the connect-routing entry point
-		// (handle_message) a connection needs before an application is assigned.
-		// The transport layer legitimately knows the server; the APPLICATION layer
-		// does not, which is what app_host exists to keep true.
-		rtmp_app_manager *m_manager;
 
 		// Inbound RTMP chunk parser, fed by the transport read loop (parse), delivering
 		// to us as its sink. Declared AFTER m_channel_manager so the reference the

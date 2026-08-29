@@ -35,7 +35,6 @@ namespace fms
 
 	using flow_ptr = std::shared_ptr<flow>;
 
-	class rtmp_app_manager;
 	class rtmp_header;
 	class rtmp_message;
 	using rtmp_message_ptr = std::shared_ptr<rtmp_message>;
@@ -49,7 +48,7 @@ namespace fms
 	class session : boost::noncopyable, public client_session, public chunk_handler, public std::enable_shared_from_this<session>
 	{
 	public:
-		session(rtmfp_host *, const boost::asio::ip::udp::endpoint &, std::uint32_t, rtmp_app_manager *);
+		session(rtmfp_host *, const boost::asio::ip::udp::endpoint &, std::uint32_t, app_host *);
 		~session() override;
 
 		void init()
@@ -158,7 +157,6 @@ namespace fms
 	protected:
 		// Concrete manager for the connect-routing entry (handle_message); see the
 		// note in basic_rtmp_connection.h.
-		rtmp_app_manager *m_manager;
 
 	public:
 

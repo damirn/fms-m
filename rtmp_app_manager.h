@@ -73,7 +73,7 @@ namespace fms
 		void set_encoding_for_connection(std::uint32_t, bool) override;
 		bool is_amf3_encoding(std::uint32_t) override;
 
-		boost::tribool handle_message(const rtmp_message_ptr&, std::uint32_t, const rtmp_header &, rtmp_message_ptr &);
+		boost::tribool handle_message(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &, rtmp_message_ptr &) override;
 
 		io_context_pool &get_io_context_pool() override
 		{

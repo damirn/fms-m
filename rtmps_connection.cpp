@@ -3,7 +3,7 @@
 
 namespace fms
 {
-	rtmps_connection::rtmps_connection(std::uint32_t id, boost::asio::io_context &io, rtmp_app_manager *mgr,
+	rtmps_connection::rtmps_connection(std::uint32_t id, boost::asio::io_context &io, app_host *mgr,
 	                                   std::shared_ptr<boost::asio::ssl::context> ctx)
 		: rtmp_connection(id, io, mgr)
 		, m_tls(m_socket, std::move(ctx))   // layers over the base socket (adopted after ctor)

@@ -18,7 +18,7 @@ namespace fms
 	class rtmps_connection : public rtmp_connection
 	{
 	public:
-		rtmps_connection(std::uint32_t id, boost::asio::io_context &io, rtmp_app_manager *mgr,
+		rtmps_connection(std::uint32_t id, boost::asio::io_context &io, app_host *mgr,
 		                 std::shared_ptr<boost::asio::ssl::context> ctx);
 
 	protected:
