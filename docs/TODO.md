@@ -251,12 +251,6 @@ Priority order; the first item is the one the others hang off.
 13. **Exceptions for routine "no such connection" lookups** → `optional`. Touches
     the central manager and every catcher. — 2026-07 M11
 
-14. **Vestigial `boost/asio/detail/socket_ops.hpp` includes.** Four files include
-    this Boost *detail* header and use nothing from it, left behind when the wire
-    codecs moved to `byte_order.h`: `flv_writer.cpp`, `rtmp_header.cpp`, `amf0.cpp`,
-    `byte_writer.h`. `byte_writer.h`'s comment still claims it needs
-    `host_to_network_long`. Delete them.
-
 ### RTMP / RTMPT correctness (deferred — real clients don't hit these)
 
 - **RTMP simple-handshake fallback** for a versioned C1 with no valid digest (all
