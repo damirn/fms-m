@@ -8,7 +8,12 @@
 //
 //   ./bench_rtmp_throughput [frame_B=16384] [seconds=15] [chunk_B=60000]
 //                           [n_streams=1] [server_threads=8] [base_port=26000]
-//                           [window_frames] [name_offset=0]
+//                           [window_frames] [name_offset=0] [fanout=0]
+//
+// fanout=1 changes the shape: instead of N independent pairs, ONE publisher feeds
+// N subscribers all playing the SAME stream. That is the interesting saturation
+// case for a media server -- it measures the fan-out path rather than N unrelated
+// relays -- and the reported aggregate is bytes delivered across all subscribers.
 //
 // Each publisher keeps at most WINDOW frames ahead of what its subscriber has
 // received (TCP-style flow control), so memory stays bounded and the run is
@@ -190,8 +195,23 @@ namespace
 		fms::rtmp_message_video_data_ptr frame;
 		std::shared_ptr<boost::asio::steady_timer> timer;
 		stream_state *st = nullptr;
+		// Fan-out: every subscriber on the one stream. The window then has to track
+		// the SLOWEST of them, or the publisher runs away from the laggard and the
+		// server buffers without bound (which the shed policy would then act on --
+		// a different measurement than the one wanted here).
+		std::vector<stream_state *> *fanout = nullptr;
 		std::uint32_t out_chunk = 128;
 		bool started = false;
+
+		std::uint64_t slowest_recv() const
+		{
+			if (fanout == nullptr || fanout->empty())
+				return st->recv.load(std::memory_order_relaxed);
+			std::uint64_t m = UINT64_MAX;
+			for (const stream_state *s : *fanout)
+				m = std::min(m, s->recv.load(std::memory_order_relaxed));
+			return m;
+		}
 		explicit pub_ns(boost::asio::io_context &io_) : io(io_) {}
 		void on_status(const std::string &s) override
 		{
@@ -225,7 +245,7 @@ namespace
 			if (g_stop.load()) return;
 			int burst = 0;
 			while (burst < BURST &&
-			       st->sent.load(std::memory_order_relaxed) - st->recv.load(std::memory_order_relaxed) < g_window)
+			       st->sent.load(std::memory_order_relaxed) - slowest_recv() < g_window)
 			{
 				ns->send_msg(frame);
 				st->sent.fetch_add(1, std::memory_order_relaxed);
@@ -276,6 +296,7 @@ int main(int argc, char **argv)
 	int const port = argc > 6 ? std::atoi(argv[6]) : 26000;
 	if (argc > 7) g_window = std::strtoull(argv[7], nullptr, 10);
 	int const name_off = argc > 8 ? std::atoi(argv[8]) : 0;   // distinct stream names per client instance
+	bool const fanout = argc > 9 && std::atoi(argv[9]) != 0;
 	double const warmup = std::min(3.0, seconds * 0.2);
 
 	std::string const dir = "/tmp/fms_bench_media";
@@ -305,7 +326,7 @@ int main(int argc, char **argv)
 		sp->sub_g = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
 			boost::asio::make_work_guard(*sp->sub_io));
 		sp->sub = std::make_unique<sub_nc>(*sp->sub_io);
-		sp->sub->stream_name = "bench" + std::to_string(name_off + i);
+		sp->sub->stream_name = "bench" + std::to_string(fanout ? name_off : name_off + i);
 		sp->sub->nseh.st = &sp->st;
 		sp->sub->conn = std::make_shared<net_connection>(*sp->sub_io, *sp->sub, true);
 		sp->sub->conn->connect(url_for(port));
@@ -318,14 +339,22 @@ int main(int argc, char **argv)
 		for (int k = 0; k < 2000 && !sp->st.sub_ready.load(); ++k)
 			std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
-	for (int i = 0; i < n_streams; ++i)
+	std::vector<stream_state *> sub_states;
+	if (fanout)
+		for (auto &sp : pairs)
+			sub_states.push_back(&sp->st);
+
+	int const n_publishers = fanout ? 1 : n_streams;
+	for (int i = 0; i < n_publishers; ++i)
 	{
 		auto &sp = pairs[i];
 		sp->pub_io = std::make_unique<boost::asio::io_context>();
 		sp->pub_g = std::make_unique<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>>(
 			boost::asio::make_work_guard(*sp->pub_io));
 		sp->pub = std::make_unique<pub_nc>(*sp->pub_io);
-		sp->pub->stream_name = "bench" + std::to_string(name_off + i);
+		sp->pub->stream_name = "bench" + std::to_string(fanout ? name_off : name_off + i);
+		if (fanout)
+			sp->pub->nseh.fanout = &sub_states;
 		sp->pub->nseh.st = &sp->st;
 		sp->pub->nseh.out_chunk = out_chunk;
 		sp->pub->nseh.frame = make_frame();
@@ -352,8 +381,10 @@ int main(int argc, char **argv)
 	g_stop.store(true);
 	for (auto &sp : pairs)
 	{
-		sp->pub_g->reset(); sp->sub_g->reset();
-		sp->pub_io->stop(); sp->sub_io->stop();
+		if (sp->pub_g) sp->pub_g->reset();
+		sp->sub_g->reset();
+		if (sp->pub_io) sp->pub_io->stop();
+		sp->sub_io->stop();
 		if (sp->pub_t.joinable()) sp->pub_t.join();
 		if (sp->sub_t.joinable()) sp->sub_t.join();
 	}
@@ -363,8 +394,12 @@ int main(int argc, char **argv)
 	double const srv_cores = (srv1 - srv0) / win;
 	double const box_cores = (box1 - box0) / win;
 
-	std::printf("streams=%d  frame=%u B  chunk=%u B  srv_threads=%d  window=%.1fs\n",
-	            n_streams, frame_bytes, out_chunk, server_threads, win);
+	if (fanout)
+		std::printf("FANOUT 1 publisher -> %d subscribers on one stream  frame=%u B  chunk=%u B  srv_threads=%d  window=%.1fs\n",
+		            n_streams, frame_bytes, out_chunk, server_threads, win);
+	else
+		std::printf("streams=%d  frame=%u B  chunk=%u B  srv_threads=%d  window=%.1fs\n",
+		            n_streams, frame_bytes, out_chunk, server_threads, win);
 	std::printf("  aggregate: %.2f GiB/s  (%.0f MiB/s)\n", gb / win, gb * 1024.0 / win);
 	// proc_cpu_secs/box_cpu_secs read /proc, which does not exist on macOS -- they
 	// return 0 there, and printing that as a measurement is worse than saying so.
