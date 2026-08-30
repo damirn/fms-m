@@ -76,15 +76,6 @@ namespace fms
 		m_http_conns.erase(id);
 	}
 
-	client_session_ptr connection_registry::get_connection(std::uint32_t conn_id)
-	{
-		std::shared_lock const lock(m_mutex);
-		auto const i = m_connections.find(conn_id);
-		if (i != m_connections.end())
-			return i->second;
-		throw std::runtime_error("No such connection");
-	}
-
 	client_session_ptr connection_registry::get_connection_opt(std::uint32_t conn_id)
 	{
 		std::shared_lock const lock(m_mutex);

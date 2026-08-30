@@ -493,9 +493,9 @@ namespace fms
 	{
 		try
 		{
-			client_session_ptr const c = get_connection(connection_id);
+			client_session_ptr const c = get_connection_opt(connection_id);
 			rtmp_message_invoke::parameters_list_t &params = info->parameters();
-			if (params.size() > 1)
+			if (c && params.size() > 1)
 			{
 				auto i = params.begin();
 				++i;

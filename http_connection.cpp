@@ -4,6 +4,7 @@
 #include "rtmp_app_manager.h"
 #include "rtmpt_manager.h"
 
+#include <charconv>
 #include <vector>
 
 namespace beast = boost::beast;
@@ -131,10 +132,23 @@ namespace fms
 			return;
 		}
 
-		// send / idle / close carry the session id and a sequence number.
+		// send / idle / close carry the session id and a sequence number. from_chars
+		// rather than stoul: it rejects an out-of-range value instead of returning a
+		// 64-bit one that a narrowing cast then folds into a small sequence (2^32
+		// became 0), and it needs no exception for the routine case of junk in a URL.
 		std::uint32_t seq_n = 0;
-		try { seq_n = static_cast<std::uint32_t>(std::stoul(seq)); }
-		catch (...) { close(); return; }
+		{
+			const char *const first = seq.data();
+			const char *const last = first + seq.size();
+			std::from_chars_result const r = std::from_chars(first, last, seq_n);
+			// ec catches an out-of-range value -- which is the point, since it also
+			// consumes every digit and so leaves ptr == last.
+			if (seq.empty() || r.ec != std::errc{} || r.ptr != last)
+			{
+				close();
+				return;
+			}
+		}
 
 		if (cid.empty() || !m_rtmpt_manager->validate(remote, cid, seq_n))   // validate rejects unknown ids
 		{

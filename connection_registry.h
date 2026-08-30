@@ -32,7 +32,7 @@ namespace fms
 	// queries. Holds the manager/rtmpt_manager it hands to freshly-created
 	// connections as their back-pointer.
 	//
-	// The reader/writer lock lives here: the hot reads (get_connection / has_connection
+	// The reader/writer lock lives here: the hot reads (get_connection_opt / has_connection
 	// / get_app_instance) take a SHARED lock; structural changes and admin readers take
 	// EXCLUSIVE. It is independent of the netstream-stats mutex and the apps' routing
 	// mutex -- never held together with either.
@@ -56,7 +56,6 @@ namespace fms
 		http_connection_ptr create_rtmpts_connection(boost::asio::io_context &, std::shared_ptr<boost::asio::ssl::context>);
 		void delete_http_connection(std::uint32_t);
 
-		client_session_ptr get_connection(std::uint32_t);
 		client_session_ptr get_connection_opt(std::uint32_t);
 		const std::string &get_app_instance(std::uint32_t);
 		bool has_connection(std::uint32_t);

@@ -43,8 +43,8 @@ namespace fms
 	void video_call_application::handle_audio_data(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &h)
 	{
 		rtmp_message_audio_data_ptr const audio = std::dynamic_pointer_cast<rtmp_message_audio_data>(msg);
-		client_session_ptr const conn = get_connection(connection_id);
-		if (!conn->app_instance().empty() && audio->size() > 0)
+		client_session_ptr const conn = get_connection_opt(connection_id);
+		if (conn && !conn->app_instance().empty() && audio->size() > 0)
 		{
 			auto const lock = m_registry.lock_exclusive();
 			const std::string &app_instance = conn->app_instance();
@@ -69,8 +69,8 @@ namespace fms
 			return;
 		amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
 
-		client_session_ptr const conn = get_connection(connection_id);
-		if (!conn->app_instance().empty())
+		client_session_ptr const conn = get_connection_opt(connection_id);
+		if (conn && !conn->app_instance().empty())
 		{
 			auto const lock = m_registry.lock_exclusive();
 			const std::string &app_instance = conn->app_instance();
@@ -102,8 +102,8 @@ namespace fms
 
 	void video_call_application::add_publisher_to_app_instance(std::uint32_t connection_id)
 	{
-		client_session_ptr const conn = get_connection(connection_id);
-		if (!conn->app_instance().empty())
+		client_session_ptr const conn = get_connection_opt(connection_id);
+		if (conn && !conn->app_instance().empty())
 		{
 			auto const lock = m_registry.lock_exclusive();
 			const std::string &app_instance = conn->app_instance();

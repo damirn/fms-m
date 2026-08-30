@@ -35,7 +35,6 @@ namespace
 	{
 		client_session_ptr session;
 
-		client_session_ptr get_connection(std::uint32_t) override { return session; }
 		client_session_ptr get_connection_opt(std::uint32_t) override { return session; }
 		boost::tribool handle_message(const rtmp_message_ptr &, std::uint32_t,
 			const rtmp_header &, rtmp_message_ptr &) override { return false; }

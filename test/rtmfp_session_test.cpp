@@ -57,7 +57,6 @@ namespace
 			return false;
 		}
 
-		client_session_ptr get_connection(std::uint32_t) override { return nullptr; }
 		client_session_ptr get_connection_opt(std::uint32_t) override { return nullptr; }
 		bool has_connection(std::uint32_t) override { return true; }
 		void destroy_connection(std::uint32_t) override {}
