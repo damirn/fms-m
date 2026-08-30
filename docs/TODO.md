@@ -69,31 +69,53 @@ Priority-sorted. Updated 2026-09-03.
 
 ### RTMFP (rtmfp-cpp / librtmfp)
 
-- **DH group 14 (2048-bit).** Implement group 14 so we don't depend on clients
-  negotiating down to group 2; full FlashCrypto parity. `evp_dh` is group-agnostic
-  but only ever called with the group-2 prime. (`dh.cpp`, `rtmfp/service.cpp`)
+**Closed 2026-09.** The tier that had no tests at any level now has a testable seam
+(`rtmfp_host`, plus `handle_message` moving to `app_host`) and coverage of flow
+admission, reassembly, the RTMP demux, forward-sequence semantics, the datagram
+parser and the keying-option parsers. F5 (a session that stopped accepting streams
+after 1024 flows), F4/M38 (session-id byte order, checked against RFC 7016) and L6
+are done. Verified with real rtmfp-cpp clients under strict crypto: 51 sessions,
+four-way fan-out with identical frame counts, 40/40 connect/disconnect cycles with
+stable RSS, and an RTMFP->RTMP bridge delivering identical bytes to three
+subscribers.
 
-- **Robust flow / congestion control.** `m_outstanding_bytes` tracking and correct
-  retransmit under loss. *Done when:* a multi-MB `tcpublish→tcconn` transfer
-  completes intact under simulated loss. (`rtmfp/session.cpp`)
+What is left is blocked on things this checkout does not have, not on effort:
 
-- **NetGroup / P2P parity.** Full group semantics + peer introduction so rtmfp-cpp
-  P2P (`tcconn` group mode) interops, beyond today's join + peer-list skeleton. No
-  group media relay; P2P is introducer-only. (`rtmfp/group.h`, `rtmfp/session.cpp`,
-  `redirect_ihello`)
-
-- **Chunk types we don't parse** (RFC 7016): **FRAGMENT (0x7f)** packet-level
-  fragmentation for over-MTU packets (long control/data packets break without it);
-  **ACK_BITMAP (0x50)**; **BUFFERPROBE (0x18)**; **ECN_REPORT (0xec)**;
-  **RHELLO_COOKIE_CHANGE (0x79)**.
+- **NetGroup is a join + peer-introduction skeleton, and stops there.** A `GC` flow
+  opens, `group::deserialize` reads the 32-byte group id, `service::handle_net_group`
+  adds the session, and the joiner gets back the other members' peer ids. Teardown is
+  correct -- `service::remove` drops the session from each group and erases the group
+  once empty, through weak pointers. Missing: any command but `eJoinGroup` (the enum
+  has exactly one value, so a member only leaves by disconnecting) and any group media
+  relay -- the server introduces peers and steps aside.
+  **Blocked on a reference client.** rtmfp-cpp has no NetGroup at all: no "GC"
+  signature, no group API in its public headers, and its only P2P mentions are
+  comments about NAT traversal. Implementing group semantics against no client means
+  validating Flash-era P2P behaviour against nothing but our own reading of the spec.
+  Needs librtmfp (which has NetGroup) or a real Flash-era client first.
+  (`rtmfp/group.h`, `rtmfp/session.cpp`, `redirect_ihello`)
 
 - **librtmfp app-resolution needs a real librtmfp run to close.** Root-caused and
-  fixed server-side: app matching strips a leading `/` and a trailing `?query`, so
-  the raw RFC-3986 path `/media` librtmfp sends resolves. Proven via `rtmpdump -a`
-  (interop case 6) and unit-tested (`test/match_app_test.cpp`), but librtmfp itself
-  is not available locally. Note: librtmfp's "Bad RTMFP CRC" was root-caused as
-  *their* OpenSSL-3 padding bug — no fms-m change needed.
-  (`util::match_app_name`)
+  fixed server-side: app matching strips a leading `/` and a trailing `?query`, so the
+  raw RFC-3986 path `/media` librtmfp sends resolves. Proven via `rtmpdump -a` (interop
+  case 6) and unit-tested (`test/match_app_test.cpp`), but librtmfp is not available
+  here. Its "Bad RTMFP CRC" was root-caused as *their* OpenSSL-3 padding bug -- no
+  fms-m change needed. (`util::match_app_name`)
+
+Optional parity work, none of it blocking anything:
+
+- **DH group 14 (2048-bit).** So we do not depend on clients negotiating down to
+  group 2. `evp_dh` is group-agnostic but only ever called with the group-2 prime.
+  (`dh.cpp`, `rtmfp/service.cpp`)
+
+- **Flow / congestion control.** `m_outstanding_bytes` tracking and correct retransmit
+  under loss. *Done when:* a multi-MB `tcpublish->tcconn` transfer completes intact
+  under simulated loss. Testable with what is here. (`rtmfp/session.cpp`)
+
+- **Chunk types we do not parse** (RFC 7016): **FRAGMENT (0x7f)**, packet-level
+  fragmentation for over-MTU packets, which long control/data packets need;
+  **ACK_BITMAP (0x50)**; **BUFFERPROBE (0x18)**; **ECN_REPORT (0xec)**;
+  **RHELLO_COOKIE_CHANGE (0x79)**.
 
 ### Media / server
 
@@ -253,19 +275,19 @@ Priority order; the first item is the one the others hang off.
   and command verbs we don't handle: `secureTokenResponse`, `set_playlist`/
   `playlist_ready`, client-initiated `_checkbw`, `onFCSubscribe`/`onFCUnsubscribe`.
 
-### RTMFP correctness (deferred — needs the test seam above first)
+### RTMFP correctness (the seam exists now; these are open on merit)
 
-- **`handle_flow_exception_report` is a documented no-op.** Peer-initiated
-  sending-flow teardown needs coordinated removal across `m_sending_flows` +
-  `m_flow_id_to_stream_id`/`m_stream_id_to_flow_id` + the owning app. The
-  end-of-stream half of that lifecycle landed in 2026-09 (F5,
-  `purge_stream_flows`); the peer-initiated half did not. (`rtmfp/session.cpp`)
-- **Secondary echo-cookie random is never validated** → weak return-routability.
-  Making it verifiable needs a keyed-HMAC scheme (protocol hardening).
-  (`rtmfp/service.cpp`) — 2026-07 M3
+- **`handle_flow_exception_report` is a documented no-op.** A peer telling us it has
+  abandoned one of our sending flows is ignored. Tearing the flow down needs
+  coordinated removal across `m_sending_flows`, the two stream-id maps and the owning
+  app; the end-of-stream half of that lifecycle landed as F5, the peer-initiated half
+  did not. (`rtmfp/session.cpp`)
+- **Secondary echo-cookie random is never validated** -> weak return-routability.
+  Making it verifiable needs a keyed-HMAC scheme, so it is protocol hardening rather
+  than a fix. (`rtmfp/service.cpp`) — 2026-07 M3
 - **One control-reply per received packet** (see structural item 5).
 - **Unverified redirect / glare path** in the P2P introducer. (`redirect_ihello`)
-- **Partial-reliability USERDATA semantics** — ABN (abandon) flag + MANDATORY_CUTOFF
+- **Partial-reliability USERDATA semantics** -- ABN (abandon) flag + MANDATORY_CUTOFF
   option, per-flow priority scheduling (PRI_*).
 - **No FEC.**
 
