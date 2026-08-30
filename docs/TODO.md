@@ -198,13 +198,14 @@ Priority order; the first item is the one the others hang off.
    still sit better behind a `flow_message_sink(stream_id, bytes)` boundary.
    (`rtmfp/session.cpp`, `rtmfp/service.cpp`)
 
-4. **RTMFP chunk memory has an unwritten "view vs. copy" rule.** Some chunks hold
-   `const uint8_t*` into the packet buffer that is freed when `parse()` returns; the
-   same dangling-view bug has been patched repeatedly. `ihello_chunk`,
-   `ping_reply_chunk` and `redirect_chunk` now own their copies; the rest still
-   borrow. Parser should hand `unique_ptr<chunk>`, and any chunk that outlives the
-   packet should own its buffer. (`rtmfp/chunk.h`, `rtmfp/parser.cpp`)
-   — 2026-07 M13
+4. **RTMFP chunk retention.** The rule is now written down at the top of
+   `rtmfp/chunk.h` and on `fragment`'s constructor, and the parser hands the chunk
+   through a `unique_ptr` rather than three hand-freed exits. An inbound chunk lives
+   only for the duration of `deserialize_chunk`, so views into the packet buffer are
+   correct; what matters is that a handler retaining anything past `handle_chunk`
+   copies it. Three chunks own their buffers because that rule was broken once each.
+   What is left is not a defect but a hazard: the other chunks still borrow, so any
+   new retention has to add its copy at the same time. — 2026-07 M13
 
 5. **RTMFP control replies share one `m_ready_chunk` raw slot**, hand-freed across
    13 sites (already leaked once). Replace with an owning `deque<unique_ptr<chunk>>`
