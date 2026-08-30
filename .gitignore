@@ -1,6 +1,17 @@
 /build/
-/REVIEW_FINDINGS.md
 /build-*/
 /*.log
 .cache/
 .idea/
+
+# Working documents stay out of version control: only READMEs are tracked.
+# The rest (docs/, the review files, specs and RFCs) are local notes and
+# reference material -- useful to have on disk, not to ship in the repo.
+*.md
+!README.md
+!.claude/**/*.md
+
+# Reference material: specs, RFCs, papers.
+*.pdf
+*.rfc
+*.epub
