@@ -42,7 +42,11 @@ TEST_CASE("read(n) refuses a length past the end")
 	std::vector<std::uint8_t> const v(8, 0xAB);
 	byte_reader r(v.data(), v.size());
 
-	std::uint8_t out[8]{};
+	// The destination is deliberately larger than anything asked for, so what is
+	// under test is the SOURCE bound. Sizing it to 8 and asking for 9 would also
+	// make the destination too small, which GCC flags as an out-of-bounds memcpy --
+	// correctly, since it cannot prove the reader throws first.
+	std::uint8_t out[32]{};
 	CHECK_THROWS_AS(r.read(out, 9), buffer_eof_exception);
 	CHECK(r.available() == 8);
 	// the exact remaining length is allowed
@@ -57,7 +61,7 @@ TEST_CASE("read refuses a length that would wrap")
 {
 	std::vector<std::uint8_t> const v(8, 0xAB);
 	byte_reader r(v.data(), v.size());
-	std::uint8_t out[8]{};
+	std::uint8_t out[32]{};
 	CHECK_THROWS_AS(r.read(out, std::numeric_limits<std::size_t>::max()), buffer_eof_exception);
 	CHECK(r.available() == 8);
 }

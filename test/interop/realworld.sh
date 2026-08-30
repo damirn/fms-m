@@ -136,7 +136,14 @@ echo "=== server up (rtmp:$RTMP_PORT rtmpt:$RTMPT_PORT rtmps:$RTMPS_PORT rtmpts:
 # interop leans on this too (wait_publishing greps the -P directory), but only
 # implicitly, so assert it outright.
 echo "[0] --log-path places the log being written"
-ls "$WORK"/logs/*.log >/dev/null 2>&1 && ok "log file is under --log-path" || bad "no log under --log-path"
+# Boost.Log creates the file lazily, on the first record, and start_server returns
+# as soon as the port is listening -- so poll rather than check the instant after.
+have_log=0
+for _ in $(seq 1 50); do
+	if ls "$WORK"/logs/*.log >/dev/null 2>&1; then have_log=1; break; fi
+	sleep 0.1
+done
+[ "$have_log" = 1 ] && ok "log file is under --log-path" || bad "no log under --log-path"
 ls ./*.log >/dev/null 2>&1 && bad "a log leaked into the current directory" || ok "nothing written to the CWD"
 
 # pub <src> <name> [extra ffmpeg args] -> echoes pid
