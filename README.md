@@ -378,19 +378,42 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-`BUILD_CLIENT` (on by default) adds the end-to-end `b2b_test`, the chunk-parser
-tests, and the **interop matrix** — `test/interop/interop.sh`, which drives real
-reference clients (rtmpdump, ffmpeg, and rtmfp-cpp's `tcpublish`/`tcconn` when
-`RTMFP_CPP` points at their build directory) and asserts on both the media and
-the RTMP user-control events.
+`BUILD_CLIENT` (on by default) adds the end-to-end `b2b_test` and the
+chunk-parser tests.
+
+Two matrices drive real reference clients, so both need those binaries on
+`PATH`:
+
+| Script | Runs under `ctest`? | What it covers |
+|--------|---------------------|----------------|
+| `test/interop/interop.sh` | yes, as test `interop` | Protocol shape: which RTMP user-control events the server sends and the client consumes. Drives rtmpdump, ffmpeg, and rtmfp-cpp's `tcpublish`/`tcconn` (set `RTMFP_CPP` to their build directory). |
+| `test/interop/realworld.sh` | no — run it by hand | Outcome: real encodes surviving the round trip (H.264 profiles, AAC/MP3, audio-only, video-only, HEVC/AV1), concurrency and mid-stream failure, each transport carrying media, a 45s durability pull, and the slow-consumer shed. Takes ~4 minutes, which is why it is not registered. |
+
+`RTMPE` skips on ARM (rtmpdump bus-errors on the encrypted handshake); HEVC and
+AV1 skip because Enhanced RTMP is not implemented yet — both are deliberate, and
+the scripts say so rather than passing quietly.
 
 Other options:
 
 | Option | Effect |
 |--------|--------|
-| `-DSANITIZE=address,undefined` | Build with the named sanitizers. |
+| `-DSANITIZE=address,undefined` | Build with the named sanitizers. Also sets `halt_on_error` for every registered test, so a TSan/UBSan finding fails the run instead of printing a warning into a green log. |
 | `-DWERROR=ON` | Treat warnings as errors. |
 | `-DBUILD_FUZZERS=ON` | AMF fuzzers; `fuzz_run` is registered as a ctest. |
+
+### Throughput benchmark
+
+`bench_rtmp_throughput` spawns a server and loads it over RTMP. It is a manual
+benchmark, not a test:
+
+```sh
+# 1 publisher -> 32 subscribers on ONE stream (fan-out), 14 server threads
+./build/bench_rtmp_throughput 16384 12 60000 32 14 27000 512 0 1
+```
+
+The trailing `1` selects fan-out; without it the run is N independent
+publisher/subscriber pairs instead. On Linux it also reports how many cores the
+server burned versus the whole box, which is what shows where it saturates.
 
 ---
 
