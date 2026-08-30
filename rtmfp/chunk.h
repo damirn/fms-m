@@ -9,6 +9,26 @@
 
 namespace fms
 {
+	// OWNERSHIP: who owns the bytes a chunk points at.
+	//
+	// An inbound chunk is deserialized from the packet buffer, handed to the
+	// handler, and destroyed -- all inside parser::deserialize_chunk, before
+	// parse() returns and the buffer goes away. So its members may be plain views
+	// into that buffer, and most are. The rule is what the HANDLER may do with
+	// them:
+	//
+	//   * Use them and drop them -- always fine.
+	//   * Retain them past handle_chunk -- only via a copy. `fragment` is where
+	//     this bites: a whole message borrows (it is consumed in the same call),
+	//     while a fragmented one copies, because it has to survive until the rest
+	//     of the message arrives. See fragment's constructor.
+	//
+	// A chunk that is itself retained past the packet must own its buffer. Three
+	// do, each after this rule was broken once: ihello_chunk's tag (echoed into a
+	// later reply), ping_reply_chunk's payload and redirect_chunk's tag (both
+	// serialized after parse() returns). The rest still borrow, which is correct
+	// as long as nothing starts retaining them -- so add a copy at the same time
+	// as any new retention, not afterwards.
 	class chunk
 	{
 	public:

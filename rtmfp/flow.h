@@ -13,6 +13,10 @@ namespace fms
 {
 	struct fragment
 	{
+		// `data` points into the packet buffer, which is gone once parse() returns.
+		// A whole message is consumed inside the same handle_chunk call, so it may
+		// borrow; anything fragmented has to outlive the packet to be reassembled,
+		// so it copies. See the ownership rule at the top of chunk.h.
 		fragment(const vlu_t &seq, const std::uint8_t *data, const std::uint16_t &data_len, const std::uint8_t &frag_ctrl, bool make_copy = false)
 			: m_seq(seq)
 			, m_data_len(data_len)
