@@ -42,7 +42,6 @@ namespace fms
 		// ---- connections ------------------------------------------------------
 		// get_connection throws when the id is gone; get_connection_opt returns
 		// nullptr, which is what the fan-out and notify paths want.
-		virtual client_session_ptr get_connection(std::uint32_t) = 0;
 		virtual client_session_ptr get_connection_opt(std::uint32_t) = 0;
 		virtual bool has_connection(std::uint32_t) = 0;
 		// Close a connection from another thread; posts onto its own io_context.

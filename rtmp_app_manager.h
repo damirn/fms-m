@@ -61,7 +61,6 @@ namespace fms
 		http_connection_ptr create_rtmpts_connection(boost::asio::io_context &, std::shared_ptr<boost::asio::ssl::context>);
 		void delete_http_connection(std::uint32_t);
 
-		client_session_ptr get_connection(std::uint32_t) override;
 		// Non-throwing lookup: nullptr when the connection is gone (an ordinary miss
 		// on the fan-out / notify paths, not an error).
 		client_session_ptr get_connection_opt(std::uint32_t) override;

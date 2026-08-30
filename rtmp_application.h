@@ -116,11 +116,6 @@ namespace fms
 		void send_play_start_messages(std::uint32_t, std::uint32_t, std::uint32_t, const std::string &, bool is_recorded = false);
 		void send_close(std::uint32_t);
 
-		client_session_ptr get_connection(std::uint32_t connection_id)
-		{
-			return m_app_manager->get_connection(connection_id);
-		}
-
 		// Non-throwing: nullptr when the connection is gone.
 		client_session_ptr get_connection_opt(std::uint32_t connection_id)
 		{

@@ -53,7 +53,6 @@ namespace fms
 	http_connection_ptr rtmp_app_manager::create_http_connection(boost::asio::io_context &io) { return m_conn_registry->create_http_connection(io); }
 	http_connection_ptr rtmp_app_manager::create_rtmpts_connection(boost::asio::io_context &io, std::shared_ptr<boost::asio::ssl::context> ctx) { return m_conn_registry->create_rtmpts_connection(io, std::move(ctx)); }
 	void rtmp_app_manager::delete_http_connection(std::uint32_t id) { m_conn_registry->delete_http_connection(id); }
-	client_session_ptr rtmp_app_manager::get_connection(std::uint32_t conn_id) { return m_conn_registry->get_connection(conn_id); }
 	client_session_ptr rtmp_app_manager::get_connection_opt(std::uint32_t conn_id) { return m_conn_registry->get_connection_opt(conn_id); }
 	const std::string &rtmp_app_manager::get_app_instance(std::uint32_t conn_id) { return m_conn_registry->get_app_instance(conn_id); }
 	bool rtmp_app_manager::has_connection(std::uint32_t conn_id) { return m_conn_registry->has_connection(conn_id); }
@@ -79,7 +78,12 @@ namespace fms
 		// app is selected the connection's app handles everything. Delegate the connect
 		// parsing + app selection to the router.
 		if (invoke->function()->value() == "connect")
-			return m_router->route(invoke, connection_id, get_connection(connection_id), header, res);
+		{
+			// route dereferences the session unconditionally, so a connect for a
+			// connection that has already gone is dropped rather than routed.
+			client_session_ptr const conn = get_connection_opt(connection_id);
+			return conn ? m_router->route(invoke, connection_id, conn, header, res) : boost::tribool(false);
+		}
 
 		return false;
 	}

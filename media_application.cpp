@@ -234,7 +234,9 @@ namespace fms
 
 	void media_application::handle_invoke_create_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id, rtmp_message_ptr &res)
 	{
-		client_session_ptr const conn = get_connection(connection_id);
+		client_session_ptr const conn = get_connection_opt(connection_id);
+		if (!conn)
+			return;   // the connection went away between the invoke and here
 		std::uint32_t const stream_id = conn->reserve_stream_id();
 
 		res = create_stream(invoke, connection_id, stream_id);
@@ -556,7 +558,9 @@ namespace fms
 
 	bool media_application::add_qos_stream(const std::string &stream, std::uint32_t connection_id, std::uint32_t stream_id)
 	{
-		client_session_ptr const conn = get_connection(connection_id);
+		client_session_ptr const conn = get_connection_opt(connection_id);
+		if (!conn)
+			return false;
 		std::uint32_t const new_stream_id = conn->reserve_stream_id();
 		auto const lock = m_registry.lock_exclusive();
 		if (!m_registry.add_broadcaster(std::make_pair(connection_id, new_stream_id), std::string("QOS!" + stream), lock))
