@@ -139,6 +139,10 @@ Optional parity work, none of it blocking anything:
   The sole exception is `video_call_application`, which does scope by instance
   (`m_instance_to_client`) — so the plumbing is proven, just not applied to streams
   or shared objects. Either honour the instance or stop accepting it silently.
+  `app_host::get_app_instance` is the unused hook for the first option: nothing calls
+  it today, and it still throws on an unknown connection rather than returning the
+  empty string an absent instance already uses. Left as-is deliberately -- deciding
+  its error contract with no consumer to validate against would be guessing.
   (`connect_router.cpp`, `stream_registry.h`, `so_manager.*`)
 
 - **HLS / DASH / fMP4 output.** FLV recording is the only output container.
