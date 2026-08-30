@@ -9,6 +9,7 @@
 #include "util.h"
 
 #include <iostream>
+#include <memory>
 
 namespace fms
 {
@@ -83,55 +84,54 @@ namespace fms
 
 	bool parser::deserialize_chunk(std::uint8_t type, std::uint16_t len, byte_reader &raw)
 	{
-		chunk *c = nullptr;
+		// The chunk lives exactly as long as this call. Anything it hands the handler
+		// is a view into the packet buffer, which parse() frees on return -- see the
+		// ownership rule on chunk.h. unique_ptr so the three exits cannot leak it or
+		// free it twice.
+		std::unique_ptr<chunk> c;
 
 		switch (type)
 		{
 		case chunk::eInitiatorHello:
-			c = new ihello_chunk;
+			c = std::make_unique<ihello_chunk>();
 			break;
 		case chunk::eInitiatorInitialKeying:
-			c = new iikeying_chunk;
+			c = std::make_unique<iikeying_chunk>();
 			break;
 		case chunk::eUserData:
-			c = new user_data_chunk;
+			c = std::make_unique<user_data_chunk>();
 			break;
 		case chunk::eNextUserData:
-			c = new next_user_data_chunk;
+			c = std::make_unique<next_user_data_chunk>();
 			break;
 		case chunk::eDataAcknowledgementRanges:
-			c = new range_ack_chunk;
+			c = std::make_unique<range_ack_chunk>();
 			break;
 		case chunk::eFlowExceptionReportChunk:
-			c = new flow_exception_report_chunk;
+			c = std::make_unique<flow_exception_report_chunk>();
 			break;
 		case chunk::ePing:
-			c = new ping_chunk;
+			c = std::make_unique<ping_chunk>();
 			break;
 		case chunk::eSessionClose:
-			c = new close_chunk;
+			c = std::make_unique<close_chunk>();
 			break;
 		case chunk::eSessionCloseAcknowledgement:
-			c = new close_ack_chunk;
+			c = std::make_unique<close_ack_chunk>();
 			break;
 		default:
 			break;
 		}
-		if (c)
-		{
-			// A chunk whose deserialize overran its bounds leaves its length/offset
-			// fields attacker-set or indeterminate; do NOT hand it to the handler
-			// (which would use those lengths for reads/allocations).
-			if (!c->deserialize(raw, len))
-			{
-				delete c;
-				return false;
-			}
-			bool const ret = m_chunk_handler.handle_chunk(c);
-			delete c;
-			return ret;
-		}
-		return false;
+		if (!c)
+			return false;
+
+		// A chunk whose deserialize overran its bounds leaves its length/offset
+		// fields attacker-set or indeterminate; do NOT hand it to the handler
+		// (which would use those lengths for reads/allocations).
+		if (!c->deserialize(raw, len))
+			return false;
+
+		return m_chunk_handler.handle_chunk(c.get());
 	}
 
 	bool parser::check_checksum(byte_reader &raw)
