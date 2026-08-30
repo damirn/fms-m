@@ -130,6 +130,15 @@ ls -1 "$WORK"/*.flv | while read -r f; do printf "  %-18s %s\n" "$(basename "$f"
 start_server || exit 1
 echo "=== server up (rtmp:$RTMP_PORT rtmpt:$RTMPT_PORT rtmps:$RTMPS_PORT rtmpts:$RTMPTS_PORT rtmfp:$RTMFP_PORT) ==="
 
+# --log-path placed only rotated files, not the one being written, so the live log
+# went to the CWD instead. Harmless where that is writable, fatal where it is not:
+# the container runs as non-root with CWD=/ and threw filesystem_error at startup.
+# interop leans on this too (wait_publishing greps the -P directory), but only
+# implicitly, so assert it outright.
+echo "[0] --log-path places the log being written"
+ls "$WORK"/logs/*.log >/dev/null 2>&1 && ok "log file is under --log-path" || bad "no log under --log-path"
+ls ./*.log >/dev/null 2>&1 && bad "a log leaked into the current directory" || ok "nothing written to the CWD"
+
 # pub <src> <name> [extra ffmpeg args] -> echoes pid
 pub() {
 	local src="$1" name="$2"; shift 2
