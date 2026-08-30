@@ -310,7 +310,8 @@ For reference, Adobe FMS 4.5 bounds the same backlog by bytes (measured at
 anything at RTMP level and without thinning the stream first. This server keeps
 that shape but sheds before it drops, which is gentler and invisible on the
 wire. The measurements behind those numbers are in
-`docs/slow-consumer.md` (working tree only, see below).
+`docs/slow-consumer.md`, which is a working-tree note and not part of this
+repository.
 
 ---
 
@@ -421,21 +422,3 @@ server burned versus the whole box, which is what shows where it saturates.
 
 The server writes rotating log files to `--log-path` (default: current
 directory). Verbosity is controlled with `--log-level` (higher is more verbose).
-
----
-
-## Further documentation
-
-These live in the working tree but are **not tracked in git** — they are notes
-and reference material, not part of what the repo ships. A fresh clone will not
-have them.
-
-| Document | Contents |
-|----------|----------|
-| `docs/concurrency.md` | The one-thread-per-`io_context` contract every connection relies on, and what may touch what from where. Read this before changing anything threading-related. |
-| `docs/slow-consumer.md` | What the server does when a subscriber stops reading, what Adobe FMS 4.5 does (measured against a stock 4.5 install), and why they differ. |
-| `docs/TODO.md` | The whole open backlog in one place: protocol gaps against rtmpdump/librtmp and rtmfp-cpp, structural debt, and the unfinished review findings. Priority-sorted. |
-| `docs/parsing.md` | How the RTMP chunk parser frames bytes into messages, and the one exception contract it relies on. |
-| `docs/enhanced-rtmp-plan.md` | Plan for Enhanced RTMP (E-RTMP v2) codec support. |
-| `docs/reference/`, `docs/amf3-spec.pdf` | Protocol specs (Enhanced RTMP v2, AMF3). |
-| `REVIEW_2026-09.md`, `REVIEW_FINDINGS.md` | Code-review findings, priority-sorted. |
