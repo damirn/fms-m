@@ -2,7 +2,6 @@
 #include "rtmp_header.h"
 #include "byte_order.h"
 
-#include <boost/asio/detail/socket_ops.hpp>
 
 namespace fms
 {

@@ -10,7 +10,6 @@
 
 #include <string>
 
-#include <boost/asio/detail/socket_ops.hpp>
 
 namespace fms
 {
