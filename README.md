@@ -34,8 +34,8 @@ single process scales across all available CPU cores.
   - **RTMPT** — RTMP tunnelled over HTTP (default port `80`)
   - **RTMPTS** — RTMPT tunnelled over HTTPS (TLS); opt-in, shares the TLS cert/key
   - **RTMFP** — Adobe's UDP real-time protocol (default port `1935/udp`)
-- **Codec pass-through** for H.264 video and AAC audio, plus built-in Speex and
-  G.711 audio support used by the call application.
+- **Codec pass-through** for H.264 video and AAC audio, plus built-in Speex
+  audio support used by the call application.
 - **Admin application** — a password-protected control app exposing live
   application/client/stream statistics and the ability to disconnect clients.
 - **Multi-threaded** — a pool of I/O threads, one `io_context` per thread, with
