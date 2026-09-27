@@ -124,9 +124,17 @@ Boost 1.76 → 1.91, OpenSSL 3.0 → 3.6, GCC 12 → 16 and Clang 16 → 22:
 
 Where two compilers are listed, both produce a clean build. The Ubuntu 26.04 and
 Arch Linux images are additionally validated clean under **AddressSanitizer**
-(including 24 concurrent RTMFP clients). The `Dockerfile*` build files accept
-`--build-arg CXX=clang++` and sanitizer flags via `--build-arg CXXFLAGS_EXTRA` /
-`LDFLAGS_EXTRA`.
+(including 24 concurrent RTMFP clients).
+
+All three build files take `--build-arg RUN_TESTS=1` to run the unit suite as
+part of the build. They differ otherwise, because they exist for different
+reasons:
+
+| Build file          | Purpose | Build args |
+|---------------------|---------|------------|
+| `Dockerfile`        | Ships the server: two-stage, non-root, runtime image carries only the binary and the libraries it links. | `RUN_TESTS`, `SANITIZE=address\|thread\|undefined` |
+| `Dockerfile.ubuntu` | Compiles against newer toolchains; single-stage on purpose. | `RUN_TESTS`, `CXX`, `CXXFLAGS_EXTRA`, `LDFLAGS_EXTRA` |
+| `Dockerfile.arch`   | Same, against the newest GCC/Clang/Boost/OpenSSL. | `RUN_TESTS`, `CXX`, `CXXFLAGS_EXTRA`, `LDFLAGS_EXTRA` |
 
 The bundled client tools (`rtmp_client`, `fms_helper`) build alongside the
 server on every combination above. The `fms_helper` origin-pull relay is
@@ -309,9 +317,7 @@ For reference, Adobe FMS 4.5 bounds the same backlog by bytes (measured at
 ~8–10 MB, independent of bitrate) and then simply disconnects, without sending
 anything at RTMP level and without thinning the stream first. This server keeps
 that shape but sheds before it drops, which is gentler and invisible on the
-wire. The measurements behind those numbers are in
-`docs/slow-consumer.md`, which is a working-tree note and not part of this
-repository.
+wire.
 
 ---
 
@@ -379,11 +385,16 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-`BUILD_CLIENT` (on by default) adds the end-to-end `b2b_test` and the
-chunk-parser tests.
+`BUILD_CLIENT` (on by default) builds `rtmp_client` and `fms_helper`, and with
+them every test that links the client library: the end-to-end `b2b_test`, the
+`interop` matrix below, and the `handshake`, `handshaker`, `rtmfp_session`,
+`rtmpt_manager`, `chunk_parser` and `mixer` tests. The throughput benchmark
+needs it too. Turning it off leaves only the tests that link the server
+sources.
 
 Two matrices drive real reference clients, so both need those binaries on
-`PATH`:
+`PATH` — `interop` is registered only if CMake finds `rtmpdump`, `ffmpeg` and
+`ffprobe` at configure time, and prints why it skipped otherwise:
 
 | Script | Runs under `ctest`? | What it covers |
 |--------|---------------------|----------------|
