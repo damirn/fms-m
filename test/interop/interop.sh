@@ -50,10 +50,6 @@ RTMFP_CPP="${RTMFP_CPP:-$ROOT/../rtmfp-cpp/test}"
 TCPUBLISH="$RTMFP_CPP/tcpublish"
 TCCONN="$RTMFP_CPP/tcconn"
 
-# macOS: Boost.Log needs icu4c@74 at its old keg path (see docs / build notes).
-if [[ "$(uname)" == "Darwin" && -d /opt/homebrew/opt/icu4c@74/lib ]]; then
-	export DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/opt/icu4c@74/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
-fi
 
 PASS=0; FAIL=0; SKIP=0
 ok()   { echo "  PASS: $*"; PASS=$((PASS+1)); }

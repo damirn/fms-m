@@ -28,9 +28,6 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 FMS="${1:-$ROOT/build/fms-m}"
 CLIENT="${CLIENT:-$(dirname "$FMS")/rtmp_client}"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/fms-realworld.XXXXXX")"
-# Boost.Log resolves ICU at its old keg path on macOS, as CMake's test env does.
-[ "$(uname)" = Darwin ] && export DYLD_FALLBACK_LIBRARY_PATH="${DYLD_FALLBACK_LIBRARY_PATH:-/opt/homebrew/opt/icu4c@74/lib}"
-
 RTMP_PORT=27100; RTMPT_PORT=27101; RTMFP_PORT=27102
 RTMPS_PORT=27543; RTMPTS_PORT=27544
 TLS_CERT="$WORK/cert.pem"; TLS_KEY="$WORK/key.pem"

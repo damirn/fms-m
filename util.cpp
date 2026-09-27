@@ -21,7 +21,7 @@ namespace fms
 	{
 		// The connect "app" is a URL path: strip a leading '/' (rtmfp://host/media
 		// has the raw path "/media") and any trailing "?query", which is not part of
-		// the app identity. Hand-rolled -- Boost.URL needs >= 1.81, we build 1.76.
+		// the app identity. Hand-rolled to keep Boost.URL out of the dependencies.
 		if (!view.empty() && view.front() == '/')
 			view.remove_prefix(1);
 		view = strip_query(view);

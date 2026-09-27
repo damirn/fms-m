@@ -65,10 +65,10 @@ The publish/play/record URL for the media app is
 
 - A C++23 compiler (Apple clang 16+, or GCC 12+)
 - CMake ≥ 3.16
-- **Boost** — `date_time`, `log`, `log_setup`, `program_options`, `thread`
-  (macOS builds pin Boost **1.76**; Linux uses the system Boost). Boost.System is
-  header-only since 1.69 and is deliberately *not* a linked component — newer
-  distributions no longer ship the stub library.
+- **Boost** — `date_time`, `log`, `log_setup`, `program_options`, `thread`.
+  Whatever the system provides; there is no version pin on any platform.
+  Boost.System is header-only since 1.69 and is deliberately *not* a linked
+  component — newer distributions no longer ship the stub library.
 - **OpenSSL 3** — `libcrypto` (the **legacy provider** must be available for
   RTMPE, which uses RC4) and `libssl` (for the TLS transports, RTMPS / RTMPTS)
 - **Speex** — audio codec
@@ -77,22 +77,14 @@ The publish/play/record URL for the media app is
 ### macOS (Homebrew)
 
 ```sh
-brew install cmake boost@1.76 openssl@3 speex pkg-config
+brew install cmake boost openssl@3 speex pkg-config
 
 cmake -S . -B build
 cmake --build build -j
 ```
 
-The CMake configuration locates the keg-only Homebrew `boost@1.76`, `openssl@3`,
-and `speex` automatically.
-
-> **Runtime note (macOS):** Boost.Log links against ICU. If the server fails to
-> start with a missing `libicudata` error, point the loader at the matching ICU
-> keg, e.g.:
->
-> ```sh
-> DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/opt/icu4c@74/lib ./build/fms-m ...
-> ```
+Homebrew's `boost` installs into the prefix CMake already searches; the
+keg-only `openssl@3` and `speex` are located automatically.
 
 ### Linux (Debian/Ubuntu)
 
@@ -112,11 +104,11 @@ The resulting binary is `build/fms-m`.
 The server has been built **warning-free** and its full RTMP / RTMPE / RTMPS /
 RTMPT / RTMPTS / RTMFP functional suite run successfully on the following
 combinations, spanning
-Boost 1.76 → 1.91, OpenSSL 3.0 → 3.6, GCC 12 → 16 and Clang 16 → 22:
+Boost 1.81 → 1.92, OpenSSL 3.0 → 3.6, GCC 12 → 16 and Clang 16 → 22:
 
 | OS                    | Compiler(s)             | Boost | OpenSSL | Build file          |
 |-----------------------|-------------------------|-------|---------|---------------------|
-| macOS 15              | Apple Clang 16          | 1.76  | 3.6     | *(Homebrew)*        |
+| macOS 15              | Apple Clang 16          | 1.92  | 3.6     | *(Homebrew)*        |
 | Debian 12 (bookworm)  | GCC 12.2                | 1.81  | 3.0     | *(host / apt)*      |
 | Debian 13 (trixie)    | GCC 14.2                | 1.83  | 3.5     | `Dockerfile`        |
 | Ubuntu 26.04          | GCC 15.2 · Clang 21     | 1.90  | 3.5     | `Dockerfile.ubuntu` |

@@ -1,16 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
 project(fms-m CXX)
 
-# Keep using the classic FindBoost module (Homebrew boost@1.76 ships no CMake config).
+# Keep using the classic FindBoost module: see Boost_NO_BOOST_CMAKE below.
 if(POLICY CMP0167)
   cmake_policy(SET CMP0167 OLD)
 endif()
 
 # Have FindBoost do its own library/header search instead of delegating to Boost's
-# CMake config. Homebrew's boost@1.76 ships no config at all, and newer Boost's
-# config (e.g. 1.90 on Ubuntu 26.04 under CMake 4.x) fails the per-component
-# lookup; the direct search works consistently across all our toolchains.
+# CMake config: that config (e.g. 1.90 on Ubuntu 26.04 under CMake 4.x) fails the
+# per-component lookup, while the direct search works across all our toolchains.
 set(Boost_NO_BOOST_CMAKE ON)
+# The bundled FindBoost carries a dependency table that trails Boost releases;
+# it resolves our components fine, so don't warn about versions it predates.
+set(Boost_NO_WARN_NEW_VERSIONS 1)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,23 +32,16 @@ endif()
 # distros, e.g. Ubuntu 26.04 / Boost 1.90, no longer ship the stub library).
 set(BOOST_COMPONENTS date_time log log_setup program_options thread)
 
-if(APPLE)
-  # Homebrew boost@1.76 is keg-only and ships no CMake config, so point the
-  # classic FindBoost module at the keg and pin the version.
-  set(BOOST_ROOT /opt/homebrew/opt/boost@1.76)
-  set(Boost_NO_SYSTEM_PATHS ON)
-  find_package(Boost 1.76 EXACT COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
-else()
-  # Linux and other systems: use whatever Boost the distro provides.
-  find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
-endif()
+# Use whatever Boost the system provides: Homebrew's current boost installs into
+# the prefix FindBoost already searches, so macOS needs no special case.
+find_package(Boost REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 message(STATUS "Boost Include: ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost Libraries: ${Boost_LIBRARIES}")
 
 add_definitions(-DBOOST_LOG_DYN_LINK)
 # Silence Boost header noise under modern compilers (global bind placeholders).
 add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
-# Boost.Asio <= 1.76 predates C++20's removal of std::result_of; harmless on newer.
+# Boost.Asio <= 1.76 predates C++20's removal of std::result_of; inert on newer.
 add_definitions(-DBOOST_ASIO_HAS_STD_INVOKE_RESULT=1)
 # Boost.Asio/date_time internally include deprecated Boost headers (e.g.
 # boost/detail/iterator.hpp) that emit #pragma message notes GCC can't silence
@@ -74,7 +69,7 @@ if(APPLE)
   find_library(APPKIT AppKit REQUIRED)
 endif()
 
-# -Wno-deprecated-* only silences Boost 1.76 / libc++ C++23 header internals.
+# -Wno-deprecated-* only silences Boost / libc++ C++23 header internals.
 # Optimization/-g come from CMAKE_BUILD_TYPE (see the default set above).
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wstrict-aliasing=2 -Wno-write-strings -Wno-deprecated-declarations")
 
@@ -108,7 +103,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp)
 
 # SYSTEM: third-party headers must not produce warnings we would then have to
-# silence globally. Boost 1.76 alone emits ~12k -Wold-style-cast.
+# silence globally. Boost's headers alone emit ~12k -Wold-style-cast.
 include_directories(SYSTEM
   ${Boost_INCLUDE_DIRS}
   ${SPEEX_INCLUDE_DIRS}
@@ -210,10 +205,11 @@ endif()
 # ---------------------------------------------------------------------------
 enable_testing()
 
-# macOS: Boost.Log resolves ICU at its old keg path. Tests that link Boost.Log
-# need it on DYLD_FALLBACK_LIBRARY_PATH; override for a different install.
+# Escape hatch for a macOS Boost.Log built against a keg-only ICU: such a build
+# hardcodes an install name that may not resolve. Empty for Homebrew's boost,
+# which links no ICU at all.
 if(APPLE)
-  set(FMS_TEST_DYLD_PATH "/opt/homebrew/opt/icu4c@74/lib" CACHE STRING
+  set(FMS_TEST_DYLD_PATH "" CACHE STRING
       "DYLD_FALLBACK_LIBRARY_PATH for tests that link Boost.Log")
 endif()
 
@@ -285,7 +281,7 @@ if(BUILD_TESTS)
   target_link_libraries(app_host_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
   add_test(NAME app_host_test COMMAND app_host_test)
   if(APPLE)
-    # Boost.Log wants icu4c@74 at its old keg path (as interop.sh does).
+    # Empty unless Boost.Log was built against a keg-only ICU; see above.
     set_tests_properties(app_host_test PROPERTIES
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
@@ -491,7 +487,7 @@ if(BUILD_CLIENT)
   # Was built but never registered, so it only ran if someone invoked it by hand.
   add_test(NAME chunk_parser_test COMMAND chunk_parser_test)
   if(APPLE)
-    # Links Boost.Log, which wants icu4c@74 at its old keg path (as interop.sh does).
+    # Links Boost.Log: empty unless that was built against a keg-only ICU.
     set_tests_properties(chunk_parser_test PROPERTIES
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
