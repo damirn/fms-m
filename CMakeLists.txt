@@ -286,7 +286,7 @@ if(BUILD_TESTS)
   endif()
 
   add_executable(app_host_test
-    test/test_main.cpp test/app_host_test.cpp
+    test/test_main.cpp test/app_host_test.cpp test/rtmp_message_test.cpp
     rtmp_application.cpp so_manager.cpp random_string.cpp client_session.cpp
     rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp rtmp_so_message.cpp
     amf0.cpp amf3.cpp config.cpp logging.cpp)

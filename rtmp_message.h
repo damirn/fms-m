@@ -490,6 +490,11 @@ namespace fms
 	public:
 		using parameters_list_t = std::list<amf0_type_ptr>;
 
+		// Bodies decode AMF values until the buffer is empty, so a framing-legal
+		// message of small values becomes one heap-allocated parameter per byte.
+		// Real invokes carry a handful; this is well clear of any of them.
+		static constexpr std::size_t eMaxParameters = 64;
+
 	protected:
 		// Only the AMF-bearing messages need a codec: it carries a reference table,
 		// so keeping it in the base put 32 unused bytes on every A/V frame.

@@ -16,7 +16,11 @@ namespace fms
 	{
 		m_amf0.read_short_string(buffer, m_function);
 		while(buffer.available() > 0)
+		{
+			if (m_params.size() == eMaxParameters)
+				throw amf0_read_exception();
 			m_params.push_back(m_amf0.read(buffer));
+		}
 	}
 
 	void rtmp_message_notify::serialize(byte_writer &buffer)
@@ -74,7 +78,11 @@ namespace fms
 		m_amf0.read_number(buffer, m_invoke_id);
 
 		while(buffer.available() > 0)
+		{
+			if (m_params.size() == eMaxParameters)
+				throw amf0_read_exception();
 			m_params.push_back(m_amf0.read(buffer));
+		}
 	}
 
 	void rtmp_message_invoke::serialize(byte_writer &buffer)
