@@ -146,6 +146,9 @@ namespace fms
 			// stale broadcaster would survive a re-play and misroute frames.
 			m_stream_clients.right.erase(sub);
 			m_stream_clients.insert(stream_client_map_t::value_type(broadcaster, sub));
+			// As in add_broadcaster: teardown sweeps m_clients, so own the stream id
+			// whether or not it came from createStream.
+			m_clients[sub.first].insert(sub.second);
 		}
 
 		stream_client_ptr find_subscriber(const stream_client_id_t &id) const
@@ -234,7 +237,13 @@ namespace fms
 
 		// ---- waiting clients --------------------------------------------------
 
-		void add_waiting(const std::string &name, const subscriber &s, const exclusive_guard &) { m_waiting_clients[name].insert(s); }
+		void add_waiting(const std::string &name, const subscriber &s, const exclusive_guard &)
+		{
+			m_waiting_clients[name].insert(s);
+			// As in add_broadcaster and add_subscriber: teardown sweeps m_clients, and a
+			// waiting client may sit on a stream id that never came from createStream.
+			m_clients[s.m_id].insert(s.m_stream_id);
+		}
 
 		// Take (and remove) every client waiting on `name`, to promote to subscribers.
 		std::vector<subscriber> take_waiting(const std::string &name, const exclusive_guard &)
