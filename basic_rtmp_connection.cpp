@@ -63,12 +63,17 @@ namespace fms
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
 			rtmp_message_chunk_size_ptr const cs_msg = std::static_pointer_cast<rtmp_message_chunk_size>(msg);
-			m_parser.set_chunk_size(cs_msg->chunk_size());
+			// Spec 5.4.1: 1..0xFFFFFF. A zero would stall the chunk walk.
+			if (std::uint32_t const n = cs_msg->chunk_size(); n >= 1 && n <= 0xFFFFFF)
+				m_parser.set_chunk_size(n);
 		}
 		else if (msg->type() == rtmp_message::eMessageWindowAcknowledgementSize)
 		{
 			rtmp_message_window_acknowledgement_size_ptr const ack = std::static_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
-			m_win_ack = m_bytes_read_notify = ack->size();
+			// A zero window never advances m_bytes_read_notify, so the >= test below
+			// stays true and the server answers every single read with an ack.
+			if (ack->size() > 0)
+				m_win_ack = m_bytes_read_notify = ack->size();
 		}
 	}
 
