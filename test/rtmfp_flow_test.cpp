@@ -165,3 +165,28 @@ TEST_CASE("rtmfp flow: advertised receive window shrinks as the reassembly backl
 	CHECK(f.advertised_rwnd() == flow::eRecvWindowBlocks - f.fragment_count());
 	CHECK(f.advertised_rwnd() < flow::eRecvWindowBlocks);
 }
+
+// create_message() refuses an abusive reassembled size by returning nullptr, but
+// it left m_msg_len at the accumulated total, so the caller built a span of
+// {nullptr, >16MB}. That span is not empty, and session.cpp walks it.
+TEST_CASE("rtmfp flow: an oversize reassembly yields an empty span, not a null one")
+{
+	flow f(vlu_t{1}, flow::eReceiver);
+
+	std::uint16_t const chunk_len = 60000;
+	std::vector<std::uint8_t> const chunk(chunk_len, 0xAB);
+	std::uint64_t const n = (flow::eMaxReassembledMsgLen / chunk_len) + 2;   // just over the cap
+
+	f.add_fragment(std::make_shared<fragment>(vlu_t{1}, chunk.data(), chunk_len,
+	                                          static_cast<std::uint8_t>(fragment::eBegin), true));
+	for (std::uint64_t seq = 2; seq < n; ++seq)
+		f.add_fragment(std::make_shared<fragment>(vlu_t{seq}, chunk.data(), chunk_len,
+		                                          static_cast<std::uint8_t>(fragment::eMiddle), true));
+	f.add_fragment(std::make_shared<fragment>(vlu_t{n}, chunk.data(), chunk_len,
+	                                          static_cast<std::uint8_t>(fragment::eEnd), true));
+
+	std::span<const std::uint8_t> const data = f.message_data();
+	CHECK(data.data() == nullptr);
+	CHECK(data.empty());              // a non-empty span over nullptr is the bug
+	CHECK(f.state() == flow::eRejected);
+}

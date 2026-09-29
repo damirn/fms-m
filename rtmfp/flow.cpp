@@ -159,6 +159,7 @@ namespace fms
 			m_fragments.erase(from, to);
 			m_fragments.erase(to);
 			m_data = nullptr;
+			m_msg_len = 0;              // callers span {data, len}: a null base must carry length 0
 			m_msg_is_fragmented = false;
 			m_state = eRejected;
 			return nullptr;
