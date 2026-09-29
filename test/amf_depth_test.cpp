@@ -99,7 +99,7 @@ TEST_CASE("amf0: a self-referential object is refused at read")
 	std::vector<std::uint8_t> const body{0x03, 0x00,0x01,'a', 0x07, 0x00,0x00, 0x00,0x00,0x09};
 	byte_reader r(body.data(), body.size());
 	amf0 a;
-	CHECK_THROWS(a.read(r));
+	CHECK_THROWS_AS(a.read(r), amf0_read_exception);
 }
 
 TEST_CASE("amf0: a reference to a completed object still resolves")
@@ -126,7 +126,7 @@ TEST_CASE("amf0: writing a cycle terminates instead of exhausting the stack")
 	arr->add_entry("self", std::static_pointer_cast<amf0_type>(arr));
 
 	byte_writer w;
-	CHECK_THROWS(amf0::write(w, std::static_pointer_cast<amf0_type>(arr)));
+	CHECK_THROWS_AS(amf0::write(w, std::static_pointer_cast<amf0_type>(arr)), amf0_write_exception);
 
 	arr->value().clear();   // break the cycle: it owns itself until we do
 }
@@ -141,7 +141,7 @@ TEST_CASE("amf3: a self-referential object is refused at read")
 	std::vector<std::uint8_t> const body{0x0A, 0x0B, 0x01, 0x03,'a', 0x0A, 0x00, 0x01};
 	byte_reader r(body.data(), body.size());
 	amf3 a;
-	CHECK_THROWS(a.read(r));
+	CHECK_THROWS_AS(a.read(r), amf3_read_exception);
 }
 
 TEST_CASE("amf3: writing a cycle terminates instead of exhausting the stack")
@@ -151,7 +151,7 @@ TEST_CASE("amf3: writing a cycle terminates instead of exhausting the stack")
 
 	byte_writer w;
 	amf3 a;
-	CHECK_THROWS(a.write(w, std::static_pointer_cast<amf3_type>(obj)));
+	CHECK_THROWS_AS(a.write(w, std::static_pointer_cast<amf3_type>(obj)), amf3_write_exception);
 
 	obj->value().clear();   // break the cycle: it owns itself until we do
 }

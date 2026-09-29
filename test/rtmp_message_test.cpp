@@ -39,6 +39,22 @@ TEST_CASE("rtmp invoke: a sane parameter count is accepted")
 	CHECK(m.parameters().size() == 8);
 }
 
+TEST_CASE("rtmp invoke: the cap is exact at its boundary")
+{
+	std::size_t const cap = rtmp_message_with_params::eMaxParameters;
+
+	std::vector<std::uint8_t> const at = invoke_body(cap);
+	byte_reader r_at(at.data(), at.size());
+	rtmp_message_invoke m_at;
+	REQUIRE_NOTHROW(m_at.deserialize(r_at));
+	CHECK(m_at.parameters().size() == cap);
+
+	std::vector<std::uint8_t> const over = invoke_body(cap + 1);
+	byte_reader r_over(over.data(), over.size());
+	rtmp_message_invoke m_over;
+	CHECK_THROWS_AS(m_over.deserialize(r_over), amf0_read_exception);
+}
+
 TEST_CASE("rtmp invoke: an absurd parameter count is refused, not allocated")
 {
 	std::vector<std::uint8_t> const v = invoke_body(200000);

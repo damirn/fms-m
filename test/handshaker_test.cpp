@@ -262,12 +262,19 @@ TEST_CASE("a degenerate DH public key fails the handshake without throwing")
 		c1[dh_off + 127] = fill;   // value 0, then value 1
 
 		std::uint32_t const off = rtmp_handshake::digest_offset(view, 0);
-		rtmp_handshake::compute_digest(view, off, {genuine_keys::FP_key, 30},
-			std::span<std::uint8_t, rtmp_handshake::eDigestLen>(c1.data() + off, rtmp_handshake::eDigestLen));
+		REQUIRE(rtmp_handshake::compute_digest(view, off, {genuine_keys::FP_key, 30},
+			std::span<std::uint8_t, rtmp_handshake::eDigestLen>(c1.data() + off, rtmp_handshake::eDigestLen)));
 
 		rtmp_handshaker h;
 		bool ok = true;
 		CHECK_NOTHROW(ok = h.build_response(rtmp_handshaker::eCryptoMagic, span_of(c1)));
 		CHECK_FALSE(ok);   // fail closed, not by unwinding
 	}
+
+	// Positive control: with a real DH public value the same path succeeds, so the
+	// refusals above are the degenerate value and not the branch being skipped.
+	c1_buf good = make_signed_c1(0, 0x11, true /* with_dh */);
+	rtmp_handshaker h;
+	CHECK(h.build_response(rtmp_handshaker::eCryptoMagic, span_of(good)));
+	CHECK(h.encrypting());
 }

@@ -285,7 +285,7 @@ if(BUILD_TESTS)
   add_executable(stream_registry_test
     test/test_main.cpp test/stream_registry_test.cpp
     stream_registry.cpp stream_recorder.cpp flv_writer.cpp
-    rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp rtmp_parser.cpp
+    rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp
     rtmp_so_message.cpp amf0.cpp amf3.cpp config.cpp logging.cpp)
   target_link_libraries(stream_registry_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
   add_test(NAME stream_registry_test COMMAND stream_registry_test)
