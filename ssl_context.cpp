@@ -26,6 +26,11 @@ namespace fms
 			BOOST_LOG(lg::get()) << "TLS: could not set the minimum protocol version";
 			return nullptr;
 		}
+		// TLS 1.2 lets a client renegotiate at will, which costs the server a
+		// handshake each time; nothing here needs it. (TLS 1.3 has no renegotiation.)
+		SSL_CTX_set_options(ctx->native_handle(), SSL_OP_NO_RENEGOTIATION);
+		// Our order, not the client's, decides the cipher.
+		SSL_CTX_set_options(ctx->native_handle(), SSL_OP_CIPHER_SERVER_PREFERENCE);
 
 		ctx->use_certificate_chain_file(cert_pem, ec);
 		if (ec)
