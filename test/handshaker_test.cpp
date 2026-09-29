@@ -59,7 +59,7 @@ namespace
 		{
 			dh client_dh;
 			std::uint32_t const dh_off = rtmp_handshake::dh_offset(view, scheme);
-			client_dh.copy_public_key(c1.data() + dh_off, 128);
+			REQUIRE(client_dh.copy_public_key(c1.data() + dh_off, 128));
 		}
 
 		std::uint32_t const off = rtmp_handshake::digest_offset(view, scheme);

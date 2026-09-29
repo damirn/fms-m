@@ -27,7 +27,9 @@ namespace fms
 		[[nodiscard]] bool create_shared_key(std::uint8_t *, std::uint16_t);
 		// False if the derived secret is shorter than requested.
 		[[nodiscard]] bool copy_shared_key(std::uint8_t *, std::uint16_t) const;
-		void copy_public_key(std::uint8_t *, std::uint16_t);
+		// False if the key could not be exported; the buffer is left untouched, so a
+		// caller must not ship it.
+		[[nodiscard]] bool copy_public_key(std::uint8_t *, std::uint16_t);
 		void copy_private_key(std::uint8_t *, std::uint16_t);
 
 	protected:

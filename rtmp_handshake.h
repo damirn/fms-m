@@ -47,7 +47,9 @@ namespace fms::rtmp_handshake
 	// HMAC-SHA256 over the 1504 bytes of `sig` with the 32-byte digest at `off`
 	// excluded, keyed by `key`. `out` may alias `sig` at `off`, to write the digest
 	// in place.
-	void compute_digest(c1_view sig, std::uint32_t off, key_view key, digest_out out);
+	// False if the HMAC failed; `out` is zeroed in that case rather than left
+	// indeterminate, since callers compare it and ship it on the wire.
+	bool compute_digest(c1_view sig, std::uint32_t off, key_view key, digest_out out);
 
 	// True if the digest embedded in `sig` at `scheme`'s offset validates under `key`
 	// (constant-time compare).
