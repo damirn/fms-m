@@ -1,8 +1,9 @@
 #include "pch.h"
 #include "session.h"
+
+#include "aes.h"
 #include "app_host.h"
 #include "byte_order.h"
-#include "aes.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 #include "chunk.h"
@@ -18,6 +19,7 @@
 #include "util.h"
 
 #include <charconv>
+#include <cstring>
 #include <iostream>
 #include <memory>
 
@@ -453,7 +455,24 @@ namespace fms
 			if (!g)
 				return;   // malformed NetGroup message
 			m_service->handle_net_group(g, shared_from_this());
-			m_group_membership.push_back(g);
+			// Membership is a set, not a log: deserialize builds a fresh object per
+			// message, so identity is the group id. Expired entries are dropped on the
+			// way past, which bounds a long-lived session as well.
+			bool present = false;
+			for (auto i = m_group_membership.begin(); i != m_group_membership.end(); )
+			{
+				group_ptr const held = i->lock();
+				if (!held)
+				{
+					i = m_group_membership.erase(i);
+					continue;
+				}
+				if (std::memcmp(held->id(), g->id(), item::eIDLength) == 0)
+					present = true;
+				++i;
+			}
+			if (!present)
+				m_group_membership.push_back(g);
 			if (g->members().size() > 1)
 			{
 				vlu_t const sending = m_receiving_to_sending_flow[f->flow_id()];

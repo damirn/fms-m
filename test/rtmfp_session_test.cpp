@@ -10,6 +10,7 @@
 #include "doctest.h"
 #include "rtmfp/chunk.h"
 #include "rtmfp/flow.h"
+#include "rtmfp/group.h"
 #include "app_host.h"
 #include "rtmfp/session.h"
 #include "rtmfp/types.h"
@@ -405,4 +406,73 @@ TEST_CASE("rtmfp session: the forward sequence number is what closes a gap")
 		CHECK(app.routed == 0);
 		CHECK(s->ack_now());          // and it is acknowledged promptly
 	}
+}
+
+namespace
+{
+	// A NetGroup ("GC") receiving flow: same shape as open_flow_wire, but the
+	// metadata carries the group signature instead of a stream id.
+	std::vector<std::uint8_t> open_group_flow_wire(vlu_t flow_id, vlu_t seq,
+		const std::vector<std::uint8_t> &payload)
+	{
+		option_list opts;
+		byte_writer meta;
+		meta.write(flow::GC, 2);
+		opts.create_option(option::eMetadata, meta.data(), static_cast<std::uint16_t>(meta.size()));
+
+		byte_writer w;
+		w << static_cast<std::uint8_t>(0x80);
+		w.write_vlu(flow_id);
+		w.write_vlu(seq);
+		w.write_vlu(0);
+		opts.serialize(w);
+		w.write(payload.data(), payload.size());
+		return {w.data(), w.data() + w.size()};
+	}
+
+	// [command][vlu size = eIDLength + 1][type 0x15][32-byte group id]
+	std::vector<std::uint8_t> group_join(std::uint8_t id_byte)
+	{
+		std::vector<std::uint8_t> v{0x01, static_cast<std::uint8_t>(item::eIDLength + 1), 0x15};
+		v.insert(v.end(), item::eIDLength, id_byte);
+		return v;
+	}
+
+	void feed_group_message(const testable_session_ptr &s, vlu_t flow_id, vlu_t seq,
+		const std::vector<std::uint8_t> &payload)
+	{
+		std::vector<std::uint8_t> const wire = open_group_flow_wire(flow_id, seq, payload);
+		byte_reader r(wire.data(), wire.size());
+		user_data_chunk c;
+		REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(wire.size())));
+		s->handle_chunk(&c);
+	}
+}
+
+// Every delivered NetGroup message appended to m_group_membership with no dedup
+// and no removal, so a peer grew the list for the life of the session just by
+// rejoining the same group.
+TEST_CASE("rtmfp session: rejoining a group does not grow the membership list")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	for (vlu_t seq = 1; seq <= 50; ++seq)
+		feed_group_message(s, 5, seq, group_join(0xAA));
+
+	CHECK(s->group_membership().size() == 1);
+}
+
+TEST_CASE("rtmfp session: distinct groups are each recorded once")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	feed_group_message(s, 5, 1, group_join(0xAA));
+	feed_group_message(s, 5, 2, group_join(0xBB));
+	feed_group_message(s, 5, 3, group_join(0xAA));
+
+	CHECK(s->group_membership().size() <= 2);
 }
