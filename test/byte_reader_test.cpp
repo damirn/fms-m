@@ -158,7 +158,9 @@ TEST_CASE("byte_writer: clear() releases a pending write_buffer reservation")
 	byte_writer w;
 	(void)w.write_buffer(64);      // reserve, as an async receive would
 	w.clear();                     // datagram dropped before update()
-	CHECK_NOTHROW((void)w.write_buffer(64));   // asserts today
+	// A stale reservation trips write_buffer's own assert, which aborts rather than
+	// throws; doctest reports that as a failed case. Inert under NDEBUG.
+	(void)w.write_buffer(64);
 
 	// And the normal path still works: reserve, fill, update.
 	byte_writer v;

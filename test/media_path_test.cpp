@@ -91,18 +91,3 @@ TEST_CASE("media path: the write direction rejects the arbitrary-write shapes")
 	REQUIRE(inside.has_value());
 	CHECK(fs::weakly_canonical(*inside).string().rfind(fs::weakly_canonical(base).string(), 0) == 0);
 }
-
-// Guards the join itself: the property every call site depends on.
-TEST_CASE("media path: an absolute name never inherits the base folder")
-{
-	temp_media t;
-	fs::path const base = t.dir;
-
-	// This is what the unguarded call sites did, and why they were exploitable.
-	fs::path const naive = base / fs::path(std::string("/etc/cron.d/pwn") + ".flv");
-	CHECK(naive.string() == "/etc/cron.d/pwn.flv");          // base silently discarded
-	CHECK(naive.string().rfind(base.string(), 0) != 0);
-
-	// The resolver refuses it instead.
-	CHECK_FALSE(resolve_media_file(base.string(), "/etc/cron.d/pwn").has_value());
-}

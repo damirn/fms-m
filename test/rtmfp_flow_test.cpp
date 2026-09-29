@@ -7,8 +7,11 @@
 #include "group.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
+#include <new>
 #include <span>
 #include <vector>
 
@@ -217,14 +220,22 @@ TEST_CASE("rtmfp flow: abandoning at an absent sequence keeps the later fragment
 TEST_CASE("rtmfp fragment: send bookkeeping starts defined on a received fragment")
 {
 	std::uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-	fragment f(vlu_t{1}, data, static_cast<std::uint16_t>(sizeof(data)),
-	           static_cast<std::uint8_t>(fragment::eMiddle), true);
 
-	CHECK_FALSE(f.m_abandoned);
-	CHECK_FALSE(f.m_sent_abandoned);
-	CHECK_FALSE(f.m_ever_sent);
-	CHECK_FALSE(f.m_in_flight);
-	CHECK(f.m_nak_count == 0);
+	// Construct into poisoned storage: without in-class initialisers the members
+	// keep the 0xFF pattern, so the checks below fail rather than depend on
+	// whatever the stack happened to hold.
+	alignas(fragment) std::byte raw[sizeof(fragment)];
+	std::memset(raw, 0xFF, sizeof raw);
+	auto *f = new (static_cast<void *>(raw)) fragment(
+		vlu_t{1}, data, static_cast<std::uint16_t>(sizeof(data)),
+		static_cast<std::uint8_t>(fragment::eMiddle), true);
+
+	CHECK_FALSE(f->m_abandoned);
+	CHECK_FALSE(f->m_sent_abandoned);
+	CHECK_FALSE(f->m_ever_sent);
+	CHECK_FALSE(f->m_in_flight);
+	CHECK(f->m_nak_count == 0);
+	f->~fragment();
 
 	// A receiver flow reports no fragments in flight, rather than whatever the
 	// stack happened to hold.
