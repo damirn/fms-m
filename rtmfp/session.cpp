@@ -447,13 +447,17 @@ namespace fms
 	{
 		static std::uint8_t marker = 0x0b;
 
-		std::span<const std::uint8_t> const data = f->message_data();
-		if (!data.empty())
+		std::span<const std::uint8_t> data = f->message_data();
+		while (!data.empty())
 		{
 			byte_reader s(data);
 			group_ptr g = group::deserialize(s);
 			if (!g)
-				return;   // malformed NetGroup message
+			{
+				f->remove_last_message();   // consume it, or the flow wedges here
+				data = f->message_data();
+				continue;
+			}
 			m_service->handle_net_group(g, shared_from_this());
 			// Membership is a set, not a log: deserialize builds a fresh object per
 			// message, so identity is the group id. Expired entries are dropped on the
@@ -496,6 +500,8 @@ namespace fms
 			// group re-sends the full member list on the same sending flow rather than a
 			// delta on the flow associated with f. P2P NetGroups are otherwise
 			// unexercised (no test path), so this is left as-is deliberately.
+			f->remove_last_message();
+			data = f->message_data();
 		}
 	}
 

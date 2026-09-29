@@ -33,10 +33,14 @@ namespace
 		int removed = 0;
 		int net_groups = 0;
 		std::uint16_t clock = 100;
+		// service::handle_net_group keeps the group in m_groups. Without a strong
+		// reference here every weak_ptr in m_group_membership expires immediately and
+		// the session's id comparison is never reached.
+		std::vector<group_ptr> kept;
 
 		std::uint16_t get_timestamp() override { return clock; }
 		void remove(const session_ptr &) override { ++removed; }
-		void handle_net_group(group_ptr &, const session_ptr &) override { ++net_groups; }
+		void handle_net_group(group_ptr &g, const session_ptr &) override { ++net_groups; kept.push_back(g); }
 		boost::asio::io_context &io_context() const override { return io; }
 	};
 
@@ -461,6 +465,7 @@ TEST_CASE("rtmfp session: rejoining a group does not grow the membership list")
 	for (vlu_t seq = 1; seq <= 50; ++seq)
 		feed_group_message(s, 5, seq, group_join(0xAA));
 
+	CHECK(h.net_groups == 50);                      // every message was delivered
 	CHECK(s->group_membership().size() == 1);
 }
 
@@ -474,5 +479,41 @@ TEST_CASE("rtmfp session: distinct groups are each recorded once")
 	feed_group_message(s, 5, 2, group_join(0xBB));
 	feed_group_message(s, 5, 3, group_join(0xAA));
 
-	CHECK(s->group_membership().size() <= 2);
+	CHECK(h.net_groups == 3);
+	CHECK(s->group_membership().size() == 2);
+}
+
+// The flow buffers each message until it is consumed. The RTMP handler drains in
+// a loop; the NetGroup handler must too, or the first fragment is re-delivered
+// on every later message and the flow fills to eMaxBufferedFragments.
+TEST_CASE("rtmfp session: a NetGroup flow is drained as it is consumed")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	for (vlu_t seq = 1; seq <= 8; ++seq)
+		feed_group_message(s, 5, seq, group_join(static_cast<std::uint8_t>(0xA0 + seq)));
+
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	flow_ptr const f = s->m_receiving_flows.begin()->second;
+	CHECK(f->fragment_count() == 0);       // each message consumed, not re-read
+	CHECK(h.net_groups == 8);              // eight distinct groups, not one eight times
+	CHECK(s->group_membership().size() == 8);
+	CHECK(f->state() != flow::eRejected);
+}
+
+// A message the group codec rejects must still be consumed, or the flow wedges on
+// it and every later message is lost.
+TEST_CASE("rtmfp session: a malformed NetGroup message does not wedge the flow")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	feed_group_message(s, 5, 1, std::vector<std::uint8_t>{0x01, 0x02, 0x99});   // bad size + type
+	feed_group_message(s, 5, 2, group_join(0xAA));
+
+	CHECK(h.net_groups == 1);                       // the valid one still arrived
+	CHECK(s->group_membership().size() == 1);
 }
