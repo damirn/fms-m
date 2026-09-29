@@ -51,7 +51,9 @@ namespace fms
 
 	void flow::remove_fragments_until_seq(const vlu_t &seq)
 	{
-		auto const i = m_fragments.find(seq);
+		// lower_bound, not find: the sequence is peer-supplied and need not be
+		// buffered, and find() returning end() would discard everything.
+		auto const i = m_fragments.lower_bound(seq);
 		m_fragments.erase(m_fragments.begin(), i);
 		m_fragments.erase(seq);
 	}

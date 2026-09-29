@@ -190,3 +190,23 @@ TEST_CASE("rtmfp flow: an oversize reassembly yields an empty span, not a null o
 	CHECK(data.empty());              // a non-empty span over nullptr is the bug
 	CHECK(f.state() == flow::eRejected);
 }
+
+// The abandon path: forward_seq_number() is peer-supplied, so it need not match
+// any buffered fragment. map::find returns end() when it does not, and
+// erase(begin(), end()) then discards the entire reassembly buffer rather than
+// the fragments up to that sequence.
+TEST_CASE("rtmfp flow: abandoning at an absent sequence keeps the later fragments")
+{
+	flow f(vlu_t{1}, flow::eReceiver);
+
+	f.add_fragment(mid(1));
+	f.add_fragment(mid(3));
+	f.add_fragment(mid(5));
+	REQUIRE(f.fragment_count() == 3);
+
+	f.remove_fragments_until_seq(vlu_t{2});   // 2 was never buffered
+	CHECK(f.fragment_count() == 2);           // 3 and 5 survive
+
+	f.remove_fragments_until_seq(vlu_t{5});   // present: drops 3 and 5
+	CHECK(f.fragment_count() == 0);
+}
