@@ -12,7 +12,6 @@ namespace fms
 
 	flow::~flow()
 	{
-		delete[] m_data;   // a reassembly buffer mid-flight at teardown would otherwise leak
 		m_fragments.clear();
 	}
 
@@ -110,8 +109,8 @@ namespace fms
 		}
 		else
 		{
-			delete[] m_data;
-			m_data = nullptr;             // guard against a double delete[]
+			m_data.clear();
+			m_data.shrink_to_fit();       // a 16MB reassembly must not stay resident
 			m_msg_is_fragmented = false;
 		}
 	}
@@ -160,24 +159,24 @@ namespace fms
 		{
 			m_fragments.erase(from, to);
 			m_fragments.erase(to);
-			m_data = nullptr;
-			m_msg_len = 0;              // callers span {data, len}: a null base must carry length 0
+			m_data.clear();
+			m_msg_len = 0;              // callers span {data, len}: an empty base must carry length 0
 			m_msg_is_fragmented = false;
 			m_state = eRejected;
 			return nullptr;
 		}
-		m_data = new std::uint8_t[m_msg_len];
+		m_data.resize(m_msg_len);
 		std::uint32_t prev_len = 0;
 		fragment_map_t::iterator i = from;
 		while (true)
 		{
-			std::memcpy(m_data + prev_len, i->second->m_data, i->second->m_data_len);
+			std::memcpy(m_data.data() + prev_len, i->second->m_data, i->second->m_data_len);
 			prev_len += i->second->m_data_len;
 			if (i == to)
 			{
 				m_fragments.erase(from, to);
 				m_fragments.erase(to);
-				return m_data;
+				return m_data.data();
 			}
 							++i;
 		}

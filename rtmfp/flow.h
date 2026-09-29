@@ -5,9 +5,10 @@
 
 #include <cstdint>
 #include <map>
-#include <span>
 #include <memory>
 #include <optional>
+#include <span>
+#include <vector>
 
 namespace fms
 {
@@ -329,7 +330,7 @@ namespace fms
 	private:
 		bool m_msg_is_fragmented{false};
 		std::uint32_t m_msg_len{0};
-		std::uint8_t *m_data{nullptr};   // reassembly buffer; owned between create_message and remove_last_message
+		std::vector<std::uint8_t> m_data;   // reassembly buffer; filled by create_message, released by remove_last_message
 	};
 
 	using flow_ptr = std::shared_ptr<flow>;
