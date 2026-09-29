@@ -65,8 +65,26 @@ namespace fms
 	{
 		if (msg->type() != rtmp_message::eMessageInvoke)
 		{
-			delete_connection(connection_id);
-			return false;
+			switch (msg->type())
+			{
+			// Protocol control messages are legal at any time, including before
+			// connect. The parser routes WindowAcknowledgementSize here as well as to
+			// handle_internal_message, so tearing down on them dropped conforming
+			// clients. Nothing for the manager to do with them: it only routes connect.
+			case rtmp_message::eMessageChunkSize:
+			case rtmp_message::eMessageAbort:
+			case rtmp_message::eMessageBytesRead:
+			case rtmp_message::eMessagePing:
+			case rtmp_message::eMessageWindowAcknowledgementSize:
+			case rtmp_message::eMessageSetPeerBandwidth:
+				return false;
+			default:
+				// Anything else before connect is a peer we want gone -- but close the
+				// socket rather than only unregistering it, which left the connection
+				// open with nothing reading its later messages.
+				destroy_connection(connection_id);
+				return false;
+			}
 		}
 
 		rtmp_message_invoke_ptr const invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);
