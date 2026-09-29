@@ -1,9 +1,5 @@
-// remote_relay::spawn_throttle.
-//
-// A play() for a remote stream with no local publisher spawns an origin-pull
-// helper. Until that helper republishes locally, every further play() spawned
-// another, so N simultaneous plays of one stream cost N processes and a peer
-// could ask repeatedly.
+// spawn_throttle: one origin-pull helper per target per cooldown, capped in
+// flight. A helper is invisible to later play()s until it republishes locally.
 
 #include "doctest.h"
 #include "remote_relay.h"

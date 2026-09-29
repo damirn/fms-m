@@ -63,9 +63,9 @@ namespace fms
 		// How long a connection may wait for a full request.
 		static constexpr auto eIdleTimeout = std::chrono::seconds{60};
 
-		// RTMPT bodies are small. The generous cap applies once a session has been
-		// opened on this connection; before that a peer is unauthenticated and gets
-		// Beast's own default, which is still ample for /open, /fcs or a first /send.
+		// RTMPT bodies are small; the generous cap applies only once a session exists
+		// on this connection. 1 MB (Beast's own default) is ample for /open, /fcs or a
+		// first /send.
 		static constexpr std::size_t eBodyLimit = 16 * 1024 * 1024;
 		static constexpr std::size_t eUnauthBodyLimit = 1024 * 1024;
 

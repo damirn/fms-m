@@ -6,14 +6,13 @@
 // deleted without any test noticing, because the reader still refuses to run off
 // the end. So these bounds are load-bearing for code well outside this file.
 
+#include "buffer_eof.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
-#include "buffer_eof.h"
 #include "doctest.h"
 
-#include <cstring>
-
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <vector>
 
@@ -149,10 +148,9 @@ TEST_CASE("available and read_pos track consumption")
 	CHECK(*r.read_pos() == 0x0D);
 }
 
-// byte_writer's input-buffer role: write_buffer() reserves room, update() reports
-// what arrived. clear() reset the contents but left m_reserved set, so a receive
-// path that clears without updating -- as the RTMFP service does for a datagram
-// it drops -- left the next write_buffer() tripping its own assertion.
+// byte_writer as an input buffer: write_buffer() reserves, update() reports,
+// clear() releases the reservation -- the RTMFP service clears without updating
+// when it drops a datagram.
 TEST_CASE("byte_writer: clear() releases a pending write_buffer reservation")
 {
 	byte_writer w;

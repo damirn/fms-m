@@ -49,8 +49,8 @@ namespace fms
 
 	void amf3::write(byte_writer &buffer, const amf3_type_ptr& type)
 	{
-		// A graph built in memory can still be cyclic even though read() now refuses
-		// to parse one, and a cyclic walk has no other termination condition.
+		// A graph built in memory can still be cyclic; a cyclic walk has no other
+		// termination condition.
 		if (++m_write_depth > eMaxDepth)
 		{
 			--m_write_depth;

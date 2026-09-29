@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "session.h"
-
 #include "aes.h"
 #include "app_host.h"
 #include "byte_order.h"

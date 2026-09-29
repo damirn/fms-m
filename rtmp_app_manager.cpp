@@ -67,10 +67,9 @@ namespace fms
 		{
 			switch (msg->type())
 			{
-			// Protocol control messages are legal at any time, including before
-			// connect. The parser routes WindowAcknowledgementSize here as well as to
-			// handle_internal_message, so tearing down on them dropped conforming
-			// clients. Nothing for the manager to do with them: it only routes connect.
+			// Protocol control messages are legal before connect, and the parser routes
+			// WindowAcknowledgementSize here as well as to handle_internal_message.
+			// The manager routes only connect.
 			case rtmp_message::eMessageChunkSize:
 			case rtmp_message::eMessageAbort:
 			case rtmp_message::eMessageBytesRead:
@@ -79,9 +78,8 @@ namespace fms
 			case rtmp_message::eMessageSetPeerBandwidth:
 				return false;
 			default:
-				// Anything else before connect is a peer we want gone -- but close the
-				// socket rather than only unregistering it, which left the connection
-				// open with nothing reading its later messages.
+				// destroy_connection, not delete_connection: the socket has to close,
+				// not just unregister.
 				destroy_connection(connection_id);
 				return false;
 			}

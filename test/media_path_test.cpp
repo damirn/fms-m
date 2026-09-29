@@ -69,9 +69,8 @@ TEST_CASE("media path: the resolved path always stays under the base")
 	}
 }
 
-// The recording (write) direction: a publish name reaches the filesystem, so the
-// same guard has to hold there. Naive `base / path(name + ".flv")` is silently
-// wrong for an absolute name -- operator/ discards the base entirely.
+// The shapes the recording path must refuse. The call sites themselves are
+// covered end to end by realworld.sh F3.
 TEST_CASE("media path: the write direction rejects the arbitrary-write shapes")
 {
 	temp_media t;

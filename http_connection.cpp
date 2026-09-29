@@ -108,9 +108,8 @@ namespace fms
 		boost::system::error_code ec;
 		boost::asio::ip::tcp::endpoint const remote = m_socket.remote_endpoint(ec);
 
-		// Ident probe: unauthenticated and session-less, so it answers with the
-		// address the operator chose to bind rather than the socket's own -- behind
-		// NAT, a proxy or a container bridge the latter is an internal address.
+		// Ident probe: session-less, so it answers with the configured bind address.
+		// The socket's own would be an internal one behind NAT or a container bridge.
 		if (verb == "fcs")
 		{
 			std::string const &addr = config::instance()->bind_address();

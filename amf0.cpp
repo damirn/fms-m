@@ -558,8 +558,8 @@ namespace fms
 	void amf0::write(byte_writer &buffer, const amf0_type_ptr& type)
 	{
 		// write() is static and runs on every io thread, so the bound is per-thread.
-		// A graph built in memory can still be cyclic even though read() now refuses
-		// to parse one, and a cyclic walk has no other termination condition.
+		// A graph built in memory can still be cyclic; a cyclic walk has no other
+		// termination condition.
 		thread_local unsigned depth = 0;
 		if (++depth > eMaxDepth)
 		{

@@ -226,16 +226,14 @@ TEST_CASE("SO codec: arbitrary bytes terminate without a crash")
 	CHECK(true);
 }
 
-// Event types outside the eUseSuccess/eClear/eSendMessage cases serialize a name
-// and (for most) a value, but the parser leaves both null for a zero-length
-// event body. so_manager echoes the peer's own event list back, so a peer can
-// hand us an event it never populated and have us serialize it.
+// An event parsed with a zero-length body has no name or value; serialize must
+// still emit it as one.
 TEST_CASE("SO codec: serializing an event with no name or value does not crash")
 {
 	std::vector<std::uint8_t> v = header("obj");
 	add_event(v, so::eUse, {});              // zero-length body: m_name, m_value stay null
 	add_event(v, so::eRelease, {});          // same
-	add_event(v, 0x7F, {});                  // unknown type: parser skips, serializer does not
+	add_event(v, 0x7F, {});                  // unknown type: no body, so no name
 
 	so m;
 	REQUIRE(parses(v, m));
@@ -244,7 +242,7 @@ TEST_CASE("SO codec: serializing an event with no name or value does not crash")
 		CHECK(ev->m_name == nullptr);
 
 	byte_writer w;
-	REQUIRE_NOTHROW(m.serialize(w));         // null deref today
+	REQUIRE_NOTHROW(m.serialize(w));
 
 	so back;                                  // and what we emit must still parse
 	byte_reader r(w.data(), w.size());

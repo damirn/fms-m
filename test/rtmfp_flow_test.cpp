@@ -169,9 +169,7 @@ TEST_CASE("rtmfp flow: advertised receive window shrinks as the reassembly backl
 	CHECK(f.advertised_rwnd() < flow::eRecvWindowBlocks);
 }
 
-// create_message() refuses an abusive reassembled size by returning nullptr, but
-// it left m_msg_len at the accumulated total, so the caller built a span of
-// {nullptr, >16MB}. That span is not empty, and session.cpp walks it.
+// A refused reassembly must report an empty span, not {nullptr, len}.
 TEST_CASE("rtmfp flow: an oversize reassembly yields an empty span, not a null one")
 {
 	flow f(vlu_t{1}, flow::eReceiver);
@@ -190,14 +188,12 @@ TEST_CASE("rtmfp flow: an oversize reassembly yields an empty span, not a null o
 
 	std::span<const std::uint8_t> const data = f.message_data();
 	CHECK(data.data() == nullptr);
-	CHECK(data.empty());              // a non-empty span over nullptr is the bug
+	CHECK(data.empty());              // a null base must carry length 0
 	CHECK(f.state() == flow::eRejected);
 }
 
-// The abandon path: forward_seq_number() is peer-supplied, so it need not match
-// any buffered fragment. map::find returns end() when it does not, and
-// erase(begin(), end()) then discards the entire reassembly buffer rather than
-// the fragments up to that sequence.
+// The abandon sequence is peer-supplied and need not be buffered; only the
+// fragments up to it are dropped.
 TEST_CASE("rtmfp flow: abandoning at an absent sequence keeps the later fragments")
 {
 	flow f(vlu_t{1}, flow::eReceiver);
@@ -214,9 +210,8 @@ TEST_CASE("rtmfp flow: abandoning at an absent sequence keeps the later fragment
 	CHECK(f.fragment_count() == 0);
 }
 
-// set_send_flags() runs only on the send path, so a fragment built while
-// receiving never passed through it. Its send bookkeeping must still start at a
-// defined value: in_flight_count() walks the fragments of either kind of flow.
+// in_flight_count() walks receiver flows too, where set_send_flags() never runs,
+// so the send bookkeeping must start defined.
 TEST_CASE("rtmfp fragment: send bookkeeping starts defined on a received fragment")
 {
 	std::uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};

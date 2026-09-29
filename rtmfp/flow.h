@@ -77,9 +77,7 @@ namespace fms
 		std::uint16_t m_data_len;
 		std::uint8_t m_frag_ctrl;
 		bool m_data_owner;
-		// Only the send path calls set_send_flags(), so a fragment built on the
-		// receive path would otherwise carry indeterminate flags -- and
-		// in_flight_count() walks the fragments of either kind of flow.
+		// in_flight_count() walks receiver flows too, where set_send_flags() never runs.
 		bool m_abandoned{false};
 		bool m_sent_abandoned{false};
 		bool m_ever_sent{false};

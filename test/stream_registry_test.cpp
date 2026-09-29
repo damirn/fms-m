@@ -1,8 +1,7 @@
 // stream_registry connection teardown.
 //
-// take_client() is what remove_client() sweeps on disconnect, and it returns only
-// the stream ids registered by createStream. A publish or play carried on any
-// other wire-supplied message-stream id therefore outlived its connection.
+// take_client() must return every stream id a connection owns, however it was
+// registered: it is what remove_client() sweeps on disconnect.
 
 #include "doctest.h"
 #include "stream_recorder.h"

@@ -18,14 +18,9 @@ namespace fms::remote_relay
 	// always set.
 	remote_target parse_target(const std::string &stream);
 
-	// Decides whether a helper may be spawned for a given remote stream right now.
-	//
-	// A play() for a remote stream with no local publisher spawns a helper, and
-	// every further play() before that helper republishes locally spawns another --
-	// so N simultaneous plays of one stream cost N processes, and a peer can ask
-	// repeatedly. Once the helper publishes, plays find the local stream and never
-	// reach here, so a short cooldown per target is all that is needed to close the
-	// window. The cap bounds distinct targets in flight.
+	// At most one helper spawn per remote target per eCooldown, and at most
+	// eMaxInFlight distinct targets. A helper is invisible to later play()s until it
+	// republishes locally.
 	class spawn_throttle
 	{
 	public:

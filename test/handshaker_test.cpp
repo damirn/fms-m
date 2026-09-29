@@ -241,11 +241,8 @@ TEST_CASE("RTMPE does not validate the peer's DH public key")
 	CHECK(h.encrypting());
 }
 
-// A peer-supplied DH public value of 0 (or 1, or p-1) has no shared secret, so
-// EVP derivation fails. That failure used to leave create_shared_key throwing
-// std::runtime_error straight through the Asio read handler: on the RTMPT tunnel
-// it escaped http_connection::on_read, which has no catch, leaking the
-// connection and its socket. Failing the handshake is fine; throwing is not.
+// A DH public value of 0, 1 or p-1 has no shared secret. build_response runs
+// inside an Asio read handler, so it must fail closed, never throw.
 TEST_CASE("a degenerate DH public key fails the handshake without throwing")
 {
 	REQUIRE(legacy_provider);

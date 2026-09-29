@@ -453,9 +453,7 @@ namespace
 	}
 }
 
-// Every delivered NetGroup message appended to m_group_membership with no dedup
-// and no removal, so a peer grew the list for the life of the session just by
-// rejoining the same group.
+// Membership is a set keyed by group id: rejoining must not grow the list.
 TEST_CASE("rtmfp session: rejoining a group does not grow the membership list")
 {
 	fake_host h;

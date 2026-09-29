@@ -216,10 +216,8 @@ namespace fms
 		auto const i = m_sessions.find(sid);
 		if (i != m_sessions.end())
 		{
-			// Erase only if the entry still maps to this session: a peer that
-			// re-handshakes from the same endpoint, or reconnects with the same peer
-			// id, replaces these entries, and a plain erase-by-key would then drop the
-			// new session's mapping when the old one is reaped.
+			// Erase only if the entry still maps to this session: a re-handshake from
+			// the same endpoint or peer id replaces it.
 			if (auto const k = m_initial_sessions.find(i->second->end_point());
 				k != m_initial_sessions.end() && k->second == i->second)
 				m_initial_sessions.erase(k);

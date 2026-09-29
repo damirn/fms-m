@@ -88,11 +88,9 @@ TEST_CASE("amf0: a truncated deep nest is refused rather than read past the end"
 	CHECK_FALSE(amf0_reads(v));
 }
 
-// References are registered before the object is populated (the spec allows an
-// object to be referenced while nested inside itself), so a peer can close the
-// loop and hand us a cyclic graph. Nothing downstream bounds a cyclic walk:
-// amf0::write recurses until the stack is gone, and the publisher's metadata is
-// re-serialised to every subscriber.
+// Reference entries are registered before they are populated, so a peer can close
+// the loop; a cyclic graph must be refused at read, since the publisher's
+// metadata is re-serialised to every subscriber.
 TEST_CASE("amf0: a self-referential object is refused at read")
 {
 	// object; key "a"; reference -> index 0 (the object being built); object end.
@@ -156,11 +154,8 @@ TEST_CASE("amf3: writing a cycle terminates instead of exhausting the stack")
 	obj->value().clear();   // break the cycle: it owns itself until we do
 }
 
-// Sealed property names come from the traits, and traits can be sent by
-// reference: declaring one big name costs the string budget once, but every
-// object that references those traits materialises its own copy of the name as a
-// map key. The copies were never charged, so a small message expanded without
-// bound.
+// Sealed names are charged where they are materialised, not where they are
+// declared: one declared name, one copy per referencing object.
 TEST_CASE("amf3: sealed property names are charged per object that materialises them")
 {
 	auto u29 = [](std::vector<std::uint8_t> &v, std::uint32_t x) {

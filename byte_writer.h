@@ -198,9 +198,7 @@ namespace fms
 			return boost::asio::const_buffer(m_buf.data() + m_read_pos, m_buf.size() - m_read_pos);
 		}
 		bool empty() const { return m_buf.size() == m_read_pos; }
-		// Also drops any pending write_buffer() reservation: clearing means nothing
-		// is outstanding, and a receive path that discards a datagram without
-		// update() would otherwise leave the next write_buffer() tripping its assert.
+		// Drops any pending write_buffer() reservation: after clear() nothing is outstanding.
 		void clear() { m_buf.clear(); m_read_pos = 0; m_reserved = 0; }
 
 		// clear() keeps the capacity, which is what you want for a buffer that is
