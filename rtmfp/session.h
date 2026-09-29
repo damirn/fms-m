@@ -265,8 +265,10 @@ namespace fms
 
 		bool m_ack_now{false};
 
-		vlu_t m_current_flow_id;
-		vlu_t m_next_seq;
+		// Read by handle_next_user_data, which a peer can reach with a NextUserData
+		// chunk that no UserData preceded -- so these must not start indeterminate.
+		vlu_t m_current_flow_id{0};
+		vlu_t m_next_seq{0};
 
 		vlu_t m_next_tsn{1};
 		vlu_t m_max_tsn_ack{0};
