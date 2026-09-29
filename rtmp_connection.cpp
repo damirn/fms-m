@@ -30,6 +30,7 @@ namespace fms
 			m_rto_timer.cancel();
 			m_wto_timer.cancel();
 			m_timer.cancel();
+			m_hs_timer.cancel();   // still armed if we close mid-handshake
 			BOOST_LOG(lg::get()) << "Closing socket for cid: " << m_id;
 			// Non-throwing: close() runs from completion handlers.
 			boost::system::error_code ec;
