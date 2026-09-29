@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <list>
@@ -53,16 +54,38 @@ namespace fms
 			: m_client(client),
 			 m_time(std::chrono::system_clock::now())
 		{}
+
+		// Snapshot copy: the atomic counters need an explicit load, and the timer
+		// thread takes one of these per stream to compute kbps off the hot path.
+		netstream_stats(const netstream_stats &o)
+			: m_client(o.m_client)
+			, m_name(o.m_name)
+			, m_is_published(o.m_is_published)
+			, m_bytes(o.m_bytes.load(std::memory_order_relaxed))
+			, m_messages(o.m_messages.load(std::memory_order_relaxed))
+			, m_messages_dropped(o.m_messages_dropped.load(std::memory_order_relaxed))
+			, m_ts(o.m_ts.load(std::memory_order_relaxed))
+			, m_delay(o.m_delay.load(std::memory_order_relaxed))
+			, m_drift(o.m_drift.load(std::memory_order_relaxed))
+			, m_kbps(o.m_kbps.load(std::memory_order_relaxed))
+			, m_time(o.m_time)
+			, m_start_streaming_time(o.m_start_streaming_time)
+		{}
+		netstream_stats &operator=(const netstream_stats &) = delete;
 		std::uint32_t m_client;
 		std::string m_name;
 		bool m_is_published{false};
-		std::uint32_t m_bytes{0};
-		std::uint32_t m_messages{0};
-		std::uint32_t m_messages_dropped{0};
-		std::uint32_t m_ts{0};
-		std::uint32_t m_delay{0};
-		std::uint32_t m_drift{0};
-		std::uint32_t m_kbps{0};
+		// Written by the owning io thread under a shared lock (the lock guards the
+		// map, not the entry) and read concurrently by the admin app and the QoS
+		// reporter, so the counters themselves carry the synchronisation -- as
+		// client_session's byte counters already do.
+		std::atomic<std::uint32_t> m_bytes{0};
+		std::atomic<std::uint32_t> m_messages{0};
+		std::atomic<std::uint32_t> m_messages_dropped{0};
+		std::atomic<std::uint32_t> m_ts{0};
+		std::atomic<std::uint32_t> m_delay{0};
+		std::atomic<std::uint32_t> m_drift{0};
+		std::atomic<std::uint32_t> m_kbps{0};
 		std::chrono::system_clock::time_point m_time;
 		std::chrono::system_clock::time_point m_start_streaming_time;
 	};
