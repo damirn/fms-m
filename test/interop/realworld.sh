@@ -436,6 +436,52 @@ else
 fi
 
 echo
+echo "=== G. security regressions ==="
+
+echo "[G1] RTMPT ident probe reports the bind address, not the socket's"
+ident=$(curl -s -m 5 -X POST -H 'Content-Type: application/x-fcs' --data-binary '' \
+	"http://127.0.0.1:$RTMPT_PORT/fcs/ident2" 2>/dev/null)
+# The server binds 0.0.0.0 and we reach it over the loopback, so the two differ.
+case "$ident" in
+	0.0.0.0) ok "G1 ident answered with the bind address" ;;
+	127.0.0.1) bad "G1 ident disclosed the socket address ($ident)" ;;
+	*) skip "G1 unexpected ident reply '$ident'" ;;
+esac
+
+echo "[G2] RTMPT body allowance before a session exists"
+small=$(head -c 900000 /dev/zero | curl -s -m 10 -o /dev/null -w '%{http_code}' \
+	-X POST -H 'Content-Type: application/x-fcs' --data-binary @- \
+	"http://127.0.0.1:$RTMPT_PORT/open/1" 2>/dev/null)
+big=$(head -c 2000000 /dev/zero | curl -s -m 10 -o /dev/null -w '%{http_code}' \
+	-X POST -H 'Content-Type: application/x-fcs' --data-binary @- \
+	"http://127.0.0.1:$RTMPT_PORT/open/1" 2>/dev/null)
+[ "$small" = "200" ] && ok "G2 a 900KB body is accepted" || bad "G2 900KB body rejected ($small)"
+[ "$big" = "200" ] && bad "G2 a 2MB body was accepted without a session" \
+	|| ok "G2 a 2MB body is refused without a session"
+
+if command -v python3 >/dev/null 2>&1; then
+	echo "[G3] a control message before connect does not drop the client"
+	g3=$(python3 "$ROOT/test/interop/rtmp_probe.py" preconnect-control "$RTMP_PORT" 2>/dev/null)
+	case "$g3" in
+		"RESULT ok"*) ok "G3 connect after WindowAckSize still answered" ;;
+		*) bad "G3 client dropped by a pre-connect control message ($g3)" ;;
+	esac
+
+	echo "[G4] a zero acknowledgement window must not ack every read"
+	g4=$(python3 "$ROOT/test/interop/rtmp_probe.py" zero-window "$RTMP_PORT" 2>/dev/null)
+	g4b=${g4##* }
+	# Each unnecessary acknowledgement is 16 bytes on the wire; 40 paced sends make
+	# the difference ~640 bytes. Threshold sits between the two observed values.
+	if [ -n "$g4b" ] && [ "$g4b" -lt 11800 ] 2>/dev/null; then
+		ok "G4 zero window ignored ($g4b bytes returned)"
+	else
+		bad "G4 zero window acked every read ($g4b bytes returned)"
+	fi
+else
+	skip "G3/G4 python3 not available"
+fi
+
+echo
 echo "================ SUMMARY ================"
 echo "  pass $PASS   fail $FAIL   skip $SKIP"
 [ "$FAIL" -gt 0 ] && { echo "  failures:"; for f in "${FAILED[@]}"; do echo "    - $f"; done; }

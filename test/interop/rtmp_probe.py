@@ -1,0 +1,96 @@
+# Raw RTMP probes for behaviour no reference client exercises: a control message
+# before connect, and the acknowledgement cadence a peer-announced window sets.
+# Simple (pre-FP9) handshake only -- these never reach the crypto path.
+
+import socket, struct, sys, time
+
+def amf_str(s):
+    b = s.encode(); return b'\x02' + struct.pack('>H', len(b)) + b
+def amf_num(x):
+    return b'\x00' + struct.pack('>d', x)
+def amf_obj(d):
+    out = b'\x03'
+    for k, v in d.items():
+        kb = k.encode()
+        out += struct.pack('>H', len(kb)) + kb
+        out += amf_str(v) if isinstance(v, str) else amf_num(v)
+    return out + b'\x00\x00\x09'
+
+def chunk(csid, msg_type, stream_id, payload):
+    # fmt 0 basic header, 11-byte message header, little-endian stream id
+    h = bytes([csid & 0x3F])
+    h += b'\x00\x00\x00'                                   # timestamp
+    h += struct.pack('>I', len(payload))[1:]               # 3-byte length
+    h += bytes([msg_type])
+    h += struct.pack('<I', stream_id)
+    return h + payload
+
+def handshake(s):
+    s.sendall(b'\x03' + b'\x00' * 1536)                    # C0 + simple C1
+    buf = b''
+    while len(buf) < 1 + 1536 + 1536:
+        d = s.recv(4096)
+        if not d: raise RuntimeError('eof during handshake')
+        buf += d
+    s1 = buf[1:1537]
+    s.sendall(s1)                                          # C2 echoes S1
+    return buf[1 + 1536 + 1536:]
+
+def read_for(s, seconds):
+    s.settimeout(0.3)
+    end = time.time() + seconds
+    out = b''
+    while time.time() < end:
+        try:
+            d = s.recv(65536)
+            if not d: break
+            out += d
+        except socket.timeout:
+            pass
+    return out
+
+def count_acks(buf):
+    # Count type-0x03 (BytesRead/Acknowledgement) messages in a fmt-0 chunk stream.
+    n, i = 0, 0
+    while i + 12 <= len(buf):
+        if (buf[i] & 0xC0) == 0 and buf[i + 7] == 0x03:
+            n += 1
+            i += 12 + 4
+            continue
+        i += 1
+    return n
+
+def main():
+    mode, port = sys.argv[1], int(sys.argv[2])
+    s = socket.create_connection(('127.0.0.1', port), timeout=10)
+    extra = handshake(s)
+
+    if mode == 'preconnect-control':
+        # WindowAcknowledgementSize before connect: legal per spec.
+        s.sendall(chunk(2, 0x05, 0, struct.pack('>I', 2500000)))
+        time.sleep(0.2)
+        body = amf_str('connect') + amf_num(1.0) + amf_obj({'app': 'media', 'tcUrl': 'rtmp://127.0.0.1/media'})
+        s.sendall(chunk(3, 0x14, 0, body))
+        got = extra + read_for(s, 3)
+        print('RESULT', 'ok' if b'_result' in got else 'no-result', len(got))
+
+    elif mode == 'zero-window':
+        s.sendall(chunk(2, 0x05, 0, struct.pack('>I', 0)))
+        body = amf_str('connect') + amf_num(1.0) + amf_obj({'app': 'media', 'tcUrl': 'rtmp://127.0.0.1/media'})
+        s.sendall(chunk(3, 0x14, 0, body))
+        got = extra + read_for(s, 2)
+        # Paced: the acknowledgement is emitted per read, so the sends have to
+        # arrive as separate reads for the cadence to be observable at all.
+        base = len(got)
+        for _ in range(40):
+            try:
+                s.sendall(chunk(3, 0x14, 0, body))
+                time.sleep(0.02)
+            except OSError:
+                break
+        got += read_for(s, 2)
+        print('BYTES_AFTER_PACED_SENDS', len(got) - base)
+
+    s.close()
+
+main()
