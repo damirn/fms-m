@@ -70,10 +70,11 @@ namespace fms
 		else if (msg->type() == rtmp_message::eMessageWindowAcknowledgementSize)
 		{
 			rtmp_message_window_acknowledgement_size_ptr const ack = std::static_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
-			// A zero window never advances m_bytes_read_notify, so the >= test below
-			// stays true and the server answers every single read with an ack.
-			if (ack->size() > 0)
-				m_win_ack = m_bytes_read_notify = ack->size();
+			if (std::uint32_t const n = ack->size(); acceptable_window(n))
+			{
+				m_win_ack = n;
+				m_bytes_read_notify = m_bytes_read + n;   // relative: we have already read m_bytes_read
+			}
 		}
 	}
 
