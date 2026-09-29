@@ -240,3 +240,34 @@ TEST_CASE("RTMPE does not validate the peer's DH public key")
 	CHECK(h.build_response(rtmp_handshaker::eCryptoMagic, span_of(c1)));
 	CHECK(h.encrypting());
 }
+
+// A peer-supplied DH public value of 0 (or 1, or p-1) has no shared secret, so
+// EVP derivation fails. That failure used to leave create_shared_key throwing
+// std::runtime_error straight through the Asio read handler: on the RTMPT tunnel
+// it escaped http_connection::on_read, which has no catch, leaking the
+// connection and its socket. Failing the handshake is fine; throwing is not.
+TEST_CASE("a degenerate DH public key fails the handshake without throwing")
+{
+	REQUIRE(legacy_provider);
+
+	for (std::uint8_t fill : {std::uint8_t{0x00}, std::uint8_t{0x01}})
+	{
+		c1_buf c1 = make_signed_c1(0, 0x11, false);
+
+		// Overwrite the 128 DH bytes, then re-sign so the C1 still validates and
+		// the crypto branch is actually reached.
+		rtmp_handshake::c1_view const view(c1.data(), eSize);
+		std::uint32_t const dh_off = rtmp_handshake::dh_offset(view, 0);
+		std::memset(c1.data() + dh_off, 0, 128);
+		c1[dh_off + 127] = fill;   // value 0, then value 1
+
+		std::uint32_t const off = rtmp_handshake::digest_offset(view, 0);
+		rtmp_handshake::compute_digest(view, off, {genuine_keys::FP_key, 30},
+			std::span<std::uint8_t, rtmp_handshake::eDigestLen>(c1.data() + off, rtmp_handshake::eDigestLen));
+
+		rtmp_handshaker h;
+		bool ok = true;
+		CHECK_NOTHROW(ok = h.build_response(rtmp_handshaker::eCryptoMagic, span_of(c1)));
+		CHECK_FALSE(ok);   // fail closed, not by unwinding
+	}
+}

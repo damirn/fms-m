@@ -106,7 +106,8 @@ namespace fms
 		std::uint32_t const client_dh_offset = rtmp_handshake::dh_offset(client_sig, m_validation_scheme);
 		std::uint32_t const server_dh_offset = rtmp_handshake::dh_offset(server_sig, m_validation_scheme);
 
-		mydh.create_shared_key(const_cast<std::uint8_t *>(client_sig.data()) + client_dh_offset, 128);
+		if (!mydh.create_shared_key(const_cast<std::uint8_t *>(client_sig.data()) + client_dh_offset, 128))
+			return false;   // degenerate peer public value: fail the handshake, do not unwind
 		mydh.copy_public_key(server_sig.data() + server_dh_offset, 128);
 
 		std::uint8_t hash[SHA256_DIGEST_LENGTH];
