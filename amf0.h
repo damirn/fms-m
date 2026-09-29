@@ -20,6 +20,14 @@ namespace fms
 		{}
 	};
 
+	class amf0_write_exception final : public std::runtime_error
+	{
+	public:
+		amf0_write_exception()
+			: std::runtime_error("AMF0 value nests too deeply to serialise.")
+		{}
+	};
+
 	class amf0
 	{
 	public:
@@ -75,6 +83,14 @@ namespace fms
 		// AMF0 object reference table (spec: anonymous/typed objects and arrays can
 		// be sent by reference). 0-based by occurrence, reset at top-level read.
 		std::vector<amf0_type_ptr> m_ref_table;
+
+		// Register a value as referenceable and return its index; the entry is
+		// marked complete only once it has been populated.
+		std::size_t register_ref(const amf0_type_ptr &);
+
+		// Parallel to m_ref_table: false while the entry is still being populated.
+		// A reference to an incomplete entry is a cycle, not a back-reference.
+		std::vector<bool> m_ref_complete;
 
 		unsigned m_depth = 0;
 	};

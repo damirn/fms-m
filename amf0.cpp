@@ -420,7 +420,10 @@ namespace fms
 	amf0_type_ptr amf0::read(byte_reader &buffer)
 	{
 		if (m_depth == 0)            // top-level value: fresh reference context
+		{
 			m_ref_table.clear();
+			m_ref_complete.clear();
+		}
 
 		if (++m_depth > eMaxDepth)   // bound recursion on hostile nested input
 			throw amf0_read_exception();
@@ -452,8 +455,9 @@ namespace fms
 		case amf0_type::eAMF0Object:
 			{
 				amf0_object_ptr tmp = std::make_shared<amf0_object>();
-				m_ref_table.push_back(tmp);   // referenceable; register before populating
+				std::size_t const ref = register_ref(tmp);   // referenceable before populating
 				read_object(buffer, tmp);
+				m_ref_complete[ref] = true;
 				return tmp;
 			}
 		case amf0_type::eAMF0Null:
@@ -477,22 +481,26 @@ namespace fms
 				std::uint16_t idx;
 				buffer >> idx;
 				idx = to_host<std::uint16_t>(idx);
-				if (idx >= m_ref_table.size())
+				// An entry still being populated is an ancestor of this value: taking it
+				// would close a cycle, and nothing downstream survives walking one.
+				if (idx >= m_ref_table.size() || !m_ref_complete[idx])
 					throw amf0_read_exception();
 				return m_ref_table[idx];
 			}
 		case amf0_type::eAMF0EcmaArray:
 			{
 				amf0_ecma_array_ptr tmp = std::make_shared<amf0_ecma_array>();
-				m_ref_table.push_back(tmp);
+				std::size_t const ref = register_ref(tmp);
 				read_mixed_array(buffer, tmp);
+				m_ref_complete[ref] = true;
 				return tmp;
 			}
 		case amf0_type::eAMF0StrictArray:
 			{
 				amf0_strict_array_ptr tmp = std::make_shared<amf0_strict_array>();
-				m_ref_table.push_back(tmp);
+				std::size_t const ref = register_ref(tmp);
 				read_strict_array(buffer, tmp);
+				m_ref_complete[ref] = true;
 				return tmp;
 			}
 		case amf0_type::eAMF0Date:
@@ -522,8 +530,9 @@ namespace fms
 		case amf0_type::eAMF0TypedObject:
 			{
 				amf0_typed_object_ptr tmp = std::make_shared<amf0_typed_object>();
-				m_ref_table.push_back(tmp);
+				std::size_t const ref = register_ref(tmp);
 				read_typed_object(buffer, tmp);
+				m_ref_complete[ref] = true;
 				return tmp;
 			}
 		case amf0_type::eAMF0AMF3Container:
@@ -539,8 +548,26 @@ namespace fms
 		}
 	}
 
+	std::size_t amf0::register_ref(const amf0_type_ptr &value)
+	{
+		m_ref_table.push_back(value);
+		m_ref_complete.push_back(false);
+		return m_ref_table.size() - 1;
+	}
+
 	void amf0::write(byte_writer &buffer, const amf0_type_ptr& type)
 	{
+		// write() is static and runs on every io thread, so the bound is per-thread.
+		// A graph built in memory can still be cyclic even though read() now refuses
+		// to parse one, and a cyclic walk has no other termination condition.
+		thread_local unsigned depth = 0;
+		if (++depth > eMaxDepth)
+		{
+			--depth;
+			throw amf0_write_exception();
+		}
+		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ depth };
+
 		switch (type->type())
 		{
 		case amf0_type::eAMF0Number:

@@ -8,6 +8,7 @@
 #include "amf0.h"
 #include "amf3.h"
 #include "byte_reader.h"
+#include "byte_writer.h"
 #include "doctest.h"
 
 #include <cstdint>
@@ -85,4 +86,47 @@ TEST_CASE("amf0: a truncated deep nest is refused rather than read past the end"
 	std::vector<std::uint8_t> v = nested_amf0(4);
 	v.resize(v.size() / 2);   // cut mid-structure
 	CHECK_FALSE(amf0_reads(v));
+}
+
+// References are registered before the object is populated (the spec allows an
+// object to be referenced while nested inside itself), so a peer can close the
+// loop and hand us a cyclic graph. Nothing downstream bounds a cyclic walk:
+// amf0::write recurses until the stack is gone, and the publisher's metadata is
+// re-serialised to every subscriber.
+TEST_CASE("amf0: a self-referential object is refused at read")
+{
+	// object; key "a"; reference -> index 0 (the object being built); object end.
+	std::vector<std::uint8_t> const body{0x03, 0x00,0x01,'a', 0x07, 0x00,0x00, 0x00,0x00,0x09};
+	byte_reader r(body.data(), body.size());
+	amf0 a;
+	CHECK_THROWS(a.read(r));
+}
+
+TEST_CASE("amf0: a reference to a completed object still resolves")
+{
+	// outer object (ref 0): "a" = empty object (ref 1), "b" = reference -> 1.
+	std::vector<std::uint8_t> const body{
+		0x03,
+		0x00,0x01,'a', 0x03, 0x00,0x00,0x09,
+		0x00,0x01,'b', 0x07, 0x00,0x01,
+		0x00,0x00,0x09};
+	byte_reader r(body.data(), body.size());
+	amf0 a;
+	amf0_type_ptr v;
+	CHECK_NOTHROW(v = a.read(r));
+	REQUIRE(v);
+	CHECK(v->type() == amf0_type::eAMF0Object);
+}
+
+TEST_CASE("amf0: writing a cycle terminates instead of exhausting the stack")
+{
+	// Built in memory rather than parsed: the write bound has to hold on its own,
+	// whatever produced the graph.
+	amf0_ecma_array_ptr const arr = std::make_shared<amf0_ecma_array>();
+	arr->add_entry("self", std::static_pointer_cast<amf0_type>(arr));
+
+	byte_writer w;
+	CHECK_THROWS(amf0::write(w, std::static_pointer_cast<amf0_type>(arr)));
+
+	arr->value().clear();   // break the cycle: it owns itself until we do
 }
