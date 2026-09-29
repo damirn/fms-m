@@ -7,8 +7,11 @@
 // the end. So these bounds are load-bearing for code well outside this file.
 
 #include "byte_reader.h"
+#include "byte_writer.h"
 #include "buffer_eof.h"
 #include "doctest.h"
+
+#include <cstring>
 
 #include <cstdint>
 #include <limits>
@@ -144,4 +147,24 @@ TEST_CASE("available and read_pos track consumption")
 	CHECK(r.available() == 1);
 	CHECK(r.read_pos() == v.data() + 3);
 	CHECK(*r.read_pos() == 0x0D);
+}
+
+// byte_writer's input-buffer role: write_buffer() reserves room, update() reports
+// what arrived. clear() reset the contents but left m_reserved set, so a receive
+// path that clears without updating -- as the RTMFP service does for a datagram
+// it drops -- left the next write_buffer() tripping its own assertion.
+TEST_CASE("byte_writer: clear() releases a pending write_buffer reservation")
+{
+	byte_writer w;
+	(void)w.write_buffer(64);      // reserve, as an async receive would
+	w.clear();                     // datagram dropped before update()
+	CHECK_NOTHROW((void)w.write_buffer(64));   // asserts today
+
+	// And the normal path still works: reserve, fill, update.
+	byte_writer v;
+	boost::asio::mutable_buffer b = v.write_buffer(32);
+	std::memset(b.data(), 0xAB, 8);
+	v.update(8);
+	CHECK(v.size() == 8);
+	CHECK_NOTHROW((void)v.write_buffer(32));
 }
