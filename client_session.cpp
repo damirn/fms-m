@@ -30,15 +30,15 @@ namespace fms
 	void client_session::handle_bytes_read(std::size_t bytes_transferred)
 	{
 		m_bytes_read += static_cast<std::uint32_t>(bytes_transferred);
-		if (m_app != nullptr)
-			m_app->update_stats(true, true, static_cast<std::uint32_t>(bytes_transferred));
+		if (rtmp_application *const app = get_app())
+			app->update_stats(true, true, static_cast<std::uint32_t>(bytes_transferred));
 	}
 
 	void client_session::handle_bytes_written(std::size_t bytes_written)
 	{
 		m_bytes_written += static_cast<std::uint32_t>(bytes_written);
-		if (m_app != nullptr)
-			m_app->update_stats(false, true, static_cast<std::uint32_t>(bytes_written));
+		if (rtmp_application *const app = get_app())
+			app->update_stats(false, true, static_cast<std::uint32_t>(bytes_written));
 	}
 
 	std::uint32_t client_session::reserve_stream_id()

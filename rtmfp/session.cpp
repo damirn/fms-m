@@ -524,14 +524,14 @@ namespace fms
 		m_messages_read++;
 		if (m_app != nullptr) // do we have an rtmp app assigned to us?
 		{
-			ret = m_app->handle_message(msg, m_id, h, result);
-			m_app->update_stats(true, false, 1);
+			ret = get_app()->handle_message(msg, m_id, h, result);
+			get_app()->update_stats(true, false, 1);
 		}
 		else
 		{
 			ret = m_app_manager->handle_message(msg, m_id, h, result);
 			if (m_app != nullptr) // if app has been selected, update stats
-				m_app->update_stats(true, false, 1);
+				get_app()->update_stats(true, false, 1);
 		}
 
 		if (ret && result.get() != nullptr)
@@ -718,7 +718,7 @@ namespace fms
 		{
 			rtmp_message_ptr msg;
 			bool has_msg = false;
-			while (m_app->get_async_message(m_id, msg))
+			while (get_app()->get_async_message(m_id, msg))
 			{
 				if (msg->type() == rtmp_message::eMessageChunkSize ||
 					msg->type() == rtmp_message::eMessageWindowAcknowledgementSize ||

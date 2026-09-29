@@ -29,7 +29,7 @@ namespace fms
 
 	void rtmpt_session::handle_results(byte_writer &buffer)
 	{
-		if (!m_app || (m_results.empty() && !m_app->has_async_messages(m_id)))
+		if (!m_app || (m_results.empty() && !get_app()->has_async_messages(m_id)))
 		{
 			std::uint8_t const poll_time = get_poll_time(false);
 			buffer << poll_time;
@@ -40,7 +40,7 @@ namespace fms
 			buffer << i;
 
 			rtmp_message_ptr msg;
-			while(m_app->get_async_message(m_id, msg))
+			while(get_app()->get_async_message(m_id, msg))
 				serialize_message(msg, buffer);
 
 			for (auto & result : m_results)
@@ -55,7 +55,7 @@ namespace fms
 		rtmp_channel_ptr const channel = m_channel_manager.get_channel(msg->channel_id());
 
 		if (m_app != nullptr)
-			m_app->update_stats(false, false, 1);
+			get_app()->update_stats(false, false, 1);
 
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
@@ -76,14 +76,14 @@ namespace fms
 
 	void rtmpt_session::serialize_result(byte_writer &buffer)
 	{
-		if (m_app != nullptr && m_app->has_async_messages(m_id))
+		if (m_app != nullptr && get_app()->has_async_messages(m_id))
 		{
 			rtmp_message_ptr result;
 
 			std::uint8_t const i = get_poll_time(true);
 			buffer << i;
 
-			while (m_app->get_async_message(m_id, result))
+			while (get_app()->get_async_message(m_id, result))
 			{
 				serialize_message(result, buffer);
 			}

@@ -31,7 +31,7 @@ namespace fms
 
 			m_bytes_read_notify += m_win_ack;
 			rtmp_message_bytes_read_ptr const msg = std::make_shared<rtmp_message_bytes_read>(m_bytes_read);
-			m_app->enqueue_async_message(m_id, msg);
+			get_app()->enqueue_async_message(m_id, msg);
 			notify();
 		}
 	}
@@ -44,14 +44,14 @@ namespace fms
 		++m_messages_read;
 		if (m_app != nullptr) // do we have an rtmp app assigned to us?
 		{
-			ret = m_app->handle_message(msg, m_id, channel->received_header(), result);
-			m_app->update_stats(true, false, 1);
+			ret = get_app()->handle_message(msg, m_id, channel->received_header(), result);
+			get_app()->update_stats(true, false, 1);
 		}
 		else
 		{
 			ret = m_app_manager->handle_message(msg, m_id, channel->received_header(), result);
 			if (m_app != nullptr) // if app has been selected, update stats
-				m_app->update_stats(true, false, 1);
+				get_app()->update_stats(true, false, 1);
 		}
 
 		if (ret && result.get() != nullptr)

@@ -30,12 +30,12 @@ namespace fms
 
 		void set_app(rtmp_application *app)
 		{
-			m_app = app;
+			m_app.store(app, std::memory_order_release);
 		}
 
 		rtmp_application *get_app() const
 		{
-			return m_app;
+			return m_app.load(std::memory_order_acquire);
 		}
 
 		std::uint32_t id() const
@@ -150,7 +150,10 @@ namespace fms
 		std::string m_username;
 
 		app_host *m_app_manager;
-		rtmp_application *m_app{nullptr};
+		// Written on the connection's io thread when connect selects an app, read by
+		// the registry and the admin thread -- same reason the counters below are
+		// atomic.
+		std::atomic<rtmp_application *> m_app{nullptr};
 
 		// start time
 		std::chrono::system_clock::time_point m_time;
