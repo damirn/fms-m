@@ -216,8 +216,16 @@ namespace fms
 		auto const i = m_sessions.find(sid);
 		if (i != m_sessions.end())
 		{
-			m_initial_sessions.erase(i->second->end_point());
-			m_session_map.erase(i->second->peer_id());
+			// Erase only if the entry still maps to this session: a peer that
+			// re-handshakes from the same endpoint, or reconnects with the same peer
+			// id, replaces these entries, and a plain erase-by-key would then drop the
+			// new session's mapping when the old one is reaped.
+			if (auto const k = m_initial_sessions.find(i->second->end_point());
+				k != m_initial_sessions.end() && k->second == i->second)
+				m_initial_sessions.erase(k);
+			if (auto const k = m_session_map.find(i->second->peer_id());
+				k != m_session_map.end() && k->second == i->second)
+				m_session_map.erase(k);
 			const std::list<group_weak_ptr> &grps = i->second->group_membership();
 			if (!grps.empty())
 			{
