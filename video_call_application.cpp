@@ -12,7 +12,7 @@ namespace fms
 {
 	video_call_application::call_instance_data::~call_instance_data()
 	{
-		delete m_mixer;   // the mixer owns (and deletes) m_sink
+		// out-of-line: mixer is incomplete in the header, so ~unique_ptr needs it here
 	}
 
 	namespace invoke_functions
@@ -97,8 +97,8 @@ namespace fms
 				}
 				try
 				{
-					data->m_sink = new flv_writer(*flv_full_name);
-					data->m_mixer = new mixer(data->m_sink);
+					auto sink = std::make_unique<flv_writer>(*flv_full_name);
+					data->m_mixer = std::make_unique<mixer>(std::move(sink));
 					data->m_mixer->init();
 					data->m_mixer->add_source_stream(connection_id);
 				}

@@ -77,7 +77,7 @@ namespace fms
 	{
 	public:
 		mixer();
-		explicit mixer(audio_sink *);
+		explicit mixer(std::unique_ptr<audio_sink>);
 		~mixer() override;
 
 		void init() override;
