@@ -404,6 +404,27 @@ else
 	skip "F2 rtmp_client not built"
 fi
 
+echo "[F3] record path traversal (publish name must not escape --output-folder)"
+if [ -x "$CLIENT" ]; then
+	esc_out="$WORK/rec"
+	for nm in "../../f3_escape_$$" "/tmp/f3_abs_$$"; do
+		"$CLIENT" -r "rtmp://127.0.0.1:$RTMP_PORT/media" -c publish -s "$nm" \
+			-i "$WORK/h264_aac.flv" -R -n >>"$WORK/f3.log" 2>&1 &
+		P=$!; track $P; sleep 4; kill $P 2>/dev/null
+	done
+	sleep 1
+	if ls "$WORK"/f3_escape_*.flv >/dev/null 2>&1 || ls /tmp/f3_abs_$$*.flv >/dev/null 2>&1; then
+		bad "F3 publish name escaped the output folder"
+		rm -f "$WORK"/f3_escape_*.flv /tmp/f3_abs_$$*.flv
+	else
+		ok "F3 traversal and absolute publish names were refused"
+	fi
+	ls "$esc_out"/f3_* >/dev/null 2>&1 && bad "F3 hostile name was recorded inside the folder" \
+		|| ok "F3 nothing written for the refused names"
+else
+	skip "F3 rtmp_client not built"
+fi
+
 echo
 echo "================ SUMMARY ================"
 echo "  pass $PASS   fail $FAIL   skip $SKIP"

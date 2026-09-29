@@ -68,3 +68,41 @@ TEST_CASE("media path: the resolved path always stays under the base")
 		CHECK(fs::weakly_canonical(*p).string().rfind(cbase, 0) == 0);
 	}
 }
+
+// The recording (write) direction: a publish name reaches the filesystem, so the
+// same guard has to hold there. Naive `base / path(name + ".flv")` is silently
+// wrong for an absolute name -- operator/ discards the base entirely.
+TEST_CASE("media path: the write direction rejects the arbitrary-write shapes")
+{
+	temp_media t;
+	std::string const base = t.dir.string();
+
+	// Absolute names: operator/ would drop the base and write wherever asked.
+	CHECK_FALSE(resolve_media_file(base, "/etc/cron.d/pwn").has_value());
+	CHECK_FALSE(resolve_media_file(base, "/root/.ssh/authorized_keys").has_value());
+	CHECK_FALSE(resolve_media_file(base, "/tmp/pwned").has_value());
+
+	// Traversal out of the base, including the deep form an attacker would use.
+	CHECK_FALSE(resolve_media_file(base, "../../../../var/www/html/x").has_value());
+	CHECK_FALSE(resolve_media_file(base, "sub/../../../escape").has_value());
+
+	// A name that only looks like traversal stays inside and is allowed.
+	auto const inside = resolve_media_file(base, "sub/clip");
+	REQUIRE(inside.has_value());
+	CHECK(fs::weakly_canonical(*inside).string().rfind(fs::weakly_canonical(base).string(), 0) == 0);
+}
+
+// Guards the join itself: the property every call site depends on.
+TEST_CASE("media path: an absolute name never inherits the base folder")
+{
+	temp_media t;
+	fs::path const base = t.dir;
+
+	// This is what the unguarded call sites did, and why they were exploitable.
+	fs::path const naive = base / fs::path(std::string("/etc/cron.d/pwn") + ".flv");
+	CHECK(naive.string() == "/etc/cron.d/pwn.flv");          // base silently discarded
+	CHECK(naive.string().rfind(base.string(), 0) != 0);
+
+	// The resolver refuses it instead.
+	CHECK_FALSE(resolve_media_file(base.string(), "/etc/cron.d/pwn").has_value());
+}

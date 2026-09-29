@@ -1,12 +1,13 @@
 #include "pch.h"
 #include "media_application.h"
-#include "util.h"
 #include "client_session.h"
 #include "config.h"
 #include "io_context_pool.h"
-#include "stream_recorder.h"
 #include "logging.h"
+#include "media_path.h"
 #include "remote_relay.h"
+#include "stream_recorder.h"
+#include "util.h"
 
 #include <filesystem>
 #include <memory>
@@ -543,11 +544,19 @@ namespace fms
 		stream_registry::broadcast_stream *const b = m_registry.find_broadcast(std::make_pair(connection_id, stream_id));
 		if (!b)
 			return false;
+		// The publish name is peer-controlled and reaches the filesystem: resolve it
+		// through the containment guard rather than joining it onto the folder.
+		std::optional<std::string> const flv_full_name =
+			resolve_media_file(config::instance()->flv_folder(), stream);
+		if (!flv_full_name)
+		{
+			BOOST_LOG(lg::get()) << "cid: " << connection_id
+				<< " refused to record '" << stream << "': name escapes the output folder";
+			return false;
+		}
 		try
 		{
-			std::filesystem::path const flv_name(stream + ".flv");
-			std::filesystem::path const flv_full_name = config::instance()->flv_folder() / flv_name;
-			b->recorder = std::make_unique<stream_recorder>(flv_full_name.string());
+			b->recorder = std::make_unique<stream_recorder>(*flv_full_name);
 		}
 		catch (std::runtime_error &)
 		{
