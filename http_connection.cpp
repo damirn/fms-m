@@ -56,10 +56,9 @@ namespace fms
 
 	void http_connection::do_read()
 	{
-		// One request at a time; a fresh parser each time. RTMPT bodies are small,
-		// but cap generously rather than at Beast's 1 MB default.
+		// One request at a time; a fresh parser each time.
 		m_parser.emplace();
-		m_parser->body_limit(16 * 1024 * 1024);
+		m_parser->body_limit(m_cid.empty() ? eUnauthBodyLimit : eBodyLimit);
 
 		// Bounds an idle connection and slow header delivery.
 		m_timer.expires_after(std::chrono::seconds(eIdleTimeout));
