@@ -405,7 +405,12 @@ namespace fms
 		std::size_t const obj_ref = register_object(obj, false);   // referenceable before populating
 
 		for (auto const &name : traits->m_properties)   // sealed members
+		{
+			// Traits can be sent by reference, so the name was charged once at
+			// declaration but every object using them materialises its own copy.
+			charge_string_bytes(name.size());
 			obj->value()[name] = read(buffer);
+		}
 
 		if (traits->m_dynamic)                           // dynamic members
 		{

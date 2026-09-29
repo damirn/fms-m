@@ -155,3 +155,59 @@ TEST_CASE("amf3: writing a cycle terminates instead of exhausting the stack")
 
 	obj->value().clear();   // break the cycle: it owns itself until we do
 }
+
+// Sealed property names come from the traits, and traits can be sent by
+// reference: declaring one big name costs the string budget once, but every
+// object that references those traits materialises its own copy of the name as a
+// map key. The copies were never charged, so a small message expanded without
+// bound.
+TEST_CASE("amf3: sealed property names are charged per object that materialises them")
+{
+	auto u29 = [](std::vector<std::uint8_t> &v, std::uint32_t x) {
+		if (x < 0x80) { v.push_back(static_cast<std::uint8_t>(x)); return; }
+		if (x < 0x4000) {
+			v.push_back(static_cast<std::uint8_t>((x >> 7) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(x & 0x7F));
+			return;
+		}
+		if (x < 0x200000) {
+			v.push_back(static_cast<std::uint8_t>((x >> 14) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(((x >> 7) & 0x7F) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(x & 0x7F));
+			return;
+		}
+		v.push_back(static_cast<std::uint8_t>((x >> 22) | 0x80));
+		v.push_back(static_cast<std::uint8_t>(((x >> 15) & 0x7F) | 0x80));
+		v.push_back(static_cast<std::uint8_t>(((x >> 8) & 0x7F) | 0x80));
+		v.push_back(static_cast<std::uint8_t>(x & 0xFF));
+	};
+
+	std::size_t const name_len = 100000;      // one sealed property name
+	std::uint32_t const objects  = 400;       // 400 * 100000 = 40MB > the 32MB budget
+
+	std::vector<std::uint8_t> v;
+	v.push_back(0x09);                        // array
+	u29(v, (objects << 1) | 1);               // dense count
+	v.push_back(0x01);                        // empty assoc portion
+
+	// First dense element declares the traits: inline object, inline traits,
+	// not externalizable, not dynamic, one sealed property.
+	v.push_back(0x0A);
+	u29(v, (1u << 4) | 0x03);
+	v.push_back(0x01);                        // anonymous class name
+	u29(v, static_cast<std::uint32_t>((name_len << 1) | 1));
+	v.insert(v.end(), name_len, 'a');         // the property name
+	v.push_back(0x01);                        // its value: null
+
+	// Every later element references those traits and re-materialises the name.
+	for (std::uint32_t i = 1; i < objects; ++i)
+	{
+		v.push_back(0x0A);
+		u29(v, 0x01);                         // inline object, traits by reference 0
+		v.push_back(0x01);                    // sealed value: null
+	}
+
+	byte_reader r(v.data(), v.size());
+	amf3 a;
+	CHECK_THROWS_AS(a.read(r), amf3_read_exception);
+}
