@@ -273,6 +273,15 @@ if(BUILD_TESTS)
   # behavioural: this target links the application tier WITHOUT the transport
   # stack, which app_host is what makes possible. If a change reintroduces the
   # app -> rtmp_app_manager -> transport dependency, this stops linking.
+  add_executable(relay_throttle_test
+    test/test_main.cpp test/relay_throttle_test.cpp remote_relay.cpp config.cpp logging.cpp)
+  target_link_libraries(relay_throttle_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME relay_throttle_test COMMAND relay_throttle_test)
+  if(APPLE)
+    set_tests_properties(relay_throttle_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   add_executable(stream_registry_test
     test/test_main.cpp test/stream_registry_test.cpp
     stream_registry.cpp stream_recorder.cpp flv_writer.cpp

@@ -23,6 +23,32 @@ namespace fms::remote_relay
 		return {stream.substr(0, pos), stream.substr(pos + 1)};
 	}
 
+	bool spawn_throttle::allow(const std::string &key, clock::time_point now)
+	{
+		std::lock_guard const lock(m_mutex);
+		for (auto i = m_recent.begin(); i != m_recent.end(); )
+			i = (now - i->second >= eCooldown) ? m_recent.erase(i) : std::next(i);
+
+		if (m_recent.contains(key))
+			return false;                       // a helper for this target is starting
+		if (m_recent.size() >= eMaxInFlight)
+			return false;                       // too many distinct targets in flight
+		m_recent[key] = now;
+		return true;
+	}
+
+	void spawn_throttle::release(const std::string &key)
+	{
+		std::lock_guard const lock(m_mutex);
+		m_recent.erase(key);
+	}
+
+	spawn_throttle &helper_throttle()
+	{
+		static spawn_throttle t;
+		return t;
+	}
+
 	void spawn_helper(const std::string &remote_srv, const std::string &stream)
 	{
 		static const char scss[] = "://";
@@ -41,6 +67,12 @@ namespace fms::remote_relay
 			if (app.empty())
 				return;
 			std::string const local_srv = "rtmp://localhost:" + config::instance()->rtmp_port() + "/" + app;
+
+			// Only once the target is known good: a slot is held for the cooldown, and
+			// both halves of the key come from the peer.
+			std::string const key = remote_srv + "/" + stream;
+			if (!helper_throttle().allow(key, spawn_throttle::clock::now()))
+				return;
 
 			std::vector<std::string> args;
 			args.push_back(config::instance()->helper_app());
@@ -68,7 +100,10 @@ namespace fms::remote_relay
 			// the parent" and carry on with no helper and no diagnostic.
 			::pid_t pid = 0;
 			if (int const rc = ::posix_spawnp(&pid, argv[0], nullptr, nullptr, argv.data(), environ); rc != 0)
+			{
+				helper_throttle().release(key);
 				BOOST_LOG(lg::get()) << "cannot spawn helper '" << args[0] << "': " << std::strerror(rc);
+			}
 		}
 	}
 }
