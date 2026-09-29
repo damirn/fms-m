@@ -42,6 +42,11 @@ namespace fms
 				delete[] m_data;
 		}
 
+		// Conditionally owning, so a copy would either double-free or alias the
+		// buffer. Fragments are always held through fragment_ptr; nothing copies one.
+		fragment(const fragment &) = delete;
+		fragment &operator=(const fragment &) = delete;
+
 		void set_send_flags()
 		{
 			m_abandoned = m_sent_abandoned = m_ever_sent = m_in_flight = false;
@@ -71,11 +76,14 @@ namespace fms
 		std::uint16_t m_data_len;
 		std::uint8_t m_frag_ctrl;
 		bool m_data_owner;
-		bool m_abandoned;
-		bool m_sent_abandoned;
-		bool m_ever_sent;
-		std::uint16_t m_nak_count;
-		bool m_in_flight;
+		// Only the send path calls set_send_flags(), so a fragment built on the
+		// receive path would otherwise carry indeterminate flags -- and
+		// in_flight_count() walks the fragments of either kind of flow.
+		bool m_abandoned{false};
+		bool m_sent_abandoned{false};
+		bool m_ever_sent{false};
+		std::uint16_t m_nak_count{0};
+		bool m_in_flight{false};
 	};
 
 	using fragment_ptr = std::shared_ptr<fragment>;

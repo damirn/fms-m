@@ -210,3 +210,26 @@ TEST_CASE("rtmfp flow: abandoning at an absent sequence keeps the later fragment
 	f.remove_fragments_until_seq(vlu_t{5});   // present: drops 3 and 5
 	CHECK(f.fragment_count() == 0);
 }
+
+// set_send_flags() runs only on the send path, so a fragment built while
+// receiving never passed through it. Its send bookkeeping must still start at a
+// defined value: in_flight_count() walks the fragments of either kind of flow.
+TEST_CASE("rtmfp fragment: send bookkeeping starts defined on a received fragment")
+{
+	std::uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+	fragment f(vlu_t{1}, data, static_cast<std::uint16_t>(sizeof(data)),
+	           static_cast<std::uint8_t>(fragment::eMiddle), true);
+
+	CHECK_FALSE(f.m_abandoned);
+	CHECK_FALSE(f.m_sent_abandoned);
+	CHECK_FALSE(f.m_ever_sent);
+	CHECK_FALSE(f.m_in_flight);
+	CHECK(f.m_nak_count == 0);
+
+	// A receiver flow reports no fragments in flight, rather than whatever the
+	// stack happened to hold.
+	flow r(vlu_t{1}, flow::eReceiver);
+	r.add_fragment(mid(1));
+	r.add_fragment(mid(2));
+	CHECK(r.in_flight_count() == 0);
+}
