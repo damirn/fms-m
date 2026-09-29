@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "http_connection.h"
 #include "byte_writer.h"
+#include "config.h"
 #include "rtmp_app_manager.h"
 #include "rtmpt_manager.h"
 
@@ -108,11 +109,12 @@ namespace fms
 		boost::system::error_code ec;
 		boost::asio::ip::tcp::endpoint const remote = m_socket.remote_endpoint(ec);
 
-		// Ident probe: reply with our address, no session.
+		// Ident probe: unauthenticated and session-less, so it answers with the
+		// address the operator chose to bind rather than the socket's own -- behind
+		// NAT, a proxy or a container bridge the latter is an internal address.
 		if (verb == "fcs")
 		{
-			boost::asio::ip::tcp::endpoint const local = m_socket.local_endpoint(ec);
-			std::string const addr = local.address().to_string();
+			std::string const &addr = config::instance()->bind_address();
 			reply(std::vector<std::uint8_t>(addr.begin(), addr.end()));
 			return;
 		}
