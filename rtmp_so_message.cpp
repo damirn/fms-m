@@ -116,15 +116,27 @@ namespace fms
 			buffer << size;
 			buffer.write(ev->m_data.data(), ev->m_data.size());
 		}
+		else if (!ev->m_name)
+		{
+			// The parser leaves m_name null for a zero-length body (eUse, eRelease,
+			// unknown types) and we echo a peer's own event list back. Emit the empty
+			// body it arrived as: those types carry no name, and the reader skips none.
+			buffer << zero;
+		}
 		else
 		{
 			// reserve a 4-byte length slot, write the body, then back-patch the
 			// slot with the body length once it's known (byte_writer mark/patch).
 			std::size_t const pos = buffer.mark();
 			buffer << zero;
-			m_amf0.write_short_string(buffer, ev->m_name, true);
+			amf0::write_short_string(buffer, ev->m_name, true);
 			if (ev->m_type != eSuccess && ev->m_type != eRemove)
-				m_amf0.write(buffer, ev->m_value);
+			{
+				if (ev->m_value)
+					m_amf0.write(buffer, ev->m_value);
+				else
+					amf0::write_null(buffer);
+			}
 			std::uint32_t const size = to_network<std::uint32_t>(
 				static_cast<std::uint32_t>(buffer.mark() - pos - 4));
 			buffer.patch(pos, reinterpret_cast<const std::uint8_t *>(&size), sizeof(size));
