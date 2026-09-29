@@ -130,3 +130,28 @@ TEST_CASE("amf0: writing a cycle terminates instead of exhausting the stack")
 
 	arr->value().clear();   // break the cycle: it owns itself until we do
 }
+
+// AMF3 has the same shape as AMF0: the object table registers an entry before it
+// is populated, so a member can point back at its own container.
+TEST_CASE("amf3: a self-referential object is refused at read")
+{
+	// 0A object; 0B inline traits, dynamic, 0 sealed; 01 empty class name;
+	// 03 61 dynamic member "a"; 0A 00 value = object reference -> index 0;
+	// 01 end of dynamic members.
+	std::vector<std::uint8_t> const body{0x0A, 0x0B, 0x01, 0x03,'a', 0x0A, 0x00, 0x01};
+	byte_reader r(body.data(), body.size());
+	amf3 a;
+	CHECK_THROWS(a.read(r));
+}
+
+TEST_CASE("amf3: writing a cycle terminates instead of exhausting the stack")
+{
+	amf3_object_type_ptr const obj = std::make_shared<amf3_object_type>();
+	obj->add_entry("self", std::static_pointer_cast<amf3_type>(obj));
+
+	byte_writer w;
+	amf3 a;
+	CHECK_THROWS(a.write(w, std::static_pointer_cast<amf3_type>(obj)));
+
+	obj->value().clear();   // break the cycle: it owns itself until we do
+}

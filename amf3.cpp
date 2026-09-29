@@ -49,6 +49,15 @@ namespace fms
 
 	void amf3::write(byte_writer &buffer, const amf3_type_ptr& type)
 	{
+		// A graph built in memory can still be cyclic even though read() now refuses
+		// to parse one, and a cyclic walk has no other termination condition.
+		if (++m_write_depth > eMaxDepth)
+		{
+			--m_write_depth;
+			throw amf3_write_exception();
+		}
+		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ m_write_depth };
+
 		std::uint8_t const marker = type->type();
 		buffer << marker;
 		switch (marker)
@@ -91,9 +100,18 @@ namespace fms
 
 	amf3_type_ptr amf3::object_ref(std::uint32_t idx) const
 	{
-		if (idx >= m_object_refs.size())
+		// An entry still being populated is an ancestor of this value: taking it
+		// would close a cycle, and nothing downstream survives walking one.
+		if (idx >= m_object_refs.size() || !m_object_complete[idx])
 			throw amf3_read_exception();
 		return m_object_refs[idx];
+	}
+
+	std::size_t amf3::register_object(const amf3_type_ptr &value, bool complete)
+	{
+		m_object_refs.push_back(value);
+		m_object_complete.push_back(complete);
+		return m_object_refs.size() - 1;
 	}
 
 	amf3_empty_type_ptr amf3::read_empty_type(byte_reader &, std::uint8_t type)
@@ -246,7 +264,7 @@ namespace fms
 		std::string s(reinterpret_cast<const char *>(buffer.read_pos()), len);   // NOLINT(misc-const-correctness) moved below
 		buffer.skip(len);
 		auto xml = std::make_shared<amf3_xml_type>(static_cast<amf3_type::etype>(marker), std::move(s));
-		m_object_refs.push_back(xml);
+		register_object(xml, true);
 		return xml;
 	}
 
@@ -265,7 +283,7 @@ namespace fms
 
 		amf3_double_type_ptr const ms = read_double(buffer);   // date-time is a DOUBLE
 		auto date = std::make_shared<amf3_date_type>(ms->value());
-		m_object_refs.push_back(date);
+		register_object(date, true);
 		return date;
 	}
 
@@ -288,7 +306,7 @@ namespace fms
 		std::string bytes(reinterpret_cast<const char *>(buffer.read_pos()), len);
 		buffer.skip(len);
 		auto ba = std::make_shared<amf3_bytearray_type>(std::move(bytes));
-		m_object_refs.push_back(ba);
+		register_object(ba, true);
 		return ba;
 	}
 
@@ -307,7 +325,7 @@ namespace fms
 
 		std::uint32_t const dense_count = header >> 1;
 		auto arr = std::make_shared<amf3_array_type>();
-		m_object_refs.push_back(arr);   // register before populating (may self-reference)
+		std::size_t const arr_ref = register_object(arr, false);   // referenceable before populating
 
 		// associative portion: name/value pairs terminated by the empty string
 		for (;;)
@@ -322,6 +340,7 @@ namespace fms
 		for (std::uint32_t i = 0; i < dense_count; ++i)
 			arr->dense().push_back(read(buffer));
 
+		m_object_complete[arr_ref] = true;
 		return arr;
 	}
 
@@ -383,7 +402,7 @@ namespace fms
 		}
 
 		auto obj = std::make_shared<amf3_object_type>();
-		m_object_refs.push_back(obj);   // register before populating (may self-reference)
+		std::size_t const obj_ref = register_object(obj, false);   // referenceable before populating
 
 		for (auto const &name : traits->m_properties)   // sealed members
 			obj->value()[name] = read(buffer);
@@ -399,6 +418,7 @@ namespace fms
 			}
 		}
 
+		m_object_complete[obj_ref] = true;
 		return obj;
 	}
 

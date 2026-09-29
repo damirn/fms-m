@@ -21,6 +21,14 @@ namespace fms
 		{}
 	};
 
+	class amf3_write_exception final : public std::runtime_error
+	{
+	public:
+		amf3_write_exception()
+			: std::runtime_error("AMF3 value nests too deeply to serialise.")
+		{}
+	};
+
 	// AMF3 (de)serializer. One instance forms a single serialization context: the
 	// string / object / traits reference tables it maintains are scoped to the
 	// message it (de)serializes and are reset when reading starts at the top level.
@@ -89,17 +97,25 @@ namespace fms
 		// occurrence order. Reset when reading resumes at the top level.
 		std::vector<std::string>   m_string_refs;
 		std::vector<amf3_type_ptr> m_object_refs;
+		// Parallel to m_object_refs: false while the entry is still being populated.
+		// A reference to an incomplete entry is a cycle, not a back-reference.
+		std::vector<bool> m_object_complete;
 		std::vector<class_data_ptr> m_traits_refs;
+
+		// Register a value as referenceable and return its index.
+		std::size_t register_object(const amf3_type_ptr &value, bool complete);
 
 		void reset_refs()
 		{
 			m_string_refs.clear();
 			m_object_refs.clear();
+			m_object_complete.clear();
 			m_traits_refs.clear();
 			m_decoded_string_bytes = 0;
 		}
 
 		unsigned m_depth = 0;
+		unsigned m_write_depth = 0;
 
 		// A string reference costs one wire byte but materializes a full copy;
 		// budget every string handed back, by value or by reference.
