@@ -559,7 +559,7 @@ namespace fms
 	void amf0::write(byte_writer &buffer, const amf0_type_ptr& type)
 	{
 		// Depth stops a cycle; the node budget stops reference fan-out.
-		amf_write_budget::frame const budget;
+		amf_write_budget::frame const budget(buffer.size());
 		if (!budget.ok())
 			throw amf0_write_exception();
 

@@ -15,16 +15,25 @@ namespace fms
 		// Nodes one write may emit; a shared referent re-expands per path.
 		static constexpr std::size_t eMaxNodes = 1u << 20;
 
-		// One node of the walk. Refuses by reporting !ok(); the caller throws its
-		// own codec's exception.
+		// Bytes one write may emit. A node budget alone does not bound output: a
+		// shared referent carrying a large payload re-emits it per path.
+		static constexpr std::size_t eMaxBytes = 16u << 20;
+
+		// One node of the walk, charged against the bytes written so far. Refuses
+		// by reporting !ok(); the caller throws its own codec's exception.
 		class frame
 		{
 		public:
-			frame()
+			explicit frame(std::size_t written)
 			{
 				if (s_depth == 0)
+				{
 					s_nodes = 0;
-				m_ok = ++s_depth <= eMaxDepth && ++s_nodes <= eMaxNodes;
+					s_origin = written;
+				}
+				m_ok = ++s_depth <= eMaxDepth
+					&& ++s_nodes <= eMaxNodes
+					&& written - s_origin <= eMaxBytes;
 			}
 
 			~frame() { --s_depth; }
@@ -41,5 +50,6 @@ namespace fms
 	private:
 		static inline thread_local unsigned s_depth = 0;
 		static inline thread_local std::size_t s_nodes = 0;
+		static inline thread_local std::size_t s_origin = 0;
 	};
 }

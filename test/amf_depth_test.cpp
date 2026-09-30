@@ -12,6 +12,7 @@
 #include "doctest.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 using namespace fms;
@@ -271,4 +272,27 @@ TEST_CASE("amf write: an AMF3 container spends the AMF0 budget")
 
 	byte_writer many;
 	CHECK_THROWS_AS(amf0::write(many, std::static_pointer_cast<amf0_type>(arr)), amf3_write_exception);
+}
+
+// Counting nodes does not bound output: a shared referent carrying a large
+// payload re-emits it on every path that reaches it.
+TEST_CASE("amf0 write: byte fan-out is bounded independently of node count")
+{
+	auto const big = std::make_shared<amf0_object>();
+	big->add_entry("s", std::make_shared<amf0_string>(std::string(amf0::eMaxShortString, 'a')));
+
+	auto refs = [&big](int n) {
+		auto const arr = std::make_shared<amf0_strict_array>();
+		for (int i = 0; i < n; ++i)
+			arr->add_entry(std::static_pointer_cast<amf0_type>(big));
+		return std::static_pointer_cast<amf0_type>(arr);
+	};
+
+	// ~4 MB from 129 nodes: inside the byte budget.
+	byte_writer ok;
+	CHECK_NOTHROW(amf0::write(ok, refs(64)));
+
+	// ~33 MB from 1025 nodes: the node budget cannot see this.
+	byte_writer over;
+	CHECK_THROWS_AS(amf0::write(over, refs(512)), amf0_write_exception);
 }
