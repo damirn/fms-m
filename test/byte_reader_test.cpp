@@ -175,7 +175,9 @@ TEST_CASE("byte_writer: clear() releases a pending write_buffer reservation")
 }
 
 // A completion handler can reach update() after an error path already cleared the
-// buffer. In Debug the assert catches it; under NDEBUG the arithmetic used to wrap.
+// buffer. Debug asserts on it, which is the intended diagnostic and aborts the
+// process, so only the NDEBUG fail-closed path is testable.
+#ifdef NDEBUG
 TEST_CASE("byte_writer: update after clear does not resize the buffer")
 {
 	byte_writer w;
@@ -191,3 +193,4 @@ TEST_CASE("byte_writer: update after clear does not resize the buffer")
 	CHECK(w.footprint() == 0);
 	CHECK(w.reserved() == 0);
 }
+#endif
