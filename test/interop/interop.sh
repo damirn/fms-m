@@ -132,6 +132,7 @@ play_rtmpdump() {
 	local url="$1" out="$2" secs="$3"; shift 3
 	rtmpdump -z "$@" -r "$url" -o "$out" >"${out%.flv}.log" 2>&1 &
 	local rd=$!
+	track "$rd"          # the EXIT trap has to be able to reach it too
 	for _ in $(seq 1 $((secs*4))); do kill -0 "$rd" 2>/dev/null || return 0; sleep 0.25; done
 	kill "$rd" 2>/dev/null; wait "$rd" 2>/dev/null; return 0
 }
