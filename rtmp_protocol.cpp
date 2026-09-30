@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "rtmp_protocol.h"
+#include "amf0.h"
 #include "amf3.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
@@ -98,7 +99,7 @@ namespace fms
 		}
 	}
 
-	void rtmp_protocol::serialize(byte_writer &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)
+	bool rtmp_protocol::serialize(byte_writer &buffer, const rtmp_message_ptr& msg, rtmp_header &new_header, rtmp_header &previous_header)
 	{
 		// Audio/video frame bodies are already a contiguous block; chunk straight
 		// from them (no copy). Everything else builds its body into a temporary.
@@ -111,7 +112,28 @@ namespace fms
 		}
 		else
 		{
-			msg->serialize(tmp_buffer);
+			// The write bounds reject a graph the read bounds accepted, so this
+			// throws on a body we are echoing back out. Drop it, as deserialize does.
+			try
+			{
+				msg->serialize(tmp_buffer);
+			}
+			catch (const amf0_write_exception &)
+			{
+				return false;
+			}
+			catch (const amf3_write_exception &)
+			{
+				return false;
+			}
+			catch (const std::bad_alloc &)
+			{
+				return false;
+			}
+			catch (const std::length_error &)
+			{
+				return false;
+			}
 			payload = tmp_buffer.data();
 			payload_len = static_cast<std::uint32_t>(tmp_buffer.size());
 		}
@@ -125,6 +147,7 @@ namespace fms
 
 		new_header.serialize(buffer, previous_header);
 		chunk_buffer(buffer, payload, payload_len, new_header);
+		return true;
 	}
 
 	void rtmp_protocol::deserialize_notify(byte_reader &buffer)

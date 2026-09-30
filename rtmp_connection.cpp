@@ -330,8 +330,10 @@ namespace fms
 			rtmp_message_chunk_size_ptr const cs = std::static_pointer_cast<rtmp_message_chunk_size>(result);
 			set_outgoing_chunk_size(cs->chunk_size());
 		}
-		p.serialize(m_output_buffer, result, h, channel->sent_header());
-		channel->sent_header() = h;
+		if (p.serialize(m_output_buffer, result, h, channel->sent_header()))
+			channel->sent_header() = h;
+		else
+			BOOST_LOG(lg::get()) << "cid: " << m_id << " dropping message type " << static_cast<int>(result->type()) << ": body exceeds the AMF write bounds";
 	}
 
 	void rtmp_connection::perform_write()

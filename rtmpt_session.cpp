@@ -3,6 +3,7 @@
 #include "byte_writer.h"
 #include "channel_manager.h"
 #include "crypto.h"
+#include "logging.h"
 #include "rtmp_app_manager.h"
 #include "rtmp_application.h"
 #include "rtmp_header.h"
@@ -66,8 +67,10 @@ namespace fms
 		rtmp_header h;
 		rtmp_protocol p(m_outgoing_chunk_size);
 		std::size_t const start = buffer.mark();
-		p.serialize(buffer, msg, h, channel->sent_header());
-		channel->sent_header() = h;
+		if (p.serialize(buffer, msg, h, channel->sent_header()))
+			channel->sent_header() = h;
+		else
+			BOOST_LOG(lg::get()) << "cid: " << m_id << " dropping message type " << static_cast<int>(msg->type()) << ": body exceeds the AMF write bounds";
 
 		// encrypt just the region this message serialized into (no-op if plaintext)
 		if (buffer.size() > start)
