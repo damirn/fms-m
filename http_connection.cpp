@@ -76,6 +76,36 @@ namespace fms
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_header(ec, n); });
 	}
 
+	bool http_connection::parse_seq(const std::string &seq, std::uint32_t &out)
+	{
+		const char *const first = seq.data();
+		const char *const last = first + seq.size();
+		std::from_chars_result const r = std::from_chars(first, last, out);
+		// ec catches an out-of-range value -- which is the point, since it also
+		// consumes every digit and so leaves ptr == last.
+		return !seq.empty() && r.ec == std::errc{} && r.ptr == last;
+	}
+
+	bool http_connection::body_limit_earned() const
+	{
+		if (m_parser->get().method() != http::verb::post)
+			return false;
+
+		std::string const target(m_parser->get().target().data(), m_parser->get().target().size());
+		std::string verb, cid, seq;
+		split_target(target, verb, cid, seq);
+		if (cid.empty())
+			return false;
+
+		std::uint32_t seq_n = 0;
+		if (!parse_seq(seq, seq_n))
+			return false;
+
+		boost::system::error_code ec;
+		boost::asio::ip::tcp::endpoint const remote = m_socket.remote_endpoint(ec);
+		return !ec && m_rtmpt_manager->validate(remote, cid, seq_n);
+	}
+
 	void http_connection::on_header(const boost::system::error_code &e, std::size_t bytes_transferred)
 	{
 		m_header_bytes = bytes_transferred;
@@ -86,13 +116,10 @@ namespace fms
 			return;
 		}
 
-		std::string const target(m_parser->get().target().data(), m_parser->get().target().size());
-		std::string verb, cid, seq;
-		split_target(target, verb, cid, seq);
-		if (cid.empty() || !m_rtmpt_manager->has_session(cid))
+		if (!body_limit_earned())
 		{
-			// No session yet: hold this request to the unauthenticated cap. The
-			// lowered limit covers a chunked body, which is spent incrementally.
+			// Nothing earned the generous limit yet: hold this request to the
+			// unauthenticated cap, which also covers a chunked body spent incrementally.
 			auto const len = m_parser->content_length();
 			if (len && *len > eUnauthBodyLimit)
 			{
@@ -182,17 +209,10 @@ namespace fms
 		// 64-bit one that a narrowing cast then folds into a small sequence (2^32
 		// became 0), and it needs no exception for the routine case of junk in a URL.
 		std::uint32_t seq_n = 0;
+		if (!parse_seq(seq, seq_n))
 		{
-			const char *const first = seq.data();
-			const char *const last = first + seq.size();
-			std::from_chars_result const r = std::from_chars(first, last, seq_n);
-			// ec catches an out-of-range value -- which is the point, since it also
-			// consumes every digit and so leaves ptr == last.
-			if (seq.empty() || r.ec != std::errc{} || r.ptr != last)
-			{
-				close();
-				return;
-			}
+			close();
+			return;
 		}
 
 		if (cid.empty() || !m_rtmpt_manager->validate(remote, cid, seq_n))   // validate rejects unknown ids

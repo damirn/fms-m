@@ -72,6 +72,13 @@ namespace fms
 		// Split "/<verb>[/<cid>/<seq>]" into its path segments.
 		static void split_target(const std::string &, std::string &verb, std::string &cid, std::string &seq);
 
+		// Parse the target's sequence segment. False on anything but all digits in range.
+		static bool parse_seq(const std::string &, std::uint32_t &);
+
+		// True when this request has earned the generous body limit: a POST whose
+		// session id and sequence validate against this peer.
+		bool body_limit_earned() const;
+
 		void do_read();
 		void on_header(const boost::system::error_code &, std::size_t);
 		void on_read(const boost::system::error_code &, std::size_t);

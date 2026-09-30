@@ -240,6 +240,23 @@ if [ -n "$cid" ]; then
 	[ -n "$code" ] || code=000
 	[ "$code" = "200" ] && ok "rtmpt: 2 MiB body on an open session is accepted" \
 		|| bad "rtmpt: 2 MiB body on session $cid got HTTP $code"
+	# A live session is not on its own enough: the request must be one the server
+	# would act on. A malformed sequence is rejected anyway, so it earns nothing.
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+		-X POST --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/notanumber" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "413" ] && ok "rtmpt: a malformed sequence does not earn the larger body limit" \
+		|| bad "rtmpt: 2 MiB body on a malformed sequence got HTTP $code, expected 413"
+
+	# Nor does a method the server will not serve.
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+		-X PUT --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/1" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "413" ] && ok "rtmpt: a non-POST does not earn the larger body limit" \
+		|| bad "rtmpt: 2 MiB body on a PUT got HTTP $code, expected 413"
+
 	curl -s -o /dev/null --max-time 10 -X POST --data-binary '' \
 		"http://127.0.0.1:$RTMPT_PORT/close/$cid/2" 2>/dev/null || true
 else
