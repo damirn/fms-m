@@ -60,6 +60,7 @@ namespace
 		using media_application::handle_invoke_close_stream;
 		using media_application::remove_client;
 		using media_application::m_registry;
+		using media_application::add_waiting_client;
 
 		// handle_invoke_play needs a live connection; the waiting-list entry it
 		// would add is the only part that matters here.
@@ -80,6 +81,24 @@ namespace
 		{
 			auto const guard = m_registry.lock_exclusive();
 			return m_registry.take_waiting(name, guard).size();
+		}
+
+		// Same count, without consuming the list.
+		std::size_t waiting_on_peek(const std::string &name)
+		{
+			auto const guard = m_registry.lock_exclusive();
+			std::vector<stream_registry::subscriber> const v = m_registry.take_waiting(name, guard);
+			for (auto const &s : v)
+				m_registry.add_waiting(name, s, guard);
+			return v.size();
+		}
+
+		void play_again(std::uint32_t cid, std::uint32_t sid, const std::string &name)
+		{
+			auto const guard = m_registry.lock_exclusive();
+			auto const msg = rtmp_message_invoke::create_message("play");
+			msg->set_stream_id(sid);
+			add_waiting_client(cid, msg, name, guard);
 		}
 	};
 
@@ -123,4 +142,20 @@ TEST_CASE("media: a play/closeStream cycle leaves nothing behind for the sweep")
 	CHECK(app.waiting_on("later") == 0);
 	for (std::uint32_t sid = 1; sid <= 4; ++sid)
 		CHECK_FALSE(app.remembers(9, sid));
+}
+
+// One stream id holds one subscription at a time: the earlier name's waiting-list
+// entry has no other owner once the id is re-pointed.
+TEST_CASE("media: re-playing a different name on one stream id leaves no orphan")
+{
+	null_host host;
+	sub_app app(&host);
+
+	app.wait_for(7, 1, "first");
+	REQUIRE(app.waiting_on_peek("first") == 1);
+
+	app.play_again(7, 1, "second");
+
+	CHECK(app.waiting_on_peek("first") == 0);
+	CHECK(app.waiting_on_peek("second") == 1);
 }

@@ -679,6 +679,10 @@ namespace fms
 
 	void media_application::add_waiting_client(std::uint32_t connection_id, const rtmp_message_invoke_ptr& invoke, const std::string &str, const stream_registry::exclusive_guard &guard)
 	{
+		// One stream id holds one subscription: re-playing a different name on it has
+		// to drop the previous waiting-list entry, which nothing else can reach.
+		forget_subscription(connection_id, invoke->stream_id(), guard);
+
 		stream_registry::subscriber const wc(connection_id, invoke->stream_id(), invoke->channel_id());
 		m_registry.add_waiting(str, wc, guard);
 		m_registry.set_subscriber_stream(std::make_pair(connection_id, invoke->stream_id()), str, guard);
