@@ -579,12 +579,14 @@ if(BUILD_CLIENT)
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
   add_test(NAME mixer_tests COMMAND mixer_tests)
 
-  # Applied last so it lands on every test registered above, appending rather than
-  # replacing the ENVIRONMENT some of them already set.
-  if(SANITIZE)
-    get_property(FMS_ALL_TESTS DIRECTORY PROPERTY TESTS)
-    foreach(t ${FMS_ALL_TESTS})
-      set_property(TEST ${t} APPEND PROPERTY ENVIRONMENT ${FMS_SANITIZER_ENV})
-    endforeach()
-  endif()
+endif()
+
+# Top level, so it is applied whether or not BUILD_CLIENT registered tests of its
+# own, and last, so it lands on every test above -- appending rather than
+# replacing the ENVIRONMENT some of them already set.
+if(SANITIZE)
+  get_property(FMS_ALL_TESTS DIRECTORY PROPERTY TESTS)
+  foreach(t ${FMS_ALL_TESTS})
+    set_property(TEST ${t} APPEND PROPERTY ENVIRONMENT ${FMS_SANITIZER_ENV})
+  endforeach()
 endif()
