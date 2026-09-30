@@ -59,6 +59,7 @@ namespace
 		void handle_bytes_read(std::size_t n) override { bytes_read += n; }
 		void handle_bytes_written(std::size_t n) override { bytes_written += n; }
 		void close() override { closed = true; }
+		bool is_closed() const override { return closed; }
 	};
 
 	using fake_session_ptr = std::shared_ptr<fake_session>;

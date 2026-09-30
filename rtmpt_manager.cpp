@@ -54,6 +54,13 @@ namespace fms
 		if (i == m_ids.end())
 			return false;
 
+		// A closed session keeps neither its id nor its slot.
+		if (i->second->m_session->is_closed())
+		{
+			m_ids.erase(i);
+			return false;
+		}
+
 		if (i->second->m_sequence > sequence ||
 			i->second->m_address != remote.address())
 			return false;
@@ -226,7 +233,7 @@ namespace fms
 					// m_not_alive/m_open_ticks are guarded by the global lock (held here);
 					// handshake_complete() reads session state -> per-session lock
 					// (global-then-per-session, the same order remove_session uses).
-					bool is_dead = i->second->m_not_alive > 3;
+					bool is_dead = i->second->m_not_alive > 3 || i->second->m_session->is_closed();
 					if (!is_dead)
 					{
 						std::lock_guard const s(i->second->m_session_mutex);
