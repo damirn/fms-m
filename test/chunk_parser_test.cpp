@@ -792,6 +792,36 @@ TEST_CASE("VLU: vlu_size agrees with the bytes write_vlu emits")
 	}
 }
 
+TEST_CASE("chunk parser: a zero chunk size never reaches the framer")
+{
+	// chunk_buffer divides by the chunk size: a zero traps on x86 and degrades to
+	// one oversized chunk elsewhere, so the size has to be a usable one either way.
+	constexpr std::uint32_t body = 4096;
+	auto const audio = std::make_shared<rtmp_message_audio_data>(body);
+	std::memset(audio->data(), 0x7f, body);
+	rtmp_message_ptr const msg = audio;
+
+	byte_writer zero_out;
+	{
+		rtmp_protocol p(0);
+		rtmp_header h;
+		rtmp_header sent;
+		REQUIRE(p.serialize(zero_out, msg, h, sent));
+	}
+
+	byte_writer default_out;
+	{
+		rtmp_protocol p(128);   // rtmp_protocol::eChunkSize
+		rtmp_header h;
+		rtmp_header sent;
+		REQUIRE(p.serialize(default_out, msg, h, sent));
+	}
+
+	// Framed at the default size, so the body carries continuation headers.
+	CHECK(zero_out.size() == default_out.size());
+	CHECK(zero_out.size() > body + 12);
+}
+
 TEST_CASE("VLU: every encodable value survives a write/read round trip")
 {
 	// A flow id or sequence number the reader cannot return is one write_vlu would
