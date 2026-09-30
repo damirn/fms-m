@@ -20,9 +20,16 @@ namespace fms
 		0x49, 0x28, 0x66, 0x51, 0xEC, 0xE6, 0x53, 0x81, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 	};
 
-	void dh::init()
+	void dh::init() noexcept
 	{
-		m_pkey = evp_dh_keygen(P1024, sizeof(P1024), 2);
+		try
+		{
+			m_pkey = evp_dh_keygen(P1024, sizeof(P1024), 2);
+		}
+		catch (const std::runtime_error &)
+		{
+			m_pkey = nullptr;   // callers check valid(); nothing here may unwind
+		}
 	}
 
 	void dh::deinit()

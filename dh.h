@@ -12,7 +12,7 @@ namespace fms
 	class dh : boost::noncopyable
 	{
 	public:
-		dh()
+		dh() noexcept
 		{
 			init();
 		}
@@ -21,6 +21,9 @@ namespace fms
 		{
 			deinit();
 		}
+
+		// False when keygen failed; every other member is then meaningless.
+		[[nodiscard]] bool valid() const { return m_pkey != nullptr; }
 
 		// False when the peer's public value has no shared secret (0, 1, p-1, >= p).
 		// Never throws: it runs inside an Asio read handler.
@@ -33,7 +36,7 @@ namespace fms
 		void copy_private_key(std::uint8_t *, std::uint16_t);
 
 	protected:
-		void init();
+		void init() noexcept;
 		void deinit();
 
 		EVP_PKEY *m_pkey{nullptr};

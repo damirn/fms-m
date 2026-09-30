@@ -60,7 +60,7 @@ namespace fms
 		std::uint32_t const server_digest_offset = rtmp_handshake::digest_offset(server_sig, m_validation_scheme);
 		if (!rtmp_handshake::compute_digest(server_sig, server_digest_offset,
 			{genuine_keys::FMS_key, 36}, server_sig.subspan(server_digest_offset).first<rtmp_handshake::eDigestLen>()))
-			return false;   // an unsigned S1 is worse than no handshake
+			return false;   // S1 must ship signed
 
 		// Sign S2 (the response to C1): key = HMAC(client's C1 digest, FMS_key), then
 		// HMAC over C1[0:1504] with that key, stored where the client will verify it.
@@ -106,13 +106,15 @@ namespace fms
 	bool rtmp_handshaker::create_keys(rtmp_handshake::c1_view client_sig, rtmp_handshake::c1_span server_sig)
 	{
 		dh mydh;
+		if (!mydh.valid())
+			return false;   // keygen failed
 		std::uint32_t const client_dh_offset = rtmp_handshake::dh_offset(client_sig, m_validation_scheme);
 		std::uint32_t const server_dh_offset = rtmp_handshake::dh_offset(server_sig, m_validation_scheme);
 
 		if (!mydh.create_shared_key(const_cast<std::uint8_t *>(client_sig.data()) + client_dh_offset, 128))
 			return false;   // degenerate peer public value: fail the handshake, do not unwind
 		if (!mydh.copy_public_key(server_sig.data() + server_dh_offset, 128))
-			return false;   // else S1 would carry the random filler as our DH public key
+			return false;   // S1's DH slot must hold the exported key, not the filler
 
 		std::uint8_t hash[SHA256_DIGEST_LENGTH];
 		if (HMAC_SHA256(server_sig.data() + server_dh_offset, 128, genuine_keys::FP_key, 30, hash) == 0)
