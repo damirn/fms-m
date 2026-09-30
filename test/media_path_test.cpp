@@ -90,3 +90,29 @@ TEST_CASE("media path: the write direction rejects the arbitrary-write shapes")
 	REQUIRE(inside.has_value());
 	CHECK(fs::weakly_canonical(*inside).string().rfind(fs::weakly_canonical(base).string(), 0) == 0);
 }
+
+TEST_CASE("media path: a dangling symlink is refused, a contained one is not")
+{
+	temp_media t;
+	std::string const base = t.dir.string();
+	fs::path const outside = t.dir.parent_path() / "fms_media_test_escape.flv";
+
+	std::error_code ec;
+	fs::remove(outside, ec);
+	fs::remove(t.dir / "dangling.flv", ec);
+	fs::remove(t.dir / "alias.flv", ec);
+	fs::create_symlink(outside, t.dir / "dangling.flv", ec);
+	REQUIRE_FALSE(ec);
+	fs::create_symlink(t.dir / "movie.flv", t.dir / "alias.flv", ec);
+	REQUIRE_FALSE(ec);
+
+	// Writing through a dangling link would create the file outside the base.
+	CHECK_FALSE(resolve_media_file(base, "dangling").has_value());
+
+	// One that resolves inside stays usable: it is the target that matters.
+	auto const alias = resolve_media_file(base, "alias");
+	REQUIRE(alias.has_value());
+	CHECK(fs::path(*alias) == fs::weakly_canonical(t.dir / "movie.flv"));
+
+	CHECK_FALSE(fs::exists(outside));
+}
