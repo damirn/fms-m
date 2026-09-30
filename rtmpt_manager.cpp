@@ -147,15 +147,21 @@ namespace fms
 			sd->m_not_alive = 0;
 			advance_sequence(*sd, seq, drained);
 		}
-		std::lock_guard const s(sd->m_session_mutex);
 		// An /idle carries no body of its own, but it still occupies a sequence -- so
 		// it can be the request that closes a gap. Anything it releases from the stash
 		// has to be delivered here, or those bodies are dropped and the sequence walks
 		// past a number the client will never send again, wedging the tunnel.
-		if (drained.size() > 0)
-			sd->m_session->handle_data(drained, buffer);
-		else
-			sd->m_session->serialize_result(buffer);
+		boost::tribool result = true;
+		{
+			std::lock_guard const s(sd->m_session_mutex);
+			if (drained.size() > 0)
+				result = sd->m_session->handle_data(drained, buffer);
+			else
+				sd->m_session->serialize_result(buffer);
+		}
+		// A definite false is fatal wherever the body came from.
+		if (!result)
+			remove_session(cid);
 		return buffer.size();
 	}
 
