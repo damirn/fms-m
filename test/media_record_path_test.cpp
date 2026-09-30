@@ -10,6 +10,7 @@
 #include "io_context_pool.h"
 #include "media_application.h"
 #include "rtmp_message.h"
+#include "stream_recorder.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -118,4 +119,23 @@ TEST_CASE("media recorder: a name that escapes the output folder is refused")
 
 	CHECK_FALSE(std::filesystem::exists(up / "escape.flv"));
 	CHECK_FALSE(std::filesystem::exists("/tmp/absolute_escape.flv"));
+}
+
+// The recorder serialises a peer-supplied graph outside rtmp_protocol::serialize,
+// so it has to contain the write-bound exception itself.
+TEST_CASE("media recorder: metadata the write bounds refuse is dropped, not thrown")
+{
+	std::filesystem::path const dir = set_output_folder();
+
+	amf0_type_ptr node = std::make_shared<amf0_null>();
+	for (unsigned i = 0; i < 25; ++i)
+	{
+		auto const o = std::make_shared<amf0_object>();
+		o->add_entry("a", node);
+		o->add_entry("b", node);
+		node = o;
+	}
+
+	stream_recorder rec((dir / "meta.flv").string());
+	CHECK_NOTHROW(rec.record_metadata(node));
 }

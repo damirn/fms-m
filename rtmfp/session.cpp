@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "session.h"
 #include "aes.h"
+#include "amf0.h"
+#include "amf3.h"
 #include "app_host.h"
 #include "byte_order.h"
 #include "byte_reader.h"
@@ -549,7 +551,20 @@ namespace fms
 		std::uint32_t ts = result->timestamp();
 		ts = to_network<std::uint32_t>(ts);
 		temp << ts;
-		result->serialize(temp);
+		try
+		{
+			result->serialize(temp);
+		}
+		catch (const amf0_write_exception &)
+		{
+			// The write bounds reject a graph the read bounds accepted; drop the
+			// message rather than unwind into the receive handler.
+			return;
+		}
+		catch (const amf3_write_exception &)
+		{
+			return;
+		}
 
 		auto const i = m_stream_id_to_flow_id.find(result->stream_id());
 		if (i != m_stream_id_to_flow_id.end())

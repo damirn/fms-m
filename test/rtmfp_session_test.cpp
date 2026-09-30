@@ -5,6 +5,7 @@
 // With rtmfp_host injected it can be built on its own, and these drive real
 // chunks through handle_chunk into the flow machinery.
 
+#include "amf0.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 #include "doctest.h"
@@ -100,6 +101,7 @@ namespace
 		using session::session;
 		using session::handle_chunk;
 		using session::flow_sanity_check;
+		using session::message_to_fragment;
 		using session::m_receiving_flows;
 	};
 	using testable_session_ptr = std::shared_ptr<testable_session>;
@@ -509,4 +511,24 @@ TEST_CASE("rtmfp session: a malformed NetGroup message does not wedge the flow")
 
 	CHECK(h.net_groups == 1);                       // the valid one still arrived
 	CHECK(s->group_membership().size() == 1);
+}
+
+// A body the write bounds refuse must not unwind out of the receive handler.
+TEST_CASE("rtmfp session: a message the AMF write bounds refuse is dropped")
+{
+	amf0_type_ptr node = std::make_shared<amf0_null>();
+	for (unsigned i = 0; i < 25; ++i)
+	{
+		auto const o = std::make_shared<amf0_object>();
+		o->add_entry("a", node);
+		o->add_entry("b", node);   // same child twice: 2^n leaves when expanded
+		node = o;
+	}
+
+	auto const msg = rtmp_message_invoke::create_message("onStatus");
+	msg->add_parameter(node);
+
+	fake_host h;
+	auto const s = make_session(h);
+	CHECK_NOTHROW(s->message_to_fragment(msg));
 }
