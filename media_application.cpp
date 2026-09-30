@@ -385,8 +385,12 @@ namespace fms
 				stream_client_id_t const bcaster_id = res ? *found : stream_client_id_t{};
 
 				// No live publisher: if a saved .flv exists, serve it as VOD.
-				if (!res && !is_remote && m_vod.start(connection_id, invoke, stream_name))
-					return;
+				if (!res && !is_remote)
+				{
+					forget_subscription(connection_id, invoke->stream_id(), lock);
+					if (m_vod.start(connection_id, invoke, stream_name))
+						return;
+				}
 
 				add_waiting_client(connection_id, invoke, stream_name, lock);
 				if (!res) // we still don't have broadcaster for this stream
@@ -657,12 +661,13 @@ namespace fms
 		}
 	}
 
-	// Drops the waiting-list and stream-name state for one subscription. closeStream
-	// reaches it too: after that the connection no longer owns the stream id, so
-	// remove_client can never see it again.
+	// Releases every subscription a stream id holds: the live fan-out edge, a VOD
+	// playback, and the waiting-list and stream-name state.
 	void media_application::forget_subscription(std::uint32_t connection_id, std::uint32_t stream_id, const stream_registry::exclusive_guard &guard)
 	{
 		stream_client_id_t const sub(connection_id, stream_id);
+		m_vod.stop(sub);
+		m_registry.detach_subscriber(sub, guard);
 		if (std::optional<std::string> const name = m_registry.subscriber_stream(sub))
 		{
 			m_registry.erase_waiting(*name, sub, guard);
@@ -679,8 +684,7 @@ namespace fms
 
 	void media_application::add_waiting_client(std::uint32_t connection_id, const rtmp_message_invoke_ptr& invoke, const std::string &str, const stream_registry::exclusive_guard &guard)
 	{
-		// One stream id holds one subscription: re-playing a different name on it has
-		// to drop the previous waiting-list entry, which nothing else can reach.
+		// One stream id holds one subscription: taking a new one releases the old.
 		forget_subscription(connection_id, invoke->stream_id(), guard);
 
 		stream_registry::subscriber const wc(connection_id, invoke->stream_id(), invoke->channel_id());
