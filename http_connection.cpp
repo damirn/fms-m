@@ -189,7 +189,15 @@ namespace fms
 		// Ident probe: session-less, so it answers with the configured bind address.
 		if (verb == "fcs")
 		{
-			std::string const &addr = config::instance()->bind_address();
+			// The client tunnels to whatever this names, so a wildcard bind address is
+			// not usable: fall back to the address this connection was accepted on.
+			std::string addr = config::instance()->bind_address();
+			if (addr.empty() || addr == "0.0.0.0" || addr == "::")
+			{
+				boost::system::error_code lec;
+				boost::asio::ip::tcp::endpoint const local = m_socket.local_endpoint(lec);
+				addr = lec ? std::string("127.0.0.1") : local.address().to_string();
+			}
 			reply(std::vector<std::uint8_t>(addr.begin(), addr.end()));
 			return;
 		}

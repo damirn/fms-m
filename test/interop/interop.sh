@@ -273,6 +273,17 @@ else
 	bad "rtmpt: /open returned no session id, so the limit cases prove nothing"
 fi
 
+# --- Case 3d: the ident probe must name a usable address ---------------------
+# A client tunnels to whatever /fcs/ident2 replies, so the wildcard bind address
+# the server defaults to is not an answer.
+echo "[3d] RTMPT: /fcs/ident2 answers a usable address"
+ident=$(curl -s --max-time 10 -X POST --data-binary '' \
+	"http://127.0.0.1:$RTMPT_PORT/fcs/ident2" 2>/dev/null | tr -d '\r\n')
+case "$ident" in
+	0.0.0.0|::|"") bad "rtmpt: /fcs/ident2 answered '$ident', which no client can tunnel to" ;;
+	*) ok "rtmpt: /fcs/ident2 answered '$ident'" ;;
+esac
+
 # --- Case 3c: a refused tunnelled handshake drops the session ----------------
 # An unknown C0 magic is refused. The session must not survive it: proved by the
 # body limit falling back to the unauthenticated one on the same id.
