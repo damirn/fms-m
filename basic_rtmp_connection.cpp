@@ -63,9 +63,7 @@ namespace fms
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
 			rtmp_message_chunk_size_ptr const cs_msg = std::static_pointer_cast<rtmp_message_chunk_size>(msg);
-			// Spec 5.4.1: 1..0xFFFFFF.
-			if (std::uint32_t const n = cs_msg->chunk_size(); n >= 1 && n <= 0xFFFFFF)
-				m_parser.set_chunk_size(n);
+			(void)m_parser.set_chunk_size(cs_msg->chunk_size());   // out of range: keep the current size
 		}
 		else if (msg->type() == rtmp_message::eMessageWindowAcknowledgementSize)
 		{

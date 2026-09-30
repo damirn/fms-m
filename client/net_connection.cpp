@@ -465,7 +465,7 @@ namespace fms::rtmp_client
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
 			rtmp_message_chunk_size_ptr const cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg);
-			m_parser.set_chunk_size(cs->chunk_size());
+			(void)m_parser.set_chunk_size(cs->chunk_size());   // out of range: keep the current size
 		}
 		else if (msg->type() == rtmp_message::eMessageWindowAcknowledgementSize)
 		{

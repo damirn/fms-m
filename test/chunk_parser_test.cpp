@@ -106,7 +106,7 @@ namespace
 		channel_manager channels;
 		rtmp_parser parser{channels, *this};
 
-		void set_chunk_size(std::uint32_t n) { parser.set_chunk_size(n); }
+		bool set_chunk_size(std::uint32_t n) { return parser.set_chunk_size(n); }
 		bool framing_error() const { return parser.framing_error(); }
 		static constexpr std::uint32_t max_message_length() { return rtmp_parser::eMaxMessageLength; }
 
@@ -186,21 +186,23 @@ TEST_CASE("chunk parser: oversized message length is rejected (DoS guard)")
 	CHECK(h.messages.empty());
 }
 
-TEST_CASE("chunk parser: a zero chunk size is rejected, not a parsing desync")
+TEST_CASE("chunk parser: a chunk size outside spec 5.4.1 is refused by the setter")
 {
-	// A client SetChunkSize(0) makes the per-chunk read length degenerate (0 bytes
-	// per chunk); the stream then desyncs and headers get misparsed as payload.
-	// A chunk size below 1 is invalid (RTMP spec) -- flag it and stop.
+	// A SetChunkSize(0) would make the per-chunk read length degenerate and desync
+	// the stream, so the setter itself refuses it and keeps the current size.
 	chunk_stream cs;
 	auto const p = pattern(64, 3);
 	cs.message(4, VIDEO, 1, 1000, p);
 
 	parser_harness h;
-	h.set_chunk_size(0);
-	h.feed(cs.bytes);
+	CHECK_FALSE(h.set_chunk_size(0));
+	CHECK_FALSE(h.set_chunk_size(rtmp_parser::eMaxChunkSize + 1));
+	CHECK(h.set_chunk_size(rtmp_parser::eMaxChunkSize));
+	CHECK(h.set_chunk_size(128));
 
-	CHECK(h.framing_error());
-	CHECK(h.messages.empty());
+	h.feed(cs.bytes);
+	CHECK_FALSE(h.framing_error());
+	CHECK(h.messages.size() == 1);
 }
 
 TEST_CASE("chunk parser: a User Control (Ping) with an invalid length must not crash")
