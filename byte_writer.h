@@ -174,6 +174,10 @@ namespace fms
 		{
 			assert(filled <= m_reserved && filled <= m_buf.size() &&
 			       "update() must directly follow write_buffer()");
+			// No live reservation (a clear() in between, say): the subtraction below
+			// would wrap into an enormous resize, and NDEBUG has no assert to stop it.
+			if (filled > m_reserved)
+				return;
 			m_buf.resize(m_buf.size() - (m_reserved - filled));   // drop the unfilled tail
 			m_reserved = 0;
 		}

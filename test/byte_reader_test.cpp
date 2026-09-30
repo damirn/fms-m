@@ -173,3 +173,21 @@ TEST_CASE("byte_writer: clear() releases a pending write_buffer reservation")
 	CHECK(v.size() == 8);
 	CHECK_NOTHROW((void)v.write_buffer(32));
 }
+
+// A completion handler can reach update() after an error path already cleared the
+// buffer. In Debug the assert catches it; under NDEBUG the arithmetic used to wrap.
+TEST_CASE("byte_writer: update after clear does not resize the buffer")
+{
+	byte_writer w;
+	(void)w.write_buffer(64);
+	REQUIRE(w.reserved() == 64);
+
+	w.clear();
+	REQUIRE(w.reserved() == 0);
+	REQUIRE(w.size() == 0);
+
+	w.update(8);            // stale completion: no reservation left
+	CHECK(w.size() == 0);
+	CHECK(w.footprint() == 0);
+	CHECK(w.reserved() == 0);
+}
