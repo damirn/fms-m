@@ -673,6 +673,10 @@ namespace fms
 
 		using message_list_t = std::list<rtmp_message_ptr>;
 
+		// A sub-message costs 15 wire bytes, so the enclosing message length alone
+		// lets one body build hundreds of thousands of them.
+		static constexpr std::size_t eMaxSubMessages = 1024;
+
 		message_list_t &get_messages()
 		{
 			return m_messages;

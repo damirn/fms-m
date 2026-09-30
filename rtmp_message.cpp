@@ -233,6 +233,9 @@ namespace fms
 
 		while(buffer.available() > 0)
 		{
+			if (m_messages.size() == eMaxSubMessages)
+				throw amf0_read_exception();
+
 			rtmp_header h;
 			std::uint8_t c;
 			buffer >> c;
