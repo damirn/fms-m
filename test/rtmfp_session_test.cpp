@@ -20,6 +20,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <new>
+#include <stdexcept>
 #include <vector>
 
 #include <boost/asio/io_context.hpp>
@@ -603,6 +605,33 @@ TEST_CASE("rtmfp session: a message the AMF write bounds refuse is dropped")
 	fake_host h;
 	auto const s = make_session(h);
 	CHECK_NOTHROW(s->message_to_fragment(msg));
+}
+
+// An allocation failure inside serialize reaches the same receive handler.
+TEST_CASE("rtmfp session: a message whose serialize runs out of memory is dropped")
+{
+	struct throwing_message : rtmp_message
+	{
+		explicit throwing_message(bool length)
+			: rtmp_message(eMessageNotify), m_length(length)
+		{}
+
+		void deserialize(byte_reader &) override {}
+		void serialize(byte_writer &) override
+		{
+			if (m_length)
+				throw std::length_error("body");
+			throw std::bad_alloc();
+		}
+
+		bool m_length;
+	};
+
+	fake_host h;
+	auto const s = make_session(h);
+
+	CHECK_NOTHROW(s->message_to_fragment(std::make_shared<throwing_message>(false)));
+	CHECK_NOTHROW(s->message_to_fragment(std::make_shared<throwing_message>(true)));
 }
 
 // Both halves of the forward sequence number come off the wire, so the offset can
