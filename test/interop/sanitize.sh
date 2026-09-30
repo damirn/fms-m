@@ -48,11 +48,21 @@ fi
 # whose command line contained it -- concurrent runs, other checkouts, an editor.
 # Only our own children are killed here, as interop.sh already does.
 KIDS=()
+SRV=""
 track() { KIDS+=("$1"); }
 kill_kids() {
 	local p
 	for p in "${KIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null; done
 }
+
+# Several exit paths below are early ones; without this the server and the client
+# children outlive the run and the next one finds the port bound.
+cleanup() {
+	kill_kids
+	[ -n "$SRV" ] && kill "$SRV" 2>/dev/null
+	return 0
+}
+trap cleanup EXIT
 
 mkdir -p "$WORK/rec" "$WORK/logs"
 
