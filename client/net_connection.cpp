@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "net_connection.h"
 #include "amf0.h"
+#include "basic_rtmp_connection.h"
 #include "channel_manager.h"
 #include "crypto.h"
 #include "net_client_tunnel.h"
@@ -295,7 +296,7 @@ namespace fms::rtmp_client
 	void net_connection::update_bytes_read(std::size_t bytes_read)
 	{
 		m_bytes_read += static_cast<std::uint32_t>(bytes_read);
-		if (m_bytes_read >= m_ack_size_next)
+		if (static_cast<std::int32_t>(m_bytes_read - m_ack_size_next) >= 0)   // wraps with the counter
 		{
 			m_ack_size_next += m_ack_size;
 			rtmp_message_bytes_read_ptr const msg = std::make_shared<rtmp_message_bytes_read>(m_bytes_read);
@@ -498,7 +499,11 @@ namespace fms::rtmp_client
 
 	void net_connection::handle_win_ack(const rtmp_message_window_acknowledgement_size_ptr& ack)
 	{
-		m_ack_size = m_ack_size_next = ack->size();
+		if (std::uint32_t const n = ack->size(); n != 0)
+		{
+			m_ack_size = basic_rtmp_connection::clamp_window(n);
+			m_ack_size_next = m_bytes_read + m_ack_size;   // relative to what we have read
+		}
 	}
 
 	void net_connection::handle_set_peer_bandwidth(const rtmp_message_set_peer_bandwidth_ptr& peer_bandwidth)
