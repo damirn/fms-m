@@ -13,10 +13,9 @@ namespace
 {
 	using conn = basic_rtmp_connection;
 
-	// What handle_bytes_read does: is the threshold reached, given the counters?
 	bool reached(std::uint32_t bytes_read, std::uint32_t notify)
 	{
-		return static_cast<std::int32_t>(bytes_read - notify) >= 0;
+		return conn::ack_due(bytes_read, notify);
 	}
 }
 
@@ -59,9 +58,11 @@ TEST_CASE("window ack: the threshold survives the byte counter wrapping")
 {
 	std::uint32_t const win = conn::clamp_window(conn::eMinWindowAck);
 	std::uint32_t const bytes_read = 0xFFFFFF00;   // about to wrap
-	std::uint32_t const notify = bytes_read + win; // wraps past zero
+	std::uint32_t const notify = conn::next_ack_threshold(bytes_read, win);
 
+	REQUIRE(notify < bytes_read);   // the threshold is past the wrap
 	CHECK_FALSE(reached(bytes_read, notify));
+	CHECK_FALSE(reached(notify - 1, notify));
 	CHECK(reached(notify, notify));
 }
 
