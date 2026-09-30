@@ -104,11 +104,7 @@ namespace fms
 		sid_to_session_map_t m_sessions;
 		sid_to_session_map_t::iterator m_sessions_iterator;
 
-		using group_set_t = std::set<group_ptr, group::less>;
-
-		// The group id is peer-chosen, so distinct ids must not grow without bound.
-		static constexpr std::size_t eMaxGroups = 4096;
-		group_set_t m_groups;
+		group_registry m_groups;
 
 		using endpoint_chunk_pair_t = std::pair<boost::asio::ip::udp::endpoint, std::unique_ptr<chunk>>;
 		// Redirects pending a send slot. Bounded: one is pushed per peer-lookup

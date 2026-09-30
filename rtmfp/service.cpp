@@ -495,18 +495,6 @@ namespace fms
 		if (g->command() != group::eJoinGroup)
 			return false;
 
-		auto const i = m_groups.find(g);
-		if (i != m_groups.end())
-		{
-			(*i)->add_member(s);
-			g = *i;
-			return true;
-		}
-		if (m_groups.size() >= eMaxGroups)
-			return false;
-		// g already owns its id (group::deserialize copied it).
-		g->add_member(s);
-		m_groups.insert(g);
-		return true;
+		return m_groups.join(g, s);
 	}
 }

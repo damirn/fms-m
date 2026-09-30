@@ -99,4 +99,38 @@ namespace fms
 		std::uint8_t m_cmnd{0};
 		std::set<session_weak_ptr, std::owner_less<session_weak_ptr>> m_members;
 	};
+
+	// The peer-created groups of one service. Group ids are peer-chosen, so the set
+	// is bounded and a join naming a known id aliases onto the group already held.
+	class group_registry
+	{
+	public:
+		static constexpr std::size_t eMaxGroups = 4096;
+
+		// False when the id is new and the set is full. On success `g` is the group
+		// holding `s`: the one already registered if that id was known.
+		[[nodiscard]] bool join(group_ptr &g, const session_ptr &s)
+		{
+			auto const i = m_groups.find(g);
+			if (i != m_groups.end())
+			{
+				(*i)->add_member(s);
+				g = *i;
+				return true;
+			}
+			if (m_groups.size() >= eMaxGroups)
+				return false;
+			// g already owns its id (group::deserialize copied it).
+			g->add_member(s);
+			m_groups.insert(g);
+			return true;
+		}
+
+		void erase(const group_ptr &g) { m_groups.erase(g); }
+
+		[[nodiscard]] std::size_t size() const { return m_groups.size(); }
+
+	private:
+		std::set<group_ptr, group::less> m_groups;
+	};
 }
