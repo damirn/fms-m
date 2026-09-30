@@ -388,9 +388,11 @@ namespace fms
 			return m_fsn_offset;
 		}
 
+		// RFC 7016 2.3.11 has the offset at most the sequence number, but both are
+		// peer-supplied VLUs and the difference would wrap to near 2^64.
 		vlu_t forward_seq_number() const
 		{
-			return m_seq_number - m_fsn_offset;
+			return m_fsn_offset > m_seq_number ? 0 : m_seq_number - m_fsn_offset;
 		}
 
 	protected:

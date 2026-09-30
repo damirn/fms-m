@@ -434,6 +434,19 @@ namespace
 		return {w.data(), w.data() + w.size()};
 	}
 
+	// A UserData chunk with an explicit forward-sequence-number offset.
+	std::vector<std::uint8_t> user_data_wire(vlu_t flow_id, vlu_t seq, vlu_t fsn_offset,
+		std::uint8_t flags, const std::vector<std::uint8_t> &payload)
+	{
+		byte_writer w;
+		w << flags;
+		w.write_vlu(flow_id);
+		w.write_vlu(seq);
+		w.write_vlu(fsn_offset);
+		w.write(payload.data(), payload.size());
+		return {w.data(), w.data() + w.size()};
+	}
+
 	// [command][vlu size = eIDLength + 1][type 0x15][32-byte group id]
 	std::vector<std::uint8_t> group_join(std::uint8_t id_byte)
 	{
@@ -545,4 +558,36 @@ TEST_CASE("rtmfp session: a message the AMF write bounds refuse is dropped")
 	fake_host h;
 	auto const s = make_session(h);
 	CHECK_NOTHROW(s->message_to_fragment(msg));
+}
+
+// Both halves of the forward sequence number come off the wire, so the offset can
+// exceed the sequence number and the difference would wrap to near 2^64 -- which
+// remove_fragments_until_seq reads as "erase everything".
+TEST_CASE("rtmfp session: an abandon whose offset exceeds its sequence drops nothing")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	std::vector<std::uint8_t> const body{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
+
+	// Fragments 2..4 of a run whose first never arrives, each carrying an offset
+	// equal to its own sequence so the cumulative number stays behind them: all
+	// three stay buffered.
+	for (vlu_t seq = 2; seq <= 4; ++seq)
+		feed_open_flow(s, 9, seq, 1, body, fragment::eMiddle, seq);
+
+	auto const f = s->m_receiving_flows.find(vlu_t{9});
+	REQUIRE(f != s->m_receiving_flows.end());
+	REQUIRE(f->second->fragment_count() == 3);
+
+	// abandon (flag 0x02), sequence 4, offset 9: the difference wraps.
+	std::vector<std::uint8_t> const wire = user_data_wire(9, 4, 9, 0x02, body);
+	byte_reader r(wire.data(), wire.size());
+	user_data_chunk c;
+	REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(wire.size())));
+	CHECK(c.forward_seq_number() == 0);
+	s->handle_chunk(&c);
+
+	CHECK(f->second->fragment_count() == 3);
 }
