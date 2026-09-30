@@ -112,25 +112,21 @@ namespace fms
 			m_pos += n;
 		}
 
-		// Variable-length unsigned (RTMFP VLU): 7 bits/byte, high bit = "more".
+		// Variable-length unsigned (RTMFP VLU): 7 bits/byte, high bit = "more", over
+		// at most 4 bytes; the 4th carries 8 bits, mirroring byte_writer::write_vlu.
 		std::uint64_t read_vlu()
 		{
 			std::uint8_t a = 0;
 			std::uint64_t ret = 0;
-			bool more = false;
-			int bytes = 0;
-			do
+			for (int bytes = 1; ; ++bytes)
 			{
-				// 10 bytes carry 70 bits, so the byte count alone does not bound a
-				// 64-bit accumulator: check that the shift cannot drop the top.
-				if (++bytes > 10 || (ret >> 57) != 0)
-					throw buffer_eof_exception();
 				*this >> a;
-				more = (a & 0x80) == 0x80;
+				if (bytes == 4)
+					return (ret << 8) + a;
 				ret = (ret << 7) + (a & 0x7f);
+				if ((a & 0x80) == 0)
+					return ret;
 			}
-			while (more);
-			return ret;
 		}
 
 		// 24-bit big-endian, throwing.
