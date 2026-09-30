@@ -12,10 +12,25 @@
 #include <chrono>
 #include <cstdint>
 #include <thread>
+#include <type_traits>
 
 #include <boost/asio/io_context.hpp>
 
 using namespace fms;
+
+// The loop below can only report a race under ThreadSanitizer; these hold in every
+// configuration, so a plain build still refuses a counter that stops synchronising.
+static_assert(std::atomic<std::uint32_t>::is_always_lock_free,
+	"a locked counter would make the shared-lock update path a mutex, not a race fix");
+static_assert(std::is_same_v<decltype(netstream_stats::m_bytes), std::atomic<std::uint32_t>>);
+static_assert(std::is_same_v<decltype(netstream_stats::m_messages), std::atomic<std::uint32_t>>);
+static_assert(std::is_same_v<decltype(netstream_stats::m_messages_dropped), std::atomic<std::uint32_t>>);
+static_assert(std::is_same_v<decltype(netstream_stats::m_ts), std::atomic<std::uint32_t>>);
+static_assert(std::is_same_v<decltype(netstream_stats::m_delay), std::atomic<std::uint32_t>>);
+static_assert(std::is_same_v<decltype(netstream_stats::m_drift), std::atomic<std::uint32_t>>);
+static_assert(std::is_same_v<decltype(netstream_stats::m_kbps), std::atomic<std::uint32_t>>);
+static_assert(std::is_same_v<decltype(netstream_stats::m_start_streaming_rep),
+	std::atomic<std::chrono::system_clock::rep>>);
 
 TEST_CASE("netstream stats: the media path and a reader may run concurrently")
 {
