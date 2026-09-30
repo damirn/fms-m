@@ -433,81 +433,21 @@ if(BUILD_FUZZERS)
 endif()
 
 # ---------------------------------------------------------------------------
-# RTMP test/helper client (client/). Builds against the project's shared media
-# modules via a small static lib so the two pch.h files don't collide.
+# Shared media modules, as a small static lib so the two pch.h files don't
+# collide. Server-side code, so it is not gated on BUILD_CLIENT.
 # ---------------------------------------------------------------------------
-option(BUILD_CLIENT "Build the RTMP client tool" ON)
-if(BUILD_CLIENT)
-  add_library(fms_media_client STATIC
-    amf0.cpp amf3.cpp crypto.cpp flv_reader.cpp flv_writer.cpp rtmp_handshake.cpp rtmp_header.cpp
-    rtmp_message.cpp rtmp_protocol.cpp rtmp_parser.cpp rtmp_so_message.cpp util.cpp)
-  target_include_directories(fms_media_client PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp)
-  target_precompile_headers(fms_media_client PRIVATE pch.h)
+add_library(fms_media_client STATIC
+  amf0.cpp amf3.cpp crypto.cpp flv_reader.cpp flv_writer.cpp rtmp_handshake.cpp rtmp_header.cpp
+  rtmp_message.cpp rtmp_protocol.cpp rtmp_parser.cpp rtmp_so_message.cpp util.cpp)
+target_include_directories(fms_media_client PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp)
+target_precompile_headers(fms_media_client PRIVATE pch.h)
 
-  # Reusable RTMP client library: everything under client/ except main.cpp.
-  add_library(rtmp_client_lib STATIC
-    client/config.cpp client/flv_sink.cpp client/nc_event_handler.cpp
-    client/net_client.cpp client/net_client_tunnel.cpp client/net_connection.cpp
-    client/net_stream.cpp client/ns_event_handler.cpp)
-  # client/ first so the client's own pch.h/headers win, then the project root.
-  # PUBLIC so consumers (the executable) inherit the include paths.
-  target_include_directories(rtmp_client_lib PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/client ${CMAKE_CURRENT_SOURCE_DIR})
-  target_precompile_headers(rtmp_client_lib PRIVATE client/pch.h)
-  target_link_libraries(rtmp_client_lib PUBLIC fms_media_client ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
-  if(NOT APPLE)
-    find_package(Threads REQUIRED)
-    target_link_libraries(rtmp_client_lib PUBLIC Threads::Threads ${CMAKE_DL_LIBS})
-  endif()
-
-  # Thin command-line tool on top of the client library.
-  add_executable(rtmp_client client/main.cpp)
-  target_link_libraries(rtmp_client PRIVATE rtmp_client_lib)
-
-  # RTMP pull-relay: the external tool fms-m spawns as --helper-app to bridge a
-  # remote origin stream into the local server (see spawn_helper).
-  add_executable(fms_helper client/helper_main.cpp)
-  target_link_libraries(fms_helper PRIVATE rtmp_client_lib)
-
-  # Back-to-back test: drives the fms-m server (spawned as a subprocess) with the
-  # client library and asserts on the protocol events + frames it receives.
-  add_executable(b2b_test test/b2b_test.cpp test/test_main.cpp)
-  target_include_directories(b2b_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
-  target_link_libraries(b2b_test PRIVATE rtmp_client_lib)
-  target_compile_definitions(b2b_test PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
-  add_dependencies(b2b_test ${PROJECT_NAME})
-  # Built, wired to the server binary, and then never registered -- so the only
-  # end-to-end protocol test in the tree never ran under ctest.
-  add_test(NAME b2b_test COMMAND b2b_test)
-  set_tests_properties(b2b_test PROPERTIES TIMEOUT 180)
-  if(APPLE)
-    set_tests_properties(b2b_test PROPERTIES
-      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
-  endif()
-
-  # Interop matrix vs the reference clients (rtmpdump + ffmpeg): drives the real
-  # server over RTMP/RTMPT and asserts both the media (ffprobe) and the RTMP
-  # user-control events the client receives (rtmpdump -z). Registered only when the
-  # tools are on PATH -- it degrades to a skip elsewhere (e.g. CI without them).
-  find_program(RTMPDUMP_EXE rtmpdump)
-  find_program(FFMPEG_EXE ffmpeg)
-  find_program(FFPROBE_EXE ffprobe)
-  if(RTMPDUMP_EXE AND FFMPEG_EXE AND FFPROBE_EXE)
-    add_test(NAME interop
-      COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test/interop/interop.sh $<TARGET_FILE:${PROJECT_NAME}>)
-    set_tests_properties(interop PROPERTIES TIMEOUT 180)
-  else()
-    message(STATUS "interop test disabled (needs rtmpdump + ffmpeg + ffprobe on PATH)")
-  endif()
-
-  # End-to-end RTMP relay throughput benchmark (publisher -> server -> subscriber).
-  # Not a ctest; drives the spawned server at max rate and reports GiB/s.
-  add_executable(bench_rtmp_throughput test/bench_rtmp_throughput.cpp)
-  target_link_libraries(bench_rtmp_throughput PRIVATE rtmp_client_lib)
-  target_compile_definitions(bench_rtmp_throughput PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
-  add_dependencies(bench_rtmp_throughput ${PROJECT_NAME})
-
+# ---------------------------------------------------------------------------
+# Tests over server-side code. None of these link client/, so a
+# -DBUILD_CLIENT=OFF configure must still run them.
+# ---------------------------------------------------------------------------
+if(BUILD_TESTS)
   # Characterization tests for the RTMP chunk parser (rtmp_parser::parse),
   # linked against the shared media lib. Bytes in, messages out.
   # FP9 handshake crypto: pure functions over an attacker-supplied 1536-byte C1.
@@ -587,6 +527,77 @@ if(BUILD_CLIENT)
   target_include_directories(mixer_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test)
   add_test(NAME mixer_tests COMMAND mixer_tests)
+endif()
+
+# ---------------------------------------------------------------------------
+# RTMP test/helper client (client/). Builds against the project's shared media
+# modules via a small static lib so the two pch.h files don't collide.
+# ---------------------------------------------------------------------------
+option(BUILD_CLIENT "Build the RTMP client tool" ON)
+if(BUILD_CLIENT)
+  # Reusable RTMP client library: everything under client/ except main.cpp.
+  add_library(rtmp_client_lib STATIC
+    client/config.cpp client/flv_sink.cpp client/nc_event_handler.cpp
+    client/net_client.cpp client/net_client_tunnel.cpp client/net_connection.cpp
+    client/net_stream.cpp client/ns_event_handler.cpp)
+  # client/ first so the client's own pch.h/headers win, then the project root.
+  # PUBLIC so consumers (the executable) inherit the include paths.
+  target_include_directories(rtmp_client_lib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/client ${CMAKE_CURRENT_SOURCE_DIR})
+  target_precompile_headers(rtmp_client_lib PRIVATE client/pch.h)
+  target_link_libraries(rtmp_client_lib PUBLIC fms_media_client ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  if(NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(rtmp_client_lib PUBLIC Threads::Threads ${CMAKE_DL_LIBS})
+  endif()
+
+  # Thin command-line tool on top of the client library.
+  add_executable(rtmp_client client/main.cpp)
+  target_link_libraries(rtmp_client PRIVATE rtmp_client_lib)
+
+  # RTMP pull-relay: the external tool fms-m spawns as --helper-app to bridge a
+  # remote origin stream into the local server (see spawn_helper).
+  add_executable(fms_helper client/helper_main.cpp)
+  target_link_libraries(fms_helper PRIVATE rtmp_client_lib)
+
+  # Back-to-back test: drives the fms-m server (spawned as a subprocess) with the
+  # client library and asserts on the protocol events + frames it receives.
+  add_executable(b2b_test test/b2b_test.cpp test/test_main.cpp)
+  target_include_directories(b2b_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
+  target_link_libraries(b2b_test PRIVATE rtmp_client_lib)
+  target_compile_definitions(b2b_test PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
+  add_dependencies(b2b_test ${PROJECT_NAME})
+  # Built, wired to the server binary, and then never registered -- so the only
+  # end-to-end protocol test in the tree never ran under ctest.
+  add_test(NAME b2b_test COMMAND b2b_test)
+  set_tests_properties(b2b_test PROPERTIES TIMEOUT 180)
+  if(APPLE)
+    set_tests_properties(b2b_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
+  # Interop matrix vs the reference clients (rtmpdump + ffmpeg): drives the real
+  # server over RTMP/RTMPT and asserts both the media (ffprobe) and the RTMP
+  # user-control events the client receives (rtmpdump -z). Registered only when the
+  # tools are on PATH -- it degrades to a skip elsewhere (e.g. CI without them).
+  find_program(RTMPDUMP_EXE rtmpdump)
+  find_program(FFMPEG_EXE ffmpeg)
+  find_program(FFPROBE_EXE ffprobe)
+  if(RTMPDUMP_EXE AND FFMPEG_EXE AND FFPROBE_EXE)
+    add_test(NAME interop
+      COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test/interop/interop.sh $<TARGET_FILE:${PROJECT_NAME}>)
+    set_tests_properties(interop PROPERTIES TIMEOUT 180)
+  else()
+    message(STATUS "interop test disabled (needs rtmpdump + ffmpeg + ffprobe on PATH)")
+  endif()
+
+  # End-to-end RTMP relay throughput benchmark (publisher -> server -> subscriber).
+  # Not a ctest; drives the spawned server at max rate and reports GiB/s.
+  add_executable(bench_rtmp_throughput test/bench_rtmp_throughput.cpp)
+  target_link_libraries(bench_rtmp_throughput PRIVATE rtmp_client_lib)
+  target_compile_definitions(bench_rtmp_throughput PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
+  add_dependencies(bench_rtmp_throughput ${PROJECT_NAME})
+
 
 endif()
 
