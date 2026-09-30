@@ -89,6 +89,47 @@ def main():
         print('SENDS_COMPLETED', sent)
         print('BYTES_AFTER_PACED_SENDS', len(got) - base)
 
+    elif mode == 'window-ack-delta':
+        # The absolute byte count is dominated by the 40 connect responses, so it
+        # moves whenever the _result object changes. Measure the same workload twice
+        # -- once with a window too large to be spent, once with the hostile zero --
+        # and compare: only the acknowledgement cadence differs between them.
+        def paced(sock, window, first):
+            sock.sendall(chunk(2, 0x05, 0, struct.pack('>I', window)))
+            body = amf_str('connect') + amf_num(1.0) + amf_obj({'app': 'media', 'tcUrl': 'rtmp://127.0.0.1/media'})
+            sock.sendall(chunk(3, 0x14, 0, body))
+            got = first + read_for(sock, 2)
+            answered = b'_result' in got
+            base = len(got)
+            sent = 0
+            for _ in range(40):
+                try:
+                    sock.sendall(chunk(3, 0x14, 0, body))
+                    sent += 1
+                    time.sleep(0.02)
+                except OSError:
+                    break
+            try:
+                got += read_for(sock, 2)
+            except OSError:
+                pass
+            return answered, sent, len(got) - base
+
+        big_ok, big_sent, big_bytes = paced(s, 2500000, extra)
+        s.close()
+
+        s2 = socket.create_connection(('127.0.0.1', port), timeout=10)
+        extra2 = handshake(s2)
+        zero_ok, zero_sent, zero_bytes = paced(s2, 0, extra2)
+        s2.close()
+
+        print('RESULT', 'ok' if (big_ok and zero_ok) else 'no-result')
+        print('SENDS_COMPLETED', min(big_sent, zero_sent))
+        print('BASELINE_BYTES', big_bytes)
+        print('ZERO_BYTES', zero_bytes)
+        print('DELTA', zero_bytes - big_bytes)
+        return
+
     s.close()
 
 main()
