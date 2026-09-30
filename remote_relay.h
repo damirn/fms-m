@@ -20,7 +20,8 @@ namespace fms::remote_relay
 	// always set.
 	remote_target parse_target(const std::string &stream);
 
-	// At most one helper spawn per remote target per eCooldown, and at most
+	// At most one helper spawn per remote target per eCooldown, at most
+	// eMaxPerWindow spawns in one cooldown window across all targets, and at most
 	// eMaxInFlight helpers alive at once. A helper is invisible to later play()s
 	// until it republishes locally, and it lives as long as the stream it relays.
 	class spawn_throttle
@@ -30,9 +31,10 @@ namespace fms::remote_relay
 
 		static constexpr auto eCooldown = std::chrono::seconds{10};
 		static constexpr std::size_t eMaxInFlight = 64;
+		static constexpr std::size_t eMaxPerWindow = 64;
 
 		// True if a spawn is allowed for `key`, and records it. Prunes expired
-		// cooldown entries as it goes, and refuses once eMaxInFlight are alive.
+		// cooldown entries as it goes, and refuses once either bound is reached.
 		bool allow(const std::string &key, clock::time_point now);
 
 		// Give the slot back when no spawn was attempted at all. A spawn that was

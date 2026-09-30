@@ -45,6 +45,22 @@ TEST_CASE("relay throttle: distinct targets do not block each other")
 	CHECK(t.allow("c", now));
 }
 
+TEST_CASE("relay throttle: distinct targets are capped per cooldown window")
+{
+	spawn_throttle t;
+	clock_t_::time_point const now = clock_t_::time_point{} + std::chrono::hours{1};
+	for (std::size_t i = 0; i < spawn_throttle::eMaxPerWindow; ++i)
+		REQUIRE(t.allow(std::to_string(i), now));
+
+	// Nothing was spawned, so the live cap cannot be what refuses this.
+	REQUIRE(t.live_count() == 0);
+	CHECK_FALSE(t.allow("one-too-many", now));
+	CHECK_FALSE(t.allow("another", now + spawn_throttle::eCooldown - std::chrono::seconds{1}));
+
+	// The window drains by age.
+	CHECK(t.allow("one-too-many", now + spawn_throttle::eCooldown));
+}
+
 TEST_CASE("relay throttle: helpers still alive are capped")
 {
 	spawn_throttle t;

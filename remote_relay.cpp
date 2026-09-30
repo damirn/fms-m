@@ -31,6 +31,8 @@ namespace fms::remote_relay
 
 		if (m_recent.contains(key))
 			return false;                       // a helper for this target is starting
+		if (m_recent.size() >= eMaxPerWindow)
+			return false;                       // too many spawns in this window
 		if (m_live.size() >= eMaxInFlight)
 			return false;                       // too many helpers alive
 		m_recent[key] = now;
