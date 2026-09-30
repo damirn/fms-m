@@ -26,7 +26,7 @@ namespace fms
 		{
 			m_pkey = evp_dh_keygen(P1024, sizeof(P1024), 2);
 		}
-		catch (const std::runtime_error &)
+		catch (...)
 		{
 			m_pkey = nullptr;   // callers check valid(); nothing here may unwind
 		}
@@ -38,13 +38,20 @@ namespace fms
 			EVP_PKEY_free(m_pkey);
 	}
 
-	bool dh::create_shared_key(const std::uint8_t *key, std::uint16_t size)
+	bool dh::create_shared_key(const std::uint8_t *key, std::uint16_t size) noexcept
 	{
-		std::vector<std::uint8_t> secret = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size);
-		if (secret.empty())
+		try
+		{
+			std::vector<std::uint8_t> secret = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size);
+			if (secret.empty())
+				return false;
+			m_shared_key = std::move(secret);   // replaces any previous secret
+			return true;
+		}
+		catch (...)
+		{
 			return false;
-		m_shared_key = std::move(secret);   // replaces any previous secret
-		return true;
+		}
 	}
 
 	bool dh::copy_shared_key(std::uint8_t *key, std::uint16_t size) const
