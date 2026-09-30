@@ -37,6 +37,16 @@ fi
 	exit 2
 }
 
+# pkill -f matched on the binary's basename and signalled every same-uid process
+# whose command line contained it -- concurrent runs, other checkouts, an editor.
+# Only our own children are killed here, as interop.sh already does.
+KIDS=()
+track() { KIDS+=("$1"); }
+kill_kids() {
+	local p
+	for p in "${KIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null; done
+}
+
 mkdir -p "$WORK/rec" "$WORK/logs"
 
 command -v ffmpeg >/dev/null 2>&1 || { echo "ffmpeg required"; exit 2; }
@@ -69,27 +79,30 @@ nc -z 127.0.0.1 "$RTMP_PORT" 2>/dev/null || { echo "server did not start; see $W
 echo "=== workload (${DURATION}s, 4 io threads) ==="
 if [ -x "$CLIENT" ]; then
 	"$CLIENT" -r "rtmp://127.0.0.1:$RTMP_PORT/media" -c publish -s s1 -i "$WORK/src.flv" -R -n >/dev/null 2>&1 &
+	track $!
 	sleep 2
 	# Fan-out: the send-queue and stats paths run on several io threads at once.
 	for _ in 1 2 3; do
 		"$CLIENT" -r "rtmp://127.0.0.1:$RTMP_PORT/media" -c play -s s1 -n >/dev/null 2>&1 &
+		track $!
 	done
 	echo "  rtmp: 1 publisher (recording) + 3 subscribers"
 fi
 if [ -x "$RTMFP_CPP/tcpublish" ] && [ -x "$RTMFP_CPP/tcconn" ]; then
 	"$RTMFP_CPP/tcpublish" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#r1" "$WORK/src.flv" >/dev/null 2>&1 &
+	track $!
 	sleep 2
 	"$RTMFP_CPP/tcconn" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#r1" >/dev/null 2>&1 &
+	track $!
 	echo "  rtmfp: publish + play (fragment reassembly, session reaper)"
 fi
 # Connections abandoned mid-handshake, so the handshake timer path is exercised.
-for _ in $(seq 1 15); do printf '\x03' | nc -w 1 127.0.0.1 "$RTMP_PORT" >/dev/null 2>&1 & done
+for _ in $(seq 1 15); do printf '\x03' | nc -w 1 127.0.0.1 "$RTMP_PORT" >/dev/null 2>&1 & track $!; done
 echo "  15 connections abandoned mid-handshake"
 
 sleep "$DURATION"
 kill -0 "$SRV" 2>/dev/null || { echo "server exited during the workload; see $WORK/server.out" >&2; cat "$WORK"/san.* 2>/dev/null; exit 1; }
-[ -n "${CLIENT:-}" ] && pkill -f "$(basename "$CLIENT")" 2>/dev/null
-pkill -f "$RTMFP_CPP/tc" 2>/dev/null
+kill_kids
 sleep 2
 # Long enough for the at-exit leak check and the report flush before SIGKILL.
 kill -INT "$SRV" 2>/dev/null; sleep 10; kill -9 "$SRV" 2>/dev/null
