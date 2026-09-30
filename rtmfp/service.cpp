@@ -224,10 +224,10 @@ namespace fms
 			if (auto const k = m_session_map.find(i->second->peer_id());
 				k != m_session_map.end() && k->second == i->second)
 				m_session_map.erase(k);
-			const std::list<group_weak_ptr> &grps = i->second->group_membership();
+			const session::group_membership_t &grps = i->second->group_membership();
 			if (!grps.empty())
 			{
-				for (const auto & grp : grps)
+				for (const auto & [id, grp] : grps)
 				{
 					if (group_ptr const g = grp.lock())
 					{

@@ -182,7 +182,10 @@ namespace fms
 			return m_addresses;
 		}
 
-		const std::list<group_weak_ptr> &group_membership() const
+		// Keyed by group id: one lookup per inbound NetGroup message, not a scan.
+		using group_membership_t = std::map<item::id_t, group_weak_ptr>;
+
+		const group_membership_t &group_membership() const
 		{
 			return m_group_membership;
 		}
@@ -289,6 +292,6 @@ namespace fms
 
 		address_list_t m_addresses;
 
-		std::list<group_weak_ptr> m_group_membership;
+		group_membership_t m_group_membership;
 	};
 }

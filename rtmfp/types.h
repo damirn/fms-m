@@ -108,6 +108,7 @@ namespace fms
 	{
 	public:
 		static constexpr std::size_t eIDLength = 32;
+		using id_t = std::array<std::uint8_t, eIDLength>;
 
 		item() = default;
 
@@ -119,6 +120,11 @@ namespace fms
 		}
 
 		virtual ~item() = default;
+
+		const id_t &id_bytes() const
+		{
+			return m_id;
+		}
 
 		const std::uint8_t *id() const
 		{
@@ -154,6 +160,6 @@ namespace fms
 		};
 
 	protected:
-		std::array<std::uint8_t, eIDLength> m_id{};
+		id_t m_id{};
 	};
 }

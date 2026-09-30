@@ -459,19 +459,12 @@ namespace fms
 				data = f->message_data();
 				continue;
 			}
-			// Membership is keyed by group id; expired entries drop on the way past.
-			bool present = false;
-			for (auto i = m_group_membership.begin(); i != m_group_membership.end(); )
+			bool const present = m_group_membership.contains(g->id_bytes());
+			if (!present && m_group_membership.size() >= eMaxGroupMemberships)
 			{
-				group_ptr const held = i->lock();
-				if (!held)
-				{
-					i = m_group_membership.erase(i);
-					continue;
-				}
-				if (std::memcmp(held->id(), g->id(), item::eIDLength) == 0)
-					present = true;
-				++i;
+				// Only at the cap is it worth walking the map for expired entries.
+				for (auto i = m_group_membership.begin(); i != m_group_membership.end(); )
+					i = i->second.expired() ? m_group_membership.erase(i) : std::next(i);
 			}
 			if ((!present && m_group_membership.size() >= eMaxGroupMemberships)
 				|| !m_service->handle_net_group(g, shared_from_this()))
@@ -481,7 +474,7 @@ namespace fms
 				continue;
 			}
 			if (!present)
-				m_group_membership.push_back(g);
+				m_group_membership.emplace(g->id_bytes(), g);
 			if (g->members().size() > 1)
 			{
 				vlu_t const sending = m_receiving_to_sending_flow[f->flow_id()];
