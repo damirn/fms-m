@@ -536,14 +536,30 @@ if command -v python3 >/dev/null 2>&1; then
 
 	echo "[G4] a zero acknowledgement window must not ack every read"
 	g4=$(python3 "$ROOT/test/interop/rtmp_probe.py" zero-window "$RTMP_PORT" 2>/dev/null)
-	g4b=${g4##* }
+	g4r=$(printf '%s\n' "$g4" | sed -n 's/^RESULT \([a-z-]*\) .*/\1/p')
+	g4s=$(printf '%s\n' "$g4" | sed -n 's/^SENDS_COMPLETED //p')
+	g4b=$(printf '%s\n' "$g4" | sed -n 's/^BYTES_AFTER_PACED_SENDS //p')
+
+	# Bounded on both sides. Too many bytes means an acknowledgement per read;
+	# too few (or a dropped connect, or a send that failed) means the client was
+	# refused, which would otherwise read as a pass.
+	if [ "$g4r" = "ok" ]; then
+		ok "G4 connect with a zero window was still answered"
+	else
+		bad "G4 client dropped by a zero acknowledgement window ($g4r)"
+	fi
+	if [ "$g4s" = "40" ]; then
+		ok "G4 all 40 paced sends completed"
+	else
+		bad "G4 only $g4s of 40 paced sends completed, so the byte count is not comparable"
+	fi
 	# Each unnecessary acknowledgement is 16 bytes; 40 paced sends make the
 	# difference ~640 bytes. The bulk of the count is the 40 connect responses, so
-	# the threshold tracks those too and moves if the _result object changes.
-	if [ -n "$g4b" ] && [ "$g4b" -lt 11800 ] 2>/dev/null; then
+	# the thresholds track those too and move if the _result object changes.
+	if [ -n "$g4b" ] && [ "$g4b" -gt 9000 ] && [ "$g4b" -lt 11800 ] 2>/dev/null; then
 		ok "G4 zero window ignored ($g4b bytes returned)"
 	else
-		bad "G4 zero window acked every read ($g4b bytes returned)"
+		bad "G4 zero window: $g4b bytes returned, expected 9000..11800"
 	fi
 else
 	skip "G3/G4 python3 not available"

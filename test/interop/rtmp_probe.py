@@ -68,16 +68,25 @@ def main():
         body = amf_str('connect') + amf_num(1.0) + amf_obj({'app': 'media', 'tcUrl': 'rtmp://127.0.0.1/media'})
         s.sendall(chunk(3, 0x14, 0, body))
         got = extra + read_for(s, 2)
+        # The window is only "ignored" if the connect was still answered: a server
+        # that dropped the client returns few bytes too.
+        print('RESULT', 'ok' if b'_result' in got else 'no-result', len(got))
         # Paced: the acknowledgement is emitted per read, so the sends have to
         # arrive as separate reads for the cadence to be observable at all.
         base = len(got)
+        sent = 0
         for _ in range(40):
             try:
                 s.sendall(chunk(3, 0x14, 0, body))
+                sent += 1
                 time.sleep(0.02)
             except OSError:
                 break
-        got += read_for(s, 2)
+        try:
+            got += read_for(s, 2)
+        except OSError:
+            pass
+        print('SENDS_COMPLETED', sent)
         print('BYTES_AFTER_PACED_SENDS', len(got) - base)
 
     s.close()
