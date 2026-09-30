@@ -81,7 +81,7 @@ TEST_CASE("media path: the write direction rejects the arbitrary-write shapes")
 	CHECK_FALSE(resolve_media_file(base, "/root/.ssh/authorized_keys").has_value());
 	CHECK_FALSE(resolve_media_file(base, "/tmp/pwned").has_value());
 
-	// Traversal out of the base, including the deep form an attacker would use.
+	// Traversal out of the base, at one and several levels.
 	CHECK_FALSE(resolve_media_file(base, "../../../../var/www/html/x").has_value());
 	CHECK_FALSE(resolve_media_file(base, "sub/../../../escape").has_value());
 

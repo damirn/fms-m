@@ -67,9 +67,7 @@ namespace fms
 		{
 			switch (msg->type())
 			{
-			// Protocol control messages are legal before connect, and the parser routes
-			// WindowAcknowledgementSize here as well as to handle_internal_message.
-			// The manager routes only connect.
+			// Protocol control messages are legal before connect; the manager routes only connect.
 			case rtmp_message::eMessageChunkSize:
 			case rtmp_message::eMessageAbort:
 			case rtmp_message::eMessageBytesRead:

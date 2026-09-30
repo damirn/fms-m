@@ -35,7 +35,7 @@ namespace fms::rtmp_handshake
 		if (HMAC_SHA256(buff, eHandshakeSize - eDigestLen, key.data(),
 			static_cast<std::uint32_t>(key.size()), out.data()) == 0)
 		{
-			std::memset(out.data(), 0, out.size());   // never leave the caller comparing stack junk
+			std::memset(out.data(), 0, out.size());   // out is defined on failure: callers compare it
 			return false;
 		}
 		return true;

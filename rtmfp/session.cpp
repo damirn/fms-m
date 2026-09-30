@@ -458,9 +458,7 @@ namespace fms
 				continue;
 			}
 			m_service->handle_net_group(g, shared_from_this());
-			// Membership is a set, not a log: deserialize builds a fresh object per
-			// message, so identity is the group id. Expired entries are dropped on the
-			// way past, which bounds a long-lived session as well.
+			// Membership is a set keyed by group id; expired entries drop on the way past.
 			bool present = false;
 			for (auto i = m_group_membership.begin(); i != m_group_membership.end(); )
 			{

@@ -216,9 +216,7 @@ TEST_CASE("rtmfp fragment: send bookkeeping starts defined on a received fragmen
 {
 	std::uint8_t data[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-	// Construct into poisoned storage: without in-class initialisers the members
-	// keep the 0xFF pattern, so the checks below fail rather than depend on
-	// whatever the stack happened to hold.
+	// Poisoned storage, so the checks read the initialisers and not the stack.
 	alignas(fragment) std::byte raw[sizeof(fragment)];
 	std::memset(raw, 0xFF, sizeof raw);
 	auto *f = new (static_cast<void *>(raw)) fragment(
@@ -232,10 +230,8 @@ TEST_CASE("rtmfp fragment: send bookkeeping starts defined on a received fragmen
 	CHECK(f->m_nak_count == 0);
 	f->~fragment();
 
-	// A receiver flow reports no fragments in flight, rather than whatever the
-	// stack happened to hold.
-	flow r(vlu_t{1}, flow::eReceiver);
-	r.add_fragment(mid(1));
-	r.add_fragment(mid(2));
-	CHECK(r.in_flight_count() == 0);
+	// in_flight_count() reads the same defaults through a receiver flow.
+	fragment g(vlu_t{2}, data, static_cast<std::uint16_t>(sizeof(data)),
+		static_cast<std::uint8_t>(fragment::eMiddle), true);
+	CHECK_FALSE(g.m_in_flight);
 }

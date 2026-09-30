@@ -150,9 +150,7 @@ namespace fms
 		std::string m_username;
 
 		app_host *m_app_manager;
-		// Written on the connection's io thread when connect selects an app, read by
-		// the registry and the admin thread -- same reason the counters below are
-		// atomic.
+		// Written on the connection's io thread, read by the registry and admin thread.
 		std::atomic<rtmp_application *> m_app{nullptr};
 
 		// start time

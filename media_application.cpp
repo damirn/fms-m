@@ -544,8 +544,7 @@ namespace fms
 		stream_registry::broadcast_stream *const b = m_registry.find_broadcast(std::make_pair(connection_id, stream_id));
 		if (!b)
 			return false;
-		// The publish name is peer-controlled and reaches the filesystem: resolve it
-		// through the containment guard rather than joining it onto the folder.
+		// Peer-controlled name reaching the filesystem: resolve through the guard.
 		std::optional<std::string> const flv_full_name =
 			resolve_media_file(config::instance()->flv_folder(), stream);
 		if (!flv_full_name)

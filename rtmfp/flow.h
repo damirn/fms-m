@@ -43,8 +43,7 @@ namespace fms
 				delete[] m_data;
 		}
 
-		// Conditionally owning, so a copy would either double-free or alias the
-		// buffer. Fragments are always held through fragment_ptr; nothing copies one.
+		// Conditionally owning: held only through fragment_ptr, never copied.
 		fragment(const fragment &) = delete;
 		fragment &operator=(const fragment &) = delete;
 

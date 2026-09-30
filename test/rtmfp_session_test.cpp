@@ -33,9 +33,7 @@ namespace
 		int removed = 0;
 		int net_groups = 0;
 		std::uint16_t clock = 100;
-		// service::handle_net_group keeps the group in m_groups. Without a strong
-		// reference here every weak_ptr in m_group_membership expires immediately and
-		// the session's id comparison is never reached.
+		// Strong refs: m_group_membership holds weak_ptrs that would otherwise expire.
 		std::vector<group_ptr> kept;
 
 		std::uint16_t get_timestamp() override { return clock; }
@@ -481,9 +479,7 @@ TEST_CASE("rtmfp session: distinct groups are each recorded once")
 	CHECK(s->group_membership().size() == 2);
 }
 
-// The flow buffers each message until it is consumed. The RTMP handler drains in
-// a loop; the NetGroup handler must too, or the first fragment is re-delivered
-// on every later message and the flow fills to eMaxBufferedFragments.
+// The NetGroup handler drains the flow in a loop, as the RTMP handler does.
 TEST_CASE("rtmfp session: a NetGroup flow is drained as it is consumed")
 {
 	fake_host h;
@@ -501,8 +497,7 @@ TEST_CASE("rtmfp session: a NetGroup flow is drained as it is consumed")
 	CHECK(f->state() != flow::eRejected);
 }
 
-// A message the group codec rejects must still be consumed, or the flow wedges on
-// it and every later message is lost.
+// A rejected message is still consumed.
 TEST_CASE("rtmfp session: a malformed NetGroup message does not wedge the flow")
 {
 	fake_host h;
