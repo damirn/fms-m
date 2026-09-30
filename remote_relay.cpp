@@ -28,27 +28,44 @@ namespace fms::remote_relay
 		std::lock_guard const lock(m_mutex);
 		for (auto i = m_recent.begin(); i != m_recent.end(); )
 			i = (now - i->second >= eCooldown) ? m_recent.erase(i) : std::next(i);
+		for (auto i = m_pending.begin(); i != m_pending.end(); )
+			i = (now - *i >= eCooldown) ? m_pending.erase(i) : std::next(i);
 
 		if (m_recent.contains(key))
 			return false;                       // a helper for this target is starting
 		if (m_recent.size() >= eMaxPerWindow)
 			return false;                       // too many spawns in this window
-		if (m_live.size() >= eMaxInFlight)
-			return false;                       // too many helpers alive
+		if (m_live.size() + m_pending.size() >= eMaxInFlight)
+			return false;                       // too many helpers alive or starting
 		m_recent[key] = now;
+		m_pending.insert(now);
 		return true;
+	}
+
+	void spawn_throttle::consume_pending()
+	{
+		if (!m_pending.empty())
+			m_pending.erase(m_pending.begin());
 	}
 
 	void spawn_throttle::release(const std::string &key)
 	{
 		std::lock_guard const lock(m_mutex);
-		m_recent.erase(key);
+		if (m_recent.erase(key) > 0)
+			consume_pending();
 	}
 
 	void spawn_throttle::note_spawned(::pid_t pid)
 	{
 		std::lock_guard const lock(m_mutex);
+		consume_pending();
 		m_live.insert(pid);
+	}
+
+	void spawn_throttle::note_spawn_failed()
+	{
+		std::lock_guard const lock(m_mutex);
+		consume_pending();
 	}
 
 	void spawn_throttle::note_exited(::pid_t pid)
@@ -135,6 +152,7 @@ namespace fms::remote_relay
 				// The cooldown entry stays: a spawn that keeps failing must be
 				// throttled like one that succeeds, or every play() retries it.
 				BOOST_LOG(lg::get()) << "cannot spawn helper '" << args[0] << "': " << std::strerror(rc);
+				helper_throttle().note_spawn_failed();
 			}
 			else
 				helper_throttle().note_spawned(pid);

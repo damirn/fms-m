@@ -42,6 +42,10 @@ namespace fms::remote_relay
 		void release(const std::string &key);
 
 		void note_spawned(::pid_t pid);
+
+		// Give the reserved slot back after a spawn that was attempted and failed.
+		void note_spawn_failed();
+
 		void note_exited(::pid_t pid);
 		std::size_t live_count();
 
@@ -52,6 +56,14 @@ namespace fms::remote_relay
 		std::mutex m_mutex;
 		std::map<std::string, clock::time_point> m_recent;
 		std::set<::pid_t> m_live;
+
+		// Allowed but not yet spawned: the pid is unknown until posix_spawnp returns,
+		// and the live bound has to hold across that gap. Stamped so a reservation
+		// nothing ever claims ages out with the cooldown.
+		std::multiset<clock::time_point> m_pending;
+
+		// Drop the oldest reservation; the caller holds m_mutex.
+		void consume_pending();
 	};
 
 	// If a --helper-app is configured, fork+exec it to pull `stream` from
