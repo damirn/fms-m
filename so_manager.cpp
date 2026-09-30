@@ -137,6 +137,9 @@ namespace fms
 		if (so_d)
 		{
 			const so_data_ptr& s = *so_d;
+			if (s->m_values.size() >= eMaxProperties && !s->m_values.contains(e->m_name->value()))
+				return;   // a new property past the cap: refuse rather than reply unsendably
+
 			increase_version(s);
 			s->m_values[e->m_name->value()] = e->m_value;
 

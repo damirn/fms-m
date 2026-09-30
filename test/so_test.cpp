@@ -326,3 +326,37 @@ TEST_CASE("removing an unknown connection is a no-op")
 	sm.remove_connection(99);
 	CHECK(sm.size() == 1);
 }
+
+// The "use" reply is UseSuccess + Clear + one Change per property, so the property
+// count must leave room inside the message's own event cap.
+TEST_CASE("so_manager: stored properties stay within what a Use reply can carry")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+
+	for (std::size_t i = 0; i < so_manager::eMaxProperties; ++i)
+	{
+		so_ptr const r = do_change(sm, "obj", 1, "k" + std::to_string(i), "v");
+		REQUIRE(r);
+		CHECK(has_event(r, SO::eSuccess));
+	}
+
+	// One more distinct property is refused; an update to an existing one is not.
+	so_ptr const over = do_change(sm, "obj", 1, "one-too-many", "v");
+	REQUIRE(over);
+	CHECK_FALSE(has_event(over, SO::eSuccess));
+	so_ptr const again = do_change(sm, "obj", 1, "k0", "v2");
+	REQUIRE(again);
+	CHECK(has_event(again, SO::eSuccess));
+
+	// A fresh client's Use reply therefore fits the event cap.
+	auto u = make_so("obj");
+	u->add_event(ev(SO::eUse));
+	rtmp_message_ptr result;
+	REQUIRE(sm.handle_so(u, 2, result));
+	auto const r = std::dynamic_pointer_cast<SO>(result);
+	REQUIRE(r);
+	CHECK(r->events().size() <= SO::eMaxEvents);
+	CHECK(change_value(r, "k0") == "v2");
+}

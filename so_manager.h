@@ -38,6 +38,11 @@ namespace fms
 		// Live shared-object count, for tests/diagnostics.
 		std::size_t size();
 
+		// A "use" reply carries UseSuccess + Clear + one Change per stored property, so
+		// the property count has to leave room inside rtmp_message_shared_object's
+		// event cap or our own reply is one a peer applying the same cap must refuse.
+		static constexpr std::size_t eMaxProperties = rtmp_message_shared_object::eMaxEvents - 2;
+
 	protected:
 		// (client id, message) pairs collected while m_mutex is held and flushed to
 		// enqueue_async_message/notify AFTER it is released -- so the SO fan-out does
