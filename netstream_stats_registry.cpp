@@ -61,7 +61,7 @@ namespace fms
 		{
 			i->second->m_name = name;
 			i->second->m_is_published = is_publish;
-			netstream_stats_ptr const data = i->second;   // `i` dies with the lock
+			netstream_stats_ptr const data = std::make_shared<netstream_stats>(*(i->second));   // snapshot: m_name is not atomic
 			lock.unlock();
 			if (m_observer && !name.starts_with("QOS!")) // QOS streams are of no interest to admin app
 				m_observer->send_new_stream_notify(data);
@@ -119,8 +119,9 @@ namespace fms
 	{
 		netstream_list_t streams;
 		std::shared_lock const lock(m_mutex);
+		// Snapshot under the lock: the caller reads m_name, which is not atomic.
 		for (auto const &[id, stats] : m_netstream_stats)
-			streams.push_back(stats);
+			streams.push_back(std::make_shared<netstream_stats>(*stats));
 		return streams;
 	}
 

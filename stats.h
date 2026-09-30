@@ -75,10 +75,9 @@ namespace fms
 		std::uint32_t m_client;
 		std::string m_name;
 		bool m_is_published{false};
-		// Written by the owning io thread under a shared lock (the lock guards the
-		// map, not the entry) and read concurrently by the admin app and the QoS
-		// reporter, so the counters themselves carry the synchronisation -- as
-		// client_session's byte counters already do.
+		// The shared lock guards the map, not the entry, so each counter
+		// synchronises itself. m_name and m_is_published are written under the
+		// unique lock and only ever read from a snapshot copy.
 		std::atomic<std::uint32_t> m_bytes{0};
 		std::atomic<std::uint32_t> m_messages{0};
 		std::atomic<std::uint32_t> m_messages_dropped{0};
