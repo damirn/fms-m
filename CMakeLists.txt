@@ -84,7 +84,16 @@ if(SANITIZE)
   add_link_options(-fsanitize=${SANITIZE})
   # TSan and UBSan only warn by default, so a sanitized ctest run stays green while
   # printing the very thing it was built to find. Make them fail the test instead.
+  # ASan's leak check is off by default on some platforms and is the documented
+  # reason to build with -DSANITIZE=address, so ask for it explicitly. Apple has no
+  # LeakSanitizer at all and errors out on detect_leaks, hence the per-platform value.
+  if(APPLE)
+    set(FMS_ASAN_DETECT_LEAKS 0)
+  else()
+    set(FMS_ASAN_DETECT_LEAKS 1)
+  endif()
   set(FMS_SANITIZER_ENV
+      "ASAN_OPTIONS=halt_on_error=1:detect_leaks=${FMS_ASAN_DETECT_LEAKS}"
       "TSAN_OPTIONS=halt_on_error=1"
       "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1")
 endif()
