@@ -216,7 +216,9 @@ namespace fms
 		void remove_fragments_until_seq(const vlu_t &);
 		// The next complete message, or empty when none is ready. The bytes belong to
 		// the flow until remove_last_message().
-		std::span<const std::uint8_t> message_data();
+		// Nullopt when no message is ready. A ready message may still be empty, and
+		// an empty span alone cannot say which of the two it is.
+		std::optional<std::span<const std::uint8_t>> message_data();
 		void remove_last_message();
 
 		std::uint16_t add_and_fragment_data(const std::uint8_t *, const std::uint32_t &);

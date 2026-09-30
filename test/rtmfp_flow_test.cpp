@@ -102,10 +102,11 @@ TEST_CASE("rtmfp flow: a buffered whole fragment copies its data (no dangle into
 	// The packet buffer is gone / reused: scribble it.
 	std::fill(pkt.begin(), pkt.end(), std::uint8_t{0xEE});
 
-	std::span<const std::uint8_t> const data = f.message_data();
-	REQUIRE(data.size() == pkt.size());
-	CHECK(data[0] == 10);   // original bytes, not the 0xEE scribble
-	CHECK(data[7] == 80);
+	auto const data = f.message_data();
+	REQUIRE(data);
+	REQUIRE(data->size() == pkt.size());
+	CHECK((*data)[0] == 10);   // original bytes, not the 0xEE scribble
+	CHECK((*data)[7] == 80);
 }
 
 TEST_CASE("rtmfp flow: take_ownership on an already-owning fragment is a no-op (no leak)")
@@ -169,8 +170,9 @@ TEST_CASE("rtmfp flow: advertised receive window shrinks as the reassembly backl
 	CHECK(f.advertised_rwnd() < flow::eRecvWindowBlocks);
 }
 
-// A refused reassembly must report an empty span, not {nullptr, len}.
-TEST_CASE("rtmfp flow: an oversize reassembly yields an empty span, not a null one")
+// A refused reassembly reports nothing ready, which is distinct from a ready
+// message that happens to be empty.
+TEST_CASE("rtmfp flow: an oversize reassembly yields no message")
 {
 	flow f(vlu_t{1}, flow::eReceiver);
 
@@ -186,9 +188,8 @@ TEST_CASE("rtmfp flow: an oversize reassembly yields an empty span, not a null o
 	f.add_fragment(std::make_shared<fragment>(vlu_t{n}, chunk.data(), chunk_len,
 	                                          static_cast<std::uint8_t>(fragment::eEnd), true));
 
-	std::span<const std::uint8_t> const data = f.message_data();
-	CHECK(data.data() == nullptr);
-	CHECK(data.empty());              // a null base must carry length 0
+	auto const data = f.message_data();
+	CHECK_FALSE(data);                // refused outright, not handed back empty
 	CHECK(f.state() == flow::eRejected);
 }
 
@@ -234,4 +235,27 @@ TEST_CASE("rtmfp fragment: send bookkeeping starts defined on a received fragmen
 	fragment g(vlu_t{2}, data, static_cast<std::uint16_t>(sizeof(data)),
 		static_cast<std::uint8_t>(fragment::eMiddle), true);
 	CHECK_FALSE(g.m_in_flight);
+}
+
+// A zero-length whole fragment is a ready message. Reported as an empty span it
+// was indistinguishable from "nothing ready", so it was never consumed and
+// head-of-line-blocked every later message on the flow.
+TEST_CASE("rtmfp flow: a zero-length message is ready, and is consumed")
+{
+	flow f(vlu_t{1}, flow::eReceiver);
+
+	std::uint8_t const byte = 0x7F;
+	f.add_fragment(std::make_shared<fragment>(vlu_t{1}, &byte, 0,
+	                                          static_cast<std::uint8_t>(fragment::eWhole), true));
+	f.add_fragment(std::make_shared<fragment>(vlu_t{2}, &byte, 1,
+	                                          static_cast<std::uint8_t>(fragment::eWhole), true));
+
+	auto const first = f.message_data();
+	REQUIRE(first.has_value());       // ready, even though there is nothing in it
+	CHECK(first->empty());
+	f.remove_last_message();
+
+	auto const second = f.message_data();
+	REQUIRE(second.has_value());      // the flow did not wedge behind the empty one
+	CHECK(second->size() == 1);
 }

@@ -56,7 +56,7 @@ namespace fms
 		m_fragments.erase(seq);
 	}
 
-	std::span<const std::uint8_t> flow::message_data()
+	std::optional<std::span<const std::uint8_t>> flow::message_data()
 	{
 		vlu_t const csn = m_seq_manager.csn();
 		auto i = m_fragments.begin();
@@ -66,7 +66,7 @@ namespace fms
 			if (f->m_frag_ctrl == fragment::eWhole)
 			{
 				m_msg_is_fragmented = false;
-				return {f->m_data, f->m_data_len};
+				return std::span<const std::uint8_t>{f->m_data, f->m_data_len};
 			}
 			if (f->m_frag_ctrl == fragment::eEnd || f->m_frag_ctrl == fragment::eMiddle)
 			{
@@ -83,8 +83,11 @@ namespace fms
 					m_msg_len += j->second->m_data_len;
 					if (j->second->m_frag_ctrl == fragment::eEnd)
 					{
+						const std::uint8_t *const msg = create_message(i, j);
+						if (msg == nullptr)
+							return std::nullopt;   // refused, and the flow is rejected
 						m_msg_is_fragmented = true;
-						return {create_message(i, j), m_msg_len};
+						return std::span<const std::uint8_t>{msg, m_msg_len};
 					}
 					if (j->second->m_frag_ctrl == fragment::eWhole || j->second->m_frag_ctrl == fragment::eBegin)
 					{
@@ -97,7 +100,7 @@ namespace fms
 				break;
 			}
 		}
-		return {};
+		return std::nullopt;
 	}
 
 	void flow::remove_last_message()

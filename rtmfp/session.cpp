@@ -412,14 +412,14 @@ namespace fms
 
 	void session::handle_rtmp_flow_message(const flow_ptr& f)
 	{
-		std::span<const std::uint8_t> data = f->message_data();
+		std::optional<std::span<const std::uint8_t>> data = f->message_data();
 
-		while (!data.empty())
+		while (data)
 		{
-			if (data.size() > 5) // rtmp message min size
+			if (data->size() > 5) // rtmp message min size
 			{
 				rtmp_header h;
-				byte_reader s(data);
+				byte_reader s(*data);
 				std::uint8_t msg_type = 0;
 				std::uint32_t ts = 0;
 				s >> msg_type >> ts;
@@ -429,7 +429,7 @@ namespace fms
 				if (i != m_flow_id_to_stream_id.end())
 				{
 					h.set_stream_id(i->second);
-					h.set_message_length(static_cast<std::uint32_t>(data.size()) - 5); // msg type + timestamp
+					h.set_message_length(static_cast<std::uint32_t>(data->size()) - 5); // msg type + timestamp
 					rtmp_protocol p;
 					byte_reader r(s.read_pos(), s.available());
 					if (p.deserialize(r, h))
@@ -448,10 +448,10 @@ namespace fms
 	{
 		static std::uint8_t marker = 0x0b;
 
-		std::span<const std::uint8_t> data = f->message_data();
-		while (!data.empty())
+		std::optional<std::span<const std::uint8_t>> data = f->message_data();
+		while (data)
 		{
-			byte_reader s(data);
+			byte_reader s(*data);
 			group_ptr g = group::deserialize(s);
 			if (!g)
 			{
