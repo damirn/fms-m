@@ -49,10 +49,15 @@ TEST_CASE("relay throttle: distinct targets are capped per cooldown window")
 {
 	spawn_throttle t;
 	clock_t_::time_point const now = clock_t_::time_point{} + std::chrono::hours{1};
+	// Spawn and reap each helper, so neither the live set nor the pending set holds
+	// a slot: the per-window bound is then the only thing left that can refuse.
 	for (std::size_t i = 0; i < spawn_throttle::eMaxPerWindow; ++i)
+	{
 		REQUIRE(t.allow(std::to_string(i), now));
+		t.note_spawned(static_cast<::pid_t>(2000 + i));
+		t.note_exited(static_cast<::pid_t>(2000 + i));
+	}
 
-	// Nothing was spawned, so the live cap cannot be what refuses this.
 	REQUIRE(t.live_count() == 0);
 	CHECK_FALSE(t.allow("one-too-many", now));
 	CHECK_FALSE(t.allow("another", now + spawn_throttle::eCooldown - std::chrono::seconds{1}));
