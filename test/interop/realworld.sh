@@ -501,12 +501,14 @@ fi
 echo
 echo "=== G. security regressions ==="
 
-echo "[G1] RTMPT ident probe reports the bind address, not the socket's"
-ident=$(curl -s -m 5 -X POST -H 'Content-Type: application/x-fcs' --data-binary '' \
-	"http://127.0.0.1:$RTMPT_PORT/fcs/ident2" 2>/dev/null)
-# The server binds 0.0.0.0 and we reach it over the loopback, so the two differ.
+echo "[G1] RTMPT ident probe answers the name the request arrived on"
+# Host names something neither the bind address nor the socket: the reply has to be
+# that name, so it is both tunnel-able and not a disclosure of where we are bound.
+ident=$(curl -s -m 5 -X POST -H 'Content-Type: application/x-fcs' -H 'Host: tunnel.example:1935' \
+	--data-binary '' "http://127.0.0.1:$RTMPT_PORT/fcs/ident2" 2>/dev/null)
 case "$ident" in
-	0.0.0.0) ok "G1 ident answered with the bind address" ;;
+	tunnel.example) ok "G1 ident answered the requested host" ;;
+	0.0.0.0|::) bad "G1 ident answered the bind address ($ident), which no client can tunnel to" ;;
 	127.0.0.1) bad "G1 ident disclosed the socket address ($ident)" ;;
 	# A timeout or a changed format answers nothing; that is a failure, not a skip.
 	*) bad "G1 no usable ident reply '$ident'" ;;
