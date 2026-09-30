@@ -176,6 +176,39 @@ namespace fms
 		}
 	}
 
+	// The name the request already reached us by is the one a client can tunnel to;
+	// the socket's own address is neither reachable through a NAT nor ours to
+	// disclose. A configured bind address is the fallback for a request without Host.
+	std::string http_connection::tunnel_address(const request_t &req) const
+	{
+		std::string host(req[http::field::host]);
+		if (!host.empty())
+		{
+			// Strip the port, keeping an IPv6 literal's brackets.
+			std::size_t const after = host.front() == '[' ? host.find(']') : 0;
+			if (after != std::string::npos)
+			{
+				if (std::size_t const colon = host.find(':', after); colon != std::string::npos)
+					host.erase(colon);
+			}
+			if (!host.empty())
+				return host;
+		}
+
+		std::string addr = config::instance()->bind_address();
+		if (addr.empty() || addr == "0.0.0.0" || addr == "::")
+		{
+			boost::system::error_code lec;
+			boost::asio::ip::tcp::endpoint const local = m_socket.local_endpoint(lec);
+			if (lec)
+				return "127.0.0.1";
+			addr = local.address().to_string();
+			if (local.address().is_v6())
+				addr = "[" + addr + "]";
+		}
+		return addr;
+	}
+
 	void http_connection::handle_request(const request_t &req)
 	{
 		if (req.method() != http::verb::post)
@@ -191,18 +224,10 @@ namespace fms
 		boost::system::error_code ec;
 		boost::asio::ip::tcp::endpoint const remote = m_socket.remote_endpoint(ec);
 
-		// Ident probe: session-less, so it answers with the configured bind address.
+		// Ident probe: session-less, so it answers with an address to tunnel to.
 		if (verb == "fcs")
 		{
-			// The client tunnels to whatever this names, so a wildcard bind address is
-			// not usable: fall back to the address this connection was accepted on.
-			std::string addr = config::instance()->bind_address();
-			if (addr.empty() || addr == "0.0.0.0" || addr == "::")
-			{
-				boost::system::error_code lec;
-				boost::asio::ip::tcp::endpoint const local = m_socket.local_endpoint(lec);
-				addr = lec ? std::string("127.0.0.1") : local.address().to_string();
-			}
+			std::string const addr = tunnel_address(req);
 			reply(std::vector<std::uint8_t>(addr.begin(), addr.end()));
 			return;
 		}

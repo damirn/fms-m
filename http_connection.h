@@ -72,6 +72,9 @@ namespace fms
 		// Split "/<verb>[/<cid>/<seq>]" into its path segments.
 		static void split_target(const std::string &, std::string &verb, std::string &cid, std::string &seq);
 
+		// The address a client can tunnel back to, for the ident probe.
+		std::string tunnel_address(const request_t &) const;
+
 		// Parse the target's sequence segment. False on anything but all digits in range.
 		static bool parse_seq(const std::string &, std::uint32_t &);
 
