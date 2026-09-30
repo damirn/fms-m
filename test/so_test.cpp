@@ -5,6 +5,7 @@
 
 #include "amf0_types.h"
 #include "byte_reader.h"
+#include "byte_writer.h"
 #include "doctest.h"
 #include "rtmp_so_message.h"
 #include "so_manager.h"
@@ -84,7 +85,7 @@ namespace
 	void do_use(so_manager &sm, const std::string &name, std::uint32_t client)
 	{
 		auto s = make_so(name);
-		s->add_event(ev(SO::eUse));
+		REQUIRE(s->add_event(ev(SO::eUse)));
 		rtmp_message_ptr r;
 		sm.handle_so(s, client, r);
 	}
@@ -92,7 +93,7 @@ namespace
 	so_ptr do_change(so_manager &sm, const std::string &name, std::uint32_t client, const std::string &k, const std::string &v)
 	{
 		auto s = make_so(name);
-		s->add_event(change_ev(k, v));
+		REQUIRE(s->add_event(change_ev(k, v)));
 		rtmp_message_ptr r;
 		sm.handle_so(s, client, r);
 		return std::dynamic_pointer_cast<SO>(r);
@@ -105,7 +106,7 @@ TEST_CASE("so_manager: Use replies UseSuccess + Clear; a lone client gets no fan
 	so_manager sm(sk.fn());
 
 	auto s = make_so("obj");
-	s->add_event(ev(SO::eUse));
+	REQUIRE(s->add_event(ev(SO::eUse)));
 	rtmp_message_ptr result;
 	bool const ok = sm.handle_so(s, 1, result);
 
@@ -147,7 +148,7 @@ TEST_CASE("so_manager: a later Use replays previously-changed values to the new 
 	sk.recs.clear();
 
 	auto s = make_so("obj");
-	s->add_event(ev(SO::eUse));
+	REQUIRE(s->add_event(ev(SO::eUse)));
 	rtmp_message_ptr result;
 	sm.handle_so(s, 2, result);
 
@@ -168,7 +169,7 @@ TEST_CASE("so_manager: RequestRemove fans Remove and drops the value")
 	sk.recs.clear();
 
 	auto s = make_so("obj");
-	s->add_event(remove_ev("k"));
+	REQUIRE(s->add_event(remove_ev("k")));
 	rtmp_message_ptr result;
 	sm.handle_so(s, 1, result);
 
@@ -178,7 +179,7 @@ TEST_CASE("so_manager: RequestRemove fans Remove and drops the value")
 
 	// a fresh Use no longer sees "k"
 	auto u = make_so("obj");
-	u->add_event(ev(SO::eUse));
+	REQUIRE(u->add_event(ev(SO::eUse)));
 	rtmp_message_ptr ur;
 	sm.handle_so(u, 3, ur);
 	CHECK(change_value(std::dynamic_pointer_cast<SO>(ur), "k").empty());
@@ -194,7 +195,7 @@ TEST_CASE("so_manager: SendMessage fans to other clients, not the sender")
 	sk.recs.clear();
 
 	auto s = make_so("obj");
-	s->add_event(ev(SO::eSendMessage));
+	REQUIRE(s->add_event(ev(SO::eSendMessage)));
 	rtmp_message_ptr result;
 	sm.handle_so(s, 2, result);
 
@@ -209,7 +210,7 @@ TEST_CASE("so_manager: Release returns false and removes the client from fan-out
 	do_use(sm, "obj", 2);
 
 	auto s = make_so("obj");
-	s->add_event(ev(SO::eRelease));
+	REQUIRE(s->add_event(ev(SO::eRelease)));
 	rtmp_message_ptr result;
 	bool const ok = sm.handle_so(s, 2, result);
 	CHECK(ok == false);   // a Release aborts handle_so
@@ -278,7 +279,7 @@ TEST_CASE("disconnect keeps an object that other clients are still using")
 	// ...and the departed client no longer receives fan-out.
 	k.recs.clear();
 	auto s = make_so("room");
-	s->add_event(change_ev("k", "v"));
+	REQUIRE(s->add_event(change_ev("k", "v")));
 	rtmp_message_ptr r;
 	sm.handle_so(s, 2, r);
 	CHECK(k.clients().empty());   // only client 2 is a member, and it is the sender
@@ -308,7 +309,7 @@ TEST_CASE("a connect/use/disconnect storm leaves nothing behind")
 	{
 		do_use(sm, "obj" + std::to_string(c), c);
 		auto s = make_so("obj" + std::to_string(c));
-		s->add_event(change_ev("payload", std::string(256, 'x')));
+		REQUIRE(s->add_event(change_ev("payload", std::string(256, 'x'))));
 		rtmp_message_ptr r;
 		sm.handle_so(s, c, r);
 		sm.remove_connection(c);
@@ -352,11 +353,39 @@ TEST_CASE("so_manager: stored properties stay within what a Use reply can carry"
 
 	// A fresh client's Use reply therefore fits the event cap.
 	auto u = make_so("obj");
-	u->add_event(ev(SO::eUse));
+	REQUIRE(u->add_event(ev(SO::eUse)));
 	rtmp_message_ptr result;
 	REQUIRE(sm.handle_so(u, 2, result));
 	auto const r = std::dynamic_pointer_cast<SO>(result);
 	REQUIRE(r);
 	CHECK(r->events().size() <= SO::eMaxEvents);
 	CHECK(change_value(r, "k0") == "v2");
+}
+
+TEST_CASE("so_manager: one request cannot make a reply exceed the event cap")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+
+	for (std::size_t i = 0; i < so_manager::eMaxProperties; ++i)
+		REQUIRE(do_change(sm, "obj", 1, "k" + std::to_string(i), "v"));
+
+	// One Use reply already fills the cap, so the remaining events cannot add to it.
+	auto u = make_so("obj");
+	for (int i = 0; i < 8; ++i)
+		REQUIRE(u->add_event(ev(SO::eUse)));
+
+	rtmp_message_ptr result;
+	REQUIRE(sm.handle_so(u, 2, result));
+	auto const r = std::dynamic_pointer_cast<SO>(result);
+	REQUIRE(r);
+	CHECK(r->events().size() <= SO::eMaxEvents);
+
+	// The reply has to survive the cap a peer applies when parsing it.
+	byte_writer out;
+	r->serialize(out);
+	byte_reader in(out.data(), out.size());
+	auto const parsed = std::make_shared<SO>();
+	CHECK_NOTHROW(parsed->deserialize(in));
 }

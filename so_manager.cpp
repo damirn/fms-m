@@ -24,6 +24,9 @@ namespace fms
 
 			for (auto i = list.begin(); i != j; ++i)
 			{
+				if (ret->events().size() >= rtmp_message_shared_object::eMaxEvents)
+					break;
+
 				switch ((*i)->m_type)
 				{
 				case rtmp_message_shared_object::eUse:
@@ -77,10 +80,12 @@ namespace fms
 		result->set_flags(0x20);
 
 		rtmp_message_shared_object::event_ptr const use_event = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eUseSuccess);
-		result->add_event(use_event);
+		if (!result->add_event(use_event))
+			return;
 
 		rtmp_message_shared_object::event_ptr const clear_event = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eClear);
-		result->add_event(clear_event);
+		if (!result->add_event(clear_event))
+			return;
 
 		const std::map<std::string, amf0_type_ptr> &values = i->second->m_values;
 		for (const auto & value : values)
@@ -89,7 +94,8 @@ namespace fms
 			amf0_string_ptr const s = std::make_shared<amf0_string>(value.first);
 			e->m_name = s;
 			e->m_value = value.second;
-			result->add_event(e);
+			if (!result->add_event(e))
+				return;
 		}
 	}
 
@@ -146,7 +152,8 @@ namespace fms
 			result->set_version(s->m_version);
 			rtmp_message_shared_object::event_ptr const ev = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eSuccess);
 			ev->m_name = e->m_name;
-			result->add_event(ev);
+			if (!result->add_event(ev))
+				return;
 
 			const std::set<std::uint32_t> &clients = s->m_clients;
 			for (unsigned int const client : clients)
@@ -157,7 +164,8 @@ namespace fms
 				rtmp_message_shared_object::event_ptr const evc = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eChange);
 				evc->m_name = e->m_name;
 				evc->m_value = e->m_value;
-				notify->add_event(evc);
+				if (!notify->add_event(evc))
+					continue;
 				pending.emplace_back(client, notify);
 			}
 		}
@@ -196,7 +204,8 @@ namespace fms
 				rtmp_message_shared_object_ptr const notify = std::make_shared<rtmp_message_shared_object>(so->name(), s->m_version, 0);
 				rtmp_message_shared_object::event_ptr const evc = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eRemove);
 				evc->m_name = e->m_name;
-				notify->add_event(evc);
+				if (!notify->add_event(evc))
+					return;
 
 				result = notify;
 				for (unsigned int const client : clients)

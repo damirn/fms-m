@@ -99,9 +99,13 @@ namespace fms
 			return m_events;
 		}
 
-		void add_event(const event_ptr& e)
+		// False when the message already carries every event a peer will parse.
+		[[nodiscard]] bool add_event(const event_ptr& e)
 		{
+			if (m_events.size() >= eMaxEvents)
+				return false;
 			m_events.push_back(e);
+			return true;
 		}
 
 	protected:
