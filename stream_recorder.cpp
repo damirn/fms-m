@@ -49,6 +49,14 @@ namespace fms
 		{
 			return;
 		}
+		catch (const std::bad_alloc &)
+		{
+			return;
+		}
+		catch (const std::length_error &)
+		{
+			return;
+		}
 		m_flv->write_script(reinterpret_cast<const char *>(tmp.data()), static_cast<std::uint32_t>(tmp.size()), 0);
 	}
 

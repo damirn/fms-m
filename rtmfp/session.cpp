@@ -564,6 +564,14 @@ namespace fms
 		{
 			return;
 		}
+		catch (const std::bad_alloc &)
+		{
+			return;
+		}
+		catch (const std::length_error &)
+		{
+			return;
+		}
 
 		auto const i = m_stream_id_to_flow_id.find(result->stream_id());
 		if (i != m_stream_id_to_flow_id.end())
