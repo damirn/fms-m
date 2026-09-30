@@ -58,7 +58,7 @@ namespace fms
 		// manager uses this to reap a session that keeps polling but never handshakes.
 		bool handshake_complete() const override { return m_sstate == eCSReadCommands; }
 
-		boost::tribool handle_data(byte_writer &, byte_writer &) override;
+		[[nodiscard]] boost::tribool handle_data(byte_writer &, byte_writer &) override;
 		void serialize_result(byte_writer &) override;
 
 		// Only used when result is not needed

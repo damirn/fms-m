@@ -23,7 +23,7 @@ namespace fms
 		// Holds one budget across every top-level write of a message. Without it
 		// the allowance resets per value, so a message of n values gets n budgets.
 		// The outermost scope owns the reset; nested ones are no-ops.
-		class scope
+		class [[nodiscard]] scope
 		{
 		public:
 			explicit scope(std::size_t written)
@@ -40,7 +40,7 @@ namespace fms
 
 		// One node of the walk, charged against the bytes written so far. Refuses
 		// by reporting !ok(); the caller throws its own codec's exception.
-		class frame
+		class [[nodiscard]] frame
 		{
 		public:
 			explicit frame(std::size_t written)
@@ -59,7 +59,7 @@ namespace fms
 			frame(const frame &) = delete;
 			frame &operator=(const frame &) = delete;
 
-			bool ok() const { return m_ok; }
+			[[nodiscard]] bool ok() const { return m_ok; }
 
 		private:
 			bool m_ok = false;

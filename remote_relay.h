@@ -35,7 +35,7 @@ namespace fms::remote_relay
 
 		// True if a spawn is allowed for `key`, and records it. Prunes expired
 		// cooldown entries as it goes, and refuses once either bound is reached.
-		bool allow(const std::string &key, clock::time_point now);
+		[[nodiscard]] bool allow(const std::string &key, clock::time_point now);
 
 		// Give the slot back when no spawn was attempted at all. A spawn that was
 		// attempted and failed keeps its cooldown, so retries stay throttled.
@@ -47,7 +47,7 @@ namespace fms::remote_relay
 		void note_spawn_failed();
 
 		void note_exited(::pid_t pid);
-		std::size_t live_count();
+		[[nodiscard]] std::size_t live_count();
 
 		// waitpid(WNOHANG) each tracked child; drops the ones that have exited.
 		void reap();
