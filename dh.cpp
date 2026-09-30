@@ -38,7 +38,7 @@ namespace fms
 			EVP_PKEY_free(m_pkey);
 	}
 
-	bool dh::create_shared_key(std::uint8_t *key, std::uint16_t size)
+	bool dh::create_shared_key(const std::uint8_t *key, std::uint16_t size)
 	{
 		std::vector<std::uint8_t> secret = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size);
 		if (secret.empty())

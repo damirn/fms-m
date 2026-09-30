@@ -111,7 +111,7 @@ namespace fms
 		std::uint32_t const client_dh_offset = rtmp_handshake::dh_offset(client_sig, m_validation_scheme);
 		std::uint32_t const server_dh_offset = rtmp_handshake::dh_offset(server_sig, m_validation_scheme);
 
-		if (!mydh.create_shared_key(const_cast<std::uint8_t *>(client_sig.data()) + client_dh_offset, 128))
+		if (!mydh.create_shared_key(client_sig.data() + client_dh_offset, 128))
 			return false;   // degenerate peer public value: fail the handshake, do not unwind
 		if (!mydh.copy_public_key(server_sig.data() + server_dh_offset, 128))
 			return false;   // S1's DH slot must hold the exported key, not the filler

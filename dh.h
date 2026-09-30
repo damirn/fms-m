@@ -27,7 +27,7 @@ namespace fms
 
 		// False when the peer's public value has no shared secret (0, 1, p-1, >= p).
 		// Never throws: it runs inside an Asio read handler.
-		[[nodiscard]] bool create_shared_key(std::uint8_t *, std::uint16_t);
+		[[nodiscard]] bool create_shared_key(const std::uint8_t *, std::uint16_t);
 		// False if the derived secret is shorter than requested.
 		[[nodiscard]] bool copy_shared_key(std::uint8_t *, std::uint16_t) const;
 		// False if the key could not be exported; the buffer is left untouched, so a
