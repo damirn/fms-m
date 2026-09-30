@@ -96,7 +96,7 @@ namespace fms
 		}
 
 	protected:
-		std::uint8_t m_cmnd;
+		std::uint8_t m_cmnd{0};
 		std::set<session_weak_ptr, std::owner_less<session_weak_ptr>> m_members;
 	};
 }
