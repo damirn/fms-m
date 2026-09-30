@@ -6,6 +6,7 @@
 // on every well-formed input and only stops protecting the stack.
 
 #include "amf0.h"
+#include "amf_write_budget.h"
 #include "amf3.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
@@ -337,7 +338,10 @@ TEST_CASE("amf0 write: the node budget resets between top-level writes")
 		return node;
 	};
 
-	amf0_type_ptr const half = chain(19);   // ~2^19 nodes: half the allowance
+	// chain(n) expands to 2^(n+1)-1 nodes, so 18 is about half of eMaxNodes. 19
+	// would sit one node below the cap and pass for the wrong reason.
+	amf0_type_ptr const half = chain(18);
+	static_assert(amf_write_budget::eMaxNodes == 1u << 20, "the chain depth below is picked against this");
 	for (int i = 0; i < 3; ++i)
 	{
 		byte_writer w;
