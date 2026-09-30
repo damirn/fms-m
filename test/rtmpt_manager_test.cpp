@@ -84,6 +84,11 @@ namespace
 	{
 		using rtmpt_manager::rtmpt_manager;
 		void tick() { handle_timer({}); }
+		std::size_t session_count()
+		{
+			std::lock_guard const lock(m_mutex);
+			return m_ids.size();
+		}
 	};
 
 	boost::asio::ip::tcp::endpoint ep(const std::string &ip, std::uint16_t port = 1935)
@@ -378,6 +383,35 @@ TEST_CASE("rtmpt: the session table is capped against an /open flood")
 	m.create_session(ep("10.0.0.1"), id);
 	CHECK(id.empty());               // refused
 	CHECK(h.made.size() == 4096);    // and refused BEFORE allocating a session
+}
+
+TEST_CASE("rtmpt: a session closed by the server stops being served")
+{
+	// An app- or admin-initiated close goes through the session, not through
+	// remove_session, so the id table has to notice on its own.
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.9"), id);
+	REQUIRE_FALSE(id.empty());
+	REQUIRE(m.validate(ep("10.0.0.9"), id, 0));
+
+	h.made[0]->close();              // as destroy_connection -> post_close does
+
+	CHECK_FALSE(m.validate(ep("10.0.0.9"), id, 0));
+	CHECK(m.session_count() == 0);   // the slot is released, not just refused
+}
+
+TEST_CASE("rtmpt: the reaper frees the slot of a closed session that stops polling")
+{
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.10"), id);
+	h.made[0]->close();
+
+	m.tick();
+	CHECK(m.session_count() == 0);
 }
 
 TEST_CASE("rtmpt: remove_session closes the session and forgets the id")
