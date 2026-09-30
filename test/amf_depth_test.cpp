@@ -229,6 +229,20 @@ TEST_CASE("amf3: writing a cycle terminates instead of exhausting the stack")
 
 // Sealed names are charged where they are materialised, not where they are
 // declared: one declared name, one copy per referencing object.
+// An object whose sealed member is named "" cannot be written back out: the empty
+// name is the dynamic-member terminator, so the peer would stop parsing early.
+TEST_CASE("amf3: a sealed property with an empty name is refused at read")
+{
+	// [0x0A][U29O: instance, new traits, dynamic=0, sealed=1 -> 0b1_0011 = 0x13]
+	// [0x01 anonymous class name][0x01 empty sealed name][0x01 null value]
+	std::vector<std::uint8_t> const wire{
+		amf3_type::eAMF3Object, 0x13, 0x01, 0x01, amf3_type::eAMF3Null };
+
+	byte_reader r(wire.data(), wire.size());
+	amf3 codec;
+	CHECK_THROWS_AS(codec.read(r), amf3_read_exception);
+}
+
 TEST_CASE("amf3: sealed property names are charged per object that materialises them")
 {
 	auto u29 = [](std::vector<std::uint8_t> &v, std::uint32_t x) {

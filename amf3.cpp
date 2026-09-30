@@ -397,7 +397,14 @@ namespace fms
 			traits->m_dynamic = dynamic;
 			traits->m_class_name = read_string(buffer)->value();
 			for (std::uint32_t i = 0; i < sealed_count; ++i)
-				traits->m_properties.push_back(read_string(buffer)->value());
+			{
+				std::string name = read_string(buffer)->value();
+				// The empty name terminates the dynamic-member list, so a member
+				// carrying it could not be written back out.
+				if (name.empty())
+					throw amf3_read_exception();
+				traits->m_properties.push_back(std::move(name));
+			}
 			m_traits_refs.push_back(traits);
 		}
 
