@@ -259,3 +259,43 @@ TEST_CASE("SO codec: serializing an event with no name or value does not crash")
 	byte_reader r(w.data(), w.size());
 	CHECK_NOTHROW(back.deserialize(r));
 }
+
+// Each event declares its own length, and the name/value parse used to ignore it:
+// a declared length that disagrees with the body consumed the next event's header
+// or left residue to be read as one.
+TEST_CASE("SO codec: a declared length longer than the body does not eat the next event")
+{
+	std::vector<std::uint8_t> body = short_string("prop");
+	body.push_back(0x05);                       // AMF0 null value
+	std::size_t const real = body.size();
+
+	std::vector<std::uint8_t> v = header("obj");
+	add_event(v, so::eRequestChange, body, static_cast<std::uint32_t>(real + 3));
+	v.insert(v.end(), 3, 0x00);                 // the three declared-but-unparsed bytes
+	add_event(v, so::eUse, {});
+
+	so m;
+	REQUIRE(parses(v, m));
+	REQUIRE(m.events().size() == 2);
+	CHECK(m.events().front()->m_type == so::eRequestChange);
+	CHECK(m.events().back()->m_type == so::eUse);
+}
+
+TEST_CASE("SO codec: a declared length shorter than the body does not desync")
+{
+	std::vector<std::uint8_t> body = short_string("prop");
+	body.push_back(0x05);
+
+	std::vector<std::uint8_t> v = header("obj");
+	add_event(v, so::eRequestRemove, body, 2);  // only the two name-length bytes
+	add_event(v, so::eUse, {});
+
+	so m;
+	// Either the short body is refused outright or the list stays framed; what it
+	// must not do is read the trailing bytes as a fresh event header.
+	if (parses(v, m))
+	{
+		REQUIRE(m.events().size() == 2);
+		CHECK(m.events().back()->m_type == so::eUse);
+	}
+}

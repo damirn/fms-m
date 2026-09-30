@@ -67,13 +67,22 @@ namespace fms
 				throw amf0_read_exception();
 			break;
 		case eRequestChange:
-			deserialize_request_change_event(buffer, ev);
+		case eRequestRemove:
+			{
+				// Parse inside the declared body only, then advance to its end: a
+				// len that disagrees with the body must not desync the event list.
+				if (len > buffer.available())
+					throw amf0_read_exception();
+				byte_reader body(buffer.read_pos(), len);
+				if (ev->m_type == eRequestChange)
+					deserialize_request_change_event(body, ev);
+				else
+					deserialize_request_remove_event(body, ev);
+				buffer.skip(len);
+			}
 			break;
 		case eSendMessage:
 			deserialize_send_message_event(len, buffer, ev);
-			break;
-		case eRequestRemove:
-			deserialize_request_remove_event(buffer, ev);
 			break;
 		default:
 			if (!buffer.try_skip(len))
