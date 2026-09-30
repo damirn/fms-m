@@ -68,7 +68,15 @@ namespace fms
 	{
 		const std::string &so_name = so->name()->value();
 		auto i = m_so_map.find(so_name);
-		if (i == m_so_map.end())
+		bool const known = i != m_so_map.end();
+		bool const joining = !known || !i->second->m_clients.contains(connection_id);
+
+		if (!known && m_so_map.size() >= eMaxObjects)
+			return;                             // no reply events: the use did not take
+		if (joining && m_use_counts[connection_id] >= eMaxObjectsPerConnection)
+			return;
+
+		if (!known)
 		{
 			so_data_ptr const data = std::make_shared<so_data>();
 			i = m_so_map.insert(std::map<std::string, so_data_ptr>::value_type(so_name, data)).first;
@@ -76,6 +84,8 @@ namespace fms
 		}
 		else
 			i->second->m_clients.insert(connection_id);
+		if (joining)
+			++m_use_counts[connection_id];
 
 		result->set_flags(0x20);
 
@@ -114,6 +124,7 @@ namespace fms
 			else
 				++i;
 		}
+		m_use_counts.erase(connection_id);
 	}
 
 	std::size_t so_manager::size()
@@ -131,6 +142,8 @@ namespace fms
 			if (i->second->m_clients.contains(connection_id))
 			{
 				i->second->m_clients.erase(connection_id);
+				if (auto const u = m_use_counts.find(connection_id); u != m_use_counts.end() && u->second > 0)
+					--u->second;
 				if (i->second->m_clients.empty())
 					m_so_map.erase(i);
 			}

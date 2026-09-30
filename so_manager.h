@@ -43,6 +43,11 @@ namespace fms
 		// event cap or our own reply is one a peer applying the same cap must refuse.
 		static constexpr std::size_t eMaxProperties = rtmp_message_shared_object::eMaxEvents - 2;
 
+		// Object names are client-chosen, so the table and one client's share of it
+		// are both bounded; teardown alone is not a bound.
+		static constexpr std::size_t eMaxObjects = 4096;
+		static constexpr std::size_t eMaxObjectsPerConnection = 64;
+
 	protected:
 		// (client id, message) pairs collected while m_mutex is held and flushed to
 		// enqueue_async_message/notify AFTER it is released -- so the SO fan-out does
@@ -70,6 +75,9 @@ namespace fms
 
 		using so_map_t = std::map<std::string, so_data_ptr>;
 		so_map_t m_so_map;
+
+		// Objects each connection is using, so the per-connection bound costs no scan.
+		std::map<std::uint32_t, std::size_t> m_use_counts;
 		bool m_new_message{false};
 		std::mutex m_mutex;
 
