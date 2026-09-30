@@ -54,6 +54,7 @@ namespace fms
 		// m_socket. io_handler / handshake_handler and the plaintext
 		// transport_handshake come from transport_seam (shared with rtmp_connection);
 		// only the HTTP-framed read/write ops are declared here.
+		virtual void async_read_header(io_handler h);
 		virtual void async_read_request(io_handler h);
 		virtual void async_write_response(io_handler h);
 
@@ -63,13 +64,16 @@ namespace fms
 		// How long a connection may wait for a full request.
 		static constexpr auto eIdleTimeout = std::chrono::seconds{60};
 
-		// RTMPT bodies are small; the generous cap applies only once a session exists
-		// on this connection. 1 MB (Beast's own default) is ample for /open, /fcs or a
-		// first /send.
+		// RTMPT bodies are small; the generous cap applies only to a request that
+		// names a live session. 1 MB (Beast's own default) covers /open and /fcs.
 		static constexpr std::size_t eBodyLimit = 16 * 1024 * 1024;
 		static constexpr std::size_t eUnauthBodyLimit = 1024 * 1024;
 
+		// Split "/<verb>[/<cid>/<seq>]" into its path segments.
+		static void split_target(const std::string &, std::string &verb, std::string &cid, std::string &seq);
+
 		void do_read();
+		void on_header(const boost::system::error_code &, std::size_t);
 		void on_read(const boost::system::error_code &, std::size_t);
 		void handle_request(const request_t &);
 		void reply(std::vector<std::uint8_t> body);

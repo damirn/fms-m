@@ -44,6 +44,11 @@ namespace fms
 		});
 	}
 
+	void http_connection::async_read_header(io_handler h)
+	{
+		http::async_read_header(m_socket, m_buffer, *m_parser, std::move(h));
+	}
+
 	void http_connection::async_read_request(io_handler h)
 	{
 		http::async_read(m_socket, m_buffer, *m_parser, std::move(h));
@@ -56,13 +61,33 @@ namespace fms
 
 	void http_connection::do_read()
 	{
-		// One request at a time; a fresh parser each time.
+		// One request at a time; a fresh parser each time. The body limit is set
+		// once the request line names the session, not from the previous request.
 		m_parser.emplace();
-		m_parser->body_limit(m_cid.empty() ? eUnauthBodyLimit : eBodyLimit);
+		m_parser->body_limit(eUnauthBodyLimit);
 
 		// Bounds an idle connection and slow header delivery.
 		m_timer.expires_after(std::chrono::seconds(eIdleTimeout));
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->on_timeout(ec); });
+
+		async_read_header(
+			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_header(ec, n); });
+	}
+
+	void http_connection::on_header(const boost::system::error_code &e, std::size_t)
+	{
+		if (e)
+		{
+			m_timer.cancel();
+			close();
+			return;
+		}
+
+		std::string const target(m_parser->get().target().data(), m_parser->get().target().size());
+		std::string verb, cid, seq;
+		split_target(target, verb, cid, seq);
+		if (!cid.empty() && m_rtmpt_manager->has_session(cid))
+			m_parser->body_limit(eBodyLimit);
 
 		async_read_request(
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_read(ec, n); });
@@ -80,17 +105,8 @@ namespace fms
 		handle_request(m_parser->get());
 	}
 
-	void http_connection::handle_request(const request_t &req)
+	void http_connection::split_target(const std::string &target, std::string &verb, std::string &cid, std::string &seq)
 	{
-		if (req.method() != http::verb::post)
-		{
-			close();
-			return;
-		}
-
-		// Split the target "/<verb>[/<cid>/<seq>]" into its path segments.
-		std::string const target(req.target().data(), req.target().size());
-		std::string verb, cid, seq;
 		for (std::size_t i = 0, seen = 0; i < target.size(); )
 		{
 			if (target[i] == '/') { ++i; continue; }
@@ -104,12 +120,24 @@ namespace fms
 			++seen;
 			i = j;
 		}
+	}
+
+	void http_connection::handle_request(const request_t &req)
+	{
+		if (req.method() != http::verb::post)
+		{
+			close();
+			return;
+		}
+
+		std::string const target(req.target().data(), req.target().size());
+		std::string verb, cid, seq;
+		split_target(target, verb, cid, seq);
 
 		boost::system::error_code ec;
 		boost::asio::ip::tcp::endpoint const remote = m_socket.remote_endpoint(ec);
 
 		// Ident probe: session-less, so it answers with the configured bind address.
-		// The socket's own would be an internal one behind NAT or a container bridge.
 		if (verb == "fcs")
 		{
 			std::string const &addr = config::instance()->bind_address();
@@ -175,6 +203,7 @@ namespace fms
 		else if (verb == "close")
 		{
 			m_rtmpt_manager->remove_session(cid);
+			m_cid.clear();
 			reply(std::vector<std::uint8_t>{0x00});
 		}
 		else
