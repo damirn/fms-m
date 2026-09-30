@@ -50,6 +50,13 @@ namespace fms
 			return bytes_read + window;
 		}
 
+		// The threshold test itself: a wrapping signed difference, so the counter
+		// passing 2^32 does not strand it.
+		static constexpr bool ack_due(std::uint32_t bytes_read, std::uint32_t threshold)
+		{
+			return static_cast<std::int32_t>(bytes_read - threshold) >= 0;
+		}
+
 		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, app_host *);
 
 		~basic_rtmp_connection() override = default;

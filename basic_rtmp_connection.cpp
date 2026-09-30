@@ -22,7 +22,7 @@ namespace fms
 	{
 		client_session::handle_bytes_read(bytes_transferred);
 
-		if (static_cast<std::int32_t>(m_bytes_read - m_bytes_read_notify) >= 0)   // wraps with the counters
+		if (ack_due(m_bytes_read, m_bytes_read_notify))
 		{
 			// No app until connect() is routed; leave the threshold so the ack
 			// still goes out once there is one.

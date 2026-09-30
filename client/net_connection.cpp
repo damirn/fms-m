@@ -296,7 +296,7 @@ namespace fms::rtmp_client
 	void net_connection::update_bytes_read(std::size_t bytes_read)
 	{
 		m_bytes_read += static_cast<std::uint32_t>(bytes_read);
-		if (static_cast<std::int32_t>(m_bytes_read - m_ack_size_next) >= 0)   // wraps with the counter
+		if (basic_rtmp_connection::ack_due(m_bytes_read, m_ack_size_next))
 		{
 			m_ack_size_next = basic_rtmp_connection::next_ack_threshold(m_bytes_read, m_ack_size);
 			rtmp_message_bytes_read_ptr const msg = std::make_shared<rtmp_message_bytes_read>(m_bytes_read);
