@@ -47,12 +47,6 @@ namespace fms
 		session->m_session->close();
 	}
 
-	bool rtmpt_manager::has_session(const std::string &id)
-	{
-		std::unique_lock const lock(m_mutex);
-		return m_ids.contains(id);
-	}
-
 	bool rtmpt_manager::validate(const boost::asio::ip::tcp::endpoint &remote, const std::string &id, std::uint32_t sequence)
 	{
 		std::unique_lock const lock(m_mutex);
