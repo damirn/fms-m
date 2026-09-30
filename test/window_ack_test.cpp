@@ -74,21 +74,34 @@ TEST_CASE("window ack: a read larger than the window does not strand the thresho
 	std::uint32_t const read_size = 65536;   // byte_writer::write_buffer's default
 	REQUIRE(read_size > win);
 
+	// Re-basing on the counter (what the helper does) against stepping by the window
+	// (what a caller must not do): the two are compared over the same reads, so the
+	// assertion cannot hold for both.
 	std::uint32_t bytes_read = 0;
-	std::uint32_t notify = win;
+	std::uint32_t rebased = win;
+	std::uint32_t stepped = win;
 	unsigned wraps = 0;
+	unsigned stepped_missed = 0;
 	for (int i = 0; i < 100000; ++i)
 	{
 		std::uint32_t const before = bytes_read;
 		bytes_read += read_size;
 		if (bytes_read < before)
 			++wraps;
-		REQUIRE(reached(bytes_read, notify));    // every read is due an acknowledgement
-		notify = conn::next_ack_threshold(bytes_read, win);
+
+		REQUIRE(reached(bytes_read, rebased));   // every read is due an acknowledgement
+		rebased = conn::next_ack_threshold(bytes_read, win);
+
+		if (!reached(bytes_read, stepped))
+			++stepped_missed;
+		else
+			stepped += win;                      // the lag grows by read_size - win
 	}
 
-	// Stepping by the window instead of re-basing lets the lag reach 2^31 and the
-	// loop above stops firing -- but only once the counter has actually wrapped, so
-	// the loop proves nothing unless it did.
+	// The counter has to wrap for the comparison to be exercised at all.
 	CHECK(wraps > 0);
+
+	// Stepping strands the threshold: once the lag passes 2^31 the wrapping
+	// difference turns negative and the acknowledgement stops firing for good.
+	CHECK(stepped_missed > 0);
 }
