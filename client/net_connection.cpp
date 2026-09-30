@@ -380,9 +380,9 @@ namespace fms::rtmp_client
 			// digest = HMAC-SHA256(C1 with the 32 digest bytes removed, FP_key[0:30]),
 			// written into C1 at the scheme's digest offset.
 			std::uint32_t const off = rtmp_handshake::digest_offset(c1, m_hs_scheme);
-			rtmp_handshake::compute_digest(c1, off, {genuine_keys::FP_key, 30},
+			// A failed HMAC zeroes the digest, which the server would reject anyway.
+			return rtmp_handshake::compute_digest(c1, off, {genuine_keys::FP_key, 30},
 				c1.subspan(off).first<rtmp_handshake::eDigestLen>());
-			return true;
 		}
 
 		std::memset(c1.data() + 4, 0, 4);    // version = 0 -> simple handshake

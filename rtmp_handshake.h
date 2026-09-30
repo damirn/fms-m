@@ -49,7 +49,7 @@ namespace fms::rtmp_handshake
 	// in place.
 	// False if the HMAC failed; `out` is zeroed in that case rather than left
 	// indeterminate, since callers compare it and ship it on the wire.
-	bool compute_digest(c1_view sig, std::uint32_t off, key_view key, digest_out out);
+	[[nodiscard]] bool compute_digest(c1_view sig, std::uint32_t off, key_view key, digest_out out);
 
 	// True if the digest embedded in `sig` at `scheme`'s offset validates under `key`
 	// (constant-time compare).

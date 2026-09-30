@@ -63,8 +63,8 @@ namespace
 		}
 
 		std::uint32_t const off = rtmp_handshake::digest_offset(view, scheme);
-		rtmp_handshake::compute_digest(view, off, {genuine_keys::FP_key, 30},
-			std::span<std::uint8_t, rtmp_handshake::eDigestLen>(c1.data() + off, rtmp_handshake::eDigestLen));
+		REQUIRE(rtmp_handshake::compute_digest(view, off, {genuine_keys::FP_key, 30},
+			std::span<std::uint8_t, rtmp_handshake::eDigestLen>(c1.data() + off, rtmp_handshake::eDigestLen)));
 		return c1;
 	}
 
