@@ -163,28 +163,29 @@ namespace fms
 	client_data_ptr connection_registry::get_client_data_impl(std::uint32_t connection_id)
 	{
 		auto const i = m_connections.find(connection_id);
-		if (i != m_connections.end())
-		{
-			client_data_ptr client = std::make_shared<client_data>();
-			client->m_id = i->second->id();
-			client->m_sid = i->second->sid();
-			client->m_create_time = i->second->create_time();
-			client->m_username = i->second->username();
+		if (i == m_connections.end())
+			return client_data_ptr();
 
-			if (i->second->get_app() != nullptr)
-				client->m_app = i->second->get_app()->app_name();
-			else
-				return client_data_ptr();
+		// Read the app first: its acquire load orders everything the connection's
+		// own thread wrote before publishing it, m_sid and m_username included.
+		rtmp_application *const app = i->second->get_app();
+		if (app == nullptr)
+			return client_data_ptr();
 
-			// Transport descriptors come from client_session virtuals, so we never
-			// downcast to a concrete session type. (rtmp uses the endpoint cached on the
-			// connection's own thread; rtmpt/rtmfp expose their own address.)
-			client->m_ip = i->second->remote_address();
-			client->m_port = i->second->remote_port();
-			client->m_protocol = i->second->protocol_name();
-			return client;
-		}
-		return client_data_ptr();
+		client_data_ptr client = std::make_shared<client_data>();
+		client->m_id = i->second->id();
+		client->m_sid = i->second->sid();
+		client->m_create_time = i->second->create_time();
+		client->m_username = i->second->username();
+		client->m_app = app->app_name();
+
+		// Transport descriptors come from client_session virtuals, so we never
+		// downcast to a concrete session type. (rtmp uses the endpoint cached on the
+		// connection's own thread; rtmpt/rtmfp expose their own address.)
+		client->m_ip = i->second->remote_address();
+		client->m_port = i->second->remote_port();
+		client->m_protocol = i->second->protocol_name();
+		return client;
 	}
 
 	std::optional<client_stats> connection_registry::get_client_stats(std::uint32_t cid)
