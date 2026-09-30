@@ -8,6 +8,7 @@
 #include "net_stream.h"
 #include "rtmp_handshake.h"
 #include "rtmp_message.h"
+#include "rtmp_parser.h"
 #include "rtmp_protocol.h"
 #include "util.h"
 
@@ -352,13 +353,15 @@ namespace fms::rtmp_client
 		// the previous size: the peer parses it at the old size, then switches, so
 		// our subsequent media chunks (and its parse) use the new size.
 		if (message->type() == rtmp_message::eMessageChunkSize)
-			m_out_chunk_size = static_cast<std::uint16_t>(
-				std::static_pointer_cast<rtmp_message_chunk_size>(message)->chunk_size());
+			m_out_chunk_size = std::static_pointer_cast<rtmp_message_chunk_size>(message)->chunk_size();
 	}
 
-	void net_connection::set_output_chunk_size(std::uint32_t n)
+	bool net_connection::set_output_chunk_size(std::uint32_t n)
 	{
+		if (n < 1 || n > rtmp_parser::eMaxChunkSize)
+			return false;
 		send_message(std::make_shared<rtmp_message_chunk_size>(n));
+		return true;
 	}
 
 	bool net_connection::prepare_handshake()

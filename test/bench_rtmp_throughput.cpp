@@ -228,8 +228,11 @@ namespace
 			}
 			started = true;
 			frame->set_stream_id(ns->stream_id());
-			if (out_chunk > 128 && conn)
-				conn->set_output_chunk_size(out_chunk);
+			if (out_chunk > 128 && conn && !conn->set_output_chunk_size(out_chunk))
+			{
+				std::fprintf(stderr, "out-chunk %u is outside 1..0xFFFFFF\n", out_chunk);
+				std::exit(2);
+			}
 			timer = std::make_shared<boost::asio::steady_timer>(io);
 			pump();
 		}
