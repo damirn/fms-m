@@ -240,6 +240,31 @@ TEST_CASE("rtmfp fragment: send bookkeeping starts defined on a received fragmen
 // A zero-length whole fragment is a ready message. Reported as an empty span it
 // was indistinguishable from "nothing ready", so it was never consumed and
 // head-of-line-blocked every later message on the flow.
+// The same, reassembled from fragments: an empty reassembly is a message, not a
+// refusal, and must not strand what is queued behind it.
+TEST_CASE("rtmfp flow: a zero-length fragmented message is ready, and is consumed")
+{
+	flow f(vlu_t{1}, flow::eReceiver);
+
+	std::uint8_t const byte = 0x7F;
+	f.add_fragment(std::make_shared<fragment>(vlu_t{1}, &byte, 0,
+	                                          static_cast<std::uint8_t>(fragment::eBegin), true));
+	f.add_fragment(std::make_shared<fragment>(vlu_t{3}, &byte, 1,
+	                                          static_cast<std::uint8_t>(fragment::eWhole), true));
+	f.add_fragment(std::make_shared<fragment>(vlu_t{2}, &byte, 0,
+	                                          static_cast<std::uint8_t>(fragment::eEnd), true));
+
+	auto const first = f.message_data();
+	REQUIRE(first.has_value());
+	CHECK(first->empty());
+	CHECK(f.state() != flow::eRejected);
+	f.remove_last_message();
+
+	auto const second = f.message_data();
+	REQUIRE(second.has_value());      // the whole fragment behind it still arrives
+	CHECK(second->size() == 1);
+}
+
 TEST_CASE("rtmfp flow: a zero-length message is ready, and is consumed")
 {
 	flow f(vlu_t{1}, flow::eReceiver);

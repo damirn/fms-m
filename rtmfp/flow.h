@@ -298,7 +298,9 @@ namespace fms
 		static vlu_t get_stream_id_from_option(const option_ptr&);
 
 		using fragment_map_t = std::map<vlu_t, fragment_ptr>;
-		const std::uint8_t *create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
+		// False when the reassembly is refused and the flow rejected. On true the
+		// message is m_data[0, m_msg_len), which may legitimately be empty.
+		bool create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
 
 		vlu_t m_flow_id;
 		vlu_t m_stream_id{0};
