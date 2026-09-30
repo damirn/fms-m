@@ -38,6 +38,24 @@ namespace
 		return v;
 	}
 
+	// n nested AMF3 anonymous dynamic objects, each with one member "a" holding the
+	// next level: [0x0A][0x0B inline traits, dynamic, 0 sealed][0x01 anon class]
+	// [0x03 'a'] ... [0x01 end of dynamic members].
+	std::vector<std::uint8_t> nested_amf3(unsigned n)
+	{
+		std::vector<std::uint8_t> v;
+		for (unsigned i = 0; i < n; ++i)
+		{
+			v.push_back(amf3_type::eAMF3Object);
+			v.push_back(0x0B);
+			v.push_back(0x01);
+			v.push_back(0x03); v.push_back('a');
+		}
+		v.push_back(amf3_type::eAMF3Null);          // innermost value
+		v.insert(v.end(), n, 0x01);                 // end each object's dynamic members
+		return v;
+	}
+
 	bool amf0_reads(const std::vector<std::uint8_t> &v)
 	{
 		byte_reader r(v.data(), v.size());
@@ -79,6 +97,41 @@ TEST_CASE("amf0: the depth counter resets between top-level reads")
 	{
 		byte_reader r(v.data(), v.size());
 		CHECK(codec.read(r) != nullptr);
+	}
+}
+
+// The frame that trips the bound throws, so it has to give its own level back:
+// otherwise the instance stays one level deep and refuses the next message one
+// nesting level early.
+TEST_CASE("amf0: a refused read leaves no depth behind")
+{
+	amf0 codec;
+	std::vector<std::uint8_t> const deep = nested_amf0(amf0::eMaxDepth + 1);
+	std::vector<std::uint8_t> const legal = nested_amf0(amf0::eMaxDepth - 1);
+
+	for (int i = 0; i < 4; ++i)
+	{
+		byte_reader bad(deep.data(), deep.size());
+		CHECK_THROWS_AS(codec.read(bad), amf0_read_exception);
+
+		byte_reader ok(legal.data(), legal.size());
+		CHECK(codec.read(ok) != nullptr);
+	}
+}
+
+TEST_CASE("amf3: a refused read leaves no depth behind")
+{
+	amf3 codec;
+	std::vector<std::uint8_t> const deep = nested_amf3(amf3::eMaxDepth + 1);
+	std::vector<std::uint8_t> const legal = nested_amf3(amf3::eMaxDepth - 1);
+
+	for (int i = 0; i < 4; ++i)
+	{
+		byte_reader bad(deep.data(), deep.size());
+		CHECK_THROWS_AS(codec.read(bad), amf3_read_exception);
+
+		byte_reader ok(legal.data(), legal.size());
+		CHECK(codec.read(ok) != nullptr);
 	}
 }
 

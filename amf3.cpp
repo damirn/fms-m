@@ -13,9 +13,12 @@ namespace fms
 		if (m_depth == 0)          // top-level value: fresh reference context (spec 4.1)
 			reset_refs();
 
-		if (++m_depth > eMaxDepth)   // bound recursion on hostile nested input
-			throw amf3_read_exception();
+		// Guard first: the frame that trips the bound has to give its level back too,
+		// or the instance is left one level deep after the unwind.
+		++m_depth;
 		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ m_depth };
+		if (m_depth > eMaxDepth)   // bound recursion on hostile nested input
+			throw amf3_read_exception();
 
 		std::uint8_t type;
 		buffer >> type;
