@@ -587,6 +587,26 @@ TEST_CASE("rtmfp session: a truncated NetGroup message does not wedge the flow")
 	CHECK(s->group_membership().size() == 1);
 }
 
+// Truncated on the RTMP flow: the demux does not catch buffer_eof itself, so the
+// drain has to, or the message is never consumed.
+TEST_CASE("rtmfp session: a truncated RTMP message does not wedge the flow")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	// An AMF0 short string declaring 0xFFFF bytes with two present.
+	feed_open_flow(s, 5, 1, 7,
+		rtmp_payload(rtmp_message::eMessageInvoke, {0x02, 0xFF, 0xFF, 0x41, 0x42}));
+	CHECK(app.routed == 0);
+
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	CHECK(s->m_receiving_flows.begin()->second->state() == flow::eOpen);
+
+	feed_open_flow(s, 5, 2, 7, rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0x21}));
+	CHECK(app.routed == 1);           // the flow still delivers afterwards
+}
+
 // A body the write bounds refuse must not unwind out of the receive handler.
 TEST_CASE("rtmfp session: a message the AMF write bounds refuse is dropped")
 {
