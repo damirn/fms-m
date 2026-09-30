@@ -146,7 +146,13 @@ namespace fms
 		m_timer.cancel();
 		if (e)   // includes http::error::end_of_stream when the peer closes
 		{
-			close();
+			// A chunked body is charged per chunk, so the limit can trip here rather
+			// than at the header. Answer it: a bare disconnect is indistinguishable
+			// from a network failure, so the peer cannot tell it was refused.
+			if (e == boost::beast::http::error::body_limit)
+				reply_error(http::status::payload_too_large);
+			else
+				close();
 			return;
 		}
 		// Charge the session this request names, not the one a previous request on
