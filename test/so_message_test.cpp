@@ -145,16 +145,27 @@ TEST_CASE("SO codec: a truncated message is refused at every prefix")
 	rc.push_back(0x01); rc.push_back(0x00);
 	add_event(full, so::eRequestChange, rc);
 
+	// Positive control: the complete message is accepted and yields its one event,
+	// so a codec that refused everything could not satisfy this case.
+	so whole;
+	REQUIRE(parses(full, whole));
+	REQUIRE(whole.events().size() == 1);
+
+	std::size_t accepted = 0;
 	for (std::size_t cut = 0; cut < full.size(); ++cut)
 	{
 		std::vector<std::uint8_t> const partial(full.begin(), full.begin() + static_cast<long>(cut));
 		so m;
-		// Either it refuses, or it read a complete prefix -- never a crash, and
-		// never an event whose body ran off the end.
-		if (parses(partial, m))
-			for (auto const &ev : m.events())
-				CHECK(ev->m_data.size() <= partial.size());
+		if (!parses(partial, m))
+			continue;
+		++accepted;
+		// A prefix may be a complete header with no events; it must never hand back
+		// an event whose body was cut off.
+		CHECK(m.events().empty());
 	}
+
+	// Only the bare header is a valid prefix; every other cut is refused.
+	CHECK(accepted == 1);
 }
 
 TEST_CASE("SO codec: an event we do not parse still consumes its body")
