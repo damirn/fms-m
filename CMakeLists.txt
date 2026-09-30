@@ -320,6 +320,24 @@ if(BUILD_TESTS)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
+  # video_call_application's recorder path: the same containment guard, in the
+  # other application that writes a peer-named file. Nothing else drives this app.
+  add_executable(video_call_record_path_test
+    test/test_main.cpp test/video_call_record_path_test.cpp
+    video_call_application.cpp mixer.cpp speex_codec.cpp
+    media_application.cpp rtmp_application.cpp av_delivery.cpp qos_reporter.cpp
+    vod_manager.cpp stream_recorder.cpp flv_writer.cpp flv_reader.cpp
+    remote_relay.cpp io_context_pool.cpp so_manager.cpp random_string.cpp
+    stream_registry.cpp
+    client_session.cpp rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp
+    rtmp_so_message.cpp amf0.cpp amf3.cpp util.cpp config.cpp logging.cpp)
+  target_link_libraries(video_call_record_path_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES} ${SPEEX_LIBRARIES})
+  add_test(NAME video_call_record_path_test COMMAND video_call_record_path_test)
+  if(APPLE)
+    set_tests_properties(video_call_record_path_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   # basic_rtmp_connection is only linked into the server target, so the window
   # arithmetic had no unit coverage; clamp_window and the threshold test are
   # both header-visible.
