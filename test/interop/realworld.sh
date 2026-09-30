@@ -436,6 +436,49 @@ else
 fi
 
 echo
+echo "=== H. RTMFP session churn ==="
+
+# Sibling checkout by default, as interop.sh does; override RTMFP_CPP.
+RTMFP_CPP="${RTMFP_CPP:-$ROOT/../rtmfp-cpp/test}"
+TCPUB="$RTMFP_CPP/tcpublish"
+TCCONN="$RTMFP_CPP/tcconn"
+
+if [ -x "$TCPUB" ] && [ -x "$TCCONN" ]; then
+	echo "[H1] repeated RTMFP connect/disconnect against one publisher"
+	rss_before=$(ps -o rss= -p "$SRV" | tr -d ' ')
+	"$TCPUB" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#churn" "$WORK/h264_aac.flv" \
+		>"$WORK/h1_pub.log" 2>&1 &
+	HPUB=$!; track $HPUB; sleep 3
+
+	h1_fail=0
+	for i in $(seq 1 20); do
+		"$TCCONN" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#churn" >"$WORK/h1_$i.log" 2>&1 &
+		HC=$!; sleep 0.6; kill $HC 2>/dev/null; wait $HC 2>/dev/null
+		grep -q 'Connect.Success' "$WORK/h1_$i.log" || h1_fail=$((h1_fail + 1))
+	done
+	[ "$h1_fail" -eq 0 ] && ok "H1 all 20 churn cycles connected" \
+		|| bad "H1 $h1_fail of 20 churn cycles failed to connect"
+
+	# Session teardown erases two maps keyed by endpoint and peer id; a wrong erase
+	# leaves a later session unreachable rather than failing loudly at the time.
+	"$TCCONN" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#churn" >"$WORK/h1_after.log" 2>&1 &
+	HC=$!; track $HC; sleep 4; kill $HC 2>/dev/null
+	grep -q 'Connect.Success' "$WORK/h1_after.log" \
+		&& ok "H1 a fresh session still connects after the churn" \
+		|| bad "H1 no session possible after the churn"
+
+	rss_after=$(ps -o rss= -p "$SRV" | tr -d ' ')
+	if [ -n "$rss_before" ] && [ -n "$rss_after" ] && [ "$rss_after" -lt $((rss_before + 40000)) ]; then
+		ok "H1 server RSS bounded (${rss_before}KB -> ${rss_after}KB)"
+	else
+		bad "H1 server RSS grew (${rss_before}KB -> ${rss_after}KB)"
+	fi
+	kill $HPUB 2>/dev/null
+else
+	skip "H1 rtmfp-cpp tcpublish/tcconn not built (set RTMFP_CPP to its test/ dir)"
+fi
+
+echo
 echo "=== G. security regressions ==="
 
 echo "[G1] RTMPT ident probe reports the bind address, not the socket's"
