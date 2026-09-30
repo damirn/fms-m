@@ -10,6 +10,7 @@ namespace fms
 {
 	void rtmp_message_shared_object::deserialize(byte_reader &buffer)
 	{
+		amf0::read_scope const budget;
 		m_amf0.read_short_string(buffer, m_name, true);
 
 		buffer >> m_version;

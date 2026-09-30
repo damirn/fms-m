@@ -424,7 +424,8 @@ namespace fms
 		{
 			m_ref_table.clear();
 			m_ref_complete.clear();
-			m_decoded_string_bytes = 0;
+			if (s_read_scopes == 0)   // a scoped read keeps one allowance for the message
+				m_decoded_string_bytes = 0;
 		}
 
 		// Guard first: the frame that trips the bound has to give its level back too,

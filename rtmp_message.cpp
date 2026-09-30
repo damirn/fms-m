@@ -15,6 +15,7 @@ namespace fms
 {
 	void rtmp_message_notify::deserialize(byte_reader &buffer)
 	{
+		amf0::read_scope const budget;
 		m_amf0.read_short_string(buffer, m_function);
 		while(buffer.available() > 0)
 		{
@@ -76,6 +77,7 @@ namespace fms
 
 	void rtmp_message_invoke::deserialize(byte_reader &buffer)
 	{
+		amf0::read_scope const budget;
 		m_amf0.read_short_string(buffer, m_function);
 		m_amf0.read_number(buffer, m_invoke_id);
 
