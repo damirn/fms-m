@@ -284,6 +284,15 @@ case "$ident" in
 	*) ok "rtmpt: /fcs/ident2 answered '$ident'" ;;
 esac
 
+# A chunked body carries no Content-Length, so the limit is charged per chunk and
+# trips after the header. That refusal has to be answered, not closed on.
+echo "[3e] RTMPT: an oversize chunked body without a session is refused (413)"
+code=$(head -c 2097152 /dev/zero | curl -s -o /dev/null -w '%{http_code}' --max-time 25 \
+	-X POST -H 'Transfer-Encoding: chunked' -H 'Content-Type: application/x-fcs' \
+	--data-binary @- "http://127.0.0.1:$RTMPT_PORT/idle/000000/1" 2>/dev/null) || true
+[ "$code" = "413" ] && ok "rtmpt: oversize chunked body refused (413)" \
+	|| bad "rtmpt: oversize chunked body got HTTP $code, expected 413"
+
 # --- Case 3c: a refused tunnelled handshake drops the session ----------------
 # An unknown C0 magic is refused. The session must not survive it: proved by the
 # body limit falling back to the unauthenticated one on the same id.
