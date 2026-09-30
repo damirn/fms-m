@@ -441,8 +441,17 @@ if [ -x "$CLIENT" ]; then
 	else
 		ok "F3 absolute publish name was refused"
 	fi
-	ls "$WORK/rec"/f3_* >/dev/null 2>&1 && bad "F3 hostile name was recorded inside the folder" \
-		|| ok "F3 nothing written for the refused names"
+	# The control recording lives in this directory too, so match only the
+	# refused names. One ls over both globs would fail on the unmatched one.
+	f3_hostile=""
+	for f in "$WORK/rec"/f3_escape_* "$WORK/rec"/f3_abs_*; do
+		[ -e "$f" ] && f3_hostile="$f"
+	done
+	if [ -n "$f3_hostile" ]; then
+		bad "F3 hostile name was recorded inside the folder ($f3_hostile)"
+	else
+		ok "F3 nothing written for the refused names"
+	fi
 else
 	skip "F3 rtmp_client not built"
 fi
