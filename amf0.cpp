@@ -403,7 +403,7 @@ namespace fms
 		if (b != amf0_type::eAMF0AMF3Container)
 			return false;
 
-		amf3 m3(m_depth);
+		amf3 m3(m_depth, &m_decoded_string_bytes);
 		amf3_type_ptr const type = m3.read(buffer);
 		value->set_data(type);
 
@@ -424,6 +424,7 @@ namespace fms
 		{
 			m_ref_table.clear();
 			m_ref_complete.clear();
+			m_decoded_string_bytes = 0;
 		}
 
 		// Guard first: the frame that trips the bound has to give its level back too,

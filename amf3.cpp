@@ -212,9 +212,9 @@ namespace fms
 
 	void amf3::charge_string_bytes(std::size_t n)
 	{
-		if (n > eMaxDecodedStringBytes - m_decoded_string_bytes)
+		if (n > eMaxDecodedStringBytes - *m_string_bytes)
 			throw amf3_read_exception();
-		m_decoded_string_bytes += n;
+		*m_string_bytes += n;
 	}
 
 	amf3_string_type_ptr amf3::read_string(byte_reader &buffer)

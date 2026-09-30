@@ -93,5 +93,9 @@ namespace fms
 		std::vector<bool> m_ref_complete;
 
 		unsigned m_depth = 0;
+
+		// Shared with every nested amf3 so the two decoders cannot each spend a
+		// full string allowance out of one message.
+		std::size_t m_decoded_string_bytes = 0;
 	};
 }
