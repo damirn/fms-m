@@ -29,7 +29,7 @@ namespace fms
 			if (m_app == nullptr)
 				return;
 
-			m_bytes_read_notify += m_win_ack;
+			m_bytes_read_notify = next_ack_threshold(m_bytes_read, m_win_ack);
 			rtmp_message_bytes_read_ptr const msg = std::make_shared<rtmp_message_bytes_read>(m_bytes_read);
 			get_app()->enqueue_async_message(m_id, msg);
 			notify();
@@ -71,7 +71,7 @@ namespace fms
 			if (std::uint32_t const n = ack->size(); n != 0)
 			{
 				m_win_ack = clamp_window(n);
-				m_bytes_read_notify = m_bytes_read + m_win_ack;   // relative: we have already read m_bytes_read
+				m_bytes_read_notify = next_ack_threshold(m_bytes_read, m_win_ack);
 			}
 		}
 	}

@@ -42,6 +42,14 @@ namespace fms
 			return std::clamp(n, eMinWindowAck, eMaxWindowAck);
 		}
 
+		// The next threshold, re-based on the counter: one read can be larger than
+		// the window, and stepping by the window instead would let the lag run to
+		// 2^31 and turn the wrapping comparison negative for good.
+		static constexpr std::uint32_t next_ack_threshold(std::uint32_t bytes_read, std::uint32_t window)
+		{
+			return bytes_read + window;
+		}
+
 		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, app_host *);
 
 		~basic_rtmp_connection() override = default;

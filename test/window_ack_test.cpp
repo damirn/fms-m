@@ -39,7 +39,7 @@ TEST_CASE("window ack: a clamped window always moves the threshold ahead of the 
 	{
 		std::uint32_t const win = conn::clamp_window(announced);
 		std::uint32_t bytes_read = 4096;
-		std::uint32_t notify = bytes_read + win;
+		std::uint32_t notify = conn::next_ack_threshold(bytes_read, win);
 
 		CHECK_FALSE(reached(bytes_read, notify));       // ahead of the counter, not behind it
 		CHECK(reached(bytes_read + win, notify));       // due exactly once the window is spent
@@ -63,4 +63,26 @@ TEST_CASE("window ack: the threshold survives the byte counter wrapping")
 
 	CHECK_FALSE(reached(bytes_read, notify));
 	CHECK(reached(notify, notify));
+}
+
+// A single read can be larger than the window, so the threshold has to be
+// re-based on the counter rather than stepped by the window.
+TEST_CASE("window ack: a read larger than the window does not strand the threshold")
+{
+	std::uint32_t const win = conn::clamp_window(conn::eMinWindowAck);
+	std::uint32_t const read_size = 65536;   // byte_writer::write_buffer's default
+	REQUIRE(read_size > win);
+
+	std::uint32_t bytes_read = 0;
+	std::uint32_t notify = win;
+	for (int i = 0; i < 100000; ++i)
+	{
+		bytes_read += read_size;
+		REQUIRE(reached(bytes_read, notify));    // every read is due an acknowledgement
+		notify = conn::next_ack_threshold(bytes_read, win);
+	}
+
+	// Stepping instead of re-basing lets the lag run away to 2^31 and the test
+	// above would stop firing; re-basing keeps it exactly one window ahead.
+	CHECK(notify - bytes_read == win);
 }
