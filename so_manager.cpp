@@ -16,7 +16,11 @@ namespace fms
 		rtmp_message_shared_object::event_list_t &list = so->events();
 		auto const j = list.end();
 
-		rtmp_message_shared_object_ptr ret = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
+		rtmp_message_shared_object_ptr const ret = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
+
+		// A reply the handlers build event by event, and one that replaces it
+		// wholesale; the event cap below bounds the former, which is the one we grow.
+		rtmp_message_shared_object_ptr replacement;
 
 		pending_sends_t pending;   // filled under the lock, flushed after it is released
 		bool released = false;
@@ -32,7 +36,7 @@ namespace fms
 				switch ((*i)->m_type)
 				{
 				case rtmp_message_shared_object::eUse:
-					handle_use_event(so, connection_id, ret);
+					handle_use_event(so, connection_id, ret, pending);
 					break;
 				case rtmp_message_shared_object::eRelease:
 					handle_release_event(so, connection_id);
@@ -42,10 +46,10 @@ namespace fms
 					handle_req_change_event(so, connection_id, *i, ret, pending);
 					break;
 				case rtmp_message_shared_object::eSendMessage:
-					handle_send_message_event(so, connection_id, ret, pending);
+					handle_send_message_event(so, connection_id, replacement, pending);
 					break;
 				case rtmp_message_shared_object::eRequestRemove:
-					handle_req_remove_event(so, connection_id, *i, ret, pending);
+					handle_req_remove_event(so, connection_id, *i, replacement, pending);
 					break;
 				default:
 					break;
@@ -62,11 +66,11 @@ namespace fms
 		if (released)
 			return false;
 
-		result = ret;
+		result = replacement ? replacement : ret;
 		return true;
 	}
 
-	void so_manager::handle_use_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, rtmp_message_shared_object_ptr &result)
+	void so_manager::handle_use_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object_ptr &result, pending_sends_t &)
 	{
 		const std::string &so_name = so->name()->value();
 		auto i = m_so_map.find(so_name);
@@ -89,14 +93,15 @@ namespace fms
 		if (joining)
 			++m_use_counts[connection_id];
 
-		result->set_flags(0x20);
+		rtmp_message_shared_object_ptr const answer = result;
+		answer->set_flags(0x20);
 
 		rtmp_message_shared_object::event_ptr const use_event = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eUseSuccess);
-		if (!result->add_event(use_event))
+		if (!answer->add_event(use_event))
 			return;
 
 		rtmp_message_shared_object::event_ptr const clear_event = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eClear);
-		if (!result->add_event(clear_event))
+		if (!answer->add_event(clear_event))
 			return;
 
 		const std::map<std::string, amf0_type_ptr> &values = i->second->m_values;
@@ -106,7 +111,7 @@ namespace fms
 			amf0_string_ptr const s = std::make_shared<amf0_string>(value.first);
 			e->m_name = s;
 			e->m_value = value.second;
-			if (!result->add_event(e))
+			if (!answer->add_event(e))
 				return;
 		}
 	}
@@ -168,7 +173,7 @@ namespace fms
 		}
 	}
 
-	void so_manager::handle_req_change_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object::event_ptr& e, rtmp_message_shared_object_ptr &result, pending_sends_t &pending)
+	void so_manager::handle_req_change_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object::event_ptr& e, const rtmp_message_shared_object_ptr &result, pending_sends_t &pending)
 	{
 		std::optional<so_data_ptr> so_d = find_so(so);
 		if (so_d)

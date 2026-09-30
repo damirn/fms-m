@@ -59,9 +59,9 @@ namespace fms
 		// lock (removes the so_manager -> app_manager lock ordering + serialization).
 		using pending_sends_t = std::vector<std::pair<std::uint32_t, rtmp_message_ptr>>;
 
-		void handle_use_event(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_shared_object_ptr &);
+		void handle_use_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object_ptr &, pending_sends_t &);
 		void handle_release_event(const rtmp_message_shared_object_ptr&, std::uint32_t);
-		void handle_req_change_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, rtmp_message_shared_object_ptr &, pending_sends_t &);
+		void handle_req_change_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, const rtmp_message_shared_object_ptr &, pending_sends_t &);
 		void handle_send_message_event(const rtmp_message_shared_object_ptr&, std::uint32_t, rtmp_message_shared_object_ptr &, pending_sends_t &);
 		void handle_req_remove_event(const rtmp_message_shared_object_ptr&, std::uint32_t, const rtmp_message_shared_object::event_ptr&, rtmp_message_shared_object_ptr &, pending_sends_t &);
 
