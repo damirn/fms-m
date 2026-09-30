@@ -3,7 +3,9 @@
 #include <chrono>
 #include <map>
 #include <mutex>
+#include <set>
 #include <string>
+#include <sys/types.h>
 
 namespace fms::remote_relay
 {
@@ -19,8 +21,8 @@ namespace fms::remote_relay
 	remote_target parse_target(const std::string &stream);
 
 	// At most one helper spawn per remote target per eCooldown, and at most
-	// eMaxInFlight distinct targets. A helper is invisible to later play()s until it
-	// republishes locally.
+	// eMaxInFlight helpers alive at once. A helper is invisible to later play()s
+	// until it republishes locally, and it lives as long as the stream it relays.
 	class spawn_throttle
 	{
 	public:
@@ -30,15 +32,23 @@ namespace fms::remote_relay
 		static constexpr std::size_t eMaxInFlight = 64;
 
 		// True if a spawn is allowed for `key`, and records it. Prunes expired
-		// entries as it goes, so the map tracks only the current window.
+		// cooldown entries as it goes, and refuses once eMaxInFlight are alive.
 		bool allow(const std::string &key, clock::time_point now);
 
 		// Give the slot back when the spawn it was taken for did not happen.
 		void release(const std::string &key);
 
+		void note_spawned(::pid_t pid);
+		void note_exited(::pid_t pid);
+		std::size_t live_count();
+
+		// waitpid(WNOHANG) each tracked child; drops the ones that have exited.
+		void reap();
+
 	private:
 		std::mutex m_mutex;
 		std::map<std::string, clock::time_point> m_recent;
+		std::set<::pid_t> m_live;
 	};
 
 	// If a --helper-app is configured, fork+exec it to pull `stream` from
@@ -47,6 +57,6 @@ namespace fms::remote_relay
 	// malformed.
 	void spawn_helper(const std::string &remote_srv, const std::string &stream);
 
-	// The throttle spawn_helper consults; exposed for tests.
+	// The process-wide throttle spawn_helper consults.
 	spawn_throttle &helper_throttle();
 }

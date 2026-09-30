@@ -3,10 +3,10 @@
 #include "config.h"
 #include "logging.h"
 
-#include <csignal>
 #include <cstring>
 #include <mutex>
 #include <spawn.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
 
@@ -31,8 +31,8 @@ namespace fms::remote_relay
 
 		if (m_recent.contains(key))
 			return false;                       // a helper for this target is starting
-		if (m_recent.size() >= eMaxInFlight)
-			return false;                       // too many distinct targets in flight
+		if (m_live.size() >= eMaxInFlight)
+			return false;                       // too many helpers alive
 		m_recent[key] = now;
 		return true;
 	}
@@ -41,6 +41,35 @@ namespace fms::remote_relay
 	{
 		std::lock_guard const lock(m_mutex);
 		m_recent.erase(key);
+	}
+
+	void spawn_throttle::note_spawned(::pid_t pid)
+	{
+		std::lock_guard const lock(m_mutex);
+		m_live.insert(pid);
+	}
+
+	void spawn_throttle::note_exited(::pid_t pid)
+	{
+		std::lock_guard const lock(m_mutex);
+		m_live.erase(pid);
+	}
+
+	std::size_t spawn_throttle::live_count()
+	{
+		std::lock_guard const lock(m_mutex);
+		return m_live.size();
+	}
+
+	void spawn_throttle::reap()
+	{
+		std::lock_guard const lock(m_mutex);
+		for (auto i = m_live.begin(); i != m_live.end(); )
+		{
+			int status = 0;
+			::pid_t const r = ::waitpid(*i, &status, WNOHANG);
+			i = (r == 0) ? std::next(i) : m_live.erase(i);   // r < 0 means it is not ours to wait for
+		}
 	}
 
 	spawn_throttle &helper_throttle()
@@ -68,11 +97,14 @@ namespace fms::remote_relay
 				return;
 			std::string const local_srv = "rtmp://localhost:" + config::instance()->rtmp_port() + "/" + app;
 
-			// Only once the target is known good: a slot is held for the cooldown, and
-			// both halves of the key come from the peer.
+			// Take the slot only after the target parses: it is held for the cooldown.
 			std::string const key = remote_srv + "/" + stream;
+			helper_throttle().reap();
 			if (!helper_throttle().allow(key, spawn_throttle::clock::now()))
+			{
+				BOOST_LOG(lg::get()) << "not spawning a helper for '" << key << "': throttled";
 				return;
+			}
 
 			std::vector<std::string> args;
 			args.push_back(config::instance()->helper_app());
@@ -89,11 +121,8 @@ namespace fms::remote_relay
 				argv.push_back(const_cast<char *>(a.c_str()));
 			argv.push_back(nullptr);
 
-			// Ignore SIGCHLD once (process-global) so children are auto-reaped -- no
-			// zombie, no wait() -- rather than racily re-setting it from every worker.
-			static std::once_flag sigchld_once;
-			std::call_once(sigchld_once, [] { ::signal(SIGCHLD, SIG_IGN); });
-
+			// SIGCHLD stays default: reap() needs the children waitable so the
+			// in-flight count tracks helpers that are still running.
 			// posix_spawnp rather than fork()+execvp(): between the two, a child of a
 			// multithreaded process may call only async-signal-safe functions, and it
 			// reports failure instead of leaving the parent to mistake -1 for "I am
@@ -104,6 +133,8 @@ namespace fms::remote_relay
 				helper_throttle().release(key);
 				BOOST_LOG(lg::get()) << "cannot spawn helper '" << args[0] << "': " << std::strerror(rc);
 			}
+			else
+				helper_throttle().note_spawned(pid);
 		}
 	}
 }
