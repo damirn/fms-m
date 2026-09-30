@@ -594,10 +594,22 @@ if(BUILD_CLIENT)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
-  # Interop matrix vs the reference clients (rtmpdump + ffmpeg): drives the real
-  # server over RTMP/RTMPT and asserts both the media (ffprobe) and the RTMP
-  # user-control events the client receives (rtmpdump -z). Registered only when the
-  # tools are on PATH -- it degrades to a skip elsewhere (e.g. CI without them).
+  # End-to-end RTMP relay throughput benchmark (publisher -> server -> subscriber).
+  # Not a ctest; drives the spawned server at max rate and reports GiB/s.
+  add_executable(bench_rtmp_throughput test/bench_rtmp_throughput.cpp)
+  target_link_libraries(bench_rtmp_throughput PRIVATE rtmp_client_lib)
+  target_compile_definitions(bench_rtmp_throughput PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
+  add_dependencies(bench_rtmp_throughput ${PROJECT_NAME})
+
+
+endif()
+
+# Interop matrix vs the reference clients (rtmpdump + ffmpeg): drives the real
+# server over RTMP/RTMPT and asserts both the media (ffprobe) and the RTMP
+# user-control events the client receives (rtmpdump -z). Server-side: it drives the
+# server binary and links nothing from client/. Registered only when the tools are
+# on PATH -- it degrades to a skip elsewhere (e.g. CI without them).
+if(BUILD_TESTS)
   find_program(RTMPDUMP_EXE rtmpdump)
   find_program(FFMPEG_EXE ffmpeg)
   find_program(FFPROBE_EXE ffprobe)
@@ -608,15 +620,6 @@ if(BUILD_CLIENT)
   else()
     message(STATUS "interop test disabled (needs rtmpdump + ffmpeg + ffprobe on PATH)")
   endif()
-
-  # End-to-end RTMP relay throughput benchmark (publisher -> server -> subscriber).
-  # Not a ctest; drives the spawned server at max rate and reports GiB/s.
-  add_executable(bench_rtmp_throughput test/bench_rtmp_throughput.cpp)
-  target_link_libraries(bench_rtmp_throughput PRIVATE rtmp_client_lib)
-  target_compile_definitions(bench_rtmp_throughput PRIVATE FMS_SERVER_BIN="$<TARGET_FILE:${PROJECT_NAME}>")
-  add_dependencies(bench_rtmp_throughput ${PROJECT_NAME})
-
-
 endif()
 
 # Top level, so it is applied whether or not BUILD_CLIENT registered tests of its
