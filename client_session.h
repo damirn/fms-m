@@ -1,5 +1,7 @@
 #pragma once
 
+#include "atomic_shared_ptr.h"
+
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -96,14 +98,17 @@ namespace fms
 			return m_sid;
 		}
 
-		const std::string &username() const
+		// Written by the connection's own thread at authentication, read by admin
+		// threads listing clients, so the string itself is published atomically.
+		std::string username() const
 		{
-			return m_username;
+			std::shared_ptr<const std::string> const u = m_username.load();
+			return u ? *u : std::string();
 		}
 
 		void set_username(std::string u)
 		{
-			m_username = std::move(u);
+			m_username.store(std::make_shared<const std::string>(std::move(u)));
 		}
 
 		const std::chrono::system_clock::time_point &create_time() const
@@ -147,7 +152,7 @@ namespace fms
 		std::string m_sid;
 
 		// optional username (if the application sets it)
-		std::string m_username;
+		atomic_shared_ptr<const std::string> m_username;
 
 		app_host *m_app_manager;
 		// Written on the connection's io thread, read by the registry and admin thread.

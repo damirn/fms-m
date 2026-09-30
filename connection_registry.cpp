@@ -167,7 +167,7 @@ namespace fms
 			return client_data_ptr();
 
 		// Read the app first: its acquire load orders everything the connection's
-		// own thread wrote before publishing it, m_sid and m_username included.
+		// own thread wrote before publishing it, m_sid included.
 		rtmp_application *const app = i->second->get_app();
 		if (app == nullptr)
 			return client_data_ptr();
