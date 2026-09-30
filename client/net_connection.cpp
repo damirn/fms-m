@@ -402,13 +402,13 @@ namespace fms::rtmp_client
 		rtmp_handshake::c1_span const c2 = *opt;
 
 		std::uint32_t const off = rtmp_handshake::digest_offset(s1, m_hs_scheme);
-		std::uint8_t key[SHA256_DIGEST_LENGTH];
-		HMAC_SHA256(s1.data() + off, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, key);
+		std::uint8_t key[SHA256_DIGEST_LENGTH] = {};
+		if (HMAC_SHA256(s1.data() + off, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, key) == 0)
+			return false;   // C2 must ship signed
 		if (!rtmp_handshake::fill_random(c2.first(eHandshakeSize - SHA256_DIGEST_LENGTH)))
 			return false;
-		HMAC_SHA256(c2.data(), eHandshakeSize - SHA256_DIGEST_LENGTH, key, SHA256_DIGEST_LENGTH,
-			c2.data() + eHandshakeSize - SHA256_DIGEST_LENGTH);
-		return true;
+		return HMAC_SHA256(c2.data(), eHandshakeSize - SHA256_DIGEST_LENGTH, key, SHA256_DIGEST_LENGTH,
+			c2.data() + eHandshakeSize - SHA256_DIGEST_LENGTH) != 0;
 	}
 
 	void net_connection::handle_message(rtmp_channel_ptr, rtmp_message_ptr msg)
