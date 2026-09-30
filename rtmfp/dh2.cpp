@@ -2,6 +2,8 @@
 #include "dh2.h"
 #include "evp_dh.h"
 
+#include <stdexcept>
+
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
@@ -37,11 +39,18 @@ namespace fms
 			EVP_PKEY_free(m_pkey);
 	}
 
-	void dh2::generate_public_key()
+	void dh2::generate_public_key() noexcept
 	{
-		m_pkey = evp_dh_keygen(m_dh_key, eKeySize, 2);
+		try
+		{
+			m_pkey = evp_dh_keygen(m_dh_key, eKeySize, 2);
+		}
+		catch (const std::runtime_error &)
+		{
+			m_pkey = nullptr;   // users check pub_key(); nothing here may unwind
+		}
 		if (m_pkey == nullptr)
-			return;   // m_pub_key_size stays 0; every user checks it
+			return;   // pub_key() stays empty; every user checks it
 
 		// Our public part as big-endian bytes (at most the prime size).
 		m_pub_key.resize(eKeySize);

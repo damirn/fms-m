@@ -40,7 +40,8 @@ namespace fms
 		}
 
 	protected:
-		void generate_public_key();
+		// Never throws: a dh2 is constructed inside an Asio receive handler.
+		void generate_public_key() noexcept;
 		bool generate_rnonce();
 
 		static constexpr std::size_t eAESKeySize = 0x20;
