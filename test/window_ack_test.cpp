@@ -76,14 +76,19 @@ TEST_CASE("window ack: a read larger than the window does not strand the thresho
 
 	std::uint32_t bytes_read = 0;
 	std::uint32_t notify = win;
+	unsigned wraps = 0;
 	for (int i = 0; i < 100000; ++i)
 	{
+		std::uint32_t const before = bytes_read;
 		bytes_read += read_size;
+		if (bytes_read < before)
+			++wraps;
 		REQUIRE(reached(bytes_read, notify));    // every read is due an acknowledgement
 		notify = conn::next_ack_threshold(bytes_read, win);
 	}
 
-	// Stepping instead of re-basing lets the lag run away to 2^31 and the test
-	// above would stop firing; re-basing keeps it exactly one window ahead.
-	CHECK(notify - bytes_read == win);
+	// Stepping by the window instead of re-basing lets the lag reach 2^31 and the
+	// loop above stops firing -- but only once the counter has actually wrapped, so
+	// the loop proves nothing unless it did.
+	CHECK(wraps > 0);
 }
