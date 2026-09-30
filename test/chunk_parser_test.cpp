@@ -247,18 +247,32 @@ namespace
 	// `levels` back-to-back Aggregate (0x16) sub-message headers -- each is an empty
 	// aggregate whose body is the rest of the buffer, so the aggregate parser recurses
 	// once per header.
+	// `levels` genuinely nested Aggregate (0x16) sub-messages, built inside out so
+	// each level's message_length covers the level below it. A flat run of headers
+	// does not nest: every one would declare a zero-length body.
 	std::vector<std::uint8_t> nested_aggregate_body(int levels)
 	{
-		std::vector<std::uint8_t> v;
-		v.reserve(static_cast<std::size_t>(levels) * 11);
+		auto put3 = [](std::vector<std::uint8_t> &v, std::uint32_t n)
+		{
+			v.push_back(static_cast<std::uint8_t>(n >> 16));
+			v.push_back(static_cast<std::uint8_t>(n >> 8));
+			v.push_back(static_cast<std::uint8_t>(n));
+		};
+
+		std::vector<std::uint8_t> inner;
 		for (int i = 0; i < levels; ++i)
 		{
-			v.push_back(rtmp_message::eMessageAggregate);   // type 0x16
-			v.insert(v.end(), {0, 0, 0});                   // message_length (3 BE) = 0
-			v.insert(v.end(), {0, 0, 0});                   // timestamp (3 BE)
-			v.insert(v.end(), {0, 0, 0, 0});                // stream id (4)
+			std::vector<std::uint8_t> v;
+			v.push_back(rtmp_message::eMessageAggregate);           // type 0x16
+			put3(v, static_cast<std::uint32_t>(inner.size()));      // message_length
+			put3(v, 0);                                             // timestamp
+			v.push_back(0);                                         // timestamp extended
+			put3(v, 0);                                             // stream id
+			v.insert(v.end(), inner.begin(), inner.end());
+			v.insert(v.end(), {0, 0, 0, 0});                        // prev tag size
+			inner = std::move(v);
 		}
-		return v;
+		return inner;
 	}
 }
 
@@ -267,7 +281,7 @@ TEST_CASE("rtmp aggregate: deeply nested aggregates are bounded, not a stack ove
 	// An Aggregate sub-message re-enters the aggregate parser; with no depth cap,
 	// ~payload/11 nested 0x16 headers recurse until the stack overflows (remote
 	// SIGSEGV). Parsing a deep nest must return, not crash.
-	auto const body = nested_aggregate_body(40000);
+	auto const body = nested_aggregate_body(64);
 
 	rtmp_header h;
 	h.set_message_type(rtmp_message::eMessageAggregate);
@@ -280,21 +294,50 @@ TEST_CASE("rtmp aggregate: deeply nested aggregates are bounded, not a stack ove
 	// until the stack goes.
 	try { ok = p.deserialize(r, h); } catch (const std::exception &) { ok = false; }
 
-	// Assert the cap actually bit, not merely that we got here: count the nesting
-	// the parser was willing to build and require it to stop at eMaxAggregateDepth.
+	// A refused parse would leave the count at zero and satisfy any upper bound, so
+	// the parse has to have succeeded for the depth to mean anything.
+	REQUIRE(ok);
+
 	int depth = 0;
-	if (ok)
+	auto agg = std::dynamic_pointer_cast<rtmp_message_aggregate>(p.message());
+	while (agg)
 	{
-		auto agg = std::dynamic_pointer_cast<rtmp_message_aggregate>(p.message());
-		while (agg)
-		{
-			++depth;
-			auto const &subs = agg->get_messages();
-			agg = subs.empty() ? nullptr
-			                   : std::dynamic_pointer_cast<rtmp_message_aggregate>(subs.front());
-		}
+		++depth;
+		auto const &subs = agg->get_messages();
+		agg = subs.empty() ? nullptr
+		                   : std::dynamic_pointer_cast<rtmp_message_aggregate>(subs.front());
 	}
-	CHECK(depth <= 4);   // rtmp_protocol::eMaxAggregateDepth
+	CHECK(depth == 4);   // rtmp_protocol::eMaxAggregateDepth
+}
+
+TEST_CASE("rtmp aggregate: a long run of sub-message headers terminates")
+{
+	// Separate from the depth cap: a flat run does not nest, but it must still
+	// return rather than walking the buffer without bound.
+	std::vector<std::uint8_t> body;
+	for (int i = 0; i < 40000; ++i)
+	{
+		body.push_back(rtmp_message::eMessageAggregate);
+		body.insert(body.end(), {0, 0, 0});      // message_length = 0
+		body.insert(body.end(), {0, 0, 0, 0});   // timestamp + extended
+		body.insert(body.end(), {0, 0, 0});      // stream id
+		body.insert(body.end(), {0, 0, 0, 0});   // prev tag size
+	}
+
+	rtmp_header h;
+	h.set_message_type(rtmp_message::eMessageAggregate);
+	h.set_message_length(static_cast<std::uint32_t>(body.size()));
+	byte_reader r(body.data(), body.size());
+
+	rtmp_protocol p;
+	bool ok = false;
+	try { ok = p.deserialize(r, h); } catch (const std::exception &) { ok = false; }
+
+	// Either outcome is acceptable; not returning at all is not.
+	CHECK((ok || !ok));
+	auto const agg = std::dynamic_pointer_cast<rtmp_message_aggregate>(p.message());
+	if (agg)
+		CHECK(agg->get_messages().size() <= rtmp_message_aggregate::eMaxSubMessages);
 }
 
 TEST_CASE("chunk parser: basic-header channel-id encodings (1/2/3 byte)")
