@@ -36,7 +36,7 @@ namespace fms
 			boost::asio::post(m_io_context, [this]() { handle_notify(); });
 		}
 
-		void handle_net_group(group_ptr &, const session_ptr &) override;
+		bool handle_net_group(group_ptr &, const session_ptr &) override;
 
 		boost::asio::io_context &io_context() const override
 		{
@@ -105,6 +105,9 @@ namespace fms
 		sid_to_session_map_t::iterator m_sessions_iterator;
 
 		using group_set_t = std::set<group_ptr, group::less>;
+
+		// The group id is peer-chosen, so distinct ids must not grow without bound.
+		static constexpr std::size_t eMaxGroups = 4096;
 		group_set_t m_groups;
 
 		using endpoint_chunk_pair_t = std::pair<boost::asio::ip::udp::endpoint, std::unique_ptr<chunk>>;

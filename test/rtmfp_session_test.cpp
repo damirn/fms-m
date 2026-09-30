@@ -34,12 +34,20 @@ namespace
 		int removed = 0;
 		int net_groups = 0;
 		std::uint16_t clock = 100;
+		bool accept_groups = true;
 		// Strong refs: m_group_membership holds weak_ptrs that would otherwise expire.
 		std::vector<group_ptr> kept;
 
 		std::uint16_t get_timestamp() override { return clock; }
 		void remove(const session_ptr &) override { ++removed; }
-		void handle_net_group(group_ptr &g, const session_ptr &) override { ++net_groups; kept.push_back(g); }
+		bool handle_net_group(group_ptr &g, const session_ptr &) override
+		{
+			++net_groups;
+			if (!accept_groups)
+				return false;
+			kept.push_back(g);
+			return true;
+		}
 		boost::asio::io_context &io_context() const override { return io; }
 	};
 
@@ -103,6 +111,7 @@ namespace
 		using session::flow_sanity_check;
 		using session::message_to_fragment;
 		using session::m_receiving_flows;
+		using session::eMaxGroupMemberships;
 	};
 	using testable_session_ptr = std::shared_ptr<testable_session>;
 
@@ -492,6 +501,42 @@ TEST_CASE("rtmfp session: distinct groups are each recorded once")
 
 	CHECK(h.net_groups == 3);
 	CHECK(s->group_membership().size() == 2);
+}
+
+TEST_CASE("rtmfp session: group memberships are capped per session")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	for (std::size_t i = 0; i < testable_session::eMaxGroupMemberships; ++i)
+		feed_group_message(s, 5, static_cast<vlu_t>(i + 1), group_join(static_cast<std::uint8_t>(i)));
+	REQUIRE(s->group_membership().size() == testable_session::eMaxGroupMemberships);
+
+	feed_group_message(s, 5, static_cast<vlu_t>(testable_session::eMaxGroupMemberships + 1),
+		group_join(static_cast<std::uint8_t>(testable_session::eMaxGroupMemberships)));
+
+	CHECK(s->group_membership().size() == testable_session::eMaxGroupMemberships);
+	CHECK(h.net_groups == static_cast<int>(testable_session::eMaxGroupMemberships));   // never offered to the host
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	CHECK(s->m_receiving_flows.begin()->second->fragment_count() == 0);       // still drained
+}
+
+// A host that will not track the group must not leave the message buffered.
+TEST_CASE("rtmfp session: a refused group join does not wedge the flow")
+{
+	fake_host h;
+	recording_app_host app;
+	h.accept_groups = false;
+	auto const s = make_session(h, app);
+
+	feed_group_message(s, 5, 1, group_join(0xAA));
+	feed_group_message(s, 5, 2, group_join(0xBB));
+
+	CHECK(h.net_groups == 2);
+	CHECK(s->group_membership().empty());
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	CHECK(s->m_receiving_flows.begin()->second->fragment_count() == 0);
 }
 
 // The NetGroup handler drains the flow in a loop, as the RTMP handler does.

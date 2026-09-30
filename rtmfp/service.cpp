@@ -490,22 +490,23 @@ namespace fms
 		return ts & 0xffff;
 	}
 
-	void service::handle_net_group(group_ptr &g, const session_ptr& s)
+	bool service::handle_net_group(group_ptr &g, const session_ptr& s)
 	{
-		if (g->command() == group::eJoinGroup)
+		if (g->command() != group::eJoinGroup)
+			return false;
+
+		auto const i = m_groups.find(g);
+		if (i != m_groups.end())
 		{
-			auto const i = m_groups.find(g);
-			if (i == m_groups.end())
-			{
-				// g already owns its id (group::deserialize copied it).
-				g->add_member(s);
-				m_groups.insert(g);
-			}
-			else
-			{
-				(*i)->add_member(s);
-				g = *i;
-			}
+			(*i)->add_member(s);
+			g = *i;
+			return true;
 		}
+		if (m_groups.size() >= eMaxGroups)
+			return false;
+		// g already owns its id (group::deserialize copied it).
+		g->add_member(s);
+		m_groups.insert(g);
+		return true;
 	}
 }

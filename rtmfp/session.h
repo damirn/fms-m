@@ -228,6 +228,9 @@ namespace fms
 		// otherwise open one flow per distinct flow_id without bound and exhaust
 		// memory. No legitimate session comes near this.
 		static constexpr std::size_t eMaxReceivingFlows = 1024;
+
+		// Cap groups per session: the group id is peer-chosen wire data.
+		static constexpr std::size_t eMaxGroupMemberships = 64;
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
 		void arm_alarm();

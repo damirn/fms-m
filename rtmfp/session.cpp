@@ -459,8 +459,7 @@ namespace fms
 				data = f->message_data();
 				continue;
 			}
-			m_service->handle_net_group(g, shared_from_this());
-			// Membership is a set keyed by group id; expired entries drop on the way past.
+			// Membership is keyed by group id; expired entries drop on the way past.
 			bool present = false;
 			for (auto i = m_group_membership.begin(); i != m_group_membership.end(); )
 			{
@@ -473,6 +472,13 @@ namespace fms
 				if (std::memcmp(held->id(), g->id(), item::eIDLength) == 0)
 					present = true;
 				++i;
+			}
+			if ((!present && m_group_membership.size() >= eMaxGroupMemberships)
+				|| !m_service->handle_net_group(g, shared_from_this()))
+			{
+				f->remove_last_message();
+				data = f->message_data();
+				continue;
 			}
 			if (!present)
 				m_group_membership.push_back(g);
