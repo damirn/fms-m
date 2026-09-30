@@ -149,7 +149,12 @@ namespace fms
 			close();
 			return;
 		}
-		m_rtmpt_manager->update_bytes_read(m_cid,
+		// Charge the session this request names, not the one a previous request on
+		// this connection left behind: m_cid is not set until the request dispatches.
+		std::string const target(m_parser->get().target().data(), m_parser->get().target().size());
+		std::string verb, cid, seq;
+		split_target(target, verb, cid, seq);
+		m_rtmpt_manager->update_bytes_read(cid,
 			static_cast<std::uint32_t>(m_header_bytes + bytes_transferred));
 		handle_request(m_parser->get());
 	}
