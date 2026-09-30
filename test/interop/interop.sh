@@ -216,16 +216,16 @@ has_av "$WORK/tun.flv"                  && ok "rtmpt: valid A/V over the HTTP tu
 
 # --- Case 3b: RTMPT body limits ----------------------------------------------
 # Beast decides a Content-Length body against the limit while parsing the header,
-# so a limit raised after that never applies. Drive both sides with curl: a body
-# over the unauthenticated cap must be refused without a session and accepted
-# with one.
+# so a limit raised after that never applies. Driven on /idle, whose body the
+# server reads and discards: nothing but the limit can decide the outcome, where
+# /send would also feed the bytes to the RTMP parser and close on the garbage.
 echo "[3b] RTMPT body limit: 1 MiB unauthenticated, 16 MiB once a session exists"
 dd if=/dev/zero of="$WORK/body_2m" bs=1024 count=2048 2>/dev/null
 
-# No session: /send against an unknown id must not read a 2 MiB body.
+# No session: /idle against an unknown id must not read a 2 MiB body.
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
 	-X POST --data-binary "@$WORK/body_2m" \
-	"http://127.0.0.1:$RTMPT_PORT/send/000000/1" 2>/dev/null) || true
+	"http://127.0.0.1:$RTMPT_PORT/idle/000000/1" 2>/dev/null) || true
 [ -n "$code" ] || code=000
 [ "$code" = "000" ] && ok "rtmpt: 2 MiB body without a session is refused" \
 	|| bad "rtmpt: 2 MiB body without a session got HTTP $code"
@@ -236,7 +236,7 @@ cid=$(curl -s --max-time 10 -X POST --data-binary '' \
 if [ -n "$cid" ]; then
 	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
 		-X POST --data-binary "@$WORK/body_2m" \
-		"http://127.0.0.1:$RTMPT_PORT/send/$cid/1" 2>/dev/null) || true
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/1" 2>/dev/null) || true
 	[ -n "$code" ] || code=000
 	[ "$code" = "200" ] && ok "rtmpt: 2 MiB body on an open session is accepted" \
 		|| bad "rtmpt: 2 MiB body on session $cid got HTTP $code"
