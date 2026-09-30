@@ -403,7 +403,7 @@ namespace fms
 		if (b != amf0_type::eAMF0AMF3Container)
 			return false;
 
-		amf3 m3;
+		amf3 m3(m_depth);
 		amf3_type_ptr const type = m3.read(buffer);
 		value->set_data(type);
 

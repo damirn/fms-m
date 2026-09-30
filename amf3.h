@@ -36,6 +36,12 @@ namespace fms
 	class amf3
 	{
 	public:
+		// depth_base charges this instance against an enclosing AMF0 walk, so a mixed
+		// graph is bounded by one depth allowance -- the same one the writers share.
+		explicit amf3(unsigned depth_base = 0)
+			: m_depth(depth_base)
+		{}
+
 		amf3_type_ptr read(byte_reader &);
 		void write(byte_writer &, const amf3_type_ptr&);
 
@@ -114,7 +120,7 @@ namespace fms
 			m_decoded_string_bytes = 0;
 		}
 
-		unsigned m_depth = 0;
+		unsigned m_depth;
 
 		// A string reference costs one wire byte but materializes a full copy;
 		// budget every string handed back, by value or by reference.

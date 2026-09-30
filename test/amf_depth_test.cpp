@@ -56,6 +56,27 @@ namespace
 		return v;
 	}
 
+	// n nested AMF0 objects whose innermost value is an AVMPLUS container holding
+	// m nested AMF3 objects: the shape where the two depth counters meet.
+	std::vector<std::uint8_t> mixed_amf0_amf3(unsigned n, unsigned m)
+	{
+		std::vector<std::uint8_t> v;
+		for (unsigned i = 0; i < n; ++i)
+		{
+			v.push_back(amf0_type::eAMF0Object);
+			v.push_back(0x00); v.push_back(0x01); v.push_back('a');
+		}
+		v.push_back(amf0_type::eAMF0AMF3Container);
+		std::vector<std::uint8_t> const inner = nested_amf3(m);
+		v.insert(v.end(), inner.begin(), inner.end());
+		for (unsigned i = 0; i < n; ++i)
+		{
+			v.push_back(0x00); v.push_back(0x00);
+			v.push_back(amf0_type::eAMF0ObjectEnd);
+		}
+		return v;
+	}
+
 	bool amf0_reads(const std::vector<std::uint8_t> &v)
 	{
 		byte_reader r(v.data(), v.size());
@@ -362,4 +383,29 @@ TEST_CASE("amf0 write: byte fan-out is bounded independently of node count")
 	// ~33 MB from 1025 nodes: the node budget cannot see this.
 	byte_writer over;
 	CHECK_THROWS_AS(amf0::write(over, refs(512)), amf0_write_exception);
+}
+
+// The read bounds and the write budget share one depth allowance, so anything the
+// reader accepts must survive being written back out.
+TEST_CASE("amf: a mixed AMF0/AMF3 graph the reader accepts can be written back")
+{
+	for (unsigned n = 0; n <= 20; ++n)
+		for (unsigned m = 0; m <= 20; ++m)
+		{
+			std::vector<std::uint8_t> const wire = mixed_amf0_amf3(n, m);
+			byte_reader r(wire.data(), wire.size());
+			amf0 codec;
+			amf0_type_ptr value;
+			try
+			{
+				value = codec.read(r);
+			}
+			catch (const std::exception &)
+			{
+				continue;   // refused at read: nothing to write
+			}
+			REQUIRE(value);
+			byte_writer out;
+			CHECK_NOTHROW(amf0::write(out, value));
+		}
 }

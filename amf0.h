@@ -69,7 +69,7 @@ namespace fms
 		bool read_typed_object(byte_reader &, const amf0_typed_object_ptr&);
 		static void write_typed_object(byte_writer &, const amf0_typed_object_ptr&);
 
-		static bool read_amf3_container(byte_reader &, const amf0_amf3_container_ptr&);
+		bool read_amf3_container(byte_reader &, const amf0_amf3_container_ptr&);
 		static void write_amf3_container(byte_writer &, const amf0_amf3_container_ptr&);
 
 		amf0_type_ptr read(byte_reader &);
