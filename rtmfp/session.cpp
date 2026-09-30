@@ -416,28 +416,36 @@ namespace fms
 
 		while (data)
 		{
-			if (data->size() > 5) // rtmp message min size
+			// The message is fully reassembled here, so a buffer_eof means corruption.
+			// It is consumed either way, or the flow re-delivers it forever.
+			try
 			{
-				rtmp_header h;
-				byte_reader s(*data);
-				std::uint8_t msg_type = 0;
-				std::uint32_t ts = 0;
-				s >> msg_type >> ts;
-				h.set_message_type(msg_type);
-				h.set_timestamp(to_host<std::uint32_t>(ts));
-				auto const i = m_flow_id_to_stream_id.find(f->flow_id());
-				if (i != m_flow_id_to_stream_id.end())
+				if (data->size() > 5) // rtmp message min size
 				{
-					h.set_stream_id(i->second);
-					h.set_message_length(static_cast<std::uint32_t>(data->size()) - 5); // msg type + timestamp
-					rtmp_protocol p;
-					byte_reader r(s.read_pos(), s.available());
-					if (p.deserialize(r, h))
+					rtmp_header h;
+					byte_reader s(*data);
+					std::uint8_t msg_type = 0;
+					std::uint32_t ts = 0;
+					s >> msg_type >> ts;
+					h.set_message_type(msg_type);
+					h.set_timestamp(to_host<std::uint32_t>(ts));
+					auto const i = m_flow_id_to_stream_id.find(f->flow_id());
+					if (i != m_flow_id_to_stream_id.end())
 					{
-						rtmp_message_ptr const msg = p.message();
-						handle_message(msg, h);
+						h.set_stream_id(i->second);
+						h.set_message_length(static_cast<std::uint32_t>(data->size()) - 5); // msg type + timestamp
+						rtmp_protocol p;
+						byte_reader r(s.read_pos(), s.available());
+						if (p.deserialize(r, h))
+						{
+							rtmp_message_ptr const msg = p.message();
+							handle_message(msg, h);
+						}
 					}
 				}
+			}
+			catch (buffer_eof_exception &)
+			{
 			}
 			f->remove_last_message();
 			data = f->message_data();
