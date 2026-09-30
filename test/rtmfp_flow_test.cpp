@@ -7,6 +7,7 @@
 #include "group.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -154,6 +155,46 @@ TEST_CASE("rtmfp group: deserialize copies the group id (no dangle into the pack
 
 	CHECK(g->id()[0] == 1);                          // original id, not the scribble
 	CHECK(g->id()[item::eIDLength - 1] == item::eIDLength);
+}
+
+// The per-service half of the group bound: without it a peer opens an unbounded
+// number of distinct NetGroups, one per id it invents.
+TEST_CASE("rtmfp group registry: distinct groups are bounded per service")
+{
+	auto with_id = [](std::size_t n)
+	{
+		std::array<std::uint8_t, item::eIDLength> id{};
+		id[0] = static_cast<std::uint8_t>(n & 0xFF);
+		id[1] = static_cast<std::uint8_t>((n >> 8) & 0xFF);
+		id[2] = static_cast<std::uint8_t>((n >> 16) & 0xFF);
+		return std::make_shared<group>(id.data());
+	};
+
+	group_registry reg;
+	session_ptr const none;   // membership is a weak_ptr; the cap does not read it
+
+	for (std::size_t n = 0; n < group_registry::eMaxGroups; ++n)
+	{
+		group_ptr g = with_id(n);
+		REQUIRE(reg.join(g, none));
+	}
+	REQUIRE(reg.size() == group_registry::eMaxGroups);
+
+	group_ptr over = with_id(group_registry::eMaxGroups);
+	CHECK_FALSE(reg.join(over, none));
+	CHECK(reg.size() == group_registry::eMaxGroups);
+
+	// A known id is not a new group: it aliases onto the one already held.
+	group_ptr again = with_id(7);
+	REQUIRE(reg.join(again, none));
+	CHECK(reg.size() == group_registry::eMaxGroups);
+	CHECK(again->id()[0] == 7);
+
+	// Dropping an empty group frees the slot.
+	reg.erase(again);
+	CHECK(reg.size() == group_registry::eMaxGroups - 1);
+	group_ptr fresh = with_id(group_registry::eMaxGroups + 1);
+	CHECK(reg.join(fresh, none));
 }
 
 TEST_CASE("rtmfp flow: advertised receive window shrinks as the reassembly backlog grows")
