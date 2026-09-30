@@ -76,8 +76,9 @@ namespace fms
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_header(ec, n); });
 	}
 
-	void http_connection::on_header(const boost::system::error_code &e, std::size_t)
+	void http_connection::on_header(const boost::system::error_code &e, std::size_t bytes_transferred)
 	{
+		m_header_bytes = bytes_transferred;
 		if (e)
 		{
 			m_timer.cancel();
@@ -116,7 +117,8 @@ namespace fms
 			close();
 			return;
 		}
-		m_rtmpt_manager->update_bytes_read(m_cid, static_cast<std::uint32_t>(bytes_transferred));
+		m_rtmpt_manager->update_bytes_read(m_cid,
+			static_cast<std::uint32_t>(m_header_bytes + bytes_transferred));
 		handle_request(m_parser->get());
 	}
 

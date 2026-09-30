@@ -93,7 +93,8 @@ namespace fms
 		response_t m_response;
 
 	private:
-		std::string m_cid;   // RTMPT session id for this connection (once opened)
+		std::string m_cid;      // RTMPT session id for this connection (once opened)
+		std::size_t m_header_bytes{0};   // the read is split, so both halves are counted
 	};
 
 	using http_connection_ptr = std::shared_ptr<http_connection>;
