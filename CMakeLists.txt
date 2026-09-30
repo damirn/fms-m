@@ -311,6 +311,21 @@ if(BUILD_TESTS)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
+  # basic_rtmp_connection is only linked into the server target, so the window
+  # arithmetic had no unit coverage; clamp_window and the threshold test are
+  # both header-visible.
+  add_executable(window_ack_test test/test_main.cpp test/window_ack_test.cpp
+    client_session.cpp rtmp_parser.cpp rtmp_header.cpp rtmp_message.cpp
+    rtmp_protocol.cpp rtmp_so_message.cpp rtmp_handshaker.cpp rtmp_handshake.cpp
+    crypto.cpp dh.cpp evp_dh.cpp amf0.cpp amf3.cpp util.cpp config.cpp logging.cpp
+    random_string.cpp)
+  target_link_libraries(window_ack_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME window_ack_test COMMAND window_ack_test)
+  if(APPLE)
+    set_tests_properties(window_ack_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   add_executable(media_stream_release_test
     test/test_main.cpp test/media_stream_release_test.cpp
     media_application.cpp rtmp_application.cpp av_delivery.cpp qos_reporter.cpp

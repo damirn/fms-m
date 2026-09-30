@@ -7,6 +7,7 @@
 #include "rtmp_message.h"
 #include "rtmp_parser.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -30,9 +31,16 @@ namespace fms
 		// advances by less than one read and we ack every read.
 		static constexpr std::uint32_t eMinWindowAck = 1024;
 
+		// Largest: the threshold test is a wrapping signed difference, so a window
+		// at or above 2^31 lands it behind the counter and never advances forward.
+		static constexpr std::uint32_t eMaxWindowAck = 0x20000000;
+
 		// Clamp rather than ignore, so a peer that honours the window it announced
 		// still sees an acknowledgement.
-		static constexpr std::uint32_t clamp_window(std::uint32_t n) { return n < eMinWindowAck ? eMinWindowAck : n; }
+		static constexpr std::uint32_t clamp_window(std::uint32_t n)
+		{
+			return std::clamp(n, eMinWindowAck, eMaxWindowAck);
+		}
 
 		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, app_host *);
 
