@@ -26,12 +26,13 @@ namespace fms
 	class basic_rtmp_connection : public client_session, public rtmp_message_sink, public std::enable_shared_from_this<basic_rtmp_connection>
 	{
 	public:
-		// Smallest acknowledgement window we will adopt. The threshold advances by the
-		// window per ack, so a window below one read's worth keeps the test true and
-		// acks every read. Real clients announce 2.5 MB. Public so a test can pin it.
+		// Smallest acknowledgement window we will adopt: below this the threshold
+		// advances by less than one read and we ack every read.
 		static constexpr std::uint32_t eMinWindowAck = 1024;
 
-		static constexpr bool acceptable_window(std::uint32_t n) { return n >= eMinWindowAck; }
+		// Clamp rather than ignore, so a peer that honours the window it announced
+		// still sees an acknowledgement.
+		static constexpr std::uint32_t clamp_window(std::uint32_t n) { return n < eMinWindowAck ? eMinWindowAck : n; }
 
 		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, app_host *);
 
@@ -88,7 +89,6 @@ namespace fms
 		static constexpr std::uint8_t eCryptoMagic = rtmp_handshaker::eCryptoMagic;
 
 		static constexpr std::uint32_t eAckSize = eDefaultAckWindow;
-
 
 		std::uint32_t m_bytes_read_notify{eAckSize};
 		std::uint32_t m_win_ack{eAckSize};

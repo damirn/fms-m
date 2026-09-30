@@ -22,7 +22,7 @@ namespace fms
 	{
 		client_session::handle_bytes_read(bytes_transferred);
 
-		if (m_bytes_read >= m_bytes_read_notify)
+		if (static_cast<std::int32_t>(m_bytes_read - m_bytes_read_notify) >= 0)   // wraps with the counters
 		{
 			// No app until connect() is routed; leave the threshold so the ack
 			// still goes out once there is one.
@@ -70,10 +70,10 @@ namespace fms
 		else if (msg->type() == rtmp_message::eMessageWindowAcknowledgementSize)
 		{
 			rtmp_message_window_acknowledgement_size_ptr const ack = std::static_pointer_cast<rtmp_message_window_acknowledgement_size>(msg);
-			if (std::uint32_t const n = ack->size(); acceptable_window(n))
+			if (std::uint32_t const n = ack->size(); n != 0)
 			{
-				m_win_ack = n;
-				m_bytes_read_notify = m_bytes_read + n;   // relative: we have already read m_bytes_read
+				m_win_ack = clamp_window(n);
+				m_bytes_read_notify = m_bytes_read + m_win_ack;   // relative: we have already read m_bytes_read
 			}
 		}
 	}

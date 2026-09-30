@@ -1,12 +1,6 @@
-// rtmp_message_invoke / rtmp_message_notify body decoding.
-//
-// Both read AMF values until the buffer is empty. The chunk layer bounds the
-// message length, but one framing-legal body of small AMF values still expands
-// into a parameter per value: an 8 MiB body of AMF0 nulls becomes millions of
-// heap-allocated values held in a list.
+// Invoke/notify bodies decode until empty, so the parameter count is capped.
 
 #include "amf0.h"
-#include "basic_rtmp_connection.h"
 #include "byte_reader.h"
 #include "doctest.h"
 #include "rtmp_message.h"
@@ -71,18 +65,4 @@ TEST_CASE("rtmp notify: an absurd parameter count is refused, not allocated")
 	byte_reader r(v.data(), v.size());
 	rtmp_message_notify m;
 	CHECK_THROWS_AS(m.deserialize(r), amf0_read_exception);
-}
-
-// The acknowledgement window a peer announces sets how far the byte counter runs
-// before the next ack. The threshold advances by exactly the window, so a window
-// no larger than one read's worth keeps the >= test true and acks every read.
-TEST_CASE("rtmp ack window: a window too small to advance the threshold is refused")
-{
-	using conn = basic_rtmp_connection;
-	CHECK_FALSE(conn::acceptable_window(0));
-	CHECK_FALSE(conn::acceptable_window(1));
-	CHECK_FALSE(conn::acceptable_window(conn::eMinWindowAck - 1));
-
-	CHECK(conn::acceptable_window(conn::eMinWindowAck));
-	CHECK(conn::acceptable_window(2500000));       // what a real client announces
 }
