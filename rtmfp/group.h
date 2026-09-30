@@ -1,5 +1,6 @@
 #pragma once
 
+#include "buffer_eof.h"
 #include "byte_reader.h"
 #include "types.h"
 
@@ -31,19 +32,26 @@ namespace fms
 		// exception the caller has to catch.
 		static group_ptr deserialize(byte_reader &s)
 		{
-			std::uint8_t cmnd = 0;
-			s >> cmnd;
-			vlu_t const size = s.read_vlu();
-			if (s.available() >= size && size == (item::eIDLength + 1))
+			try
 			{
-				std::uint8_t type = 0;
-				s >> type;
-				if (type == 0x15)
+				std::uint8_t cmnd = 0;
+				s >> cmnd;
+				vlu_t const size = s.read_vlu();
+				if (s.available() >= size && size == (item::eIDLength + 1))
 				{
-					group_ptr g = std::make_shared<group>(s.read_pos());
-					g->set_command(cmnd);
-					return g;
+					std::uint8_t type = 0;
+					s >> type;
+					if (type == 0x15)
+					{
+						group_ptr g = std::make_shared<group>(s.read_pos());
+						g->set_command(cmnd);
+						return g;
+					}
 				}
+			}
+			catch (const buffer_eof_exception &)
+			{
+				// A body too short for the header is malformed, not exceptional.
 			}
 			return nullptr;
 		}

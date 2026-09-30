@@ -513,6 +513,20 @@ TEST_CASE("rtmfp session: a malformed NetGroup message does not wedge the flow")
 	CHECK(s->group_membership().size() == 1);
 }
 
+// Truncated, not merely malformed: the reads themselves run out of body.
+TEST_CASE("rtmfp session: a truncated NetGroup message does not wedge the flow")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	feed_group_message(s, 6, 1, std::vector<std::uint8_t>{0x01});   // command, then nothing
+	feed_group_message(s, 6, 2, group_join(0xBB));
+
+	CHECK(h.net_groups == 1);
+	CHECK(s->group_membership().size() == 1);
+}
+
 // A body the write bounds refuse must not unwind out of the receive handler.
 TEST_CASE("rtmfp session: a message the AMF write bounds refuse is dropped")
 {
