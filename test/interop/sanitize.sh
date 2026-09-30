@@ -36,10 +36,13 @@ if [ "${sanitizer_syms:-0}" -eq 0 ]; then
 fi
 
 # Both workloads are conditional below; without either, a green run means nothing.
-[ -x "$CLIENT" ] || [ -x "$RTMFP_CPP/tcpublish" ] || {
-	echo "neither $CLIENT nor $RTMFP_CPP/tcpublish is present; nothing would run" >&2
+# The RTMFP one needs both binaries, which is exactly what it is gated on.
+have_rtmfp=0
+[ -x "$RTMFP_CPP/tcpublish" ] && [ -x "$RTMFP_CPP/tcconn" ] && have_rtmfp=1
+if [ ! -x "$CLIENT" ] && [ "$have_rtmfp" -eq 0 ]; then
+	echo "need $CLIENT, or both $RTMFP_CPP/tcpublish and tcconn; nothing would run" >&2
 	exit 2
-}
+fi
 
 # pkill -f matched on the binary's basename and signalled every same-uid process
 # whose command line contained it -- concurrent runs, other checkouts, an editor.
@@ -92,7 +95,7 @@ if [ -x "$CLIENT" ]; then
 	done
 	echo "  rtmp: 1 publisher (recording) + 3 subscribers"
 fi
-if [ -x "$RTMFP_CPP/tcpublish" ] && [ -x "$RTMFP_CPP/tcconn" ]; then
+if [ "$have_rtmfp" -eq 1 ]; then
 	"$RTMFP_CPP/tcpublish" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#r1" "$WORK/src.flv" >/dev/null 2>&1 &
 	track $!
 	sleep 2
