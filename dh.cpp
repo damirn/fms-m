@@ -40,12 +40,10 @@ namespace fms
 
 	bool dh::create_shared_key(std::uint8_t *key, std::uint16_t size)
 	{
-		std::size_t len = 0;
-		std::uint8_t *const secret = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size, len);
-		if (secret == nullptr)
+		std::vector<std::uint8_t> secret = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size);
+		if (secret.empty())
 			return false;
-		m_shared_key.assign(secret, secret + len);   // replaces any previous secret
-		delete[] secret;
+		m_shared_key = std::move(secret);   // replaces any previous secret
 		return true;
 	}
 

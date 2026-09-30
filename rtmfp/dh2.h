@@ -48,8 +48,7 @@ namespace fms
 		static const std::uint8_t m_dh_key[eKeySize];
 		EVP_PKEY *m_pkey{nullptr};
 		std::vector<std::uint8_t> m_pub_key;
-		int m_shared_secret_size{0};
-		std::uint8_t *m_shared_secret{nullptr};
+		std::vector<std::uint8_t> m_shared_secret;
 		std::vector<std::uint8_t> m_rnonce;
 	};
 }

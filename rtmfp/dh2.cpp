@@ -35,8 +35,6 @@ namespace fms
 	{
 		if (m_pkey)
 			EVP_PKEY_free(m_pkey);
-
-		delete[] m_shared_secret;
 	}
 
 	void dh2::generate_public_key()
@@ -53,15 +51,9 @@ namespace fms
 
 	bool dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size)
 	{
-		std::size_t len = 0;
-		delete[] m_shared_secret;   // a second call would otherwise leak the first
-		m_shared_secret = evp_dh_derive(m_pkey, m_dh_key, eKeySize, 2, remote_pub_key, key_size, len);
-		if (m_shared_secret == nullptr)
-		{
-			m_shared_secret_size = 0;
+		m_shared_secret = evp_dh_derive(m_pkey, m_dh_key, eKeySize, 2, remote_pub_key, key_size);
+		if (m_shared_secret.empty())
 			return false;
-		}
-		m_shared_secret_size = static_cast<int>(len);
 		return generate_rnonce();
 	}
 
@@ -79,16 +71,16 @@ namespace fms
 			|| HMAC(EVP_sha256(), inonce, inonce_size, rnonce, rnonce_size, mdp2, nullptr) == nullptr)
 			return false;
 
-		return HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp1, eAESKeySize, dec_key, nullptr) != nullptr
-			&& HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, mdp2, eAESKeySize, enc_key, nullptr) != nullptr;
+		return HMAC(EVP_sha256(), m_shared_secret.data(), static_cast<int>(m_shared_secret.size()), mdp1, eAESKeySize, dec_key, nullptr) != nullptr
+			&& HMAC(EVP_sha256(), m_shared_secret.data(), static_cast<int>(m_shared_secret.size()), mdp2, eAESKeySize, enc_key, nullptr) != nullptr;
 	}
 
 	bool dh2::generate_hmac_keys(const std::uint8_t *enc_key, const std::uint8_t *dec_key,
 		std::uint8_t *tx_hmac_key, std::uint8_t *rx_hmac_key)
 	{
 		// txHMAC = HMAC(secret, enc_key), rxHMAC = HMAC(secret, dec_key).
-		return HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, enc_key, eAESKeySize, tx_hmac_key, nullptr) != nullptr
-			&& HMAC(EVP_sha256(), m_shared_secret, m_shared_secret_size, dec_key, eAESKeySize, rx_hmac_key, nullptr) != nullptr;
+		return HMAC(EVP_sha256(), m_shared_secret.data(), static_cast<int>(m_shared_secret.size()), enc_key, eAESKeySize, tx_hmac_key, nullptr) != nullptr
+			&& HMAC(EVP_sha256(), m_shared_secret.data(), static_cast<int>(m_shared_secret.size()), dec_key, eAESKeySize, rx_hmac_key, nullptr) != nullptr;
 	}
 
 	bool dh2::generate_peer_id(const std::uint8_t *data, std::uint16_t data_size, std::uint8_t *target)
