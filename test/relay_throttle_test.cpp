@@ -145,14 +145,26 @@ TEST_CASE("relay throttle: releasing an unheld key is harmless")
 
 // spawn_helper consults one process-wide throttle; the policy above is only
 // correct if the wiring reaches it.
-TEST_CASE("relay throttle: the shared instance is the one spawn_helper uses")
+TEST_CASE("relay throttle: spawn_helper takes its slot from the shared throttle")
 {
+	// Without a configured helper app spawn_helper returns before the throttle.
+	static char a0[] = "relay_throttle_test";
+	static char a1[] = "-H";
+	static char a2[] = "/nonexistent/fms_helper";
+	char *argv[] = {a0, a1, a2};
+	REQUIRE(fms::config::instance()->parse_cli(3, argv));
+	REQUIRE(!fms::config::instance()->helper_app().empty());
+
 	// The real clock: spawn_helper stamps its slots with clock::now(), so a
 	// synthetic query time prunes them as expired and observes nothing.
-	clock_t_::time_point const now = clock_t_::now();
 	std::string const key = "rtmp://origin/app/live";
-	REQUIRE(helper_throttle().allow(key, now));
-	CHECK_FALSE(helper_throttle().allow(key, now));
+	REQUIRE(helper_throttle().allow(key, clock_t_::now()));
+	helper_throttle().release(key);
+
+	// A well-formed target reaches the throttle; the spawn then fails, which keeps
+	// the cooldown -- so the shared instance is refusing the key spawn_helper took.
+	spawn_helper("rtmp://origin/app", "live");
+	CHECK_FALSE(helper_throttle().allow(key, clock_t_::now()));
 	helper_throttle().release(key);
 }
 
