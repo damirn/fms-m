@@ -74,7 +74,10 @@ namespace fms
 
 	void rtmp_connection::handle_hs_timer(const boost::system::error_code &e)
 	{
-		if (!e)
+		// cancel() cannot suppress a completion already queued, so a handshake that
+		// validated within one scheduling quantum of the deadline needs the state
+		// check -- the expiry is never moved, so a deadline test stays true.
+		if (!e && m_state != eStateReadPackets && m_state != eStateClosing)
 			close();
 	}
 
