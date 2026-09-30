@@ -7,6 +7,7 @@
 #include "io_context_pool.h"
 #include "media_application.h"
 #include "rtmp_message.h"
+#include "stream_client.h"
 
 #include <cstdint>
 #include <memory>
@@ -93,6 +94,23 @@ namespace
 			return v.size();
 		}
 
+		void subscribe_live(const stream_client_id_t &bc, const stream_client_id_t &sub, const std::string &name)
+		{
+			auto const guard = m_registry.lock_exclusive();
+			m_registry.add_client_stream(sub.first, sub.second, guard);
+			m_registry.add_subscriber(bc, sub,
+				std::make_shared<stream_client>(sub.first, sub.second, true), guard);
+			m_registry.set_subscriber_stream(sub, name, guard);
+		}
+
+		std::size_t subscribers_of(const stream_client_id_t &bc)
+		{
+			auto const guard = m_registry.lock_exclusive();
+			std::size_t n = 0;
+			m_registry.for_each_subscriber(bc, [&](const stream_client_id_t &, const stream_client_ptr &) { ++n; });
+			return n;
+		}
+
 		void play_again(std::uint32_t cid, std::uint32_t sid, const std::string &name)
 		{
 			auto const guard = m_registry.lock_exclusive();
@@ -157,5 +175,22 @@ TEST_CASE("media: re-playing a different name on one stream id leaves no orphan"
 	app.play_again(7, 1, "second");
 
 	CHECK(app.waiting_on_peek("first") == 0);
+	CHECK(app.waiting_on_peek("second") == 1);
+}
+
+TEST_CASE("media: re-playing a stream id releases its live fan-out edge")
+{
+	null_host host;
+	sub_app app(&host);
+
+	stream_client_id_t const bcaster(3, 1);
+	stream_client_id_t const sub(7, 1);
+
+	app.subscribe_live(bcaster, sub, "first");
+	REQUIRE(app.subscribers_of(bcaster) == 1);
+
+	app.play_again(7, 1, "second");
+
+	CHECK(app.subscribers_of(bcaster) == 0);
 	CHECK(app.waiting_on_peek("second") == 1);
 }
