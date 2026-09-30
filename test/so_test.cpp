@@ -441,3 +441,43 @@ TEST_CASE("so_manager: a departed connection's allowance is returned")
 	CHECK(sm.size() == 0);
 	CHECK(has_event(use_reply(sm, "one-too-many", 1), SO::eUseSuccess));
 }
+
+TEST_CASE("so_manager: a property too large to replay in a Use reply is refused")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "big", 1);
+
+	auto big_value = [](std::size_t n)
+	{
+		std::vector<std::uint8_t> const blob(n, static_cast<std::uint8_t>('x'));
+		auto e = ev(SO::eRequestChange);
+		e->m_name = std::make_shared<amf0_string>("k");
+		e->m_value = std::make_shared<amf0_long_string>(blob.data(), static_cast<std::uint32_t>(blob.size()));
+		return e;
+	};
+
+	// Inside the bound: stored and acknowledged.
+	{
+		auto s = make_so("big");
+		REQUIRE(s->add_event(big_value(so_manager::eMaxValueBytes - 16)));
+		rtmp_message_ptr r;
+		sm.handle_so(s, 1, r);
+		CHECK(has_event(std::dynamic_pointer_cast<SO>(r), SO::eSuccess));
+	}
+
+	// Past it: refused, so the Use reply stays sendable.
+	{
+		auto s = make_so("big");
+		REQUIRE(s->add_event(big_value(so_manager::eMaxValueBytes + 1)));
+		rtmp_message_ptr r;
+		sm.handle_so(s, 1, r);
+		CHECK_FALSE(has_event(std::dynamic_pointer_cast<SO>(r), SO::eSuccess));
+	}
+
+	// Whatever was stored, replaying it must not trip the write budget.
+	byte_writer out;
+	auto const reply = use_reply(sm, "big", 2);
+	REQUIRE(reply);
+	CHECK_NOTHROW(reply->serialize(out));
+}
