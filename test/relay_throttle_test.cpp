@@ -79,6 +79,43 @@ TEST_CASE("relay throttle: helpers still alive are capped")
 	CHECK(t.allow("one-too-many", now + spawn_throttle::eCooldown));
 }
 
+// posix_spawnp runs outside the throttle lock, so the slot has to be held from
+// the moment the spawn is allowed rather than from when the pid comes back.
+TEST_CASE("relay throttle: a reservation counts against the live cap before the pid is known")
+{
+	spawn_throttle t;
+	clock_t_::time_point const t0 = clock_t_::time_point{} + std::chrono::hours{1};
+	for (std::size_t i = 0; i + 1 < spawn_throttle::eMaxInFlight; ++i)
+	{
+		REQUIRE(t.allow(std::to_string(i), t0));
+		t.note_spawned(static_cast<::pid_t>(1000 + i));
+	}
+	REQUIRE(t.live_count() == spawn_throttle::eMaxInFlight - 1);
+
+	// Past the cooldown, so the per-window bound has drained and cannot refuse.
+	clock_t_::time_point const t1 = t0 + spawn_throttle::eCooldown;
+	REQUIRE(t.allow("reserved", t1));
+	CHECK(t.live_count() == spawn_throttle::eMaxInFlight - 1);   // not spawned yet
+	CHECK_FALSE(t.allow("another", t1));                         // the slot is taken
+
+	// A spawn that failed hands the slot straight back.
+	t.note_spawn_failed();
+	CHECK(t.allow("another", t1));
+}
+
+// A reservation nothing ever claims must not hold a slot for the process lifetime.
+TEST_CASE("relay throttle: an unclaimed reservation ages out with the cooldown")
+{
+	spawn_throttle t;
+	clock_t_::time_point const t0 = clock_t_::time_point{} + std::chrono::hours{1};
+	for (std::size_t i = 0; i < spawn_throttle::eMaxInFlight; ++i)
+		REQUIRE(t.allow(std::to_string(i), t0));
+
+	REQUIRE(t.live_count() == 0);
+	CHECK_FALSE(t.allow("one-too-many", t0));
+	CHECK(t.allow("one-too-many", t0 + spawn_throttle::eCooldown));
+}
+
 TEST_CASE("relay throttle: a spawn that never happened leaves nothing alive")
 {
 	spawn_throttle t;
