@@ -1,6 +1,7 @@
 // Invoke/notify bodies decode until empty, so the parameter count is capped.
 
 #include "amf0.h"
+#include "amf3.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 #include "doctest.h"
@@ -130,4 +131,85 @@ TEST_CASE("rtmp aggregate: the sub-message count is capped")
 	byte_reader r2(over.data(), over.size());
 	rtmp_message_aggregate past_cap(0);
 	CHECK_THROWS_AS(past_cap.deserialize(r2), amf0_read_exception);
+}
+
+namespace
+{
+	void put_u29_le(std::vector<std::uint8_t> &v, std::uint32_t n)
+	{
+		if (n < 0x80) { v.push_back(static_cast<std::uint8_t>(n)); return; }
+		if (n < 0x4000)
+		{
+			v.push_back(static_cast<std::uint8_t>((n >> 7) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(n & 0x7f));
+			return;
+		}
+		if (n < 0x200000)
+		{
+			v.push_back(static_cast<std::uint8_t>((n >> 14) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(((n >> 7) & 0x7f) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(n & 0x7f));
+			return;
+		}
+		v.push_back(static_cast<std::uint8_t>((n >> 22) | 0x80));
+		v.push_back(static_cast<std::uint8_t>(((n >> 15) & 0x7f) | 0x80));
+		v.push_back(static_cast<std::uint8_t>(((n >> 8) & 0x7f) | 0x80));
+		v.push_back(static_cast<std::uint8_t>(n & 0xff));
+	}
+
+	// An AVMPLUS container whose AMF3 array references one inline string `refs`
+	// times: two wire bytes per reference, a full copy each.
+	std::vector<std::uint8_t> avmplus_string_fanout(std::uint32_t len, std::uint32_t refs)
+	{
+		std::vector<std::uint8_t> v;
+		v.push_back(amf0_type::eAMF0AMF3Container);
+		v.push_back(amf3_type::eAMF3Array);
+		put_u29_le(v, ((refs + 1) << 1) | 1u);
+		v.push_back(0x01);
+		v.push_back(amf3_type::eAMF3String);
+		put_u29_le(v, (len << 1) | 1u);
+		v.insert(v.end(), len, static_cast<std::uint8_t>('x'));
+		for (std::uint32_t i = 0; i < refs; ++i)
+		{
+			v.push_back(amf3_type::eAMF3String);
+			v.push_back(0x00);
+		}
+		return v;
+	}
+}
+
+// A message is one allowance: n top-level values must not each get their own.
+TEST_CASE("rtmp_message: the decode budget spans a whole invoke, not one parameter")
+{
+	constexpr std::uint32_t len = 65536;
+	constexpr std::uint32_t refs = 256;   // (refs + 1) * len is just under the cap
+
+	std::vector<std::uint8_t> const one = avmplus_string_fanout(len, refs);
+
+	// One parameter is legal on its own.
+	{
+		byte_writer body;
+		amf0::write_short_string(body, "onStatus", 8);
+		amf0_number_ptr const id = std::make_shared<amf0_number>(1.0);
+		amf0::write_number(body, id);
+		body.write(one.data(), one.size());
+
+		byte_reader r(body.data(), body.size());
+		rtmp_message_invoke msg;
+		CHECK_NOTHROW(msg.deserialize(r));
+	}
+
+	// Eight of them spend the allowance eight times over.
+	{
+		byte_writer body;
+		amf0::write_short_string(body, "onStatus", 8);
+		amf0_number_ptr const id = std::make_shared<amf0_number>(1.0);
+		amf0::write_number(body, id);
+		for (int i = 0; i < 8; ++i)
+			body.write(one.data(), one.size());
+
+		byte_reader r(body.data(), body.size());
+		rtmp_message_invoke msg;
+		CHECK_THROWS_AS(msg.deserialize(r), amf3_read_exception);
+	}
 }

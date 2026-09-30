@@ -518,7 +518,7 @@ TEST_CASE("amf: the AMF3 decode budget is shared across AVMPLUS containers")
 		CHECK_THROWS_AS(codec.read(r), amf3_read_exception);
 	}
 
-	// A fresh top-level read starts with the whole allowance again.
+	// An unscoped top-level read starts with the whole allowance again.
 	{
 		std::vector<std::uint8_t> const wire = amf0_array_of_fanouts(1, len, refs);
 		amf0 codec;
@@ -527,5 +527,23 @@ TEST_CASE("amf: the AMF3 decode budget is shared across AVMPLUS containers")
 			byte_reader r(wire.data(), wire.size());
 			CHECK_NOTHROW(codec.read(r));
 		}
+	}
+
+	// Under a scope the allowance spans the message, so the same reads that pass
+	// one at a time are refused together.
+	{
+		std::vector<std::uint8_t> const wire = amf0_array_of_fanouts(1, len, refs);
+		amf0 codec;
+		amf0::read_scope const budget;
+		byte_reader first(wire.data(), wire.size());
+		CHECK_NOTHROW(codec.read(first));
+
+		bool refused = false;
+		for (int i = 0; i < 3 && !refused; ++i)
+		{
+			byte_reader r(wire.data(), wire.size());
+			try { codec.read(r); } catch (const amf3_read_exception &) { refused = true; }
+		}
+		CHECK(refused);
 	}
 }
