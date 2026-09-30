@@ -214,6 +214,38 @@ ffmpeg -hide_banner -loglevel error -y -i "rtmpt://127.0.0.1:$RTMPT_PORT/media/t
 kill "$PUB" 2>/dev/null
 has_av "$WORK/tun.flv"                  && ok "rtmpt: valid A/V over the HTTP tunnel" || bad "rtmpt: media"
 
+# --- Case 3b: RTMPT body limits ----------------------------------------------
+# Beast decides a Content-Length body against the limit while parsing the header,
+# so a limit raised after that never applies. Drive both sides with curl: a body
+# over the unauthenticated cap must be refused without a session and accepted
+# with one.
+echo "[3b] RTMPT body limit: 1 MiB unauthenticated, 16 MiB once a session exists"
+dd if=/dev/zero of="$WORK/body_2m" bs=1024 count=2048 2>/dev/null
+
+# No session: /send against an unknown id must not read a 2 MiB body.
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+	-X POST --data-binary "@$WORK/body_2m" \
+	"http://127.0.0.1:$RTMPT_PORT/send/000000/1" 2>/dev/null) || true
+[ -n "$code" ] || code=000
+[ "$code" = "000" ] && ok "rtmpt: 2 MiB body without a session is refused" \
+	|| bad "rtmpt: 2 MiB body without a session got HTTP $code"
+
+# With a session, the same body must be read. /open returns the id + '\n'.
+cid=$(curl -s --max-time 10 -X POST --data-binary '' \
+	"http://127.0.0.1:$RTMPT_PORT/open/1" 2>/dev/null | tr -d '\r\n')
+if [ -n "$cid" ]; then
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+		-X POST --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/send/$cid/1" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "200" ] && ok "rtmpt: 2 MiB body on an open session is accepted" \
+		|| bad "rtmpt: 2 MiB body on session $cid got HTTP $code"
+	curl -s -o /dev/null --max-time 10 -X POST --data-binary '' \
+		"http://127.0.0.1:$RTMPT_PORT/close/$cid/2" 2>/dev/null || true
+else
+	bad "rtmpt: /open returned no session id, so the limit cases prove nothing"
+fi
+
 # --- Case 4/5: RTMFP (rtmfp-cpp reference clients, strict crypto) -------------
 if have_rtmfp; then
 	echo "[4] RTMFP live: tcpublish -> tcconn (strict crypto, no -H -S)"

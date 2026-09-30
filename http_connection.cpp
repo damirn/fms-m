@@ -61,10 +61,12 @@ namespace fms
 
 	void http_connection::do_read()
 	{
-		// One request at a time; a fresh parser each time. The body limit is set
-		// once the request line names the session, not from the previous request.
+		// One request at a time; a fresh parser each time. Beast checks a
+		// Content-Length body against the limit while parsing the header, so the
+		// parser starts on the larger limit and on_header applies the
+		// unauthenticated cap itself once the target names the session.
 		m_parser.emplace();
-		m_parser->body_limit(eUnauthBodyLimit);
+		m_parser->body_limit(eBodyLimit);
 
 		// Bounds an idle connection and slow header delivery.
 		m_timer.expires_after(std::chrono::seconds(eIdleTimeout));
@@ -86,8 +88,19 @@ namespace fms
 		std::string const target(m_parser->get().target().data(), m_parser->get().target().size());
 		std::string verb, cid, seq;
 		split_target(target, verb, cid, seq);
-		if (!cid.empty() && m_rtmpt_manager->has_session(cid))
-			m_parser->body_limit(eBodyLimit);
+		if (cid.empty() || !m_rtmpt_manager->has_session(cid))
+		{
+			// No session yet: hold this request to the unauthenticated cap. The
+			// lowered limit covers a chunked body, which is spent incrementally.
+			auto const len = m_parser->content_length();
+			if (len && *len > eUnauthBodyLimit)
+			{
+				m_timer.cancel();
+				close();
+				return;
+			}
+			m_parser->body_limit(eUnauthBodyLimit);
+		}
 
 		async_read_request(
 			[self = shared_from_this()](const boost::system::error_code &ec, std::size_t n) { self->on_read(ec, n); });
