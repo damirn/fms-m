@@ -241,3 +241,34 @@ TEST_CASE("amf0 write: the node budget resets between top-level writes")
 		CHECK_NOTHROW(amf0::write(w, leaf));
 	}
 }
+
+// An AMF3 container nested in an AMF0 graph used to start its own budget, so the
+// AMF0 and AMF3 bounds multiplied instead of adding.
+TEST_CASE("amf write: an AMF3 container spends the AMF0 budget")
+{
+	auto amf3_chain = [](unsigned n) {
+		amf3_type_ptr node = std::make_shared<amf3_empty_type>(amf3_type::eAMF3Null);
+		for (unsigned i = 0; i < n; ++i)
+		{
+			auto const o = std::make_shared<amf3_object_type>();
+			o->add_entry("a", node);
+			o->add_entry("b", node);
+			node = o;
+		}
+		return node;
+	};
+
+	// ~4k AMF3 nodes per container: far inside the budget on its own.
+	auto const container = std::make_shared<amf0_amf3_container>(amf3_chain(11));
+
+	byte_writer one;
+	CHECK_NOTHROW(amf0::write(one, std::static_pointer_cast<amf0_type>(container)));
+
+	// 512 references to that one container: 513 AMF0 nodes, but >2^20 in total.
+	auto const arr = std::make_shared<amf0_strict_array>();
+	for (int i = 0; i < 512; ++i)
+		arr->add_entry(std::static_pointer_cast<amf0_type>(container));
+
+	byte_writer many;
+	CHECK_THROWS_AS(amf0::write(many, std::static_pointer_cast<amf0_type>(arr)), amf3_write_exception);
+}

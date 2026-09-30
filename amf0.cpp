@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "amf0.h"
-#include "byte_order.h"
 #include "amf3.h"
+#include "amf_write_budget.h"
+#include "byte_order.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 
@@ -557,18 +558,10 @@ namespace fms
 
 	void amf0::write(byte_writer &buffer, const amf0_type_ptr& type)
 	{
-		// Static, so both bounds are per-thread. Depth stops a cycle; the node
-		// budget stops reference fan-out, which depth does not see.
-		thread_local unsigned depth = 0;
-		thread_local std::size_t nodes = 0;
-		if (depth == 0)
-			nodes = 0;
-		if (++depth > eMaxDepth || ++nodes > eMaxWriteNodes)
-		{
-			--depth;
+		// Depth stops a cycle; the node budget stops reference fan-out.
+		amf_write_budget::frame const budget;
+		if (!budget.ok())
 			throw amf0_write_exception();
-		}
-		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ depth };
 
 		switch (type->type())
 		{

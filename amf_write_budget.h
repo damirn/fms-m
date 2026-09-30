@@ -1,0 +1,45 @@
+#pragma once
+
+#include <cstddef>
+
+namespace fms
+{
+	// Serialisation budget shared by the AMF0 and AMF3 writers. An AMF3 container
+	// nested in an AMF0 graph spends its parent's allowance, so the two bounds add
+	// instead of multiplying.
+	class amf_write_budget
+	{
+	public:
+		static constexpr unsigned eMaxDepth = 32;
+
+		// Nodes one write may emit; a shared referent re-expands per path.
+		static constexpr std::size_t eMaxNodes = 1u << 20;
+
+		// One node of the walk. Refuses by reporting !ok(); the caller throws its
+		// own codec's exception.
+		class frame
+		{
+		public:
+			frame()
+			{
+				if (s_depth == 0)
+					s_nodes = 0;
+				m_ok = ++s_depth <= eMaxDepth && ++s_nodes <= eMaxNodes;
+			}
+
+			~frame() { --s_depth; }
+
+			frame(const frame &) = delete;
+			frame &operator=(const frame &) = delete;
+
+			bool ok() const { return m_ok; }
+
+		private:
+			bool m_ok = false;
+		};
+
+	private:
+		static inline thread_local unsigned s_depth = 0;
+		static inline thread_local std::size_t s_nodes = 0;
+	};
+}

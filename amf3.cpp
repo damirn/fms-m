@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "amf3.h"
+#include "amf_write_budget.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 
@@ -50,14 +51,9 @@ namespace fms
 	void amf3::write(byte_writer &buffer, const amf3_type_ptr& type)
 	{
 		// Depth stops a cycle; the node budget stops reference fan-out.
-		if (m_write_depth == 0)
-			m_write_nodes = 0;
-		if (++m_write_depth > eMaxDepth || ++m_write_nodes > eMaxWriteNodes)
-		{
-			--m_write_depth;
+		amf_write_budget::frame const budget;
+		if (!budget.ok())
 			throw amf3_write_exception();
-		}
-		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ m_write_depth };
 
 		std::uint8_t const marker = type->type();
 		buffer << marker;
