@@ -23,6 +23,24 @@ namespace
 		v.insert(v.end(), count, 0x05);         // AMF0 null per parameter
 		return v;
 	}
+
+	// `count` FLV tags, each a one-byte audio body: 11-byte tag header, the body,
+	// then the 4-byte previous-tag-size field.
+	std::vector<std::uint8_t> aggregate_body(std::size_t count)
+	{
+		std::vector<std::uint8_t> v;
+		for (std::size_t i = 0; i < count; ++i)
+		{
+			v.push_back(rtmp_message::eMessageAudioData);
+			v.push_back(0); v.push_back(0); v.push_back(1);   // message length
+			v.push_back(0); v.push_back(0); v.push_back(0);   // timestamp
+			v.push_back(0);                                   // timestamp extended
+			v.push_back(0); v.push_back(0); v.push_back(0);   // stream id
+			v.push_back(0xAF);                                // body
+			v.push_back(0); v.push_back(0); v.push_back(0); v.push_back(0);
+		}
+		return v;
+	}
 }
 
 TEST_CASE("rtmp invoke: a sane parameter count is accepted")
@@ -96,4 +114,20 @@ TEST_CASE("invoke: the AMF write budget spans the whole message")
 	for (int i = 0; i < 3; ++i)
 		many->add_parameter(chain(18));
 	CHECK_THROWS_AS(many->serialize(three), amf0_write_exception);
+}
+
+TEST_CASE("rtmp aggregate: the sub-message count is capped")
+{
+	std::size_t const cap = rtmp_message_aggregate::eMaxSubMessages;
+
+	std::vector<std::uint8_t> const ok = aggregate_body(cap);
+	byte_reader r1(ok.data(), ok.size());
+	rtmp_message_aggregate at_cap(0);
+	REQUIRE_NOTHROW(at_cap.deserialize(r1));
+	CHECK(at_cap.get_messages().size() == cap);
+
+	std::vector<std::uint8_t> const over = aggregate_body(cap + 1);
+	byte_reader r2(over.data(), over.size());
+	rtmp_message_aggregate past_cap(0);
+	CHECK_THROWS_AS(past_cap.deserialize(r2), amf0_read_exception);
 }
