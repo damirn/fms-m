@@ -84,6 +84,10 @@ namespace fms::rtmp_client
 		// divides by this, and a peer applying the same range would refuse it.
 		[[nodiscard]] bool set_output_chunk_size(std::uint32_t n);
 
+		// Adopts an outgoing chunk size; the framer divides by it, so the range is
+		// enforced here rather than at each caller.
+		void set_out_chunk_size(std::uint32_t n);
+
 		void close()
 		{
 			m_client->close_socket();

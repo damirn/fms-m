@@ -353,7 +353,7 @@ namespace fms::rtmp_client
 		// the previous size: the peer parses it at the old size, then switches, so
 		// our subsequent media chunks (and its parse) use the new size.
 		if (message->type() == rtmp_message::eMessageChunkSize)
-			m_out_chunk_size = std::static_pointer_cast<rtmp_message_chunk_size>(message)->chunk_size();
+			set_out_chunk_size(std::static_pointer_cast<rtmp_message_chunk_size>(message)->chunk_size());
 	}
 
 	bool net_connection::set_output_chunk_size(std::uint32_t n)
@@ -362,6 +362,13 @@ namespace fms::rtmp_client
 			return false;
 		send_message(std::make_shared<rtmp_message_chunk_size>(n));
 		return true;
+	}
+
+	void net_connection::set_out_chunk_size(std::uint32_t n)
+	{
+		if (n < 1 || n > rtmp_parser::eMaxChunkSize)
+			return;                  // rtmp_protocol divides by this
+		m_out_chunk_size = n;
 	}
 
 	bool net_connection::prepare_handshake()
