@@ -792,6 +792,37 @@ TEST_CASE("VLU: vlu_size agrees with the bytes write_vlu emits")
 	}
 }
 
+TEST_CASE("VLU: every encodable value survives a write/read round trip")
+{
+	// A flow id or sequence number the reader cannot return is one write_vlu would
+	// assert on in Debug and truncate in Release.
+	std::vector<std::uint64_t> vals = {
+		0, 1, 0x7f, 0x80, 0x3fff, 0x4000, 0x1fffff, 0x200000, 0x3fffff,
+		0xffffff, 0x1000000, 0x0fffffff, 0x10000080, 0x1fffff80, byte_writer::eMaxVlu
+	};
+	for (std::uint64_t v = 1; v <= byte_writer::eMaxVlu; v = (v << 1) | 1)
+		vals.push_back(v);
+
+	for (std::uint64_t const v : vals)
+	{
+		byte_writer bw;
+		bw.write_vlu(v);
+		REQUIRE(bw.size() <= 4);
+		byte_reader br(bw.data(), bw.size());
+		CHECK(br.read_vlu() == v);
+	}
+}
+
+TEST_CASE("VLU: a read can never exceed what write_vlu can emit")
+{
+	// Four 0xFF bytes is the widest encoding the reader accepts.
+	std::array<std::uint8_t, 8> const wire{ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+	byte_reader br(wire.data(), wire.size());
+	std::uint64_t const v = br.read_vlu();
+	CHECK(v == byte_writer::eMaxVlu);
+	CHECK(br.read_pos() == wire.data() + 4);
+}
+
 TEST_CASE("VLU: vlu_size terminates on values past the encodable range")
 {
 	// vlu_min <<= 7 reached 0 after nine rounds, so `v >= vlu_min` held forever
