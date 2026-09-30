@@ -69,6 +69,7 @@ namespace fms
 		m_parser->body_limit(eBodyLimit);
 
 		// Bounds an idle connection and slow header delivery.
+		m_awaiting_request = true;
 		m_timer.expires_after(std::chrono::seconds(eIdleTimeout));
 		m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->on_timeout(ec); });
 
@@ -111,7 +112,7 @@ namespace fms
 		m_header_bytes = bytes_transferred;
 		if (e)
 		{
-			m_timer.cancel();
+			stop_request_timer();
 			// Beast refuses a Content-Length past the parser's limit while parsing the
 			// header, so answer that one rather than vanishing on the peer.
 			if (e == boost::beast::http::error::body_limit)
@@ -130,7 +131,7 @@ namespace fms
 			{
 				// Answer rather than close: a bare disconnect is indistinguishable
 				// from a network failure, so the peer cannot tell it was refused.
-				m_timer.cancel();
+				stop_request_timer();
 				reply_error(http::status::payload_too_large);
 				return;
 			}
@@ -143,7 +144,7 @@ namespace fms
 
 	void http_connection::on_read(const boost::system::error_code &e, std::size_t bytes_transferred)
 	{
-		m_timer.cancel();
+		stop_request_timer();
 		if (e)   // includes http::error::end_of_stream when the peer closes
 		{
 			// A chunked body is charged per chunk, so the limit can trip here rather
@@ -345,9 +346,10 @@ namespace fms
 
 	void http_connection::on_timeout(const boost::system::error_code &e)
 	{
-		// cancel() does not unqueue a completion that already fired, so check the
-		// deadline itself rather than trusting the error code.
-		if (!e && m_timer.expiry() <= boost::asio::steady_timer::clock_type::now())
+		// cancel() does not unqueue a completion that already fired, and the expiry is
+		// never moved, so a deadline test alone stays true once the request landed.
+		if (!e && m_awaiting_request
+			&& m_timer.expiry() <= boost::asio::steady_timer::clock_type::now())
 			close();
 	}
 
@@ -355,7 +357,7 @@ namespace fms
 	{
 		boost::system::error_code ec;
 		m_socket.close(ec);
-		m_timer.cancel();
+		stop_request_timer();
 		m_app_manager->delete_http_connection(m_id);
 	}
 }

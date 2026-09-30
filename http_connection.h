@@ -82,6 +82,14 @@ namespace fms
 		// session id and sequence validate against this peer.
 		bool body_limit_earned() const;
 
+		// Stops the idle/slow-request timer from closing this connection; a queued
+		// completion cannot be unqueued, so the flag is what it answers to.
+		void stop_request_timer()
+		{
+			m_awaiting_request = false;
+			m_timer.cancel();
+		}
+
 		void do_read();
 		void on_header(const boost::system::error_code &, std::size_t);
 		void on_read(const boost::system::error_code &, std::size_t);
@@ -105,6 +113,10 @@ namespace fms
 	private:
 		std::string m_cid;      // RTMPT session id for this connection (once opened)
 		std::size_t m_header_bytes{0};   // the read is split, so both halves are counted
+
+		// True only while the idle timer is the reason this connection is alive; a
+		// timer completion queued before the request arrived must not close it.
+		bool m_awaiting_request{false};
 	};
 
 	using http_connection_ptr = std::shared_ptr<http_connection>;
