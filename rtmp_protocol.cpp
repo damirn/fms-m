@@ -138,6 +138,11 @@ namespace fms
 			payload_len = static_cast<std::uint32_t>(tmp_buffer.size());
 		}
 
+		// The header's length field is 3 bytes; a longer body would be chunked out
+		// under a truncated length and desynchronise the peer.
+		if (payload_len > rtmp_header::eMaxMessageLength)
+			return false;
+
 		// write header
 		new_header.set_message_length(payload_len);
 		new_header.set_message_type(msg->type());

@@ -840,6 +840,33 @@ namespace
 	}
 }
 
+// The header's length field is 3 bytes wide.
+TEST_CASE("rtmp_protocol serialize: a body past the 3-byte length field is refused")
+{
+	std::uint32_t const len = rtmp_header::eMaxMessageLength + 1;
+	auto v = std::make_shared<rtmp_message_video_data>(len);
+	std::memset(v->data(), 0x11, len);
+	v->set_stream_id(7);
+	v->set_channel_id(6);
+
+	rtmp_protocol p(128);
+	byte_writer out;
+	rtmp_header nh;
+	rtmp_header ph;
+	CHECK_FALSE(p.serialize(out, v, nh, ph));
+	CHECK(out.size() == 0);
+
+	// One byte less fits.
+	auto ok = std::make_shared<rtmp_message_video_data>(rtmp_header::eMaxMessageLength);
+	std::memset(ok->data(), 0x11, rtmp_header::eMaxMessageLength);
+	ok->set_stream_id(7);
+	ok->set_channel_id(6);
+	byte_writer out2;
+	rtmp_header nh2;
+	rtmp_header ph2;
+	CHECK(p.serialize(out2, ok, nh2, ph2));
+}
+
 TEST_CASE("rtmp_protocol serialize: single-chunk video frame round-trips (direct payload_view)")
 {
 	auto const payload = pattern(20, 3);

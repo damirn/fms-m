@@ -60,6 +60,9 @@ namespace fms
 			return m_message_length;
 		}
 
+		// The wire field is 3 bytes: anything larger cannot be described.
+		static constexpr std::uint32_t eMaxMessageLength = 0xFFFFFF;
+
 		void set_message_length(std::uint32_t v)
 		{
 			m_message_length = v;
