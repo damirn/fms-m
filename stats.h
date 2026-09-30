@@ -69,15 +69,15 @@ namespace fms
 			, m_drift(o.m_drift.load(std::memory_order_relaxed))
 			, m_kbps(o.m_kbps.load(std::memory_order_relaxed))
 			, m_time(o.m_time)
-			, m_start_streaming_time(o.m_start_streaming_time)
+			, m_start_streaming_rep(o.m_start_streaming_rep.load(std::memory_order_relaxed))
 		{}
 		netstream_stats &operator=(const netstream_stats &) = delete;
 		std::uint32_t m_client;
 		std::string m_name;
 		bool m_is_published{false};
-		// The shared lock guards the map, not the entry, so each counter
-		// synchronises itself. m_name and m_is_published are written under the
-		// unique lock and only ever read from a snapshot copy.
+		// The shared lock guards the map, not the entry, so each counter and
+		// m_start_streaming_rep synchronises itself. m_name and m_is_published are
+		// written under the unique lock and only ever read from a snapshot copy.
 		std::atomic<std::uint32_t> m_bytes{0};
 		std::atomic<std::uint32_t> m_messages{0};
 		std::atomic<std::uint32_t> m_messages_dropped{0};
@@ -86,7 +86,21 @@ namespace fms
 		std::atomic<std::uint32_t> m_drift{0};
 		std::atomic<std::uint32_t> m_kbps{0};
 		std::chrono::system_clock::time_point m_time;
-		std::chrono::system_clock::time_point m_start_streaming_time;
+
+		// Written on the media path under the shared lock, so it synchronises
+		// itself like the counters above: held as the clock's representation.
+		std::atomic<std::chrono::system_clock::rep> m_start_streaming_rep{0};
+
+		std::chrono::system_clock::time_point start_streaming_time() const
+		{
+			return std::chrono::system_clock::time_point(
+				std::chrono::system_clock::duration(m_start_streaming_rep.load(std::memory_order_relaxed)));
+		}
+
+		void set_start_streaming_time(std::chrono::system_clock::time_point t)
+		{
+			m_start_streaming_rep.store(t.time_since_epoch().count(), std::memory_order_relaxed);
+		}
 	};
 
 	using netstream_stats_ptr = std::shared_ptr<netstream_stats>;

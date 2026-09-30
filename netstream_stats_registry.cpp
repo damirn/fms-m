@@ -76,14 +76,14 @@ namespace fms
 		{
 			if (i->second->m_messages == 0)
 			{
-				i->second->m_start_streaming_time = std::chrono::system_clock::now();
+				i->second->set_start_streaming_time(std::chrono::system_clock::now());
 				i->second->m_ts = ts;
 			}
 			else
 			{
 				std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
 				std::chrono::system_clock::duration const td = std::chrono::milliseconds(ts) - std::chrono::milliseconds(i->second->m_ts);
-				std::chrono::system_clock::time_point const calculated_ts = i->second->m_start_streaming_time + td;
+				std::chrono::system_clock::time_point const calculated_ts = i->second->start_streaming_time() + td;
 				std::chrono::system_clock::duration delta = now - calculated_ts + std::chrono::milliseconds(i->second->m_drift);
 				if (delta < std::chrono::system_clock::duration::zero())
 				{
@@ -145,7 +145,7 @@ namespace fms
 					if (!entry.second->m_name.starts_with("QOS!"))
 					{
 						netstream_stats_ptr const stats = std::make_shared<netstream_stats>(*(entry.second));
-						std::chrono::system_clock::duration const td = now - stats->m_start_streaming_time;
+						std::chrono::system_clock::duration const td = now - stats->start_streaming_time();
 						std::uint32_t kbps = 0;
 						if (std::chrono::duration_cast<std::chrono::seconds>(td).count() != 0)
 							kbps = stats->m_bytes / std::chrono::duration_cast<std::chrono::seconds>(td).count();

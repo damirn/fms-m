@@ -314,6 +314,15 @@ if(BUILD_TESTS)
   # basic_rtmp_connection is only linked into the server target, so the window
   # arithmetic had no unit coverage; clamp_window and the threshold test are
   # both header-visible.
+  add_executable(netstream_stats_race_test test/test_main.cpp
+    test/netstream_stats_race_test.cpp netstream_stats_registry.cpp logging.cpp)
+  target_link_libraries(netstream_stats_race_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME netstream_stats_race_test COMMAND netstream_stats_race_test)
+  if(APPLE)
+    set_tests_properties(netstream_stats_race_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   add_executable(window_ack_test test/test_main.cpp test/window_ack_test.cpp
     client_session.cpp rtmp_parser.cpp rtmp_header.cpp rtmp_message.cpp
     rtmp_protocol.cpp rtmp_so_message.cpp rtmp_handshaker.cpp rtmp_handshake.cpp
