@@ -78,3 +78,40 @@ TEST_CASE("netstream stats: the media path and a reader may run concurrently")
 	// The race between the shared-locked writer and the snapshot copy itself is
 	// only visible to ThreadSanitizer; run this under -DSANITIZE=thread for that.
 }
+
+// Three call sites depend on this copy carrying every field: it is the only thing
+// that makes a listed snapshot safe to read off the registry's lock, and a member
+// added later would be silently dropped with no compiler diagnostic.
+TEST_CASE("netstream stats: the snapshot copy carries every field")
+{
+	netstream_stats src(42);
+	src.m_name = "live/stream";
+	src.m_is_published = true;
+	src.m_bytes.store(1234);
+	src.m_messages.store(56);
+	src.m_messages_dropped.store(7);
+	src.m_ts.store(890);
+	src.m_delay.store(11);
+	src.m_drift.store(12);
+	src.m_kbps.store(13);
+	src.m_time = std::chrono::system_clock::now() - std::chrono::minutes(5);
+	src.set_start_streaming_time(std::chrono::system_clock::now() - std::chrono::minutes(3));
+
+	netstream_stats const copy(src);
+
+	CHECK(copy.m_client == src.m_client);
+	CHECK(copy.m_name == src.m_name);
+	CHECK(copy.m_is_published == src.m_is_published);
+	CHECK(copy.m_bytes.load() == 1234);
+	CHECK(copy.m_messages.load() == 56);
+	CHECK(copy.m_messages_dropped.load() == 7);
+	CHECK(copy.m_ts.load() == 890);
+	CHECK(copy.m_delay.load() == 11);
+	CHECK(copy.m_drift.load() == 12);
+	CHECK(copy.m_kbps.load() == 13);
+	CHECK(copy.m_time == src.m_time);
+	CHECK(copy.start_streaming_time() == src.start_streaming_time());
+
+	// A field added later is only covered once it is listed above; sizeof() cannot
+	// stand in for that, because the size differs between libc++ and libstdc++.
+}
