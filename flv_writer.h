@@ -30,7 +30,8 @@ namespace fms
 	protected:
 		void prepare_file(const std::string &);
 
-		void write_tag(std::uint8_t, std::uint32_t, std::uint32_t);
+		// False when the body cannot be described by the tag's 3-byte DataSize field.
+		[[nodiscard]] bool write_tag(std::uint8_t, std::uint32_t, std::uint32_t);
 		void write_previos_tag_size();
 
 		void write_uint32_3(std::uint32_t);
@@ -46,6 +47,9 @@ namespace fms
 		std::uint32_t m_start_epoch{0};
 		bool m_first_audio_frame{true};
 		bool m_first_video_frame{true};
+
+		// Largest body a tag's DataSize field can describe.
+		static constexpr std::uint32_t eMaxTagSize = 0xFFFFFF;
 
 		// FLV tag types.
 		static constexpr std::uint8_t eAudioFrame  = 0x08;

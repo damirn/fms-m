@@ -39,7 +39,8 @@ namespace fms
 			m_audio_ts += timestamp - m_prev_audio_ts;
 		m_prev_audio_ts = timestamp;
 
-		write_tag(eAudioFrame, size, m_audio_ts);
+		if (!write_tag(eAudioFrame, size, m_audio_ts))
+			return;
 		m_file.write(buf, size);
 		m_prev_tag_size = size + 11;
 		write_previos_tag_size();
@@ -62,7 +63,8 @@ namespace fms
 			m_video_ts += timestamp - m_prev_video_ts;
 		m_prev_video_ts = timestamp;
 
-		write_tag(eVideoFrame, size, m_video_ts);
+		if (!write_tag(eVideoFrame, size, m_video_ts))
+			return;
 		m_file.write(buf, size);
 		m_prev_tag_size = size + 11;
 		write_previos_tag_size();
@@ -70,7 +72,8 @@ namespace fms
 
 	void flv_writer::write_script(const char *buf, std::uint32_t size, std::uint32_t timestamp)
 	{
-		write_tag(eScriptFrame, size, timestamp);
+		if (!write_tag(eScriptFrame, size, timestamp))
+			return;
 		m_file.write(buf, size);
 		m_prev_tag_size = size + 11;
 		write_previos_tag_size();
@@ -110,12 +113,16 @@ namespace fms
 		write_previos_tag_size();
 	}
 
-	void flv_writer::write_tag(std::uint8_t type, std::uint32_t size, std::uint32_t timestamp)
+	bool flv_writer::write_tag(std::uint8_t type, std::uint32_t size, std::uint32_t timestamp)
 	{
+		if (size > eMaxTagSize)
+			return false;
+
 		m_file << type;
 		write_uint32_3(size);
 		write_timestamp(timestamp);
 		write_uint32_3(0);
+		return true;
 	}
 
 	void flv_writer::write_previos_tag_size()
