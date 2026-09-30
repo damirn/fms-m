@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "rtmp_so_message.h"
+#include "amf0.h"
 #include "byte_order.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
@@ -20,6 +21,8 @@ namespace fms
 
 		while(buffer.available() > 0)
 		{
+			if (m_events.size() >= eMaxEvents)
+				throw amf0_read_exception();
 			event_ptr const ev = deserialize_event(buffer);
 			m_events.push_back(ev);
 		}
@@ -56,6 +59,10 @@ namespace fms
 		{
 		case eUse:
 		case eRelease:
+			// Body-less to us, but len bytes are still on the wire; leaving them
+			// makes the next iteration read the body as an event type.
+			if (!buffer.try_skip(len))
+				throw amf0_read_exception();
 			break;
 		case eRequestChange:
 			deserialize_request_change_event(buffer, ev);
@@ -67,6 +74,8 @@ namespace fms
 			deserialize_request_remove_event(buffer, ev);
 			break;
 		default:
+			if (!buffer.try_skip(len))
+				throw amf0_read_exception();
 			break;
 		}
 
@@ -118,9 +127,7 @@ namespace fms
 		}
 		else if (!ev->m_name)
 		{
-			// The parser leaves m_name null for a zero-length body (eUse, eRelease,
-			// unknown types) and we echo a peer's own event list back. Emit the empty
-			// body it arrived as: those types carry no name, and the reader skips none.
+			// eUse/eRelease/unknown carry no name: emit the zero-length body.
 			buffer << zero;
 		}
 		else

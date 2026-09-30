@@ -157,32 +157,43 @@ TEST_CASE("SO codec: a truncated message is refused at every prefix")
 	}
 }
 
-TEST_CASE("SO codec: an unknown event type does not skip its body")
+TEST_CASE("SO codec: an event we do not parse still consumes its body")
 {
-	// Characterisation. deserialize_event reads the type and the length, then the
-	// switch's default case does nothing -- it never skips the `len` body bytes. So
-	// an unknown event with a payload desyncs the walk and the rest of the message
-	// is misread; here that means the next "event" is garbage and the message is
-	// refused. Safe (it throws, nothing is delivered) but not forward compatible:
-	// a peer sending a newer event type loses the whole message, not just that
-	// event. Skipping `len` in the default case would fix it.
+	// Unparsed bodies left on the wire are read as the next event's type.
 	std::vector<std::uint8_t> v = header("obj");
 	add_event(v, 0x7E, {0xAA, 0xBB});
+	add_event(v, so::eUse, {});
 
 	so m;
-	CHECK_FALSE(parses(v, m));
+	REQUIRE(parses(v, m));
+	REQUIRE(m.events().size() == 2);
+	CHECK(m.events().front()->m_type == 0x7E);
+	CHECK(m.events().back()->m_type == so::eUse);
 
-	// With an empty body there is nothing to skip, so the walk stays in step and a
-	// following known event is still read.
+	// eUse and eRelease are body-less to us and take the same path.
 	std::vector<std::uint8_t> w = header("obj");
-	add_event(w, 0x7E, {});
-	add_event(w, so::eUse, {});
+	add_event(w, so::eUse, {0x01, 0x02, 0x03});
+	add_event(w, so::eRelease, {});
 
 	so m2;
 	REQUIRE(parses(w, m2));
 	REQUIRE(m2.events().size() == 2);
-	CHECK(m2.events().front()->m_type == 0x7E);
-	CHECK(m2.events().back()->m_type == so::eUse);
+	CHECK(m2.events().front()->m_type == so::eUse);
+	CHECK(m2.events().back()->m_type == so::eRelease);
+}
+
+TEST_CASE("SO codec: the event list is capped")
+{
+	std::vector<std::uint8_t> v = header("obj");
+	for (std::size_t i = 0; i < so::eMaxEvents; ++i)
+		add_event(v, so::eUse, {});
+	so m;
+	REQUIRE(parses(v, m));
+	CHECK(m.events().size() == so::eMaxEvents);
+
+	add_event(v, so::eUse, {});
+	so m2;
+	CHECK_FALSE(parses(v, m2));
 }
 
 TEST_CASE("SO codec: serialize then deserialize preserves the message")
