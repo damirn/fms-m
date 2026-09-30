@@ -117,6 +117,10 @@ namespace fms
 		unsigned m_depth = 0;
 		unsigned m_write_depth = 0;
 
+		// Nodes one top-level write may emit; a shared referent re-expands per path.
+		static constexpr std::size_t eMaxWriteNodes = 1u << 20;
+		std::size_t m_write_nodes = 0;
+
 		// A string reference costs one wire byte but materializes a full copy;
 		// budget every string handed back, by value or by reference.
 		static constexpr std::size_t eMaxDecodedStringBytes = 32u << 20;

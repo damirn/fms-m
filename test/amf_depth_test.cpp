@@ -88,9 +88,7 @@ TEST_CASE("amf0: a truncated deep nest is refused rather than read past the end"
 	CHECK_FALSE(amf0_reads(v));
 }
 
-// Reference entries are registered before they are populated, so a peer can close
-// the loop; a cyclic graph must be refused at read, since the publisher's
-// metadata is re-serialised to every subscriber.
+// Entries are registered before population, so a reference can close a cycle.
 TEST_CASE("amf0: a self-referential object is refused at read")
 {
 	// object; key "a"; reference -> index 0 (the object being built); object end.
@@ -205,4 +203,41 @@ TEST_CASE("amf3: sealed property names are charged per object that materialises 
 	byte_reader r(v.data(), v.size());
 	amf3 a;
 	CHECK_THROWS_AS(a.read(r), amf3_read_exception);
+}
+
+// A graph can share a subtree; write() has no reference table and re-expands it
+// on every path that reaches it, so depth alone does not bound the walk.
+TEST_CASE("amf0 write: reference fan-out is bounded")
+{
+	auto chain = [](unsigned n) {
+		amf0_type_ptr node = std::make_shared<amf0_null>();
+		for (unsigned i = 0; i < n; ++i)
+		{
+			auto const o = std::make_shared<amf0_object>();
+			o->add_entry("a", node);
+			o->add_entry("b", node);   // same child twice: 2^n leaves when expanded
+			node = o;
+		}
+		return node;
+	};
+
+	// 2^10 nodes: well inside the budget, and the depth bound is untouched.
+	byte_writer ok;
+	CHECK_NOTHROW(amf0::write(ok, chain(10)));
+	CHECK(ok.size() > 0);
+
+	// 2^25 nodes if it were allowed to run; the budget stops it. Depth is 26,
+	// so eMaxDepth never fires and only the node budget can refuse this.
+	byte_writer big;
+	CHECK_THROWS_AS(amf0::write(big, chain(25)), amf0_write_exception);
+}
+
+TEST_CASE("amf0 write: the node budget resets between top-level writes")
+{
+	auto const leaf = std::make_shared<amf0_null>();
+	for (int i = 0; i < 3; ++i)
+	{
+		byte_writer w;
+		CHECK_NOTHROW(amf0::write(w, leaf));
+	}
 }

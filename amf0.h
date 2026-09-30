@@ -79,6 +79,9 @@ namespace fms
 		// it without hardcoding the value.
 		static constexpr unsigned eMaxDepth = 32;
 
+		// Nodes one top-level write may emit; a shared referent re-expands per path.
+		static constexpr std::size_t eMaxWriteNodes = 1u << 20;
+
 	private:
 		// AMF0 object reference table (spec: anonymous/typed objects and arrays can
 		// be sent by reference). 0-based by occurrence, reset at top-level read.

@@ -557,11 +557,13 @@ namespace fms
 
 	void amf0::write(byte_writer &buffer, const amf0_type_ptr& type)
 	{
-		// write() is static and runs on every io thread, so the bound is per-thread.
-		// A graph built in memory can still be cyclic; a cyclic walk has no other
-		// termination condition.
+		// Static, so both bounds are per-thread. Depth stops a cycle; the node
+		// budget stops reference fan-out, which depth does not see.
 		thread_local unsigned depth = 0;
-		if (++depth > eMaxDepth)
+		thread_local std::size_t nodes = 0;
+		if (depth == 0)
+			nodes = 0;
+		if (++depth > eMaxDepth || ++nodes > eMaxWriteNodes)
 		{
 			--depth;
 			throw amf0_write_exception();
