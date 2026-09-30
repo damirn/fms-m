@@ -33,7 +33,6 @@ namespace fms
 		// False if the key could not be exported; the buffer is left untouched, so a
 		// caller must not ship it.
 		[[nodiscard]] bool copy_public_key(std::uint8_t *, std::uint16_t);
-		void copy_private_key(std::uint8_t *, std::uint16_t);
 
 	protected:
 		void init() noexcept;

@@ -67,8 +67,4 @@ namespace fms
 		return evp_dh_pub(m_pkey, key, size) > 0;
 	}
 
-	void dh::copy_private_key(std::uint8_t *key, std::uint16_t size)
-	{
-		evp_dh_priv(m_pkey, key, size);
-	}
 }
