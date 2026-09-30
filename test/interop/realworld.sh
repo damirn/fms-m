@@ -409,10 +409,22 @@ if [ -x "$CLIENT" ]; then
 	# The server writes into $WORK/rec, so "../../" from there lands beside $WORK,
 	# not in it. Check the directory the name actually resolves to.
 	esc_up="$(dirname "$WORK")"
+
+	# Positive control first, on the same path and the same timing as the cases
+	# below: without it a server that never records at all passes every check.
+	"$CLIENT" -r "rtmp://127.0.0.1:$RTMP_PORT/media" -c publish -s "f3_control_$$" \
+		-i "$WORK/h264_aac.flv" -R -n >>"$WORK/f3.log" 2>&1 &
+	P=$!; track $P; sleep 12; kill $P 2>/dev/null; sleep 2
+	if ls "$WORK/rec"/f3_control_*.flv >/dev/null 2>&1; then
+		ok "F3 control: a benign name is recorded"
+	else
+		bad "F3 control: nothing was recorded, so the refusals below prove nothing"
+	fi
+
 	for nm in "../../f3_escape_$$" "/tmp/f3_abs_$$"; do
 		"$CLIENT" -r "rtmp://127.0.0.1:$RTMP_PORT/media" -c publish -s "$nm" \
 			-i "$WORK/h264_aac.flv" -R -n >>"$WORK/f3.log" 2>&1 &
-		P=$!; track $P; sleep 4; kill $P 2>/dev/null
+		P=$!; track $P; sleep 12; kill $P 2>/dev/null; sleep 2
 	done
 	sleep 1
 
@@ -459,8 +471,7 @@ if [ -x "$TCPUB" ] && [ -x "$TCCONN" ]; then
 	[ "$h1_fail" -eq 0 ] && ok "H1 all 20 churn cycles connected" \
 		|| bad "H1 $h1_fail of 20 churn cycles failed to connect"
 
-	# Session teardown erases two maps keyed by endpoint and peer id; a wrong erase
-	# leaves a later session unreachable rather than failing loudly at the time.
+	# A later session must still reach both maps after teardown.
 	"$TCCONN" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#churn" >"$WORK/h1_after.log" 2>&1 &
 	HC=$!; track $HC; sleep 4; kill $HC 2>/dev/null
 	grep -q 'Connect.Success' "$WORK/h1_after.log" \
@@ -488,7 +499,8 @@ ident=$(curl -s -m 5 -X POST -H 'Content-Type: application/x-fcs' --data-binary 
 case "$ident" in
 	0.0.0.0) ok "G1 ident answered with the bind address" ;;
 	127.0.0.1) bad "G1 ident disclosed the socket address ($ident)" ;;
-	*) skip "G1 unexpected ident reply '$ident'" ;;
+	# A timeout or a changed format answers nothing; that is a failure, not a skip.
+	*) bad "G1 no usable ident reply '$ident'" ;;
 esac
 
 echo "[G2] RTMPT body allowance before a session exists"
@@ -499,8 +511,11 @@ big=$(head -c 2000000 /dev/zero | curl -s -m 10 -o /dev/null -w '%{http_code}' \
 	-X POST -H 'Content-Type: application/x-fcs' --data-binary @- \
 	"http://127.0.0.1:$RTMPT_PORT/open/1" 2>/dev/null)
 [ "$small" = "200" ] && ok "G2 a 900KB body is accepted" || bad "G2 900KB body rejected ($small)"
-[ "$big" = "200" ] && bad "G2 a 2MB body was accepted without a session" \
-	|| ok "G2 a 2MB body is refused without a session"
+case "$big" in
+	200) bad "G2 a 2MB body was accepted without a session" ;;
+	000|"") bad "G2 no answer to the 2MB body (curl reported '$big'), so nothing was proven" ;;
+	*) ok "G2 a 2MB body is refused without a session ($big)" ;;
+esac
 
 if command -v python3 >/dev/null 2>&1; then
 	echo "[G3] a control message before connect does not drop the client"
@@ -513,8 +528,9 @@ if command -v python3 >/dev/null 2>&1; then
 	echo "[G4] a zero acknowledgement window must not ack every read"
 	g4=$(python3 "$ROOT/test/interop/rtmp_probe.py" zero-window "$RTMP_PORT" 2>/dev/null)
 	g4b=${g4##* }
-	# Each unnecessary acknowledgement is 16 bytes on the wire; 40 paced sends make
-	# the difference ~640 bytes. Threshold sits between the two observed values.
+	# Each unnecessary acknowledgement is 16 bytes; 40 paced sends make the
+	# difference ~640 bytes. The bulk of the count is the 40 connect responses, so
+	# the threshold tracks those too and moves if the _result object changes.
 	if [ -n "$g4b" ] && [ "$g4b" -lt 11800 ] 2>/dev/null; then
 		ok "G4 zero window ignored ($g4b bytes returned)"
 	else

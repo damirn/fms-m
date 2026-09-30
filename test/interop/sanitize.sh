@@ -10,9 +10,9 @@
 #   cmake -S . -B build-asan  -DSANITIZE=address -DCMAKE_BUILD_TYPE=RelWithDebInfo
 # then: test/interop/sanitize.sh build-tsan/fms-m
 #
-# Note: LeakSanitizer is unavailable on Apple platforms, so leak checking needs a
-# Linux build (the Dockerfile takes --build-arg SANITIZE=address).
-set -u
+# LeakSanitizer is unavailable on Apple platforms, so leak checking needs a Linux
+# build (the Dockerfile takes --build-arg SANITIZE=address).
+set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
@@ -24,6 +24,19 @@ RTMP_PORT=28600; RTMPT_PORT=28601; RTMFP_PORT=28602
 DURATION="${DURATION:-18}"
 
 [ -x "$FMS" ] || { echo "no sanitizer build at $FMS"; exit 2; }
+
+# A non-sanitized binary produces no reports and would exit green.
+if ! nm "$FMS" 2>/dev/null | grep -qE '__(tsan|asan|ubsan)_'; then
+	echo "$FMS has no sanitizer runtime linked; build with -DSANITIZE=" >&2
+	exit 2
+fi
+
+# Both workloads are conditional below; without either, a green run means nothing.
+[ -x "$CLIENT" ] || [ -x "$RTMFP_CPP/tcpublish" ] || {
+	echo "neither $CLIENT nor $RTMFP_CPP/tcpublish is present; nothing would run" >&2
+	exit 2
+}
+
 mkdir -p "$WORK/rec" "$WORK/logs"
 
 command -v ffmpeg >/dev/null 2>&1 || { echo "ffmpeg required"; exit 2; }
@@ -35,8 +48,14 @@ ffmpeg -loglevel quiet -f lavfi -i "testsrc=d=$((DURATION + 10)):s=320x240" \
 # prefix for all three: the runtime parses every *SAN_OPTIONS it is given and the
 # last log_path wins, so separate paths would silently land in one file anyway.
 export TSAN_OPTIONS="halt_on_error=0:log_path=$WORK/san"
-export ASAN_OPTIONS="halt_on_error=0:detect_leaks=0:log_path=$WORK/san"
+# detect_leaks is unsupported on Apple and is the whole point on Linux.
+if [ "$(uname -s)" = "Darwin" ]; then DETECT_LEAKS=0; else DETECT_LEAKS=1; fi
+export ASAN_OPTIONS="halt_on_error=0:detect_leaks=$DETECT_LEAKS:log_path=$WORK/san"
 export UBSAN_OPTIONS="print_stacktrace=1:log_path=$WORK/san"
+
+for p in "$RTMP_PORT" "$RTMPT_PORT"; do
+	nc -z 127.0.0.1 "$p" 2>/dev/null && { echo "port $p already bound; a stale server would be driven instead" >&2; exit 2; }
+done
 
 "$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" -t 4 \
 	-o "$WORK/rec" -P "$WORK/logs" >"$WORK/server.out" 2>&1 &
@@ -68,10 +87,13 @@ for _ in $(seq 1 15); do printf '\x03' | nc -w 1 127.0.0.1 "$RTMP_PORT" >/dev/nu
 echo "  15 connections abandoned mid-handshake"
 
 sleep "$DURATION"
+kill -0 "$SRV" 2>/dev/null || { echo "server exited during the workload; see $WORK/server.out" >&2; cat "$WORK"/san.* 2>/dev/null; exit 1; }
 [ -n "${CLIENT:-}" ] && pkill -f "$(basename "$CLIENT")" 2>/dev/null
 pkill -f "$RTMFP_CPP/tc" 2>/dev/null
 sleep 2
-kill -INT "$SRV" 2>/dev/null; sleep 3; kill -9 "$SRV" 2>/dev/null
+# Long enough for the at-exit leak check and the report flush before SIGKILL.
+kill -INT "$SRV" 2>/dev/null; sleep 10; kill -9 "$SRV" 2>/dev/null
+wait "$SRV" 2>/dev/null
 
 echo
 # Attribute by signature, not by file name: all three write to the same prefix.

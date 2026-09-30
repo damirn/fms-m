@@ -49,17 +49,6 @@ def read_for(s, seconds):
             pass
     return out
 
-def count_acks(buf):
-    # Count type-0x03 (BytesRead/Acknowledgement) messages in a fmt-0 chunk stream.
-    n, i = 0, 0
-    while i + 12 <= len(buf):
-        if (buf[i] & 0xC0) == 0 and buf[i + 7] == 0x03:
-            n += 1
-            i += 12 + 4
-            continue
-        i += 1
-    return n
-
 def main():
     mode, port = sys.argv[1], int(sys.argv[2])
     s = socket.create_connection(('127.0.0.1', port), timeout=10)
