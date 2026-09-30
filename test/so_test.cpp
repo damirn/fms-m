@@ -382,6 +382,74 @@ TEST_CASE("so_manager: stored properties stay within what a Use reply can carry"
 	CHECK(change_value(r, "k0") == "v2");
 }
 
+TEST_CASE("so_manager: a send-message event does not swallow the events after it")
+{
+	// The reply cap has to measure the reply, not the request: a request that leads
+	// with sendMessage still has every later event processed.
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	do_use(sm, "obj", 2);
+
+	auto m = make_so("obj");
+	REQUIRE(m->add_event(ev(SO::eSendMessage)));
+	for (std::size_t i = 0; i < SO::eMaxEvents - 1; ++i)
+	{
+		auto e = ev(SO::eRequestChange);
+		e->m_name = std::make_shared<amf0_string>("k" + std::to_string(i));
+		e->m_value = std::make_shared<amf0_string>("v");
+		REQUIRE(m->add_event(e));
+	}
+
+	rtmp_message_ptr result;
+	REQUIRE(sm.handle_so(m, 1, result));
+
+	// A fresh client's Use reply replays what is stored, so it shows every property
+	// that landed -- not just the ones before the cap tripped.
+	std::size_t stored = 0;
+	auto const replay = use_reply(sm, "obj", 3);
+	REQUIRE(replay);
+	for (std::size_t i = 0; i < SO::eMaxEvents - 1; ++i)
+		if (change_value(replay, "k" + std::to_string(i)) == "v")
+			++stored;
+	CHECK(stored == std::min<std::size_t>(SO::eMaxEvents - 1, so_manager::eMaxProperties));
+}
+
+TEST_CASE("so_manager: a use reply is complete even when the reply already has events")
+{
+	// A change reply occupies a slot first, so the use answer cannot also fit in
+	// the shared reply -- it has to arrive whole in its own message.
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	for (std::size_t i = 0; i < so_manager::eMaxProperties; ++i)
+		REQUIRE(do_change(sm, "obj", 1, "k" + std::to_string(i), "v"));
+
+	auto m = make_so("obj");
+	auto c = ev(SO::eRequestChange);
+	c->m_name = std::make_shared<amf0_string>("k0");
+	c->m_value = std::make_shared<amf0_string>("v2");
+	REQUIRE(m->add_event(c));
+	REQUIRE(m->add_event(ev(SO::eUse)));
+
+	sk.recs.clear();
+	rtmp_message_ptr result;
+	REQUIRE(sm.handle_so(m, 2, result));
+
+	// Find the use answer, wherever it was delivered, and require it complete.
+	so_ptr answer = std::dynamic_pointer_cast<SO>(result);
+	if (!answer || count_events(answer, SO::eUseSuccess) == 0)
+		for (auto const &r : sk.recs)
+			if (r.client == 2 && r.so && count_events(r.so, SO::eUseSuccess) == 1)
+				answer = r.so;
+
+	REQUIRE(answer);
+	CHECK(count_events(answer, SO::eUseSuccess) == 1);
+	CHECK(count_events(answer, SO::eClear) == 1);
+	CHECK(count_events(answer, SO::eChange) == so_manager::eMaxProperties);
+	CHECK(answer->events().size() <= SO::eMaxEvents);
+}
+
 TEST_CASE("so_manager: one request cannot make a reply exceed the event cap")
 {
 	sink sk;
