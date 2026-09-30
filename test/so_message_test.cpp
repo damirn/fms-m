@@ -281,7 +281,7 @@ TEST_CASE("SO codec: a declared length longer than the body does not eat the nex
 	CHECK(m.events().back()->m_type == so::eUse);
 }
 
-TEST_CASE("SO codec: a declared length shorter than the body does not desync")
+TEST_CASE("SO codec: a declared length shorter than the name is refused, not desynced")
 {
 	std::vector<std::uint8_t> body = short_string("prop");
 	body.push_back(0x05);
@@ -290,12 +290,26 @@ TEST_CASE("SO codec: a declared length shorter than the body does not desync")
 	add_event(v, so::eRequestRemove, body, 2);  // only the two name-length bytes
 	add_event(v, so::eUse, {});
 
+	// The name reader runs out inside the declared body, so the message is refused
+	// outright rather than reading the trailing bytes as a fresh event header.
 	so m;
-	// Either the short body is refused outright or the list stays framed; what it
-	// must not do is read the trailing bytes as a fresh event header.
-	if (parses(v, m))
-	{
-		REQUIRE(m.events().size() == 2);
-		CHECK(m.events().back()->m_type == so::eUse);
-	}
+	CHECK_FALSE(parses(v, m));
+}
+
+TEST_CASE("SO codec: an event body longer than what it parses advances to its declared end")
+{
+	std::vector<std::uint8_t> body = short_string("prop");
+	body.push_back(0x05);   // trailing junk inside the declared body
+
+	std::vector<std::uint8_t> v = header("obj");
+	add_event(v, so::eRequestRemove, body);   // declared length covers the junk
+	add_event(v, so::eUse, {});
+
+	so m;
+	REQUIRE(parses(v, m));
+	REQUIRE(m.events().size() == 2);
+	CHECK(m.events().front()->m_type == so::eRequestRemove);
+	REQUIRE(m.events().front()->m_name);
+	CHECK(m.events().front()->m_name->value() == "prop");
+	CHECK(m.events().back()->m_type == so::eUse);   // the junk was not read as a header
 }
