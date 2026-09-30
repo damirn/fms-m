@@ -300,7 +300,7 @@ namespace fms
 		using fragment_map_t = std::map<vlu_t, fragment_ptr>;
 		// False when the reassembly is refused and the flow rejected. On true the
 		// message is m_data[0, m_msg_len), which may legitimately be empty.
-		bool create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
+		[[nodiscard]] bool create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
 
 		vlu_t m_flow_id;
 		vlu_t m_stream_id{0};

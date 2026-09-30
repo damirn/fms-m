@@ -76,11 +76,11 @@ namespace fms
 		std::string tunnel_address(const request_t &) const;
 
 		// Parse the target's sequence segment. False on anything but all digits in range.
-		static bool parse_seq(const std::string &, std::uint32_t &);
+		[[nodiscard]] static bool parse_seq(const std::string &, std::uint32_t &);
 
 		// True when this request has earned the generous body limit: a POST whose
 		// session id and sequence validate against this peer.
-		bool body_limit_earned() const;
+		[[nodiscard]] bool body_limit_earned() const;
 
 		// Stops the idle/slow-request timer from closing this connection; a queued
 		// completion cannot be unqueued, so the flag is what it answers to.
