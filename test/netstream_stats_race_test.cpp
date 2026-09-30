@@ -41,12 +41,27 @@ TEST_CASE("netstream stats: the media path and a reader may run concurrently")
 		}
 	});
 
-	// The admin thread snapshots, and qos_reporter reads the live object.
+	// The admin thread snapshots, and qos_reporter reads the live object. Each field
+	// is written once per stream, so every value a snapshot yields has to be one of
+	// the two the writer can produce -- a torn read of the 64-bit start-time
+	// representation is visible here without a sanitizer. The counters are separate
+	// atomics, so they are checked individually and not as a pair.
+	auto const t0 = std::chrono::system_clock::now();
+	std::atomic<std::uint64_t> bad{0};
 	std::thread reader([&] {
 		while (!stop.load(std::memory_order_relaxed))
 		{
 			for (auto const &s : reg.list())
-				(void)s->start_streaming_time();
+			{
+				if (std::uint32_t const b = s->m_bytes.load(std::memory_order_relaxed); b != 0 && b != 1024)
+					bad.fetch_add(1, std::memory_order_relaxed);
+				if (std::uint32_t const m = s->m_messages.load(std::memory_order_relaxed); m != 0 && m != 1)
+					bad.fetch_add(1, std::memory_order_relaxed);
+				auto const started = s->start_streaming_time();
+				if (started.time_since_epoch().count() != 0
+					&& (started < t0 || started > std::chrono::system_clock::now()))
+					bad.fetch_add(1, std::memory_order_relaxed);
+			}
 			reads.fetch_add(1, std::memory_order_relaxed);
 		}
 	});
@@ -58,4 +73,8 @@ TEST_CASE("netstream stats: the media path and a reader may run concurrently")
 
 	CHECK(reads.load() > 0);     // the two really did overlap
 	CHECK(opened.load() > 32);
+	CHECK(bad.load() == 0);
+
+	// The race between the shared-locked writer and the snapshot copy itself is
+	// only visible to ThreadSanitizer; run this under -DSANITIZE=thread for that.
 }
