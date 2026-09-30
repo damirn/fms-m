@@ -44,18 +44,18 @@ namespace fms
 		try
 		{
 			m_pkey = evp_dh_keygen(m_dh_key, eKeySize, 2);
-		}
-		catch (const std::runtime_error &)
-		{
-			m_pkey = nullptr;   // users check pub_key(); nothing here may unwind
-		}
-		if (m_pkey == nullptr)
-			return;   // pub_key() stays empty; every user checks it
+			if (m_pkey == nullptr)
+				return;   // pub_key() stays empty; every user checks it
 
-		// Our public part as big-endian bytes (at most the prime size).
-		m_pub_key.resize(eKeySize);
-		int const n = evp_dh_pub(m_pkey, m_pub_key.data(), eKeySize);
-		m_pub_key.resize(n > 0 ? static_cast<std::size_t>(n) : 0);   // -1 on failure
+			// Our public part as big-endian bytes (at most the prime size).
+			m_pub_key.resize(eKeySize);
+			int const n = evp_dh_pub(m_pkey, m_pub_key.data(), eKeySize);
+			m_pub_key.resize(n > 0 ? static_cast<std::size_t>(n) : 0);   // -1 on failure
+		}
+		catch (...)
+		{
+			m_pub_key.clear();   // nothing here may unwind: users check pub_key()
+		}
 	}
 
 	bool dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size)
