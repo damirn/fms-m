@@ -57,6 +57,66 @@ namespace
 		return v;
 	}
 
+	void put_u29(std::vector<std::uint8_t> &v, std::uint32_t n)
+	{
+		if (n < 0x80)
+			v.push_back(static_cast<std::uint8_t>(n));
+		else if (n < 0x4000)
+		{
+			v.push_back(static_cast<std::uint8_t>((n >> 7) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(n & 0x7f));
+		}
+		else if (n < 0x200000)
+		{
+			v.push_back(static_cast<std::uint8_t>((n >> 14) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(((n >> 7) & 0x7f) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(n & 0x7f));
+		}
+		else
+		{
+			v.push_back(static_cast<std::uint8_t>((n >> 22) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(((n >> 15) & 0x7f) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(((n >> 8) & 0x7f) | 0x80));
+			v.push_back(static_cast<std::uint8_t>(n & 0xff));
+		}
+	}
+
+	// One AVMPLUS container holding an AMF3 array whose first element is an inline
+	// string of `len` bytes and whose remaining `refs` elements reference it. Each
+	// reference costs two wire bytes and materializes a full copy.
+	std::vector<std::uint8_t> amf3_string_fanout(std::uint32_t len, std::uint32_t refs)
+	{
+		std::vector<std::uint8_t> v;
+		v.push_back(amf0_type::eAMF0AMF3Container);
+		v.push_back(amf3_type::eAMF3Array);
+		put_u29(v, ((refs + 1) << 1) | 1u);
+		v.push_back(0x01);                          // empty key: no associative part
+		v.push_back(amf3_type::eAMF3String);
+		put_u29(v, (len << 1) | 1u);
+		v.insert(v.end(), len, static_cast<std::uint8_t>('x'));
+		for (std::uint32_t i = 0; i < refs; ++i)
+		{
+			v.push_back(amf3_type::eAMF3String);
+			v.push_back(0x00);                      // reference to index 0
+		}
+		return v;
+	}
+
+	// An AMF0 strict array of `count` such containers.
+	std::vector<std::uint8_t> amf0_array_of_fanouts(std::uint32_t count, std::uint32_t len, std::uint32_t refs)
+	{
+		std::vector<std::uint8_t> v;
+		v.push_back(amf0_type::eAMF0StrictArray);
+		v.push_back(static_cast<std::uint8_t>(count >> 24));
+		v.push_back(static_cast<std::uint8_t>(count >> 16));
+		v.push_back(static_cast<std::uint8_t>(count >> 8));
+		v.push_back(static_cast<std::uint8_t>(count));
+		std::vector<std::uint8_t> const one = amf3_string_fanout(len, refs);
+		for (std::uint32_t i = 0; i < count; ++i)
+			v.insert(v.end(), one.begin(), one.end());
+		return v;
+	}
+
 	// n nested AMF0 objects whose innermost value is an AVMPLUS container holding
 	// m nested AMF3 objects: the shape where the two depth counters meet.
 	std::vector<std::uint8_t> mixed_amf0_amf3(unsigned n, unsigned m)
@@ -426,4 +486,39 @@ TEST_CASE("amf: a mixed AMF0/AMF3 graph the reader accepts can be written back")
 			byte_writer out;
 			CHECK_NOTHROW(amf0::write(out, value));
 		}
+}
+
+// The AMF0 and AMF3 string allowances are one budget: a message that spends it
+// inside one container cannot spend it again inside the next.
+TEST_CASE("amf: the AMF3 decode budget is shared across AVMPLUS containers")
+{
+	constexpr std::uint32_t len = 65536;
+	constexpr std::uint32_t refs = 256;   // (refs + 1) * len is just under the cap
+
+	// One container stays inside the allowance.
+	{
+		std::vector<std::uint8_t> const wire = amf0_array_of_fanouts(1, len, refs);
+		byte_reader r(wire.data(), wire.size());
+		amf0 codec;
+		CHECK_NOTHROW(codec.read(r));
+	}
+
+	// Three spend it three times over: ~200 KB of wire for ~50 MB of heap.
+	{
+		std::vector<std::uint8_t> const wire = amf0_array_of_fanouts(3, len, refs);
+		byte_reader r(wire.data(), wire.size());
+		amf0 codec;
+		CHECK_THROWS_AS(codec.read(r), amf3_read_exception);
+	}
+
+	// A fresh top-level read starts with the whole allowance again.
+	{
+		std::vector<std::uint8_t> const wire = amf0_array_of_fanouts(1, len, refs);
+		amf0 codec;
+		for (int i = 0; i < 3; ++i)
+		{
+			byte_reader r(wire.data(), wire.size());
+			CHECK_NOTHROW(codec.read(r));
+		}
+	}
 }
