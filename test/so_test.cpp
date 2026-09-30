@@ -90,6 +90,16 @@ namespace
 		sm.handle_so(s, client, r);
 	}
 
+	// The Use reply, so a refused use is distinguishable from an accepted one.
+	so_ptr use_reply(so_manager &sm, const std::string &name, std::uint32_t client)
+	{
+		auto s = make_so(name);
+		REQUIRE(s->add_event(ev(SO::eUse)));
+		rtmp_message_ptr r;
+		sm.handle_so(s, client, r);
+		return std::dynamic_pointer_cast<SO>(r);
+	}
+
 	so_ptr do_change(so_manager &sm, const std::string &name, std::uint32_t client, const std::string &k, const std::string &v)
 	{
 		auto s = make_so(name);
@@ -388,4 +398,46 @@ TEST_CASE("so_manager: one request cannot make a reply exceed the event cap")
 	byte_reader in(out.data(), out.size());
 	auto const parsed = std::make_shared<SO>();
 	CHECK_NOTHROW(parsed->deserialize(in));
+}
+
+TEST_CASE("so_manager: one connection's object count is bounded")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+
+	for (std::size_t i = 0; i < so_manager::eMaxObjectsPerConnection; ++i)
+		CHECK(has_event(use_reply(sm, "o" + std::to_string(i), 1), SO::eUseSuccess));
+	REQUIRE(sm.size() == so_manager::eMaxObjectsPerConnection);
+
+	// One more from the same client takes nothing and is not acknowledged.
+	CHECK_FALSE(has_event(use_reply(sm, "one-too-many", 1), SO::eUseSuccess));
+	CHECK(sm.size() == so_manager::eMaxObjectsPerConnection);
+
+	// Re-using an object it already holds still works: the bound is on distinct ones.
+	CHECK(has_event(use_reply(sm, "o0", 1), SO::eUseSuccess));
+
+	// Another connection has its own allowance, and may join an existing object.
+	CHECK(has_event(use_reply(sm, "o0", 2), SO::eUseSuccess));
+	CHECK(has_event(use_reply(sm, "fresh", 2), SO::eUseSuccess));
+
+	// Releasing hands the slot back.
+	auto rel = make_so("o1");
+	REQUIRE(rel->add_event(ev(SO::eRelease)));
+	rtmp_message_ptr ignored;
+	sm.handle_so(rel, 1, ignored);
+	CHECK(has_event(use_reply(sm, "after-release", 1), SO::eUseSuccess));
+}
+
+TEST_CASE("so_manager: a departed connection's allowance is returned")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+
+	for (std::size_t i = 0; i < so_manager::eMaxObjectsPerConnection; ++i)
+		do_use(sm, "o" + std::to_string(i), 1);
+	CHECK_FALSE(has_event(use_reply(sm, "one-too-many", 1), SO::eUseSuccess));
+
+	sm.remove_connection(1);
+	CHECK(sm.size() == 0);
+	CHECK(has_event(use_reply(sm, "one-too-many", 1), SO::eUseSuccess));
 }
