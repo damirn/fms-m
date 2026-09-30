@@ -25,8 +25,12 @@ DURATION="${DURATION:-18}"
 
 [ -x "$FMS" ] || { echo "no sanitizer build at $FMS"; exit 2; }
 
-# A non-sanitized binary produces no reports and would exit green.
-if ! nm "$FMS" 2>/dev/null | grep -qE '__(tsan|asan|ubsan)_'; then
+# A non-sanitized binary produces no reports and would exit green. grep -c rather
+# than -q: -q closes the pipe on the first match, and under `pipefail` nm's
+# SIGPIPE then reads as "not sanitized" on any binary large enough to still be
+# writing.
+sanitizer_syms="$(nm "$FMS" 2>/dev/null | grep -cE '__(tsan|asan|ubsan)_')" || true
+if [ "${sanitizer_syms:-0}" -eq 0 ]; then
 	echo "$FMS has no sanitizer runtime linked; build with -DSANITIZE=" >&2
 	exit 2
 fi
