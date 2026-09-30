@@ -35,7 +35,8 @@ namespace fms::remote_relay
 		// cooldown entries as it goes, and refuses once eMaxInFlight are alive.
 		bool allow(const std::string &key, clock::time_point now);
 
-		// Give the slot back when the spawn it was taken for did not happen.
+		// Give the slot back when no spawn was attempted at all. A spawn that was
+		// attempted and failed keeps its cooldown, so retries stay throttled.
 		void release(const std::string &key);
 
 		void note_spawned(::pid_t pid);

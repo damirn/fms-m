@@ -130,7 +130,8 @@ namespace fms::remote_relay
 			::pid_t pid = 0;
 			if (int const rc = ::posix_spawnp(&pid, argv[0], nullptr, nullptr, argv.data(), environ); rc != 0)
 			{
-				helper_throttle().release(key);
+				// The cooldown entry stays: a spawn that keeps failing must be
+				// throttled like one that succeeds, or every play() retries it.
 				BOOST_LOG(lg::get()) << "cannot spawn helper '" << args[0] << "': " << std::strerror(rc);
 			}
 			else

@@ -126,3 +126,22 @@ TEST_CASE("relay throttle: spawn_helper takes no slot for a target it will not u
 	CHECK(helper_throttle().allow("rtmp://origin/live", now));
 	helper_throttle().release("rtmp://origin/live");
 }
+
+// A spawn that was attempted and failed must stay throttled: releasing the slot
+// there let a peer retry posix_spawnp once per play() message.
+TEST_CASE("relay throttle: a failed spawn keeps its cooldown")
+{
+	static char a0[] = "relay_throttle_test";
+	static char a1[] = "-H";
+	static char a2[] = "/nonexistent/fms_helper";
+	char *argv[] = {a0, a1, a2};
+	REQUIRE(fms::config::instance()->parse_cli(3, argv));
+
+	std::string const key = "rtmp://origin/failapp/live";
+	helper_throttle().release(key);
+
+	spawn_helper("rtmp://origin/failapp", "live");   // posix_spawnp fails: ENOENT
+	CHECK_FALSE(helper_throttle().allow(key, clock_t_::now()));
+
+	helper_throttle().release(key);
+}
