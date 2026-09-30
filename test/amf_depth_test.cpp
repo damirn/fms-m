@@ -235,11 +235,25 @@ TEST_CASE("amf0 write: reference fan-out is bounded")
 
 TEST_CASE("amf0 write: the node budget resets between top-level writes")
 {
-	auto const leaf = std::make_shared<amf0_null>();
+	// Three nulls pass whether the budget resets or not. Each write here spends
+	// most of the allowance, so a second one only succeeds if it was reset.
+	auto chain = [](unsigned n) {
+		amf0_type_ptr node = std::make_shared<amf0_null>();
+		for (unsigned i = 0; i < n; ++i)
+		{
+			auto const o = std::make_shared<amf0_object>();
+			o->add_entry("a", node);
+			o->add_entry("b", node);   // same child twice: 2^n leaves when expanded
+			node = o;
+		}
+		return node;
+	};
+
+	amf0_type_ptr const half = chain(19);   // ~2^19 nodes: half the allowance
 	for (int i = 0; i < 3; ++i)
 	{
 		byte_writer w;
-		CHECK_NOTHROW(amf0::write(w, leaf));
+		CHECK_NOTHROW(amf0::write(w, half));
 	}
 }
 
