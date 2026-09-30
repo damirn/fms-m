@@ -467,6 +467,7 @@ TEST_CASE("amf0 write: byte fan-out is bounded independently of node count")
 // reader accepts must survive being written back out.
 TEST_CASE("amf: a mixed AMF0/AMF3 graph the reader accepts can be written back")
 {
+	unsigned accepted = 0;
 	for (unsigned n = 0; n <= 20; ++n)
 		for (unsigned m = 0; m <= 20; ++m)
 		{
@@ -483,9 +484,15 @@ TEST_CASE("amf: a mixed AMF0/AMF3 graph the reader accepts can be written back")
 				continue;   // refused at read: nothing to write
 			}
 			REQUIRE(value);
+			++accepted;
 			byte_writer out;
 			CHECK_NOTHROW(amf0::write(out, value));
 		}
+
+	// Every pair refusing at read would satisfy the loop above without writing
+	// anything, so the count is what makes it an assertion.
+	CHECK(accepted > 0);
+	CHECK(accepted == 386);
 }
 
 // The AMF0 and AMF3 string allowances are one budget: a message that spends it
