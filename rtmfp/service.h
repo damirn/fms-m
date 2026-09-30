@@ -36,7 +36,7 @@ namespace fms
 			boost::asio::post(m_io_context, [this]() { handle_notify(); });
 		}
 
-		bool handle_net_group(group_ptr &, const session_ptr &) override;
+		[[nodiscard]] bool handle_net_group(group_ptr &, const session_ptr &) override;
 
 		boost::asio::io_context &io_context() const override
 		{

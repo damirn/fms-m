@@ -143,7 +143,7 @@ namespace
 		void handle_internal_message(rtmp_message_ptr msg) override
 		{
 			if (msg->type() == rtmp_message::eMessageChunkSize)
-				parser.set_chunk_size(std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg)->chunk_size());
+				(void)parser.set_chunk_size(std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg)->chunk_size());   // out of range: keep the current size
 			internals.push_back(msg->type());
 		}
 	};

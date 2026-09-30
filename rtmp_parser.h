@@ -62,7 +62,7 @@ namespace fms
 		// Apply a peer SetChunkSize (the sink forwards it here -- it changes how the
 		// parser frames subsequent chunks). False, and unchanged, outside spec 5.4.1's
 		// 1..0xFFFFFF; the invariant lives here so no caller can skip it.
-		bool set_chunk_size(std::uint32_t n)
+		[[nodiscard]] bool set_chunk_size(std::uint32_t n)
 		{
 			if (n < 1 || n > eMaxChunkSize)
 				return false;
