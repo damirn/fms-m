@@ -35,13 +35,29 @@ if [ "${sanitizer_syms:-0}" -eq 0 ]; then
 	exit 2
 fi
 
-# Both workloads are conditional below; without either, a green run means nothing.
-# The RTMFP one needs both binaries, which is exactly what it is gated on.
+# Both workloads are conditional below and each reaches threads the other does not
+# -- the RTMFP one is the only thing that drives the session reaper. A run that
+# skipped one is not evidence about it, so require both; ALLOW_PARTIAL=1 downgrades
+# that to a warning for a checkout without rtmfp-cpp.
 have_rtmfp=0
 [ -x "$RTMFP_CPP/tcpublish" ] && [ -x "$RTMFP_CPP/tcconn" ] && have_rtmfp=1
-if [ ! -x "$CLIENT" ] && [ "$have_rtmfp" -eq 0 ]; then
-	echo "need $CLIENT, or both $RTMFP_CPP/tcpublish and tcconn; nothing would run" >&2
-	exit 2
+have_rtmp=0
+[ -x "$CLIENT" ] && have_rtmp=1
+
+missing=""
+[ "$have_rtmp" -eq 0 ] && missing="$CLIENT"
+[ "$have_rtmfp" -eq 0 ] && missing="${missing}${missing:+ and }$RTMFP_CPP/{tcpublish,tcconn}"
+if [ -n "$missing" ]; then
+	if [ "$have_rtmp" -eq 0 ] && [ "$have_rtmfp" -eq 0 ]; then
+		echo "no workload available ($missing); nothing would run" >&2
+		exit 2
+	fi
+	if [ "${ALLOW_PARTIAL:-0}" = "1" ]; then
+		echo "warning: no $missing -- this run is not evidence about that workload" >&2
+	else
+		echo "missing $missing; set ALLOW_PARTIAL=1 to run the rest anyway" >&2
+		exit 2
+	fi
 fi
 
 # pkill -f matched on the binary's basename and signalled every same-uid process
