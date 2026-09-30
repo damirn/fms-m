@@ -70,6 +70,13 @@ namespace
 		return false;
 	}
 
+	std::size_t count_events(const so_ptr &s, std::uint8_t type)
+	{
+		std::size_t n = 0;
+		for (auto const &e : s->events()) if (e->m_type == type) ++n;
+		return n;
+	}
+
 	// Value of the eChange event for `key` (as a string), or "" if absent.
 	std::string change_value(const so_ptr &s, const std::string &key)
 	{
@@ -368,7 +375,10 @@ TEST_CASE("so_manager: stored properties stay within what a Use reply can carry"
 	REQUIRE(sm.handle_so(u, 2, result));
 	auto const r = std::dynamic_pointer_cast<SO>(result);
 	REQUIRE(r);
-	CHECK(r->events().size() <= SO::eMaxEvents);
+	// add_event caps the count by construction, so the load-bearing check is that
+	// nothing was dropped: every stored property is replayed.
+	CHECK(r->events().size() == SO::eMaxEvents);
+	CHECK(count_events(r, SO::eChange) == so_manager::eMaxProperties);
 	CHECK(change_value(r, "k0") == "v2");
 }
 
@@ -390,7 +400,10 @@ TEST_CASE("so_manager: one request cannot make a reply exceed the event cap")
 	REQUIRE(sm.handle_so(u, 2, result));
 	auto const r = std::dynamic_pointer_cast<SO>(result);
 	REQUIRE(r);
-	CHECK(r->events().size() <= SO::eMaxEvents);
+	// Eight Use events in one request still buy exactly one complete reply.
+	CHECK(r->events().size() == SO::eMaxEvents);
+	CHECK(count_events(r, SO::eUseSuccess) == 1);
+	CHECK(count_events(r, SO::eChange) == so_manager::eMaxProperties);
 
 	// The reply has to survive the cap a peer applies when parsing it.
 	byte_writer out;
