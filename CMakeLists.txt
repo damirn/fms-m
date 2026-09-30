@@ -579,7 +579,12 @@ if(BUILD_CLIENT)
   target_link_libraries(fms_helper PRIVATE rtmp_client_lib)
 
   # Back-to-back test: drives the fms-m server (spawned as a subprocess) with the
-  # client library and asserts on the protocol events + frames it receives.
+  # client library and asserts on the protocol events + frames it receives. It needs
+  # the client, so a -DBUILD_CLIENT=OFF configure reports no end-to-end coverage.
+  if(NOT BUILD_TESTS)
+    message(STATUS "b2b_test: skipped, BUILD_TESTS is OFF")
+  endif()
+  if(BUILD_TESTS)
   add_executable(b2b_test test/b2b_test.cpp test/test_main.cpp)
   target_include_directories(b2b_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test)
   target_link_libraries(b2b_test PRIVATE rtmp_client_lib)
@@ -592,6 +597,7 @@ if(BUILD_CLIENT)
   if(APPLE)
     set_tests_properties(b2b_test PROPERTIES
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
   endif()
 
   # End-to-end RTMP relay throughput benchmark (publisher -> server -> subscriber).
