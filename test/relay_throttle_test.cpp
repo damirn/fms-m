@@ -94,7 +94,9 @@ TEST_CASE("relay throttle: releasing an unheld key is harmless")
 // correct if the wiring reaches it.
 TEST_CASE("relay throttle: the shared instance is the one spawn_helper uses")
 {
-	clock_t_::time_point const now = clock_t_::time_point{} + std::chrono::hours{2};
+	// The real clock: spawn_helper stamps its slots with clock::now(), so a
+	// synthetic query time prunes them as expired and observes nothing.
+	clock_t_::time_point const now = clock_t_::now();
 	std::string const key = "rtmp://origin/app/live";
 	REQUIRE(helper_throttle().allow(key, now));
 	CHECK_FALSE(helper_throttle().allow(key, now));
@@ -112,7 +114,7 @@ TEST_CASE("relay throttle: spawn_helper takes no slot for a target it will not u
 	REQUIRE(fms::config::instance()->parse_cli(3, argv));
 	REQUIRE(!fms::config::instance()->helper_app().empty());
 
-	clock_t_::time_point const now = clock_t_::time_point{} + std::chrono::hours{3};
+	clock_t_::time_point const now = clock_t_::now();
 
 	// No "://", so the target is rejected before a slot is taken.
 	spawn_helper("no-scheme", "live");
