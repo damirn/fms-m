@@ -93,13 +93,16 @@ pkill -f "$RTMFP_CPP/tc" 2>/dev/null
 sleep 2
 # Long enough for the at-exit leak check and the report flush before SIGKILL.
 kill -INT "$SRV" 2>/dev/null; sleep 10; kill -9 "$SRV" 2>/dev/null
-wait "$SRV" 2>/dev/null
+wait "$SRV" 2>/dev/null; srv_status=$?
 
 echo
 # Attribute by signature, not by file name: all three write to the same prefix.
 reports="$(cat "$WORK"/san.* 2>/dev/null)"
 total=0
-for spec in "tsan:WARNING: ThreadSanitizer" "asan:ERROR: AddressSanitizer" "ubsan:runtime error:"; do
+# LSan heads its report with "ERROR: LeakSanitizer" and summarises as
+# "SUMMARY: AddressSanitizer: ... leaked", so the ASan signature matches neither.
+for spec in "tsan:WARNING: ThreadSanitizer" "asan:ERROR: AddressSanitizer" \
+            "lsan:ERROR: LeakSanitizer" "ubsan:runtime error:"; do
 	kind="${spec%%:*}"; sig="${spec#*:}"
 	n=$(printf '%s' "$reports" | grep -cF "$sig")
 	n=${n:-0}
@@ -107,9 +110,15 @@ for spec in "tsan:WARNING: ThreadSanitizer" "asan:ERROR: AddressSanitizer" "ubsa
 	total=$((total + n))
 done
 if [ "$total" -eq 0 ]; then
-	echo "  no sanitizer reports"
-	echo "  work dir: $WORK"
-	exit 0
+	# A sanitizer can also report only through the exit status (LSan's exitcode,
+	# ASan's default 1), which the wait above would otherwise swallow.
+	case "$srv_status" in
+		0|130|137|143) echo "  no sanitizer reports"; echo "  work dir: $WORK"; exit 0 ;;
+		*) echo "  server exited $srv_status with no report text; see $WORK/server.out"
+		   tail -30 "$WORK/server.out" 2>/dev/null
+		   echo "  work dir: $WORK"
+		   exit 1 ;;
+	esac
 fi
 echo
 printf '%s\n' "$reports" | head -60
