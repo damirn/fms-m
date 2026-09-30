@@ -17,8 +17,9 @@ namespace fms
 			: m_chunk_size(eChunkSize)
 		{}
 
+		// chunk_buffer divides by this, so a zero never reaches the framer.
 		explicit rtmp_protocol(std::uint32_t chunk_size)
-			: m_chunk_size(chunk_size)
+			: m_chunk_size(chunk_size != 0 ? chunk_size : eChunkSize)
 		{}
 
 		bool deserialize(byte_reader &, rtmp_header &);
