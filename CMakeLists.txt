@@ -294,6 +294,23 @@ if(BUILD_TESTS)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
+  # media_application's recorder path: proves the publish name reaches the
+  # containment guard, which media_path_test cannot see from resolve_media_file.
+  add_executable(media_record_path_test
+    test/test_main.cpp test/media_record_path_test.cpp
+    media_application.cpp rtmp_application.cpp av_delivery.cpp qos_reporter.cpp
+    vod_manager.cpp stream_recorder.cpp flv_writer.cpp flv_reader.cpp
+    remote_relay.cpp io_context_pool.cpp so_manager.cpp random_string.cpp
+    stream_registry.cpp
+    client_session.cpp rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp
+    rtmp_so_message.cpp amf0.cpp amf3.cpp util.cpp config.cpp logging.cpp)
+  target_link_libraries(media_record_path_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME media_record_path_test COMMAND media_record_path_test)
+  if(APPLE)
+    set_tests_properties(media_record_path_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   add_executable(app_host_test
     test/test_main.cpp test/app_host_test.cpp test/rtmp_message_test.cpp
     rtmp_application.cpp so_manager.cpp random_string.cpp client_session.cpp
