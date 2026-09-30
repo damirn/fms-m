@@ -366,46 +366,52 @@ namespace fms
 			auto i = params.begin();
 			++i;
 
-			auto const lock = m_registry.lock_exclusive();
-
-			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
-			auto const target = remote_relay::parse_target(std::string(strip_query(str->value())));
-			std::string const &stream_name = target.m_stream;
-			bool const is_remote = !target.m_server.empty();
-
-			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << stream_name << "'";
-			if (is_remote)
-				BOOST_LOG(lg::get()) << "stream '" << stream_name << "' is on remote server (" << target.m_server << ")";
-
-			std::optional<stream_client_id_t> const found = m_registry.broadcaster_for_name(stream_name);
-			bool const res = found.has_value();
-			stream_client_id_t const bcaster_id = res ? *found : stream_client_id_t{};
-
-			// No live publisher: if a saved .flv exists, serve it as VOD.
-			if (!res && !is_remote && m_vod.start(connection_id, invoke, stream_name))
-				return;
-
-			add_waiting_client(connection_id, invoke, stream_name, lock);
-			if (!res) // we still don't have broadcaster for this stream
+			// Collected under the lock, acted on after it: spawning a helper forks.
+			std::optional<remote_relay::remote_target> relay;
 			{
+				auto const lock = m_registry.lock_exclusive();
+
+				amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
+				auto const target = remote_relay::parse_target(std::string(strip_query(str->value())));
+				std::string const &stream_name = target.m_stream;
+				bool const is_remote = !target.m_server.empty();
+
+				BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << stream_name << "'";
 				if (is_remote)
-					remote_relay::spawn_helper(target.m_server, stream_name);
+					BOOST_LOG(lg::get()) << "stream '" << stream_name << "' is on remote server (" << target.m_server << ")";
+
+				std::optional<stream_client_id_t> const found = m_registry.broadcaster_for_name(stream_name);
+				bool const res = found.has_value();
+				stream_client_id_t const bcaster_id = res ? *found : stream_client_id_t{};
+
+				// No live publisher: if a saved .flv exists, serve it as VOD.
+				if (!res && !is_remote && m_vod.start(connection_id, invoke, stream_name))
+					return;
+
+				add_waiting_client(connection_id, invoke, stream_name, lock);
+				if (!res) // we still don't have broadcaster for this stream
+				{
+					if (is_remote)
+						relay = target;
+				}
+				else
+				{
+					stream_client_id_t const cid = std::make_pair(connection_id, invoke->stream_id());
+					create_stream_client(bcaster_id, cid, true, lock);
+					m_app_manager->update_netstream(cid, stream_name, false);
+				}
+				send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
+				// A live playback buffer starts empty: emit BufferEmpty(31) right after
+				// Play.Start (FMS order), then av_delivery emits BufferReady(32) when the
+				// first frame flows. With no publisher yet, 31 stands alone until one
+				// appears -- exactly the FMS 4.5 waiting-subscriber sequence.
+				enqueue_async_message(connection_id,
+					std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingBufferEmpty, invoke->stream_id()));
+				if (res)
+					m_av.send_metadata(connection_id, invoke->stream_id(), bcaster_id);
 			}
-			else
-			{
-				stream_client_id_t const cid = std::make_pair(connection_id, invoke->stream_id());
-				create_stream_client(bcaster_id, cid, true, lock);
-				m_app_manager->update_netstream(cid, stream_name, false);
-			}
-			send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
-			// A live playback buffer starts empty: emit BufferEmpty(31) right after
-			// Play.Start (FMS order), then av_delivery emits BufferReady(32) when the
-			// first frame flows. With no publisher yet, 31 stands alone until one
-			// appears -- exactly the FMS 4.5 waiting-subscriber sequence.
-			enqueue_async_message(connection_id,
-				std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingBufferEmpty, invoke->stream_id()));
-			if (res)
-				m_av.send_metadata(connection_id, invoke->stream_id(), bcaster_id);
+			if (relay)
+				remote_relay::spawn_helper(relay->m_server, relay->m_stream);
 		}
 		catch (rtmp_illegal_parameter_exception &e)
 		{
