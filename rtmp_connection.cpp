@@ -54,7 +54,9 @@ namespace fms
 
 	void rtmp_connection::handle_timer(const boost::system::error_code &e)
 	{
-		if (!e)
+		// A completion already queued when close() ran would otherwise re-arm the
+		// timer, and the renewed timer is then the connection's only owner.
+		if (!e && m_state == eStateReadPackets)
 		{
 			if (m_app == nullptr)
 			{
