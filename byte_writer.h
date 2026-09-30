@@ -147,6 +147,9 @@ namespace fms
 		std::size_t size() const { return m_buf.size() - m_read_pos; }
 
 		// ---- input-buffer role ------------------------------------------------
+		// Bytes reserved by write_buffer() and not yet reported by update().
+		[[nodiscard]] std::size_t reserved() const { return m_reserved; }
+
 		// Reserve n bytes of writable room at the end for an async read/receive
 		// to fill; size() stays put until update() reports how many actually
 		// arrived.
