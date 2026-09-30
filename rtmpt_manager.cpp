@@ -119,11 +119,18 @@ namespace fms
 		// Per-session lock only, so a busy session does not stall other tunnelled
 		// clients. `sd` keeps the session alive even if a concurrent remove/reap
 		// erases it from the table.
-		std::lock_guard const s(sd->m_session_mutex);
-		if (in_order)
-			sd->m_session->handle_data(input, output);
-		else
-			sd->m_session->serialize_poll_time(output);
+		boost::tribool result = true;
+		{
+			std::lock_guard const s(sd->m_session_mutex);
+			if (in_order)
+				result = sd->m_session->handle_data(input, output);
+			else
+				sd->m_session->serialize_poll_time(output);
+		}
+		// A definite false is fatal to the session: drop the id so it cannot be
+		// driven further. indeterminate means "incomplete", which is not a failure.
+		if (!result)
+			remove_session(cid);
 		return output.size();
 	}
 

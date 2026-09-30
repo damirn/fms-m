@@ -246,6 +246,29 @@ else
 	bad "rtmpt: /open returned no session id, so the limit cases prove nothing"
 fi
 
+# --- Case 3c: a refused tunnelled handshake drops the session ----------------
+# An unknown C0 magic is refused. The session must not survive it: proved by the
+# body limit falling back to the unauthenticated one on the same id.
+echo "[3c] RTMPT: a refused handshake drops the session"
+cid=$(curl -s --max-time 10 -X POST --data-binary '' \
+	"http://127.0.0.1:$RTMPT_PORT/open/1" 2>/dev/null | tr -d '\r\n')
+if [ -n "$cid" ]; then
+	# C0 = 0x99 (no such version) + 1536 bytes of C1.
+	printf '\x99' >"$WORK/bad_c0"
+	dd if=/dev/zero bs=1536 count=1 2>/dev/null >>"$WORK/bad_c0"
+	curl -s -o /dev/null --max-time 10 -X POST --data-binary "@$WORK/bad_c0" \
+		"http://127.0.0.1:$RTMPT_PORT/send/$cid/0" 2>/dev/null || true
+
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+		-X POST --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/1" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "413" ] && ok "rtmpt: the session is gone after a refused handshake" \
+		|| bad "rtmpt: session $cid still accepts a 2 MiB body after a refused handshake (HTTP $code)"
+else
+	bad "rtmpt: /open returned no session id, so the handshake case proves nothing"
+fi
+
 # --- Case 4/5: RTMFP (rtmfp-cpp reference clients, strict crypto) -------------
 if have_rtmfp; then
 	echo "[4] RTMFP live: tcpublish -> tcconn (strict crypto, no -H -S)"
