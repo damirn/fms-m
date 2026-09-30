@@ -313,3 +313,18 @@ TEST_CASE("SO codec: an event body longer than what it parses advances to its de
 	CHECK(m.events().front()->m_name->value() == "prop");
 	CHECK(m.events().back()->m_type == so::eUse);   // the junk was not read as a header
 }
+
+// Forward compatibility: an event type this codec does not know still has a
+// declared length, so the ones behind it must survive.
+TEST_CASE("SO codec: an unknown event type is skipped, not fatal to the message")
+{
+	std::vector<std::uint8_t> v = header("obj");
+	add_event(v, 0xFE, std::vector<std::uint8_t>{0x01, 0x02, 0x03, 0x04});
+	add_event(v, so::eUse, {});
+
+	so m;
+	REQUIRE(parses(v, m));
+	REQUIRE(m.events().size() == 2);
+	CHECK(m.events().front()->m_type == 0xFE);
+	CHECK(m.events().back()->m_type == so::eUse);
+}
