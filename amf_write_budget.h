@@ -16,8 +16,9 @@ namespace fms
 		static constexpr std::size_t eMaxNodes = 1u << 20;
 
 		// Bytes one write may emit. A node budget alone does not bound output: a
-		// shared referent carrying a large payload re-emits it per path.
-		static constexpr std::size_t eMaxBytes = 16u << 20;
+		// shared referent carrying a large payload re-emits it per path. Set to what
+		// an RTMP message length can describe, so the ceiling is a wire-legal body.
+		static constexpr std::size_t eMaxBytes = 0xFFFFFF;
 
 		// Holds one budget across every top-level write of a message. Without it
 		// the allowance resets per value, so a message of n values gets n budgets.
@@ -46,9 +47,11 @@ namespace fms
 			{
 				if (s_depth == 0 && s_scopes == 0)   // unscoped: budget this value alone
 					reset(written);
+				// Charged before the node emits, so the last one may still overshoot;
+				// the wire-length check on the finished body is the hard bound.
 				m_ok = ++s_depth <= eMaxDepth
 					&& ++s_nodes <= eMaxNodes
-					&& written - s_origin <= eMaxBytes;
+					&& written - s_origin < eMaxBytes;
 			}
 
 			~frame() { --s_depth; }
