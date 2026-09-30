@@ -21,8 +21,9 @@ namespace fms
 			return m_pub_key;
 		}
 
-		// False if the keypair or the derivation failed.
-		[[nodiscard]] bool generate_shared_secret(const std::uint8_t *, std::uint16_t);
+		// False if the keypair or the derivation failed. noexcept: it runs inside an
+		// Asio receive handler.
+		[[nodiscard]] bool generate_shared_secret(const std::uint8_t *, std::uint16_t) noexcept;
 		[[nodiscard]] bool generate_symetric_keys(const std::uint8_t *, std::uint16_t, const std::uint8_t *, std::uint16_t,
 			std::uint8_t *, std::uint8_t *);
 

@@ -58,12 +58,20 @@ namespace fms
 		}
 	}
 
-	bool dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size)
+	bool dh2::generate_shared_secret(const std::uint8_t *remote_pub_key, std::uint16_t key_size) noexcept
 	{
-		m_shared_secret = evp_dh_derive(m_pkey, m_dh_key, eKeySize, 2, remote_pub_key, key_size);
-		if (m_shared_secret.empty())
+		try
+		{
+			m_shared_secret = evp_dh_derive(m_pkey, m_dh_key, eKeySize, 2, remote_pub_key, key_size);
+			if (m_shared_secret.empty())
+				return false;
+			return generate_rnonce();
+		}
+		catch (...)
+		{
+			m_shared_secret.clear();
 			return false;
-		return generate_rnonce();
+		}
 	}
 
 	bool dh2::generate_symetric_keys(const std::uint8_t *inonce,
