@@ -402,6 +402,21 @@ Other options:
 | Option | Effect |
 |--------|--------|
 | `-DSANITIZE=address,undefined` | Build with the named sanitizers. Also sets `halt_on_error` for every registered test, so a TSan/UBSan finding fails the run instead of printing a warning into a green log. |
+
+The unit suite covers the codecs under a sanitizer, but the server's own threads —
+the `io_context` pool, the stats timer, the RTMFP reaper — exist only in a running
+server, so `test/interop/sanitize.sh` drives a sanitizer build with real clients:
+
+```sh
+cmake -S . -B build-tsan -DSANITIZE=thread -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build-tsan -j
+test/interop/sanitize.sh build-tsan/fms-m        # exits non-zero on any report
+```
+
+It runs an RTMP publisher with three subscribers, an RTMFP publish/play pair, and
+fifteen connections abandoned mid-handshake. **LeakSanitizer is unavailable on
+Apple platforms**, so leak checking needs a Linux build — the `Dockerfile` takes
+`--build-arg SANITIZE=address`.
 | `-DWERROR=ON` | Treat warnings as errors. |
 | `-DBUILD_FUZZERS=ON` | AMF fuzzers; `fuzz_run` is registered as a ctest. |
 

@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# Drive a sanitizer-built server with real clients and fail on any report.
+#
+# The unit suite runs under sanitizers already, but the server's own threads --
+# the io_context pool, the stats timer, the RTMFP reaper -- only exist in a
+# running server, so the races and lifetime bugs that live there need a workload.
+#
+# Build first, e.g.
+#   cmake -S . -B build-tsan  -DSANITIZE=thread  -DCMAKE_BUILD_TYPE=RelWithDebInfo
+#   cmake -S . -B build-asan  -DSANITIZE=address -DCMAKE_BUILD_TYPE=RelWithDebInfo
+# then: test/interop/sanitize.sh build-tsan/fms-m
+#
+# Note: LeakSanitizer is unavailable on Apple platforms, so leak checking needs a
+# Linux build (the Dockerfile takes --build-arg SANITIZE=address).
+set -u
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
+FMS="${1:-$ROOT/build-tsan/fms-m}"
+CLIENT="${CLIENT:-$(dirname "$FMS")/rtmp_client}"
+RTMFP_CPP="${RTMFP_CPP:-$ROOT/../rtmfp-cpp/test}"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/fms-sanitize.XXXXXX")"
+RTMP_PORT=28600; RTMPT_PORT=28601; RTMFP_PORT=28602
+DURATION="${DURATION:-18}"
+
+[ -x "$FMS" ] || { echo "no sanitizer build at $FMS"; exit 2; }
+mkdir -p "$WORK/rec" "$WORK/logs"
+
+command -v ffmpeg >/dev/null 2>&1 || { echo "ffmpeg required"; exit 2; }
+ffmpeg -loglevel quiet -f lavfi -i "testsrc=d=$((DURATION + 10)):s=320x240" \
+	-f lavfi -i "sine=d=$((DURATION + 10))" \
+	-c:v libx264 -preset ultrafast -c:a aac -y "$WORK/src.flv" 2>/dev/null
+
+# Reports go to files so a crashed server still leaves its findings behind. One
+# prefix for all three: the runtime parses every *SAN_OPTIONS it is given and the
+# last log_path wins, so separate paths would silently land in one file anyway.
+export TSAN_OPTIONS="halt_on_error=0:log_path=$WORK/san"
+export ASAN_OPTIONS="halt_on_error=0:detect_leaks=0:log_path=$WORK/san"
+export UBSAN_OPTIONS="print_stacktrace=1:log_path=$WORK/san"
+
+"$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" -t 4 \
+	-o "$WORK/rec" -P "$WORK/logs" >"$WORK/server.out" 2>&1 &
+SRV=$!
+for _ in $(seq 1 80); do
+	nc -z 127.0.0.1 "$RTMP_PORT" 2>/dev/null && break
+	sleep 0.5
+done
+nc -z 127.0.0.1 "$RTMP_PORT" 2>/dev/null || { echo "server did not start; see $WORK/server.out"; exit 2; }
+
+echo "=== workload (${DURATION}s, 4 io threads) ==="
+if [ -x "$CLIENT" ]; then
+	"$CLIENT" -r "rtmp://127.0.0.1:$RTMP_PORT/media" -c publish -s s1 -i "$WORK/src.flv" -R -n >/dev/null 2>&1 &
+	sleep 2
+	# Fan-out: the send-queue and stats paths run on several io threads at once.
+	for _ in 1 2 3; do
+		"$CLIENT" -r "rtmp://127.0.0.1:$RTMP_PORT/media" -c play -s s1 -n >/dev/null 2>&1 &
+	done
+	echo "  rtmp: 1 publisher (recording) + 3 subscribers"
+fi
+if [ -x "$RTMFP_CPP/tcpublish" ] && [ -x "$RTMFP_CPP/tcconn" ]; then
+	"$RTMFP_CPP/tcpublish" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#r1" "$WORK/src.flv" >/dev/null 2>&1 &
+	sleep 2
+	"$RTMFP_CPP/tcconn" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#r1" >/dev/null 2>&1 &
+	echo "  rtmfp: publish + play (fragment reassembly, session reaper)"
+fi
+# Connections abandoned mid-handshake, so the handshake timer path is exercised.
+for _ in $(seq 1 15); do printf '\x03' | nc -w 1 127.0.0.1 "$RTMP_PORT" >/dev/null 2>&1 & done
+echo "  15 connections abandoned mid-handshake"
+
+sleep "$DURATION"
+[ -n "${CLIENT:-}" ] && pkill -f "$(basename "$CLIENT")" 2>/dev/null
+pkill -f "$RTMFP_CPP/tc" 2>/dev/null
+sleep 2
+kill -INT "$SRV" 2>/dev/null; sleep 3; kill -9 "$SRV" 2>/dev/null
+
+echo
+# Attribute by signature, not by file name: all three write to the same prefix.
+reports="$(cat "$WORK"/san.* 2>/dev/null)"
+total=0
+for spec in "tsan:WARNING: ThreadSanitizer" "asan:ERROR: AddressSanitizer" "ubsan:runtime error:"; do
+	kind="${spec%%:*}"; sig="${spec#*:}"
+	n=$(printf '%s' "$reports" | grep -cF "$sig")
+	n=${n:-0}
+	[ "$n" -gt 0 ] && echo "  $kind: $n report(s)"
+	total=$((total + n))
+done
+if [ "$total" -eq 0 ]; then
+	echo "  no sanitizer reports"
+	echo "  work dir: $WORK"
+	exit 0
+fi
+echo
+printf '%s\n' "$reports" | head -60
+echo "  work dir: $WORK"
+exit 1
