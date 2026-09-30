@@ -27,7 +27,10 @@ TEST_CASE("netstream stats: the media path and a reader may run concurrently")
 	std::atomic<std::uint64_t> opened{0};
 
 	// The media path: each stream's first message stamps its start time, under
-	// the shared lock.
+	// the shared lock. Sampled before the writer starts: a stream it stamps first
+	// would otherwise read as older than the baseline and count as a bad value.
+	auto const t0 = std::chrono::system_clock::now();
+
 	std::thread writer([&] {
 		for (std::uint32_t sid = 1; !stop.load(std::memory_order_relaxed); ++sid)
 		{
@@ -44,7 +47,6 @@ TEST_CASE("netstream stats: the media path and a reader may run concurrently")
 	// The admin thread snapshots, and qos_reporter reads the live object. Each field
 	// is written once per stream, so every value a snapshot yields has to be one of
 	// the two the writer can produce.
-	auto const t0 = std::chrono::system_clock::now();
 	std::atomic<std::uint64_t> bad{0};
 	std::thread reader([&] {
 		while (!stop.load(std::memory_order_relaxed))
