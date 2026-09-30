@@ -402,6 +402,8 @@ Other options:
 | Option | Effect |
 |--------|--------|
 | `-DSANITIZE=address,undefined` | Build with the named sanitizers. Also sets `halt_on_error` for every registered test, so a TSan/UBSan finding fails the run instead of printing a warning into a green log. |
+| `-DWERROR=ON` | Treat warnings as errors. |
+| `-DBUILD_FUZZERS=ON` | AMF fuzzers; `fuzz_run` is registered as a ctest. |
 
 The unit suite covers the codecs under a sanitizer, but the server's own threads —
 the `io_context` pool, the stats timer, the RTMFP reaper — exist only in a running
@@ -417,8 +419,6 @@ It runs an RTMP publisher with three subscribers, an RTMFP publish/play pair, an
 fifteen connections abandoned mid-handshake. **LeakSanitizer is unavailable on
 Apple platforms**, so leak checking needs a Linux build — the `Dockerfile` takes
 `--build-arg SANITIZE=address`.
-| `-DWERROR=ON` | Treat warnings as errors. |
-| `-DBUILD_FUZZERS=ON` | AMF fuzzers; `fuzz_run` is registered as a ctest. |
 
 ### Throughput benchmark
 
