@@ -80,6 +80,15 @@ namespace fms
 	void service::handle_receive_from(const boost::system::error_code &e, size_t bytes_received)
 	{
 		m_read_in_progress = false;
+
+		// The receive is re-armed however this handler leaves; without it a throw out
+		// of the parse tree would leave the service with no outstanding read.
+		struct rearm
+		{
+			service *s;
+			~rearm() { s->read(); }
+		} const guard{ this };
+
 		if (!e && bytes_received >= ePacketMinLen)
 		{
 			m_buffer.update(bytes_received);
@@ -132,7 +141,6 @@ namespace fms
 				}
 			}
 		}
-		read();
 	}
 
 	void service::handle_send_to(const boost::system::error_code &, size_t)
@@ -163,7 +171,6 @@ namespace fms
 	{
 		byte_reader packet(m_buffer.data() + 4, m_buffer.size() - 4);
 		m_parser->parse(packet);
-		read();
 	}
 
 	std::uint32_t service::get_sid()
