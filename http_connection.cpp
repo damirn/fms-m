@@ -95,8 +95,10 @@ namespace fms
 			auto const len = m_parser->content_length();
 			if (len && *len > eUnauthBodyLimit)
 			{
+				// Answer rather than close: a bare disconnect is indistinguishable
+				// from a network failure, so the peer cannot tell it was refused.
 				m_timer.cancel();
-				close();
+				reply_error(http::status::payload_too_large);
 				return;
 			}
 			m_parser->body_limit(eUnauthBodyLimit);

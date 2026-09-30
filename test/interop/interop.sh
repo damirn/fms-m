@@ -227,8 +227,8 @@ code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
 	-X POST --data-binary "@$WORK/body_2m" \
 	"http://127.0.0.1:$RTMPT_PORT/idle/000000/1" 2>/dev/null) || true
 [ -n "$code" ] || code=000
-[ "$code" = "000" ] && ok "rtmpt: 2 MiB body without a session is refused" \
-	|| bad "rtmpt: 2 MiB body without a session got HTTP $code"
+[ "$code" = "413" ] && ok "rtmpt: 2 MiB body without a session is refused (413)" \
+	|| bad "rtmpt: 2 MiB body without a session got HTTP $code, expected 413"
 
 # With a session, the same body must be read. /open returns the id + '\n'.
 cid=$(curl -s --max-time 10 -X POST --data-binary '' \
