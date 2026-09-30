@@ -2,6 +2,7 @@
 
 #include "amf0.h"
 #include "byte_reader.h"
+#include "byte_writer.h"
 #include "doctest.h"
 #include "rtmp_message.h"
 
@@ -65,4 +66,34 @@ TEST_CASE("rtmp notify: an absurd parameter count is refused, not allocated")
 	byte_reader r(v.data(), v.size());
 	rtmp_message_notify m;
 	CHECK_THROWS_AS(m.deserialize(r), amf0_read_exception);
+}
+
+// The write budget used to reset on every top-level value, so a message of n
+// parameters got n budgets instead of one.
+TEST_CASE("invoke: the AMF write budget spans the whole message")
+{
+	auto chain = [](unsigned n) {
+		amf0_type_ptr node = std::make_shared<amf0_null>();
+		for (unsigned i = 0; i < n; ++i)
+		{
+			auto const o = std::make_shared<amf0_object>();
+			o->add_entry("a", node);
+			o->add_entry("b", node);   // same child twice: 2^n leaves when expanded
+			node = o;
+		}
+		return node;
+	};
+
+	// ~2^19 nodes: half the allowance, so one parameter serialises.
+	byte_writer one;
+	auto const single = rtmp_message_invoke::create_message("f");
+	single->add_parameter(chain(18));
+	CHECK_NOTHROW(single->serialize(one));
+
+	// Three of them are over it, and only a message-wide budget can see that.
+	byte_writer three;
+	auto const many = rtmp_message_invoke::create_message("f");
+	for (int i = 0; i < 3; ++i)
+		many->add_parameter(chain(18));
+	CHECK_THROWS_AS(many->serialize(three), amf0_write_exception);
 }

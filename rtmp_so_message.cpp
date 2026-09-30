@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "rtmp_so_message.h"
 #include "amf0.h"
+#include "amf_write_budget.h"
 #include "byte_order.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
@@ -30,6 +31,7 @@ namespace fms
 
 	void rtmp_message_shared_object::serialize(byte_writer &buffer)
 	{
+		amf_write_budget::scope const budget(buffer.size());
 		m_amf0.write_short_string(buffer, m_name, true);
 
 		std::uint32_t tmp = to_network<std::uint32_t>(m_version);

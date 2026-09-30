@@ -19,6 +19,24 @@ namespace fms
 		// shared referent carrying a large payload re-emits it per path.
 		static constexpr std::size_t eMaxBytes = 16u << 20;
 
+		// Holds one budget across every top-level write of a message. Without it
+		// the allowance resets per value, so a message of n values gets n budgets.
+		// The outermost scope owns the reset; nested ones are no-ops.
+		class scope
+		{
+		public:
+			explicit scope(std::size_t written)
+			{
+				if (s_scopes++ == 0)
+					reset(written);
+			}
+
+			~scope() { --s_scopes; }
+
+			scope(const scope &) = delete;
+			scope &operator=(const scope &) = delete;
+		};
+
 		// One node of the walk, charged against the bytes written so far. Refuses
 		// by reporting !ok(); the caller throws its own codec's exception.
 		class frame
@@ -26,11 +44,8 @@ namespace fms
 		public:
 			explicit frame(std::size_t written)
 			{
-				if (s_depth == 0)
-				{
-					s_nodes = 0;
-					s_origin = written;
-				}
+				if (s_depth == 0 && s_scopes == 0)   // unscoped: budget this value alone
+					reset(written);
 				m_ok = ++s_depth <= eMaxDepth
 					&& ++s_nodes <= eMaxNodes
 					&& written - s_origin <= eMaxBytes;
@@ -48,7 +63,14 @@ namespace fms
 		};
 
 	private:
+		static void reset(std::size_t written)
+		{
+			s_nodes = 0;
+			s_origin = written;
+		}
+
 		static inline thread_local unsigned s_depth = 0;
+		static inline thread_local unsigned s_scopes = 0;
 		static inline thread_local std::size_t s_nodes = 0;
 		static inline thread_local std::size_t s_origin = 0;
 	};

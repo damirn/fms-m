@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "rtmp_message.h"
-#include "byte_order.h"
+#include "amf_write_budget.h"
 #include "buffer_eof.h"
+#include "byte_order.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 #include "rtmp_header.h"
@@ -25,6 +26,7 @@ namespace fms
 
 	void rtmp_message_notify::serialize(byte_writer &buffer)
 	{
+		amf_write_budget::scope const budget(buffer.size());
 		m_amf0.write_short_string(buffer, m_function);
 		parameters_list_t::iterator i;
 		auto const end = m_params.end();
@@ -87,6 +89,7 @@ namespace fms
 
 	void rtmp_message_invoke::serialize(byte_writer &buffer)
 	{
+		amf_write_budget::scope const budget(buffer.size());
 		m_amf0.write_short_string(buffer, m_function);
 		m_amf0.write_number(buffer, m_invoke_id);
 		parameters_list_t::iterator i;
