@@ -87,6 +87,8 @@ namespace fms
 		void notify_client(std::uint32_t, std::uint32_t, const std::string &);
 		void remove_client(std::uint32_t);
 
+		void forget_subscription(std::uint32_t, std::uint32_t, const stream_registry::exclusive_guard &);
+
 		void create_stream_client(const stream_client_id_t &, const stream_client_id_t &, bool, const stream_registry::exclusive_guard &);
 
 		// All media-routing state (publishers, subscribers, fan-out index, waiting

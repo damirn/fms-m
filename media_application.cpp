@@ -251,6 +251,7 @@ namespace fms
 		rtmp_application::close_stream(invoke, connection_id);
 		auto const lock = m_registry.lock_exclusive();
 		res = close_stream(connection_id, invoke->stream_id(), lock);
+		forget_subscription(connection_id, invoke->stream_id(), lock);
 		m_registry.remove_client_stream(connection_id, invoke->stream_id(), lock);
 	}
 
@@ -646,13 +647,20 @@ namespace fms
 		for (std::uint32_t const stream : m_registry.take_client(connection_id, lock))
 		{
 			close_stream(connection_id, stream, lock);
-			// remove the client from any waiting list, then drop its stream-name map
-			stream_client_id_t const sub(connection_id, stream);
-			if (std::optional<std::string> const name = m_registry.subscriber_stream(sub))
-			{
-				m_registry.erase_waiting(*name, sub, lock);
-				m_registry.erase_subscriber_stream(sub, lock);
-			}
+			forget_subscription(connection_id, stream, lock);
+		}
+	}
+
+	// Drops the waiting-list and stream-name state for one subscription. closeStream
+	// reaches it too: after that the connection no longer owns the stream id, so
+	// remove_client can never see it again.
+	void media_application::forget_subscription(std::uint32_t connection_id, std::uint32_t stream_id, const stream_registry::exclusive_guard &guard)
+	{
+		stream_client_id_t const sub(connection_id, stream_id);
+		if (std::optional<std::string> const name = m_registry.subscriber_stream(sub))
+		{
+			m_registry.erase_waiting(*name, sub, guard);
+			m_registry.erase_subscriber_stream(sub, guard);
 		}
 	}
 
