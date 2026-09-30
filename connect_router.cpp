@@ -31,8 +31,8 @@ namespace fms
 				if (match_app_name(app_name->value(), a.first, instance))
 				{
 					BOOST_LOG(lg::get()) << "cid: " << connection_id << " connecting to " << app_name->value();
-					conn->set_app(a.second.get());
 					conn->app_instance() = instance;
+					conn->set_app(a.second.get());   // release store: publishes app_instance too
 					return a.second->handle_message(invoke, connection_id, header, res);
 				}
 			}
