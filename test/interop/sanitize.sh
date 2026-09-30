@@ -112,7 +112,16 @@ kill -0 "$SRV" 2>/dev/null || { echo "server exited during the workload; see $WO
 kill_kids
 sleep 2
 # Long enough for the at-exit leak check and the report flush before SIGKILL.
-kill -INT "$SRV" 2>/dev/null; sleep 10; kill -9 "$SRV" 2>/dev/null
+kill -INT "$SRV" 2>/dev/null
+killed=0
+for _ in $(seq 1 20); do
+	kill -0 "$SRV" 2>/dev/null || break
+	sleep 0.5
+done
+if kill -0 "$SRV" 2>/dev/null; then
+	kill -9 "$SRV" 2>/dev/null
+	killed=1     # it never shut down: a hang or an OOM kill, not a clean run
+fi
 wait "$SRV" 2>/dev/null; srv_status=$?
 
 echo
@@ -132,8 +141,14 @@ done
 if [ "$total" -eq 0 ]; then
 	# A sanitizer can also report only through the exit status (LSan's exitcode,
 	# ASan's default 1), which the wait above would otherwise swallow.
+	if [ "$killed" -eq 1 ]; then
+		echo "  server did not exit on SIGINT and was killed; no report, but not a clean run"
+		tail -30 "$WORK/server.out" 2>/dev/null
+		echo "  work dir: $WORK"
+		exit 1
+	fi
 	case "$srv_status" in
-		0|130|137|143) echo "  no sanitizer reports"; echo "  work dir: $WORK"; exit 0 ;;
+		0|130|143) echo "  no sanitizer reports"; echo "  work dir: $WORK"; exit 0 ;;
 		*) echo "  server exited $srv_status with no report text; see $WORK/server.out"
 		   tail -30 "$WORK/server.out" 2>/dev/null
 		   echo "  work dir: $WORK"
