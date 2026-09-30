@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "so_manager.h"
+#include "amf0.h"
+#include "byte_writer.h"
 
 #include <utility>
 
@@ -150,6 +152,22 @@ namespace fms
 		}
 	}
 
+	std::optional<std::size_t> so_manager::value_bytes(const amf0_type_ptr &v)
+	{
+		if (!v)
+			return std::nullopt;
+		try
+		{
+			byte_writer probe;
+			amf0::write(probe, v);
+			return probe.size();
+		}
+		catch (...)
+		{
+			return std::nullopt;
+		}
+	}
+
 	void so_manager::handle_req_change_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object::event_ptr& e, rtmp_message_shared_object_ptr &result, pending_sends_t &pending)
 	{
 		std::optional<so_data_ptr> so_d = find_so(so);
@@ -158,6 +176,10 @@ namespace fms
 			const so_data_ptr& s = *so_d;
 			if (s->m_values.size() >= eMaxProperties && !s->m_values.contains(e->m_name->value()))
 				return;   // a new property past the cap: refuse rather than reply unsendably
+
+			std::optional<std::size_t> const bytes = value_bytes(e->m_value);
+			if (!bytes || *bytes > eMaxValueBytes)
+				return;   // a value a Use reply could not carry back
 
 			increase_version(s);
 			s->m_values[e->m_name->value()] = e->m_value;

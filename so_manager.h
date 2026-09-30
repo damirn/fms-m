@@ -48,6 +48,10 @@ namespace fms
 		static constexpr std::size_t eMaxObjects = 4096;
 		static constexpr std::size_t eMaxObjectsPerConnection = 64;
 
+		// A Use reply replays every stored property, so the property count alone does
+		// not keep that reply inside the AMF write budget: bound each value too.
+		static constexpr std::size_t eMaxValueBytes = 64u << 10;
+
 	protected:
 		// (client id, message) pairs collected while m_mutex is held and flushed to
 		// enqueue_async_message/notify AFTER it is released -- so the SO fan-out does
@@ -82,6 +86,9 @@ namespace fms
 		std::mutex m_mutex;
 
 		std::optional<so_data_ptr> find_so(const rtmp_message_shared_object_ptr&);
+
+		// Wire size of a value, or nullopt if it cannot be written at all.
+		static std::optional<std::size_t> value_bytes(const amf0_type_ptr &);
 
 		void increase_version(const so_data_ptr& so)
 		{
