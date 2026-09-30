@@ -344,7 +344,8 @@ namespace fms::rtmp_client
 		rtmp_header h;
 		rtmp_protocol p(m_out_chunk_size);
 		m_messages_written++;
-		p.serialize(*m_output_buffer, message, h, channel->sent_header());
+		if (!p.serialize(*m_output_buffer, message, h, channel->sent_header()))
+			return;   // nothing was written, so the channel's sent_header still stands
 		channel->sent_header() = h;
 		// Apply our own Set Chunk Size only AFTER framing that control message at
 		// the previous size: the peer parses it at the old size, then switches, so

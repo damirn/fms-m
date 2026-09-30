@@ -835,7 +835,7 @@ namespace
 		byte_writer out;
 		rtmp_header nh;
 		rtmp_header ph;   // fresh previous header -> a full (type-0) header
-		p.serialize(out, msg, nh, ph);
+		REQUIRE(p.serialize(out, msg, nh, ph));
 		return {out.data(), out.data() + out.size()};
 	}
 }

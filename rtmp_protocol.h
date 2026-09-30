@@ -29,7 +29,7 @@ namespace fms
 
 		// False when the body could not be serialised; nothing is written and the
 		// caller must leave the channel's sent_header alone.
-		bool serialize(byte_writer &, const rtmp_message_ptr&, rtmp_header &, rtmp_header &);
+		[[nodiscard]] bool serialize(byte_writer &, const rtmp_message_ptr&, rtmp_header &, rtmp_header &);
 
 		rtmp_message_ptr message()
 		{
