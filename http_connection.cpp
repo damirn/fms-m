@@ -112,7 +112,12 @@ namespace fms
 		if (e)
 		{
 			m_timer.cancel();
-			close();
+			// Beast refuses a Content-Length past the parser's limit while parsing the
+			// header, so answer that one rather than vanishing on the peer.
+			if (e == boost::beast::http::error::body_limit)
+				reply_error(http::status::payload_too_large);
+			else
+				close();
 			return;
 		}
 

@@ -240,6 +240,16 @@ if [ -n "$cid" ]; then
 	[ -n "$code" ] || code=000
 	[ "$code" = "200" ] && ok "rtmpt: 2 MiB body on an open session is accepted" \
 		|| bad "rtmpt: 2 MiB body on session $cid got HTTP $code"
+	# Past the parser's own limit the refusal happens while the header is parsed,
+	# which must still answer rather than just disconnect.
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+		-H 'Content-Length: 67108864' -H 'Expect:' \
+		-X POST --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/1" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "413" ] && ok "rtmpt: a body past the parser limit is refused (413), not dropped" \
+		|| bad "rtmpt: 64 MiB Content-Length got HTTP $code, expected 413"
+
 	# A live session is not on its own enough: the request must be one the server
 	# would act on. A malformed sequence is rejected anyway, so it earns nothing.
 	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
