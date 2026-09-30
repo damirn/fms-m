@@ -154,7 +154,11 @@ namespace fms
 				return boost::indeterminate;
 			}
 			if (!handle_handshake(m_remaining_data, output))
+			{
+				m_remaining_data.clear();
+				close();
 				return false;
+			}
 			m_sstate = eCSReadHS;
 			return true;   // S0/S1/S2 written; C2 handled on the next request
 		}
