@@ -70,7 +70,7 @@ namespace fms
 		return true;
 	}
 
-	void so_manager::handle_use_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object_ptr &result, pending_sends_t &)
+	void so_manager::handle_use_event(const rtmp_message_shared_object_ptr& so, std::uint32_t connection_id, const rtmp_message_shared_object_ptr &result, pending_sends_t &pending)
 	{
 		const std::string &so_name = so->name()->value();
 		auto i = m_so_map.find(so_name);
@@ -93,7 +93,14 @@ namespace fms
 		if (joining)
 			++m_use_counts[connection_id];
 
-		rtmp_message_shared_object_ptr const answer = result;
+		// UseSuccess + Clear + one Change per property has to fit whole, so it goes
+		// in its own message unless the shared reply is still empty.
+		rtmp_message_shared_object_ptr answer = result;
+		if (!result->events().empty())
+		{
+			answer = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
+			pending.emplace_back(connection_id, answer);
+		}
 		answer->set_flags(0x20);
 
 		rtmp_message_shared_object::event_ptr const use_event = std::make_shared<rtmp_message_shared_object::event>(rtmp_message_shared_object::eUseSuccess);
