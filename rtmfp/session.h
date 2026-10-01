@@ -281,6 +281,10 @@ namespace fms
 
 		std::uint32_t m_next_flow_id{2};
 		flow_map_t m_receiving_flows;
+
+		// Reassembly backlog shared by every receiving flow of this session; held by
+		// shared_ptr so a flow can never outlive the total it charges.
+		std::shared_ptr<std::size_t> m_buffered_bytes{std::make_shared<std::size_t>(0)};
 		flow_map_t m_sending_flows;
 
 		flow_assoc_map_t m_receiving_to_sending_flow;

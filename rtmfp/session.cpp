@@ -251,6 +251,7 @@ namespace fms
 	flow_ptr session::create_receiving_flow(user_data_chunk *udc)
 	{
 		flow_ptr f = std::make_shared<flow>(udc->flow_id(), flow::eReceiver, udc->options());
+		f->share_buffered_total(m_buffered_bytes);
 		m_receiving_flows[udc->flow_id()] = f;
 
 		if (f->state() == flow::eOpen)

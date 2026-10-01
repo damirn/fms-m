@@ -179,6 +179,10 @@ namespace fms
 		// can never complete one, so that is the ceiling.
 		static constexpr std::size_t eMaxBufferedBytes = eMaxReassembledMsgLen;
 
+		// Across every receiving flow of one session: the per-flow bound alone would
+		// let eMaxReceivingFlows multiply it.
+		static constexpr std::size_t eMaxSessionBufferedBytes = 2u * eMaxReassembledMsgLen;
+
 		// Cap on the un-acknowledged send backlog of a live A/V flow. Past this,
 		// abandon_stale_fragments() drops the oldest frames instead of retransmitting
 		// them forever, so a slow/lossy subscriber can't inflate latency without bound
@@ -270,6 +274,18 @@ namespace fms
 			return m_fragments.bytes();
 		}
 
+		// Shared with every other flow of the same session, so one session's total
+		// reassembly backlog is bounded however many flows it opens.
+		void share_buffered_total(const std::shared_ptr<std::size_t> &total)
+		{
+			m_fragments.share_total(total);
+		}
+
+		std::size_t session_buffered_bytes() const
+		{
+			return m_fragments.shared_bytes();
+		}
+
 		std::uint16_t prev_rwnd() const
 		{
 			return m_prev_rwnd;
@@ -328,22 +344,27 @@ namespace fms
 
 			iterator lower_bound(const vlu_t &k) { return m_map.lower_bound(k); }
 
+			// The shared total spans every flow of one session; a flow charges both or
+			// a session could hold eMaxReceivingFlows times the per-flow allowance.
+			void share_total(const std::shared_ptr<std::size_t> &total) { m_shared = total; }
+
+			[[nodiscard]] std::size_t shared_bytes() const { return m_shared ? *m_shared : 0; }
+
 			void assign(const vlu_t &k, const fragment_ptr &f)
 			{
 				auto const i = m_map.find(k);
 				if (i == m_map.end())
 					m_map.emplace(k, f);
 				else
-				{
-					m_bytes -= i->second->m_data_len;
+					release(i->second->m_data_len);
+				charge(f->m_data_len);
+				if (i != m_map.end())
 					i->second = f;
-				}
-				m_bytes += f->m_data_len;
 			}
 
 			iterator erase(iterator i)
 			{
-				m_bytes -= i->second->m_data_len;
+				release(i->second->m_data_len);
 				return m_map.erase(i);
 			}
 
@@ -359,19 +380,40 @@ namespace fms
 			iterator erase(iterator first, iterator last)
 			{
 				for (auto i = first; i != last; ++i)
-					m_bytes -= i->second->m_data_len;
+					release(i->second->m_data_len);
 				return m_map.erase(first, last);
 			}
 
 			void clear()
 			{
+				release(m_bytes);
 				m_map.clear();
-				m_bytes = 0;
 			}
 
+			~fragment_store() { release(m_bytes); }
+
+			fragment_store() = default;
+			fragment_store(const fragment_store &) = delete;
+			fragment_store &operator=(const fragment_store &) = delete;
+
 		private:
+			void charge(std::size_t n)
+			{
+				m_bytes += n;
+				if (m_shared)
+					*m_shared += n;
+			}
+
+			void release(std::size_t n)
+			{
+				m_bytes -= n;
+				if (m_shared)
+					*m_shared -= n;
+			}
+
 			map_t m_map;
 			std::size_t m_bytes{0};
+			std::shared_ptr<std::size_t> m_shared;
 		};
 
 		using fragment_map_t = fragment_store;
