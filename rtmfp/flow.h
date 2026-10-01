@@ -174,6 +174,11 @@ namespace fms
 		static constexpr std::uint32_t eMaxBufferedFragments = 8192;
 		static constexpr std::uint32_t eMaxReassembledMsgLen = 16u * 1024 * 1024;
 
+		// A fragment carries up to 64 KiB, so the fragment count alone does not bound
+		// the bytes held. Buffering more than the largest message a flow could deliver
+		// can never complete one, so that is the ceiling.
+		static constexpr std::size_t eMaxBufferedBytes = eMaxReassembledMsgLen;
+
 		// Cap on the un-acknowledged send backlog of a live A/V flow. Past this,
 		// abandon_stale_fragments() drops the oldest frames instead of retransmitting
 		// them forever, so a slow/lossy subscriber can't inflate latency without bound
@@ -260,6 +265,11 @@ namespace fms
 			return m_fragments.size();
 		}
 
+		std::size_t buffered_bytes() const
+		{
+			return m_fragments.bytes();
+		}
+
 		std::uint16_t prev_rwnd() const
 		{
 			return m_prev_rwnd;
@@ -297,7 +307,74 @@ namespace fms
 		void parse_option_list();
 		static vlu_t get_stream_id_from_option(const option_ptr&);
 
-		using fragment_map_t = std::map<vlu_t, fragment_ptr>;
+		// Owns the buffered fragments together with the byte total they hold, so the
+		// byte bound cannot drift from the map it describes.
+		class fragment_store
+		{
+			using map_t = std::map<vlu_t, fragment_ptr>;
+
+		public:
+			using iterator = map_t::iterator;
+			using const_iterator = map_t::const_iterator;
+
+			iterator begin() { return m_map.begin(); }
+			iterator end() { return m_map.end(); }
+			const_iterator begin() const { return m_map.begin(); }
+			const_iterator end() const { return m_map.end(); }
+
+			[[nodiscard]] std::size_t size() const { return m_map.size(); }
+			[[nodiscard]] bool empty() const { return m_map.empty(); }
+			[[nodiscard]] std::size_t bytes() const { return m_bytes; }
+
+			iterator lower_bound(const vlu_t &k) { return m_map.lower_bound(k); }
+
+			void assign(const vlu_t &k, const fragment_ptr &f)
+			{
+				auto const i = m_map.find(k);
+				if (i == m_map.end())
+					m_map.emplace(k, f);
+				else
+				{
+					m_bytes -= i->second->m_data_len;
+					i->second = f;
+				}
+				m_bytes += f->m_data_len;
+			}
+
+			iterator erase(iterator i)
+			{
+				m_bytes -= i->second->m_data_len;
+				return m_map.erase(i);
+			}
+
+			std::size_t erase(const vlu_t &k)
+			{
+				auto const i = m_map.find(k);
+				if (i == m_map.end())
+					return 0;
+				erase(i);
+				return 1;
+			}
+
+			iterator erase(iterator first, iterator last)
+			{
+				for (auto i = first; i != last; ++i)
+					m_bytes -= i->second->m_data_len;
+				return m_map.erase(first, last);
+			}
+
+			void clear()
+			{
+				m_map.clear();
+				m_bytes = 0;
+			}
+
+		private:
+			map_t m_map;
+			std::size_t m_bytes{0};
+		};
+
+		using fragment_map_t = fragment_store;
 		// False when the reassembly is refused and the flow rejected. On true the
 		// message is m_data[0, m_msg_len), which may legitimately be empty.
 		[[nodiscard]] bool create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);

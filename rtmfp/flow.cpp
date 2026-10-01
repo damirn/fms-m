@@ -17,7 +17,8 @@ namespace fms
 
 	flow::vlu_seq_manager::result flow::add_fragment(const fragment_ptr& f)
 	{
-		if (m_fragments.size() >= eMaxBufferedFragments)
+		if (m_fragments.size() >= eMaxBufferedFragments
+			|| m_fragments.bytes() + f->m_data_len > eMaxBufferedBytes)
 		{
 			// Sending flow: the backlog is our own queued (and possibly in-flight)
 			// data, so refuse the new fragment rather than discarding all of it.
@@ -43,7 +44,7 @@ namespace fms
 				f->take_ownership();
 			}
 
-			m_fragments[f->m_seq] = f;
+			m_fragments.assign(f->m_seq, f);
 		}
 		return ret;
 	}
