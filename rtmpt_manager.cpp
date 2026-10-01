@@ -155,7 +155,7 @@ namespace fms
 		boost::tribool result = true;
 		{
 			std::lock_guard const s(sd->m_session_mutex);
-			if (drained.size() > 0)
+			if (!drained.empty())
 				result = sd->m_session->handle_data(drained, buffer);
 			else
 				sd->m_session->serialize_result(buffer);
