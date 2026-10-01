@@ -65,8 +65,22 @@ namespace fms
 	{
 		if (msg->type() != rtmp_message::eMessageInvoke)
 		{
-			delete_connection(connection_id);
-			return false;
+			switch (msg->type())
+			{
+			// Protocol control messages are legal before connect; the manager routes only connect.
+			case rtmp_message::eMessageChunkSize:
+			case rtmp_message::eMessageAbort:
+			case rtmp_message::eMessageBytesRead:
+			case rtmp_message::eMessagePing:
+			case rtmp_message::eMessageWindowAcknowledgementSize:
+			case rtmp_message::eMessageSetPeerBandwidth:
+				return false;
+			default:
+				// destroy_connection, not delete_connection: the socket has to close,
+				// not just unregister.
+				destroy_connection(connection_id);
+				return false;
+			}
 		}
 
 		rtmp_message_invoke_ptr const invoke = std::dynamic_pointer_cast<rtmp_message_invoke>(msg);

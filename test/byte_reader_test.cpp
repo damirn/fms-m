@@ -6,11 +6,13 @@
 // deleted without any test noticing, because the reader still refuses to run off
 // the end. So these bounds are load-bearing for code well outside this file.
 
-#include "byte_reader.h"
 #include "buffer_eof.h"
+#include "byte_reader.h"
+#include "byte_writer.h"
 #include "doctest.h"
 
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <vector>
 
@@ -105,32 +107,26 @@ TEST_CASE("read_vlu refuses a continuation that runs off the end")
 	CHECK_THROWS_AS(r.read_vlu(), buffer_eof_exception);
 }
 
-TEST_CASE("read_vlu bounds the accumulator, not just the byte count")
+TEST_CASE("read_vlu stops at the fourth byte however many say more")
 {
-	// 10 bytes carry 70 bits, so a length cap alone would let the top bits fall
-	// out of a 64-bit accumulator. An over-long VLU must be refused.
-	std::vector<std::uint8_t> v(11, 0xFF);
-	v.back() = 0x7F;
+	// A length cap alone would let the top bits fall out of the accumulator; the
+	// encoding is four bytes wide, so a continuation past that is not consumed.
+	std::vector<std::uint8_t> const v(11, 0xFF);
 	byte_reader r(v.data(), v.size());
-	CHECK_THROWS_AS(r.read_vlu(), buffer_eof_exception);
-
-	// A value that would shift its top bits away is refused before it silently
-	// truncates, even within the byte-count limit.
-	std::vector<std::uint8_t> w(10, 0xFF);
-	w.back() = 0x7F;
-	byte_reader r2(w.data(), w.size());
-	CHECK_THROWS_AS(r2.read_vlu(), buffer_eof_exception);
+	std::uint64_t value = 0;
+	CHECK_NOTHROW(value = r.read_vlu());
+	CHECK(value == byte_writer::eMaxVlu);
+	CHECK(r.read_pos() == v.data() + 4);
 }
 
 TEST_CASE("read_vlu accepts the largest value that still fits")
 {
-	// 9 bytes * 7 bits = 63 bits: the widest encoding that cannot overflow.
-	std::vector<std::uint8_t> v(9, 0xFF);
-	v.back() = 0x7F;
+	// 7 + 7 + 7 + 8 bits: the widest encoding write_vlu emits.
+	std::vector<std::uint8_t> const v(4, 0xFF);
 	byte_reader r(v.data(), v.size());
 	std::uint64_t value = 0;
 	CHECK_NOTHROW(value = r.read_vlu());
-	CHECK(value == 0x7FFFFFFFFFFFFFFFull);
+	CHECK(value == byte_writer::eMaxVlu);
 }
 
 TEST_CASE("available and read_pos track consumption")
@@ -145,3 +141,50 @@ TEST_CASE("available and read_pos track consumption")
 	CHECK(r.read_pos() == v.data() + 3);
 	CHECK(*r.read_pos() == 0x0D);
 }
+
+// byte_writer as an input buffer: write_buffer() reserves, update() reports,
+// clear() releases the reservation -- the RTMFP service clears without updating
+// when it drops a datagram.
+TEST_CASE("byte_writer: clear() releases a pending write_buffer reservation")
+{
+	byte_writer w;
+	(void)w.write_buffer(64);      // reserve, as an async receive would
+	CHECK(w.reserved() == 64);
+	w.clear();                     // datagram dropped before update()
+	CHECK(w.reserved() == 0);      // observable under NDEBUG, unlike the assert
+	(void)w.write_buffer(64);
+
+	byte_writer s;
+	(void)s.write_buffer(64);
+	s.clear_and_shrink(0);
+	CHECK(s.reserved() == 0);
+
+	// And the normal path still works: reserve, fill, update.
+	byte_writer v;
+	boost::asio::mutable_buffer b = v.write_buffer(32);
+	std::memset(b.data(), 0xAB, 8);
+	v.update(8);
+	CHECK(v.size() == 8);
+	CHECK_NOTHROW((void)v.write_buffer(32));
+}
+
+// A completion handler can reach update() after an error path already cleared the
+// buffer. Debug asserts on it, which is the intended diagnostic and aborts the
+// process, so only the NDEBUG fail-closed path is testable.
+#ifdef NDEBUG
+TEST_CASE("byte_writer: update after clear does not resize the buffer")
+{
+	byte_writer w;
+	(void)w.write_buffer(64);
+	REQUIRE(w.reserved() == 64);
+
+	w.clear();
+	REQUIRE(w.reserved() == 0);
+	REQUIRE(w.size() == 0);
+
+	w.update(8);            // stale completion: no reservation left
+	CHECK(w.size() == 0);
+	CHECK(w.footprint() == 0);
+	CHECK(w.reserved() == 0);
+}
+#endif

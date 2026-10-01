@@ -87,6 +87,9 @@ namespace fms
 		void notify_client(std::uint32_t, std::uint32_t, const std::string &);
 		void remove_client(std::uint32_t);
 
+		void forget_subscription(std::uint32_t, std::uint32_t, const stream_registry::exclusive_guard &);
+		void add_waiting_client(std::uint32_t, const rtmp_message_invoke_ptr&, const std::string &, const stream_registry::exclusive_guard &);
+
 		void create_stream_client(const stream_client_id_t &, const stream_client_id_t &, bool, const stream_registry::exclusive_guard &);
 
 		// All media-routing state (publishers, subscribers, fan-out index, waiting
@@ -134,7 +137,6 @@ namespace fms
 		boost::asio::io_context &io_context() override;
 		void update_netstream(const stream_client_id_t &id, const std::string &name, bool publishing) override;
 
-		void add_waiting_client(std::uint32_t, const rtmp_message_invoke_ptr&, const std::string &, const stream_registry::exclusive_guard &);
 		void update_waiting_client(stream_client_id_t &, bool, bool, const stream_registry::exclusive_guard &);
 
 		// VOD (video-on-demand) playback of saved .flv files, when a play target has

@@ -72,10 +72,9 @@ namespace fms
 		return key;
 	}
 
-	std::uint8_t *evp_dh_derive(EVP_PKEY *self, const std::uint8_t *p, std::size_t p_len,
-		unsigned long g, const std::uint8_t *peer_pub, std::size_t peer_len, std::size_t &out_len)
+	std::vector<std::uint8_t> evp_dh_derive(EVP_PKEY *self, const std::uint8_t *p, std::size_t p_len,
+		unsigned long g, const std::uint8_t *peer_pub, std::size_t peer_len)
 	{
-		out_len = 0;
 
 		// Reject a degenerate / out-of-range peer public key (0, 1, p-1, p, or
 		// anything >= p) before deriving: such values force a predictable or
@@ -92,31 +91,28 @@ namespace fms
 				&& BN_cmp(pub_bn.get(), BN_value_one()) > 0    // peer_pub >= 2
 				&& BN_cmp(pub_bn.get(), p_minus_1.get()) < 0;  // peer_pub <= p-2
 			if (!valid)
-				return nullptr;
+				return {};
 		}
 
 		pkey_ptr const peer(make_dh_key(p, p_len, g, peer_pub, peer_len, EVP_PKEY_PUBLIC_KEY));
 		if (!peer)
-			return nullptr;
+			return {};
 
 		pkey_ctx_ptr const dctx(EVP_PKEY_CTX_new(self, nullptr));
-		std::uint8_t *secret = nullptr;
-		if (dctx && EVP_PKEY_derive_init(dctx.get()) > 0)
-		{
-			// The pad is what makes the secret a fixed, prime-sized buffer.
-			if (EVP_PKEY_CTX_set_dh_pad(dctx.get(), 1) > 0
-				&& EVP_PKEY_derive_set_peer(dctx.get(), peer.get()) > 0
-				&& EVP_PKEY_derive(dctx.get(), nullptr, &out_len) > 0)
-			{
-				secret = new std::uint8_t[out_len];
-				if (EVP_PKEY_derive(dctx.get(), secret, &out_len) <= 0)
-				{
-					delete[] secret;
-					secret = nullptr;
-					out_len = 0;
-				}
-			}
-		}
+		if (!dctx || EVP_PKEY_derive_init(dctx.get()) <= 0)
+			return {};
+
+		// The pad is what makes the secret a fixed, prime-sized buffer.
+		std::size_t len = 0;
+		if (EVP_PKEY_CTX_set_dh_pad(dctx.get(), 1) <= 0
+			|| EVP_PKEY_derive_set_peer(dctx.get(), peer.get()) <= 0
+			|| EVP_PKEY_derive(dctx.get(), nullptr, &len) <= 0)
+			return {};
+
+		std::vector<std::uint8_t> secret(len);
+		if (EVP_PKEY_derive(dctx.get(), secret.data(), &len) <= 0)
+			return {};
+		secret.resize(len);
 		return secret;
 	}
 

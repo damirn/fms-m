@@ -26,11 +26,15 @@ namespace fms
 		virtual void set_cid(const std::string &) = 0;
 		virtual void set_address(const boost::asio::ip::address &) = 0;
 
+		// True once the session has been closed; its id is not served again.
+		virtual bool is_closed() const = 0;
+
 		// True once the tunnelled RTMP handshake is done; the reaper drops a session
 		// that keeps polling but never gets here.
 		virtual bool handshake_complete() const = 0;
 
-		virtual boost::tribool handle_data(byte_writer &, byte_writer &) = 0;
+		// A definite false is fatal to the session; indeterminate means incomplete.
+		[[nodiscard]] virtual boost::tribool handle_data(byte_writer &, byte_writer &) = 0;
 		virtual void serialize_result(byte_writer &) = 0;
 		virtual void serialize_poll_time(byte_writer &) = 0;
 

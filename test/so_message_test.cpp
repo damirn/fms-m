@@ -145,44 +145,66 @@ TEST_CASE("SO codec: a truncated message is refused at every prefix")
 	rc.push_back(0x01); rc.push_back(0x00);
 	add_event(full, so::eRequestChange, rc);
 
+	// Positive control: the complete message is accepted and yields its one event,
+	// so a codec that refused everything could not satisfy this case.
+	so whole;
+	REQUIRE(parses(full, whole));
+	REQUIRE(whole.events().size() == 1);
+
+	std::size_t accepted = 0;
 	for (std::size_t cut = 0; cut < full.size(); ++cut)
 	{
 		std::vector<std::uint8_t> const partial(full.begin(), full.begin() + static_cast<long>(cut));
 		so m;
-		// Either it refuses, or it read a complete prefix -- never a crash, and
-		// never an event whose body ran off the end.
-		if (parses(partial, m))
-			for (auto const &ev : m.events())
-				CHECK(ev->m_data.size() <= partial.size());
+		if (!parses(partial, m))
+			continue;
+		++accepted;
+		// A prefix may be a complete header with no events; it must never hand back
+		// an event whose body was cut off.
+		CHECK(m.events().empty());
 	}
+
+	// Only the bare header is a valid prefix; every other cut is refused.
+	CHECK(accepted == 1);
 }
 
-TEST_CASE("SO codec: an unknown event type does not skip its body")
+TEST_CASE("SO codec: an event we do not parse still consumes its body")
 {
-	// Characterisation. deserialize_event reads the type and the length, then the
-	// switch's default case does nothing -- it never skips the `len` body bytes. So
-	// an unknown event with a payload desyncs the walk and the rest of the message
-	// is misread; here that means the next "event" is garbage and the message is
-	// refused. Safe (it throws, nothing is delivered) but not forward compatible:
-	// a peer sending a newer event type loses the whole message, not just that
-	// event. Skipping `len` in the default case would fix it.
+	// Unparsed bodies left on the wire are read as the next event's type.
 	std::vector<std::uint8_t> v = header("obj");
 	add_event(v, 0x7E, {0xAA, 0xBB});
+	add_event(v, so::eUse, {});
 
 	so m;
-	CHECK_FALSE(parses(v, m));
+	REQUIRE(parses(v, m));
+	REQUIRE(m.events().size() == 2);
+	CHECK(m.events().front()->m_type == 0x7E);
+	CHECK(m.events().back()->m_type == so::eUse);
 
-	// With an empty body there is nothing to skip, so the walk stays in step and a
-	// following known event is still read.
+	// eUse and eRelease are body-less to us and take the same path.
 	std::vector<std::uint8_t> w = header("obj");
-	add_event(w, 0x7E, {});
-	add_event(w, so::eUse, {});
+	add_event(w, so::eUse, {0x01, 0x02, 0x03});
+	add_event(w, so::eRelease, {});
 
 	so m2;
 	REQUIRE(parses(w, m2));
 	REQUIRE(m2.events().size() == 2);
-	CHECK(m2.events().front()->m_type == 0x7E);
-	CHECK(m2.events().back()->m_type == so::eUse);
+	CHECK(m2.events().front()->m_type == so::eUse);
+	CHECK(m2.events().back()->m_type == so::eRelease);
+}
+
+TEST_CASE("SO codec: the event list is capped")
+{
+	std::vector<std::uint8_t> v = header("obj");
+	for (std::size_t i = 0; i < so::eMaxEvents; ++i)
+		add_event(v, so::eUse, {});
+	so m;
+	REQUIRE(parses(v, m));
+	CHECK(m.events().size() == so::eMaxEvents);
+
+	add_event(v, so::eUse, {});
+	so m2;
+	CHECK_FALSE(parses(v, m2));
 }
 
 TEST_CASE("SO codec: serialize then deserialize preserves the message")
@@ -224,4 +246,96 @@ TEST_CASE("SO codec: arbitrary bytes terminate without a crash")
 		parses(v, m);   // any answer; terminating without a crash is the property
 	}
 	CHECK(true);
+}
+
+// An event parsed with a zero-length body has no name or value; serialize must
+// still emit it as one.
+TEST_CASE("SO codec: serializing an event with no name or value does not crash")
+{
+	std::vector<std::uint8_t> v = header("obj");
+	add_event(v, so::eUse, {});              // zero-length body: m_name, m_value stay null
+	add_event(v, so::eRelease, {});          // same
+	add_event(v, 0x7F, {});                  // unknown type: no body, so no name
+
+	so m;
+	REQUIRE(parses(v, m));
+	REQUIRE(m.events().size() == 3);
+	for (auto const &ev : m.events())
+		CHECK(ev->m_name == nullptr);
+
+	byte_writer w;
+	REQUIRE_NOTHROW(m.serialize(w));
+
+	so back;                                  // and what we emit must still parse
+	byte_reader r(w.data(), w.size());
+	CHECK_NOTHROW(back.deserialize(r));
+}
+
+// Each event declares its own length, and the name/value parse used to ignore it:
+// a declared length that disagrees with the body consumed the next event's header
+// or left residue to be read as one.
+TEST_CASE("SO codec: a declared length longer than the body does not eat the next event")
+{
+	std::vector<std::uint8_t> body = short_string("prop");
+	body.push_back(0x05);                       // AMF0 null value
+	std::size_t const real = body.size();
+
+	std::vector<std::uint8_t> v = header("obj");
+	add_event(v, so::eRequestChange, body, static_cast<std::uint32_t>(real + 3));
+	v.insert(v.end(), 3, 0x00);                 // the three declared-but-unparsed bytes
+	add_event(v, so::eUse, {});
+
+	so m;
+	REQUIRE(parses(v, m));
+	REQUIRE(m.events().size() == 2);
+	CHECK(m.events().front()->m_type == so::eRequestChange);
+	CHECK(m.events().back()->m_type == so::eUse);
+}
+
+TEST_CASE("SO codec: a declared length shorter than the name is refused, not desynced")
+{
+	std::vector<std::uint8_t> body = short_string("prop");
+	body.push_back(0x05);
+
+	std::vector<std::uint8_t> v = header("obj");
+	add_event(v, so::eRequestRemove, body, 2);  // only the two name-length bytes
+	add_event(v, so::eUse, {});
+
+	// The name reader runs out inside the declared body, so the message is refused
+	// outright rather than reading the trailing bytes as a fresh event header.
+	so m;
+	CHECK_FALSE(parses(v, m));
+}
+
+TEST_CASE("SO codec: an event body longer than what it parses advances to its declared end")
+{
+	std::vector<std::uint8_t> body = short_string("prop");
+	body.push_back(0x05);   // trailing junk inside the declared body
+
+	std::vector<std::uint8_t> v = header("obj");
+	add_event(v, so::eRequestRemove, body);   // declared length covers the junk
+	add_event(v, so::eUse, {});
+
+	so m;
+	REQUIRE(parses(v, m));
+	REQUIRE(m.events().size() == 2);
+	CHECK(m.events().front()->m_type == so::eRequestRemove);
+	REQUIRE(m.events().front()->m_name);
+	CHECK(m.events().front()->m_name->value() == "prop");
+	CHECK(m.events().back()->m_type == so::eUse);   // the junk was not read as a header
+}
+
+// Forward compatibility: an event type this codec does not know still has a
+// declared length, so the ones behind it must survive.
+TEST_CASE("SO codec: an unknown event type is skipped, not fatal to the message")
+{
+	std::vector<std::uint8_t> v = header("obj");
+	add_event(v, 0xFE, std::vector<std::uint8_t>{0x01, 0x02, 0x03, 0x04});
+	add_event(v, so::eUse, {});
+
+	so m;
+	REQUIRE(parses(v, m));
+	REQUIRE(m.events().size() == 2);
+	CHECK(m.events().front()->m_type == 0xFE);
+	CHECK(m.events().back()->m_type == so::eUse);
 }

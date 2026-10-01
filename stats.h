@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <list>
@@ -53,18 +54,53 @@ namespace fms
 			: m_client(client),
 			 m_time(std::chrono::system_clock::now())
 		{}
+
+		// Snapshot copy: the atomic counters need an explicit load, and the timer
+		// thread takes one of these per stream to compute kbps off the hot path.
+		netstream_stats(const netstream_stats &o)
+			: m_client(o.m_client)
+			, m_name(o.m_name)
+			, m_is_published(o.m_is_published)
+			, m_bytes(o.m_bytes.load(std::memory_order_relaxed))
+			, m_messages(o.m_messages.load(std::memory_order_relaxed))
+			, m_messages_dropped(o.m_messages_dropped.load(std::memory_order_relaxed))
+			, m_ts(o.m_ts.load(std::memory_order_relaxed))
+			, m_delay(o.m_delay.load(std::memory_order_relaxed))
+			, m_drift(o.m_drift.load(std::memory_order_relaxed))
+			, m_kbps(o.m_kbps.load(std::memory_order_relaxed))
+			, m_time(o.m_time)
+			, m_start_streaming_rep(o.m_start_streaming_rep.load(std::memory_order_relaxed))
+		{}
+		netstream_stats &operator=(const netstream_stats &) = delete;
 		std::uint32_t m_client;
 		std::string m_name;
 		bool m_is_published{false};
-		std::uint32_t m_bytes{0};
-		std::uint32_t m_messages{0};
-		std::uint32_t m_messages_dropped{0};
-		std::uint32_t m_ts{0};
-		std::uint32_t m_delay{0};
-		std::uint32_t m_drift{0};
-		std::uint32_t m_kbps{0};
+		// The shared lock guards the map, not the entry, so each counter and
+		// m_start_streaming_rep synchronises itself. m_name and m_is_published are
+		// written under the unique lock and only ever read from a snapshot copy.
+		std::atomic<std::uint32_t> m_bytes{0};
+		std::atomic<std::uint32_t> m_messages{0};
+		std::atomic<std::uint32_t> m_messages_dropped{0};
+		std::atomic<std::uint32_t> m_ts{0};
+		std::atomic<std::uint32_t> m_delay{0};
+		std::atomic<std::uint32_t> m_drift{0};
+		std::atomic<std::uint32_t> m_kbps{0};
 		std::chrono::system_clock::time_point m_time;
-		std::chrono::system_clock::time_point m_start_streaming_time;
+
+		// Written on the media path under the shared lock, so it synchronises
+		// itself like the counters above: held as the clock's representation.
+		std::atomic<std::chrono::system_clock::rep> m_start_streaming_rep{0};
+
+		std::chrono::system_clock::time_point start_streaming_time() const
+		{
+			return std::chrono::system_clock::time_point(
+				std::chrono::system_clock::duration(m_start_streaming_rep.load(std::memory_order_relaxed)));
+		}
+
+		void set_start_streaming_time(std::chrono::system_clock::time_point t)
+		{
+			m_start_streaming_rep.store(t.time_since_epoch().count(), std::memory_order_relaxed);
+		}
 	};
 
 	using netstream_stats_ptr = std::shared_ptr<netstream_stats>;

@@ -101,19 +101,19 @@ TEST_CASE("handshake: compute_digest excludes the digest window")
 	std::uint32_t const off = digest_offset(s, 0);
 
 	std::uint8_t a[eDigestLen];
-	compute_digest(s, off, {test_key, test_key_len}, a);
+	REQUIRE(compute_digest(s, off, {test_key, test_key_len}, a));
 
 	// Scribbling inside the 32-byte window must not change the result...
 	for (std::uint32_t i = off; i < off + eDigestLen; ++i)
 		s[i] = static_cast<std::uint8_t>(~s[i]);
 	std::uint8_t b[eDigestLen];
-	compute_digest(s, off, {test_key, test_key_len}, b);
+	REQUIRE(compute_digest(s, off, {test_key, test_key_len}, b));
 	CHECK(std::memcmp(a, b, eDigestLen) == 0);
 
 	// ...but a byte outside it must.
 	s[off == 12 ? off + eDigestLen : 0] ^= 0xFF;
 	std::uint8_t c[eDigestLen];
-	compute_digest(s, off, {test_key, test_key_len}, c);
+	REQUIRE(compute_digest(s, off, {test_key, test_key_len}, c));
 	CHECK(std::memcmp(a, c, eDigestLen) != 0);
 }
 
@@ -125,7 +125,7 @@ TEST_CASE("handshake: a digest written in place validates, and one bit flip brea
 		std::uint32_t const off = digest_offset(s, scheme);
 
 		// compute_digest is documented to allow out to point into sig at off
-		compute_digest(s, off, {test_key, test_key_len}, std::span{s}.subspan(off).first<eDigestLen>());
+		REQUIRE(compute_digest(s, off, {test_key, test_key_len}, std::span{s}.subspan(off).first<eDigestLen>()));
 		CHECK(validate_digest(s, scheme, {test_key, test_key_len}));
 
 		auto flipped = s;
@@ -144,7 +144,7 @@ TEST_CASE("handshake: detect_scheme finds the scheme that was signed")
 	{
 		auto s = make_sig(static_cast<std::uint8_t>(scheme + 10));
 		std::uint32_t const off = digest_offset(s, scheme);
-		compute_digest(s, off, {test_key, test_key_len}, std::span{s}.subspan(off).first<eDigestLen>());
+		REQUIRE(compute_digest(s, off, {test_key, test_key_len}, std::span{s}.subspan(off).first<eDigestLen>()));
 
 		CHECK(detect_scheme(s, {test_key, test_key_len}) == scheme);
 	}
@@ -166,7 +166,7 @@ TEST_CASE("handshake: the genuine FP key round-trips like any other")
 	// Production uses genuine_keys::FP_key truncated to 30 bytes.
 	auto s = make_sig(7);
 	std::uint32_t const off = digest_offset(s, 1);
-	compute_digest(s, off, {genuine_keys::FP_key, 30}, std::span{s}.subspan(off).first<eDigestLen>());
+	REQUIRE(compute_digest(s, off, {genuine_keys::FP_key, 30}, std::span{s}.subspan(off).first<eDigestLen>()));
 
 	CHECK(validate_digest(s, 1, {genuine_keys::FP_key, 30}));
 	CHECK(detect_scheme(s, {genuine_keys::FP_key, 30}) == 1);

@@ -21,8 +21,9 @@ namespace fms
 			return m_pub_key;
 		}
 
-		// False if the keypair or the derivation failed.
-		[[nodiscard]] bool generate_shared_secret(const std::uint8_t *, std::uint16_t);
+		// False if the keypair or the derivation failed. noexcept: it runs inside an
+		// Asio receive handler.
+		[[nodiscard]] bool generate_shared_secret(const std::uint8_t *, std::uint16_t) noexcept;
 		[[nodiscard]] bool generate_symetric_keys(const std::uint8_t *, std::uint16_t, const std::uint8_t *, std::uint16_t,
 			std::uint8_t *, std::uint8_t *);
 
@@ -40,7 +41,8 @@ namespace fms
 		}
 
 	protected:
-		void generate_public_key();
+		// Never throws: a dh2 is constructed inside an Asio receive handler.
+		void generate_public_key() noexcept;
 		bool generate_rnonce();
 
 		static constexpr std::size_t eAESKeySize = 0x20;
@@ -48,8 +50,7 @@ namespace fms
 		static const std::uint8_t m_dh_key[eKeySize];
 		EVP_PKEY *m_pkey{nullptr};
 		std::vector<std::uint8_t> m_pub_key;
-		int m_shared_secret_size{0};
-		std::uint8_t *m_shared_secret{nullptr};
+		std::vector<std::uint8_t> m_shared_secret;
 		std::vector<std::uint8_t> m_rnonce;
 	};
 }

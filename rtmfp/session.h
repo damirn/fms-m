@@ -182,7 +182,10 @@ namespace fms
 			return m_addresses;
 		}
 
-		const std::list<group_weak_ptr> &group_membership() const
+		// Keyed by group id: one lookup per inbound NetGroup message, not a scan.
+		using group_membership_t = std::map<item::id_t, group_weak_ptr>;
+
+		const group_membership_t &group_membership() const
 		{
 			return m_group_membership;
 		}
@@ -228,6 +231,9 @@ namespace fms
 		// otherwise open one flow per distinct flow_id without bound and exhaust
 		// memory. No legitimate session comes near this.
 		static constexpr std::size_t eMaxReceivingFlows = 1024;
+
+		// Cap groups per session: the group id is peer-chosen wire data.
+		static constexpr std::size_t eMaxGroupMemberships = 64;
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
 		void arm_alarm();
@@ -265,14 +271,20 @@ namespace fms
 
 		bool m_ack_now{false};
 
-		vlu_t m_current_flow_id;
-		vlu_t m_next_seq;
+		// Read by handle_next_user_data, which a peer can reach with a NextUserData
+		// chunk that no UserData preceded -- so these must not start indeterminate.
+		vlu_t m_current_flow_id{0};
+		vlu_t m_next_seq{0};
 
 		vlu_t m_next_tsn{1};
 		vlu_t m_max_tsn_ack{0};
 
 		std::uint32_t m_next_flow_id{2};
 		flow_map_t m_receiving_flows;
+
+		// Reassembly backlog shared by every receiving flow of this session; held by
+		// shared_ptr so a flow can never outlive the total it charges.
+		std::shared_ptr<std::size_t> m_buffered_bytes{std::make_shared<std::size_t>(0)};
 		flow_map_t m_sending_flows;
 
 		flow_assoc_map_t m_receiving_to_sending_flow;
@@ -284,6 +296,6 @@ namespace fms
 
 		address_list_t m_addresses;
 
-		std::list<group_weak_ptr> m_group_membership;
+		group_membership_t m_group_membership;
 	};
 }

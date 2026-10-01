@@ -3,6 +3,7 @@
 #include "byte_writer.h"
 #include "channel_manager.h"
 #include "crypto.h"
+#include "logging.h"
 #include "rtmp_app_manager.h"
 #include "rtmp_application.h"
 #include "rtmp_header.h"
@@ -29,7 +30,7 @@ namespace fms
 
 	void rtmpt_session::handle_results(byte_writer &buffer)
 	{
-		if (!m_app || (m_results.empty() && !m_app->has_async_messages(m_id)))
+		if (!m_app || (m_results.empty() && !get_app()->has_async_messages(m_id)))
 		{
 			std::uint8_t const poll_time = get_poll_time(false);
 			buffer << poll_time;
@@ -40,7 +41,7 @@ namespace fms
 			buffer << i;
 
 			rtmp_message_ptr msg;
-			while(m_app->get_async_message(m_id, msg))
+			while(get_app()->get_async_message(m_id, msg))
 				serialize_message(msg, buffer);
 
 			for (auto & result : m_results)
@@ -55,7 +56,7 @@ namespace fms
 		rtmp_channel_ptr const channel = m_channel_manager.get_channel(msg->channel_id());
 
 		if (m_app != nullptr)
-			m_app->update_stats(false, false, 1);
+			get_app()->update_stats(false, false, 1);
 
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
@@ -66,8 +67,10 @@ namespace fms
 		rtmp_header h;
 		rtmp_protocol p(m_outgoing_chunk_size);
 		std::size_t const start = buffer.mark();
-		p.serialize(buffer, msg, h, channel->sent_header());
-		channel->sent_header() = h;
+		if (p.serialize(buffer, msg, h, channel->sent_header()))
+			channel->sent_header() = h;
+		else
+			BOOST_LOG(lg::get()) << "cid: " << m_id << " dropping message type " << static_cast<int>(msg->type()) << ": body exceeds the AMF write bounds";
 
 		// encrypt just the region this message serialized into (no-op if plaintext)
 		if (buffer.size() > start)
@@ -76,14 +79,14 @@ namespace fms
 
 	void rtmpt_session::serialize_result(byte_writer &buffer)
 	{
-		if (m_app != nullptr && m_app->has_async_messages(m_id))
+		if (m_app != nullptr && get_app()->has_async_messages(m_id))
 		{
 			rtmp_message_ptr result;
 
 			std::uint8_t const i = get_poll_time(true);
 			buffer << i;
 
-			while (m_app->get_async_message(m_id, result))
+			while (get_app()->get_async_message(m_id, result))
 			{
 				serialize_message(result, buffer);
 			}
@@ -151,7 +154,11 @@ namespace fms
 				return boost::indeterminate;
 			}
 			if (!handle_handshake(m_remaining_data, output))
+			{
+				m_remaining_data.clear();
+				close();
 				return false;
+			}
 			m_sstate = eCSReadHS;
 			return true;   // S0/S1/S2 written; C2 handled on the next request
 		}

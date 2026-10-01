@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "rtmp_so_message.h"
+#include "amf0.h"
+#include "amf_write_budget.h"
 #include "byte_order.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
@@ -8,6 +10,7 @@ namespace fms
 {
 	void rtmp_message_shared_object::deserialize(byte_reader &buffer)
 	{
+		amf0::read_scope const budget;
 		m_amf0.read_short_string(buffer, m_name, true);
 
 		buffer >> m_version;
@@ -20,6 +23,8 @@ namespace fms
 
 		while(buffer.available() > 0)
 		{
+			if (m_events.size() >= eMaxEvents)
+				throw amf0_read_exception();
 			event_ptr const ev = deserialize_event(buffer);
 			m_events.push_back(ev);
 		}
@@ -27,6 +32,7 @@ namespace fms
 
 	void rtmp_message_shared_object::serialize(byte_writer &buffer)
 	{
+		amf_write_budget::scope const budget(buffer.size());
 		m_amf0.write_short_string(buffer, m_name, true);
 
 		std::uint32_t tmp = to_network<std::uint32_t>(m_version);
@@ -56,17 +62,32 @@ namespace fms
 		{
 		case eUse:
 		case eRelease:
+			// Body-less to us, but len bytes are still on the wire; leaving them
+			// makes the next iteration read the body as an event type.
+			if (!buffer.try_skip(len))
+				throw amf0_read_exception();
 			break;
 		case eRequestChange:
-			deserialize_request_change_event(buffer, ev);
+		case eRequestRemove:
+			{
+				// Parse inside the declared body only, then advance to its end: a
+				// len that disagrees with the body must not desync the event list.
+				if (len > buffer.available())
+					throw amf0_read_exception();
+				byte_reader body(buffer.read_pos(), len);
+				if (ev->m_type == eRequestChange)
+					deserialize_request_change_event(body, ev);
+				else
+					deserialize_request_remove_event(body, ev);
+				buffer.skip(len);
+			}
 			break;
 		case eSendMessage:
 			deserialize_send_message_event(len, buffer, ev);
 			break;
-		case eRequestRemove:
-			deserialize_request_remove_event(buffer, ev);
-			break;
 		default:
+			if (!buffer.try_skip(len))
+				throw amf0_read_exception();
 			break;
 		}
 
@@ -116,15 +137,25 @@ namespace fms
 			buffer << size;
 			buffer.write(ev->m_data.data(), ev->m_data.size());
 		}
+		else if (!ev->m_name)
+		{
+			// eUse/eRelease/unknown carry no name: emit the zero-length body.
+			buffer << zero;
+		}
 		else
 		{
 			// reserve a 4-byte length slot, write the body, then back-patch the
 			// slot with the body length once it's known (byte_writer mark/patch).
 			std::size_t const pos = buffer.mark();
 			buffer << zero;
-			m_amf0.write_short_string(buffer, ev->m_name, true);
+			amf0::write_short_string(buffer, ev->m_name, true);
 			if (ev->m_type != eSuccess && ev->m_type != eRemove)
-				m_amf0.write(buffer, ev->m_value);
+			{
+				if (ev->m_value)
+					m_amf0.write(buffer, ev->m_value);
+				else
+					amf0::write_null(buffer);
+			}
 			std::uint32_t const size = to_network<std::uint32_t>(
 				static_cast<std::uint32_t>(buffer.mark() - pos - 4));
 			buffer.patch(pos, reinterpret_cast<const std::uint8_t *>(&size), sizeof(size));

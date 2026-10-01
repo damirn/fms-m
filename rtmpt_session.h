@@ -4,6 +4,7 @@
 #include "rtmpt_host.h"
 #include "byte_writer.h"
 
+#include <atomic>
 #include <cstdint>
 #include <list>
 #include <string>
@@ -58,7 +59,7 @@ namespace fms
 		// manager uses this to reap a session that keeps polling but never handshakes.
 		bool handshake_complete() const override { return m_sstate == eCSReadCommands; }
 
-		boost::tribool handle_data(byte_writer &, byte_writer &) override;
+		[[nodiscard]] boost::tribool handle_data(byte_writer &, byte_writer &) override;
 		void serialize_result(byte_writer &) override;
 
 		// Only used when result is not needed
@@ -68,7 +69,13 @@ namespace fms
 		// because a base's virtual does not override a second base's.
 		void handle_bytes_read(std::size_t n) override { basic_rtmp_connection::handle_bytes_read(n); }
 		void handle_bytes_written(std::size_t n) override { basic_rtmp_connection::handle_bytes_written(n); }
-		void close() override { basic_rtmp_connection::close(); }
+		void close() override
+		{
+			m_closed = true;
+			basic_rtmp_connection::close();
+		}
+
+		bool is_closed() const override { return m_closed; }
 
 	protected:
 		// Handle application's result
@@ -83,6 +90,9 @@ namespace fms
 		std::uint8_t get_poll_time(bool);
 
 		session_state m_sstate{eCSIdle};
+
+		// Read by the manager under its own lock, set from the connection's thread.
+		std::atomic_bool m_closed{false};
 
 		static constexpr std::uint8_t eMaxIdleTimes = 6;
 		std::uint8_t m_poll_cnt{0};

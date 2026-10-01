@@ -27,20 +27,26 @@ namespace fms::rtmp_handshake
 		return 0;
 	}
 
-	void compute_digest(c1_view sig, std::uint32_t off, key_view key, digest_out out)
+	bool compute_digest(c1_view sig, std::uint32_t off, key_view key, digest_out out)
 	{
 		std::uint8_t buff[eHandshakeSize - eDigestLen];
 		std::memcpy(buff, sig.data(), off);
 		std::memcpy(buff + off, sig.data() + off + eDigestLen, eHandshakeSize - off - eDigestLen);
-		HMAC_SHA256(buff, eHandshakeSize - eDigestLen, key.data(),
-			static_cast<std::uint32_t>(key.size()), out.data());
+		if (HMAC_SHA256(buff, eHandshakeSize - eDigestLen, key.data(),
+			static_cast<std::uint32_t>(key.size()), out.data()) == 0)
+		{
+			std::memset(out.data(), 0, out.size());   // out is defined on failure: callers compare it
+			return false;
+		}
+		return true;
 	}
 
 	bool validate_digest(c1_view sig, std::uint8_t scheme, key_view key)
 	{
 		std::uint32_t const off = digest_offset(sig, scheme);
 		std::uint8_t hash[eDigestLen];
-		compute_digest(sig, off, key, hash);
+		if (!compute_digest(sig, off, key, hash))
+			return false;
 		return CRYPTO_memcmp(hash, sig.data() + off, eDigestLen) == 0;   // constant-time
 	}
 

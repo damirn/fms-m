@@ -404,6 +404,176 @@ else
 	skip "F2 rtmp_client not built"
 fi
 
+echo "[F3] record path traversal (publish name must not escape --output-folder)"
+if [ -x "$CLIENT" ]; then
+	# The server writes into $WORK/rec, so "../../" from there lands beside $WORK,
+	# not in it. Check the directory the name actually resolves to.
+	esc_up="$(dirname "$WORK")"
+
+	# Positive control first, on the same path and the same timing as the cases
+	# below: without it a server that never records at all passes every check.
+	"$CLIENT" -r "rtmp://127.0.0.1:$RTMP_PORT/media" -c publish -s "f3_control_$$" \
+		-i "$WORK/h264_aac.flv" -R -n >>"$WORK/f3.log" 2>&1 &
+	P=$!; track $P; sleep 12; kill $P 2>/dev/null; sleep 2
+	if ls "$WORK/rec"/f3_control_*.flv >/dev/null 2>&1; then
+		ok "F3 control: a benign name is recorded"
+	else
+		bad "F3 control: nothing was recorded, so the refusals below prove nothing"
+	fi
+
+	for nm in "../../f3_escape_$$" "/tmp/f3_abs_$$"; do
+		"$CLIENT" -r "rtmp://127.0.0.1:$RTMP_PORT/media" -c publish -s "$nm" \
+			-i "$WORK/h264_aac.flv" -R -n >>"$WORK/f3.log" 2>&1 &
+		P=$!; track $P; sleep 12; kill $P 2>/dev/null; sleep 2
+	done
+	sleep 1
+
+	# Asserted separately so a regression in either shape is attributable.
+	if ls "$esc_up"/f3_escape_*.flv >/dev/null 2>&1; then
+		bad "F3 traversal name escaped to $esc_up"
+		rm -f "$esc_up"/f3_escape_*.flv
+	else
+		ok "F3 traversal publish name was refused"
+	fi
+	if ls /tmp/f3_abs_$$*.flv >/dev/null 2>&1; then
+		bad "F3 absolute name wrote outside the output folder"
+		rm -f /tmp/f3_abs_$$*.flv
+	else
+		ok "F3 absolute publish name was refused"
+	fi
+	# The control recording lives in this directory too, so match only the
+	# refused names. One ls over both globs would fail on the unmatched one.
+	f3_hostile=""
+	for f in "$WORK/rec"/f3_escape_* "$WORK/rec"/f3_abs_*; do
+		[ -e "$f" ] && f3_hostile="$f"
+	done
+	if [ -n "$f3_hostile" ]; then
+		bad "F3 hostile name was recorded inside the folder ($f3_hostile)"
+	else
+		ok "F3 nothing written for the refused names"
+	fi
+else
+	skip "F3 rtmp_client not built"
+fi
+
+echo
+echo "=== H. RTMFP session churn ==="
+
+# Sibling checkout by default, as interop.sh does; override RTMFP_CPP.
+RTMFP_CPP="${RTMFP_CPP:-$ROOT/../rtmfp-cpp/test}"
+TCPUB="$RTMFP_CPP/tcpublish"
+TCCONN="$RTMFP_CPP/tcconn"
+
+if [ -x "$TCPUB" ] && [ -x "$TCCONN" ]; then
+	echo "[H1] repeated RTMFP connect/disconnect against one publisher"
+	rss_before=$(ps -o rss= -p "$SRV" | tr -d ' ')
+	"$TCPUB" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#churn" "$WORK/h264_aac.flv" \
+		>"$WORK/h1_pub.log" 2>&1 &
+	HPUB=$!; track $HPUB; sleep 3
+
+	h1_fail=0
+	for i in $(seq 1 20); do
+		"$TCCONN" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#churn" >"$WORK/h1_$i.log" 2>&1 &
+		HC=$!; sleep 0.6; kill $HC 2>/dev/null; wait $HC 2>/dev/null
+		grep -q 'Connect.Success' "$WORK/h1_$i.log" || h1_fail=$((h1_fail + 1))
+	done
+	[ "$h1_fail" -eq 0 ] && ok "H1 all 20 churn cycles connected" \
+		|| bad "H1 $h1_fail of 20 churn cycles failed to connect"
+
+	# A later session must still reach both maps after teardown.
+	"$TCCONN" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#churn" >"$WORK/h1_after.log" 2>&1 &
+	HC=$!; track $HC; sleep 4; kill $HC 2>/dev/null
+	grep -q 'Connect.Success' "$WORK/h1_after.log" \
+		&& ok "H1 a fresh session still connects after the churn" \
+		|| bad "H1 no session possible after the churn"
+
+	rss_after=$(ps -o rss= -p "$SRV" | tr -d ' ')
+	if [ -n "$rss_before" ] && [ -n "$rss_after" ] && [ "$rss_after" -lt $((rss_before + 40000)) ]; then
+		ok "H1 server RSS bounded (${rss_before}KB -> ${rss_after}KB)"
+	else
+		bad "H1 server RSS grew (${rss_before}KB -> ${rss_after}KB)"
+	fi
+	kill $HPUB 2>/dev/null
+else
+	skip "H1 rtmfp-cpp tcpublish/tcconn not built (set RTMFP_CPP to its test/ dir)"
+fi
+
+echo
+echo "=== G. security regressions ==="
+
+echo "[G1] RTMPT ident probe answers the name the request arrived on"
+# Host names something neither the bind address nor the socket: the reply has to be
+# that name, so it is both tunnel-able and not a disclosure of where we are bound.
+ident=$(curl -s -m 5 -X POST -H 'Content-Type: application/x-fcs' -H 'Host: tunnel.example:1935' \
+	--data-binary '' "http://127.0.0.1:$RTMPT_PORT/fcs/ident2" 2>/dev/null)
+case "$ident" in
+	tunnel.example) ok "G1 ident answered the requested host" ;;
+	0.0.0.0|::) bad "G1 ident answered the bind address ($ident), which no client can tunnel to" ;;
+	127.0.0.1) bad "G1 ident disclosed the socket address ($ident)" ;;
+	# A timeout or a changed format answers nothing; that is a failure, not a skip.
+	*) bad "G1 no usable ident reply '$ident'" ;;
+esac
+
+echo "[G2] RTMPT body allowance before a session exists"
+small=$(head -c 900000 /dev/zero | curl -s -m 10 -o /dev/null -w '%{http_code}' \
+	-X POST -H 'Content-Type: application/x-fcs' --data-binary @- \
+	"http://127.0.0.1:$RTMPT_PORT/open/1" 2>/dev/null)
+big=$(head -c 2000000 /dev/zero | curl -s -m 10 -o /dev/null -w '%{http_code}' \
+	-X POST -H 'Content-Type: application/x-fcs' --data-binary @- \
+	"http://127.0.0.1:$RTMPT_PORT/open/1" 2>/dev/null)
+[ "$small" = "200" ] && ok "G2 a 900KB body is accepted" || bad "G2 900KB body rejected ($small)"
+case "$big" in
+	200) bad "G2 a 2MB body was accepted without a session" ;;
+	000|"") bad "G2 no answer to the 2MB body (curl reported '$big'), so nothing was proven" ;;
+	*) ok "G2 a 2MB body is refused without a session ($big)" ;;
+esac
+
+if command -v python3 >/dev/null 2>&1; then
+	echo "[G3] a control message before connect does not drop the client"
+	g3=$(python3 "$ROOT/test/interop/rtmp_probe.py" preconnect-control "$RTMP_PORT" 2>/dev/null)
+	case "$g3" in
+		"RESULT ok"*) ok "G3 connect after WindowAckSize still answered" ;;
+		*) bad "G3 client dropped by a pre-connect control message ($g3)" ;;
+	esac
+
+	echo "[G4] a zero acknowledgement window must not ack every read"
+	# Differential: the same workload with a window too large to spend, then with
+	# the hostile zero. Only the acknowledgement cadence differs between the two, so
+	# the connect responses cancel and the _result object's size drops out.
+	g4=$(python3 "$ROOT/test/interop/rtmp_probe.py" window-ack-delta "$RTMP_PORT" 2>/dev/null)
+	g4r=$(printf '%s\n' "$g4" | sed -n 's/^RESULT \([a-z-]*\).*/\1/p')
+	g4s=$(printf '%s\n' "$g4" | sed -n 's/^SENDS_COMPLETED //p')
+	g4base=$(printf '%s\n' "$g4" | sed -n 's/^BASELINE_BYTES //p')
+	g4d=$(printf '%s\n' "$g4" | sed -n 's/^DELTA //p')
+
+	if [ "$g4r" = "ok" ]; then
+		ok "G4 connect with a zero window was still answered"
+	else
+		bad "G4 client dropped by a zero acknowledgement window ($g4r)"
+	fi
+	if [ "$g4s" = "40" ]; then
+		ok "G4 all 40 paced sends completed"
+	else
+		bad "G4 only $g4s of 40 paced sends completed, so the delta is not comparable"
+	fi
+	# A baseline of zero means nothing was answered at all, which would make a
+	# delta of zero look like a pass.
+	if [ -n "$g4base" ] && [ "$g4base" -gt 4000 ] 2>/dev/null; then
+		ok "G4 baseline workload returned $g4base bytes"
+	else
+		bad "G4 baseline returned '$g4base' bytes, too few to compare against"
+	fi
+	# Each unnecessary acknowledgement is 16 bytes, so acking all 40 paced reads is
+	# +640. Ignoring the window is 0; half the signal is the threshold.
+	if [ -n "$g4d" ] && [ "$g4d" -lt 320 ] 2>/dev/null; then
+		ok "G4 zero window ignored (delta $g4d bytes)"
+	else
+		bad "G4 zero window: delta $g4d bytes, expected under 320"
+	fi
+else
+	skip "G3/G4 python3 not available"
+fi
+
 echo
 echo "================ SUMMARY ================"
 echo "  pass $PASS   fail $FAIL   skip $SKIP"

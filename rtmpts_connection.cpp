@@ -18,6 +18,11 @@ namespace fms
 		m_tls.handshake(std::move(h));
 	}
 
+	void rtmpts_connection::async_read_header(io_handler h)
+	{
+		http::async_read_header(m_tls.stream(), m_buffer, *m_parser, std::move(h));
+	}
+
 	void rtmpts_connection::async_read_request(io_handler h)
 	{
 		http::async_read(m_tls.stream(), m_buffer, *m_parser, std::move(h));

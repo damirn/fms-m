@@ -30,6 +30,7 @@ namespace fms
 			m_rto_timer.cancel();
 			m_wto_timer.cancel();
 			m_timer.cancel();
+			m_hs_timer.cancel();   // still armed if we close mid-handshake
 			BOOST_LOG(lg::get()) << "Closing socket for cid: " << m_id;
 			// Non-throwing: close() runs from completion handlers.
 			boost::system::error_code ec;
@@ -53,7 +54,9 @@ namespace fms
 
 	void rtmp_connection::handle_timer(const boost::system::error_code &e)
 	{
-		if (!e)
+		// A completion already queued when close() ran would otherwise re-arm the
+		// timer, and the renewed timer is then the connection's only owner.
+		if (!e && m_state == eStateReadPackets)
 		{
 			if (m_app == nullptr)
 			{
@@ -64,14 +67,17 @@ namespace fms
 			m_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_timer(ec); });
 
 			rtmp_message_ping_ptr const msg = std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingRequest, get_timestamp());
-			m_app->enqueue_async_message(m_id, msg);
+			get_app()->enqueue_async_message(m_id, msg);
 			notify();
 		}
 	}
 
 	void rtmp_connection::handle_hs_timer(const boost::system::error_code &e)
 	{
-		if (!e)
+		// cancel() cannot suppress a completion already queued, so a handshake that
+		// validated within one scheduling quantum of the deadline needs the state
+		// check -- the expiry is never moved, so a deadline test stays true.
+		if (!e && m_state != eStateReadPackets && m_state != eStateClosing)
 			close();
 	}
 
@@ -232,7 +238,7 @@ namespace fms
 
 	void rtmp_connection::handle_app_result(rtmp_channel_ptr channel, rtmp_message_ptr result)
 	{
-		if (!m_write_in_progress && (m_app == nullptr || !m_app->has_async_messages(m_id)))
+		if (!m_write_in_progress && (m_app == nullptr || !get_app()->has_async_messages(m_id)))
 		{
 			serialize_message(result, channel);
 			perform_write();
@@ -240,7 +246,7 @@ namespace fms
 		}
 		if (m_app != nullptr)   // a write is in flight; queue it on the app
 		{
-			m_app->enqueue_async_message(m_id, result);
+			get_app()->enqueue_async_message(m_id, result);
 			notify();
 			return;
 		}
@@ -274,7 +280,7 @@ namespace fms
 			// stalled write would be serialized into one enormous m_output_buffer and
 			// handed to a single async_write. handle_write_packet() calls us again on
 			// completion, so the rest of the queue goes out in the next batch.
-			while (m_output_buffer.size() < eMaxWriteBatchBytes && m_app->get_async_message(m_id, result))
+			while (m_output_buffer.size() < eMaxWriteBatchBytes && get_app()->get_async_message(m_id, result))
 			{
 				if (result->type() == rtmp_message::eMessageClose)
 				{
@@ -323,14 +329,16 @@ namespace fms
 		rtmp_protocol p(m_outgoing_chunk_size);
 		m_messages_written++;
 		if (m_app != nullptr)
-			m_app->update_stats(false, false, 1);
+			get_app()->update_stats(false, false, 1);
 		if (result->type() == rtmp_message::eMessageChunkSize)
 		{
 			rtmp_message_chunk_size_ptr const cs = std::static_pointer_cast<rtmp_message_chunk_size>(result);
 			set_outgoing_chunk_size(cs->chunk_size());
 		}
-		p.serialize(m_output_buffer, result, h, channel->sent_header());
-		channel->sent_header() = h;
+		if (p.serialize(m_output_buffer, result, h, channel->sent_header()))
+			channel->sent_header() = h;
+		else
+			BOOST_LOG(lg::get()) << "cid: " << m_id << " dropping message type " << static_cast<int>(result->type()) << ": body exceeds the AMF write bounds";
 	}
 
 	void rtmp_connection::perform_write()

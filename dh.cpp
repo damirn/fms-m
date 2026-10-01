@@ -20,9 +20,16 @@ namespace fms
 		0x49, 0x28, 0x66, 0x51, 0xEC, 0xE6, 0x53, 0x81, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 	};
 
-	void dh::init()
+	void dh::init() noexcept
 	{
-		m_pkey = evp_dh_keygen(P1024, sizeof(P1024), 2);
+		try
+		{
+			m_pkey = evp_dh_keygen(P1024, sizeof(P1024), 2);
+		}
+		catch (...)
+		{
+			m_pkey = nullptr;   // callers check valid(); nothing here may unwind
+		}
 	}
 
 	void dh::deinit()
@@ -31,14 +38,20 @@ namespace fms
 			EVP_PKEY_free(m_pkey);
 	}
 
-	void dh::create_shared_key(std::uint8_t *key, std::uint16_t size)
+	bool dh::create_shared_key(const std::uint8_t *key, std::uint16_t size) noexcept
 	{
-		std::size_t len = 0;
-		std::uint8_t *const secret = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size, len);
-		if (secret == nullptr)
-			throw std::runtime_error("DH shared-key derivation failed");
-		m_shared_key.assign(secret, secret + len);   // replaces any previous secret
-		delete[] secret;
+		try
+		{
+			std::vector<std::uint8_t> secret = evp_dh_derive(m_pkey, P1024, sizeof(P1024), 2, key, size);
+			if (secret.empty())
+				return false;
+			m_shared_key = std::move(secret);   // replaces any previous secret
+			return true;
+		}
+		catch (...)
+		{
+			return false;
+		}
 	}
 
 	bool dh::copy_shared_key(std::uint8_t *key, std::uint16_t size) const
@@ -49,13 +62,9 @@ namespace fms
 		return true;
 	}
 
-	void dh::copy_public_key(std::uint8_t *key, std::uint16_t size)
+	bool dh::copy_public_key(std::uint8_t *key, std::uint16_t size)
 	{
-		evp_dh_pub(m_pkey, key, size);
+		return evp_dh_pub(m_pkey, key, size) > 0;
 	}
 
-	void dh::copy_private_key(std::uint8_t *key, std::uint16_t size)
-	{
-		evp_dh_priv(m_pkey, key, size);
-	}
 }

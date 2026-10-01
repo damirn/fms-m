@@ -2,6 +2,8 @@
 #include "stream_recorder.h"
 #include "amf0.h"
 #include "amf0_types.h"
+#include "amf3.h"
+#include "amf_write_budget.h"
 #include "byte_writer.h"
 #include "flv_writer.h"
 
@@ -31,8 +33,30 @@ namespace fms
 		byte_writer tmp;
 		amf0_string_ptr const str = std::make_shared<amf0_string>("onMetaData");
 		amf0 a;
-		a.write(tmp, str);
-		a.write(tmp, meta);
+		try
+		{
+			amf_write_budget::scope const budget(tmp.size());
+			a.write(tmp, str);
+			a.write(tmp, meta);
+		}
+		catch (const amf0_write_exception &)
+		{
+			// The write bounds reject a graph the read bounds accepted; drop the
+			// metadata rather than unwind into the caller's read handler.
+			return;
+		}
+		catch (const amf3_write_exception &)
+		{
+			return;
+		}
+		catch (const std::bad_alloc &)
+		{
+			return;
+		}
+		catch (const std::length_error &)
+		{
+			return;
+		}
 		m_flv->write_script(reinterpret_cast<const char *>(tmp.data()), static_cast<std::uint32_t>(tmp.size()), 0);
 	}
 

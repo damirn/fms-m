@@ -6,6 +6,12 @@
 
 namespace fms
 {
+	// These conversions are endian-generic; the wire codecs are not --
+	// rtmp_header::serialize emits the message stream id, and amf0::write_number a
+	// double, straight out of host bytes.
+	static_assert(std::endian::native == std::endian::little,
+		"fms-m assumes a little-endian host: see rtmp_header::serialize and amf0::write_number");
+
 	// Network (big-endian) <-> host conversions.
 	//
 	// These replace boost::asio::detail::socket_ops, which is a Boost *detail*

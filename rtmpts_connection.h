@@ -22,6 +22,7 @@ namespace fms
 
 	protected:
 		void transport_handshake(handshake_handler h) override;
+		void async_read_header(io_handler h) override;
 		void async_read_request(io_handler h) override;
 		void async_write_response(io_handler h) override;
 

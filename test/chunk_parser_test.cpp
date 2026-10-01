@@ -106,7 +106,7 @@ namespace
 		channel_manager channels;
 		rtmp_parser parser{channels, *this};
 
-		void set_chunk_size(std::uint32_t n) { parser.set_chunk_size(n); }
+		bool set_chunk_size(std::uint32_t n) { return parser.set_chunk_size(n); }
 		bool framing_error() const { return parser.framing_error(); }
 		static constexpr std::uint32_t max_message_length() { return rtmp_parser::eMaxMessageLength; }
 
@@ -143,7 +143,7 @@ namespace
 		void handle_internal_message(rtmp_message_ptr msg) override
 		{
 			if (msg->type() == rtmp_message::eMessageChunkSize)
-				parser.set_chunk_size(std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg)->chunk_size());
+				(void)parser.set_chunk_size(std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg)->chunk_size());   // out of range: keep the current size
 			internals.push_back(msg->type());
 		}
 	};
@@ -186,21 +186,23 @@ TEST_CASE("chunk parser: oversized message length is rejected (DoS guard)")
 	CHECK(h.messages.empty());
 }
 
-TEST_CASE("chunk parser: a zero chunk size is rejected, not a parsing desync")
+TEST_CASE("chunk parser: a chunk size outside spec 5.4.1 is refused by the setter")
 {
-	// A client SetChunkSize(0) makes the per-chunk read length degenerate (0 bytes
-	// per chunk); the stream then desyncs and headers get misparsed as payload.
-	// A chunk size below 1 is invalid (RTMP spec) -- flag it and stop.
+	// A SetChunkSize(0) would make the per-chunk read length degenerate and desync
+	// the stream, so the setter itself refuses it and keeps the current size.
 	chunk_stream cs;
 	auto const p = pattern(64, 3);
 	cs.message(4, VIDEO, 1, 1000, p);
 
 	parser_harness h;
-	h.set_chunk_size(0);
-	h.feed(cs.bytes);
+	CHECK_FALSE(h.set_chunk_size(0));
+	CHECK_FALSE(h.set_chunk_size(rtmp_parser::eMaxChunkSize + 1));
+	CHECK(h.set_chunk_size(rtmp_parser::eMaxChunkSize));
+	CHECK(h.set_chunk_size(128));
 
-	CHECK(h.framing_error());
-	CHECK(h.messages.empty());
+	h.feed(cs.bytes);
+	CHECK_FALSE(h.framing_error());
+	CHECK(h.messages.size() == 1);
 }
 
 TEST_CASE("chunk parser: a User Control (Ping) with an invalid length must not crash")
@@ -245,18 +247,32 @@ namespace
 	// `levels` back-to-back Aggregate (0x16) sub-message headers -- each is an empty
 	// aggregate whose body is the rest of the buffer, so the aggregate parser recurses
 	// once per header.
+	// `levels` genuinely nested Aggregate (0x16) sub-messages, built inside out so
+	// each level's message_length covers the level below it. A flat run of headers
+	// does not nest: every one would declare a zero-length body.
 	std::vector<std::uint8_t> nested_aggregate_body(int levels)
 	{
-		std::vector<std::uint8_t> v;
-		v.reserve(static_cast<std::size_t>(levels) * 11);
+		auto put3 = [](std::vector<std::uint8_t> &v, std::uint32_t n)
+		{
+			v.push_back(static_cast<std::uint8_t>(n >> 16));
+			v.push_back(static_cast<std::uint8_t>(n >> 8));
+			v.push_back(static_cast<std::uint8_t>(n));
+		};
+
+		std::vector<std::uint8_t> inner;
 		for (int i = 0; i < levels; ++i)
 		{
-			v.push_back(rtmp_message::eMessageAggregate);   // type 0x16
-			v.insert(v.end(), {0, 0, 0});                   // message_length (3 BE) = 0
-			v.insert(v.end(), {0, 0, 0});                   // timestamp (3 BE)
-			v.insert(v.end(), {0, 0, 0, 0});                // stream id (4)
+			std::vector<std::uint8_t> v;
+			v.push_back(rtmp_message::eMessageAggregate);           // type 0x16
+			put3(v, static_cast<std::uint32_t>(inner.size()));      // message_length
+			put3(v, 0);                                             // timestamp
+			v.push_back(0);                                         // timestamp extended
+			put3(v, 0);                                             // stream id
+			v.insert(v.end(), inner.begin(), inner.end());
+			v.insert(v.end(), {0, 0, 0, 0});                        // prev tag size
+			inner = std::move(v);
 		}
-		return v;
+		return inner;
 	}
 }
 
@@ -265,7 +281,7 @@ TEST_CASE("rtmp aggregate: deeply nested aggregates are bounded, not a stack ove
 	// An Aggregate sub-message re-enters the aggregate parser; with no depth cap,
 	// ~payload/11 nested 0x16 headers recurse until the stack overflows (remote
 	// SIGSEGV). Parsing a deep nest must return, not crash.
-	auto const body = nested_aggregate_body(40000);
+	auto const body = nested_aggregate_body(64);
 
 	rtmp_header h;
 	h.set_message_type(rtmp_message::eMessageAggregate);
@@ -278,21 +294,50 @@ TEST_CASE("rtmp aggregate: deeply nested aggregates are bounded, not a stack ove
 	// until the stack goes.
 	try { ok = p.deserialize(r, h); } catch (const std::exception &) { ok = false; }
 
-	// Assert the cap actually bit, not merely that we got here: count the nesting
-	// the parser was willing to build and require it to stop at eMaxAggregateDepth.
+	// A refused parse would leave the count at zero and satisfy any upper bound, so
+	// the parse has to have succeeded for the depth to mean anything.
+	REQUIRE(ok);
+
 	int depth = 0;
-	if (ok)
+	auto agg = std::dynamic_pointer_cast<rtmp_message_aggregate>(p.message());
+	while (agg)
 	{
-		auto agg = std::dynamic_pointer_cast<rtmp_message_aggregate>(p.message());
-		while (agg)
-		{
-			++depth;
-			auto const &subs = agg->get_messages();
-			agg = subs.empty() ? nullptr
-			                   : std::dynamic_pointer_cast<rtmp_message_aggregate>(subs.front());
-		}
+		++depth;
+		auto const &subs = agg->get_messages();
+		agg = subs.empty() ? nullptr
+		                   : std::dynamic_pointer_cast<rtmp_message_aggregate>(subs.front());
 	}
-	CHECK(depth <= 4);   // rtmp_protocol::eMaxAggregateDepth
+	CHECK(depth == 4);   // rtmp_protocol::eMaxAggregateDepth
+}
+
+TEST_CASE("rtmp aggregate: a long run of sub-message headers terminates")
+{
+	// Separate from the depth cap: a flat run does not nest, but it must still
+	// return rather than walking the buffer without bound.
+	std::vector<std::uint8_t> body;
+	for (int i = 0; i < 40000; ++i)
+	{
+		body.push_back(rtmp_message::eMessageAggregate);
+		body.insert(body.end(), {0, 0, 0});      // message_length = 0
+		body.insert(body.end(), {0, 0, 0, 0});   // timestamp + extended
+		body.insert(body.end(), {0, 0, 0});      // stream id
+		body.insert(body.end(), {0, 0, 0, 0});   // prev tag size
+	}
+
+	rtmp_header h;
+	h.set_message_type(rtmp_message::eMessageAggregate);
+	h.set_message_length(static_cast<std::uint32_t>(body.size()));
+	byte_reader r(body.data(), body.size());
+
+	rtmp_protocol p;
+	bool ok = false;
+	try { ok = p.deserialize(r, h); } catch (const std::exception &) { ok = false; }
+
+	// Either outcome is acceptable; not returning at all is not.
+	CHECK((ok || !ok));
+	auto const agg = std::dynamic_pointer_cast<rtmp_message_aggregate>(p.message());
+	if (agg)
+		CHECK(agg->get_messages().size() <= rtmp_message_aggregate::eMaxSubMessages);
 }
 
 TEST_CASE("chunk parser: basic-header channel-id encodings (1/2/3 byte)")
@@ -790,6 +835,67 @@ TEST_CASE("VLU: vlu_size agrees with the bytes write_vlu emits")
 	}
 }
 
+TEST_CASE("chunk parser: a zero chunk size never reaches the framer")
+{
+	// chunk_buffer divides by the chunk size: a zero traps on x86 and degrades to
+	// one oversized chunk elsewhere, so the size has to be a usable one either way.
+	constexpr std::uint32_t body = 4096;
+	auto const audio = std::make_shared<rtmp_message_audio_data>(body);
+	std::memset(audio->data(), 0x7f, body);
+	rtmp_message_ptr const msg = audio;
+
+	byte_writer zero_out;
+	{
+		rtmp_protocol p(0);
+		rtmp_header h;
+		rtmp_header sent;
+		REQUIRE(p.serialize(zero_out, msg, h, sent));
+	}
+
+	byte_writer default_out;
+	{
+		rtmp_protocol p(128);   // rtmp_protocol::eChunkSize
+		rtmp_header h;
+		rtmp_header sent;
+		REQUIRE(p.serialize(default_out, msg, h, sent));
+	}
+
+	// Framed at the default size, so the body carries continuation headers.
+	CHECK(zero_out.size() == default_out.size());
+	CHECK(zero_out.size() > body + 12);
+}
+
+TEST_CASE("VLU: every encodable value survives a write/read round trip")
+{
+	// A flow id or sequence number the reader cannot return is one write_vlu would
+	// assert on in Debug and truncate in Release.
+	std::vector<std::uint64_t> vals = {
+		0, 1, 0x7f, 0x80, 0x3fff, 0x4000, 0x1fffff, 0x200000, 0x3fffff,
+		0xffffff, 0x1000000, 0x0fffffff, 0x10000080, 0x1fffff80, byte_writer::eMaxVlu
+	};
+	for (std::uint64_t v = 1; v <= byte_writer::eMaxVlu; v = (v << 1) | 1)
+		vals.push_back(v);
+
+	for (std::uint64_t const v : vals)
+	{
+		byte_writer bw;
+		bw.write_vlu(v);
+		REQUIRE(bw.size() <= 4);
+		byte_reader br(bw.data(), bw.size());
+		CHECK(br.read_vlu() == v);
+	}
+}
+
+TEST_CASE("VLU: a read can never exceed what write_vlu can emit")
+{
+	// Four 0xFF bytes is the widest encoding the reader accepts.
+	std::array<std::uint8_t, 8> const wire{ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+	byte_reader br(wire.data(), wire.size());
+	std::uint64_t const v = br.read_vlu();
+	CHECK(v == byte_writer::eMaxVlu);
+	CHECK(br.read_pos() == wire.data() + 4);
+}
+
 TEST_CASE("VLU: vlu_size terminates on values past the encodable range")
 {
 	// vlu_min <<= 7 reached 0 after nine rounds, so `v >= vlu_min` held forever
@@ -835,9 +941,36 @@ namespace
 		byte_writer out;
 		rtmp_header nh;
 		rtmp_header ph;   // fresh previous header -> a full (type-0) header
-		p.serialize(out, msg, nh, ph);
+		REQUIRE(p.serialize(out, msg, nh, ph));
 		return {out.data(), out.data() + out.size()};
 	}
+}
+
+// The header's length field is 3 bytes wide.
+TEST_CASE("rtmp_protocol serialize: a body past the 3-byte length field is refused")
+{
+	std::uint32_t const len = rtmp_header::eMaxMessageLength + 1;
+	auto v = std::make_shared<rtmp_message_video_data>(len);
+	std::memset(v->data(), 0x11, len);
+	v->set_stream_id(7);
+	v->set_channel_id(6);
+
+	rtmp_protocol p(128);
+	byte_writer out;
+	rtmp_header nh;
+	rtmp_header ph;
+	CHECK_FALSE(p.serialize(out, v, nh, ph));
+	CHECK(out.size() == 0);
+
+	// One byte less fits.
+	auto ok = std::make_shared<rtmp_message_video_data>(rtmp_header::eMaxMessageLength);
+	std::memset(ok->data(), 0x11, rtmp_header::eMaxMessageLength);
+	ok->set_stream_id(7);
+	ok->set_channel_id(6);
+	byte_writer out2;
+	rtmp_header nh2;
+	rtmp_header ph2;
+	CHECK(p.serialize(out2, ok, nh2, ph2));
 }
 
 TEST_CASE("rtmp_protocol serialize: single-chunk video frame round-trips (direct payload_view)")

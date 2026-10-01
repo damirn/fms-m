@@ -3,10 +3,10 @@
 #include "config.h"
 #include "logging.h"
 
-#include <csignal>
 #include <cstring>
 #include <mutex>
 #include <spawn.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
 
@@ -21,6 +21,80 @@ namespace fms::remote_relay
 		if (pos == std::string::npos || pos == 0 || pos + 1 == stream.length())
 			return {stream, {}};
 		return {stream.substr(0, pos), stream.substr(pos + 1)};
+	}
+
+	bool spawn_throttle::allow(const std::string &key, clock::time_point now)
+	{
+		std::lock_guard const lock(m_mutex);
+		for (auto i = m_recent.begin(); i != m_recent.end(); )
+			i = (now - i->second >= eCooldown) ? m_recent.erase(i) : std::next(i);
+		for (auto i = m_pending.begin(); i != m_pending.end(); )
+			i = (now - *i >= eCooldown) ? m_pending.erase(i) : std::next(i);
+
+		if (m_recent.contains(key))
+			return false;                       // a helper for this target is starting
+		if (m_recent.size() >= eMaxPerWindow)
+			return false;                       // too many spawns in this window
+		if (m_live.size() + m_pending.size() >= eMaxInFlight)
+			return false;                       // too many helpers alive or starting
+		m_recent[key] = now;
+		m_pending.insert(now);
+		return true;
+	}
+
+	void spawn_throttle::consume_pending()
+	{
+		if (!m_pending.empty())
+			m_pending.erase(m_pending.begin());
+	}
+
+	void spawn_throttle::release(const std::string &key)
+	{
+		std::lock_guard const lock(m_mutex);
+		if (m_recent.erase(key) > 0)
+			consume_pending();
+	}
+
+	void spawn_throttle::note_spawned(::pid_t pid)
+	{
+		std::lock_guard const lock(m_mutex);
+		consume_pending();
+		m_live.insert(pid);
+	}
+
+	void spawn_throttle::note_spawn_failed()
+	{
+		std::lock_guard const lock(m_mutex);
+		consume_pending();
+	}
+
+	void spawn_throttle::note_exited(::pid_t pid)
+	{
+		std::lock_guard const lock(m_mutex);
+		m_live.erase(pid);
+	}
+
+	std::size_t spawn_throttle::live_count()
+	{
+		std::lock_guard const lock(m_mutex);
+		return m_live.size();
+	}
+
+	void spawn_throttle::reap()
+	{
+		std::lock_guard const lock(m_mutex);
+		for (auto i = m_live.begin(); i != m_live.end(); )
+		{
+			int status = 0;
+			::pid_t const r = ::waitpid(*i, &status, WNOHANG);
+			i = (r == 0) ? std::next(i) : m_live.erase(i);   // r < 0 means it is not ours to wait for
+		}
+	}
+
+	spawn_throttle &helper_throttle()
+	{
+		static spawn_throttle t;
+		return t;
 	}
 
 	void spawn_helper(const std::string &remote_srv, const std::string &stream)
@@ -42,6 +116,15 @@ namespace fms::remote_relay
 				return;
 			std::string const local_srv = "rtmp://localhost:" + config::instance()->rtmp_port() + "/" + app;
 
+			// Take the slot only after the target parses: it is held for the cooldown.
+			std::string const key = remote_srv + "/" + stream;
+			helper_throttle().reap();
+			if (!helper_throttle().allow(key, spawn_throttle::clock::now()))
+			{
+				BOOST_LOG(lg::get()) << "not spawning a helper for '" << key << "': throttled";
+				return;
+			}
+
 			std::vector<std::string> args;
 			args.push_back(config::instance()->helper_app());
 			args.emplace_back("-r");
@@ -57,18 +140,22 @@ namespace fms::remote_relay
 				argv.push_back(const_cast<char *>(a.c_str()));
 			argv.push_back(nullptr);
 
-			// Ignore SIGCHLD once (process-global) so children are auto-reaped -- no
-			// zombie, no wait() -- rather than racily re-setting it from every worker.
-			static std::once_flag sigchld_once;
-			std::call_once(sigchld_once, [] { ::signal(SIGCHLD, SIG_IGN); });
-
+			// SIGCHLD stays default: reap() needs the children waitable so the
+			// in-flight count tracks helpers that are still running.
 			// posix_spawnp rather than fork()+execvp(): between the two, a child of a
 			// multithreaded process may call only async-signal-safe functions, and it
 			// reports failure instead of leaving the parent to mistake -1 for "I am
 			// the parent" and carry on with no helper and no diagnostic.
 			::pid_t pid = 0;
 			if (int const rc = ::posix_spawnp(&pid, argv[0], nullptr, nullptr, argv.data(), environ); rc != 0)
+			{
+				// The cooldown entry stays: a spawn that keeps failing must be
+				// throttled like one that succeeds, or every play() retries it.
 				BOOST_LOG(lg::get()) << "cannot spawn helper '" << args[0] << "': " << std::strerror(rc);
+				helper_throttle().note_spawn_failed();
+			}
+			else
+				helper_throttle().note_spawned(pid);
 		}
 	}
 }

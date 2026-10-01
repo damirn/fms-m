@@ -5,11 +5,13 @@
 // With rtmfp_host injected it can be built on its own, and these drive real
 // chunks through handle_chunk into the flow machinery.
 
+#include "amf0.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 #include "doctest.h"
 #include "rtmfp/chunk.h"
 #include "rtmfp/flow.h"
+#include "rtmfp/group.h"
 #include "app_host.h"
 #include "rtmfp/session.h"
 #include "rtmfp/types.h"
@@ -18,6 +20,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <new>
+#include <stdexcept>
 #include <vector>
 
 #include <boost/asio/io_context.hpp>
@@ -32,10 +36,20 @@ namespace
 		int removed = 0;
 		int net_groups = 0;
 		std::uint16_t clock = 100;
+		bool accept_groups = true;
+		// Strong refs: m_group_membership holds weak_ptrs that would otherwise expire.
+		std::vector<group_ptr> kept;
 
 		std::uint16_t get_timestamp() override { return clock; }
 		void remove(const session_ptr &) override { ++removed; }
-		void handle_net_group(group_ptr &, const session_ptr &) override { ++net_groups; }
+		bool handle_net_group(group_ptr &g, const session_ptr &) override
+		{
+			++net_groups;
+			if (!accept_groups)
+				return false;
+			kept.push_back(g);
+			return true;
+		}
 		boost::asio::io_context &io_context() const override { return io; }
 	};
 
@@ -97,7 +111,9 @@ namespace
 		using session::session;
 		using session::handle_chunk;
 		using session::flow_sanity_check;
+		using session::message_to_fragment;
 		using session::m_receiving_flows;
+		using session::eMaxGroupMemberships;
 	};
 	using testable_session_ptr = std::shared_ptr<testable_session>;
 
@@ -405,4 +421,267 @@ TEST_CASE("rtmfp session: the forward sequence number is what closes a gap")
 		CHECK(app.routed == 0);
 		CHECK(s->ack_now());          // and it is acknowledged promptly
 	}
+}
+
+namespace
+{
+	// A NetGroup ("GC") receiving flow: same shape as open_flow_wire, but the
+	// metadata carries the group signature instead of a stream id.
+	std::vector<std::uint8_t> open_group_flow_wire(vlu_t flow_id, vlu_t seq,
+		const std::vector<std::uint8_t> &payload)
+	{
+		option_list opts;
+		byte_writer meta;
+		meta.write(flow::GC, 2);
+		opts.create_option(option::eMetadata, meta.data(), static_cast<std::uint16_t>(meta.size()));
+
+		byte_writer w;
+		w << static_cast<std::uint8_t>(0x80);
+		w.write_vlu(flow_id);
+		w.write_vlu(seq);
+		w.write_vlu(0);
+		opts.serialize(w);
+		w.write(payload.data(), payload.size());
+		return {w.data(), w.data() + w.size()};
+	}
+
+	// A UserData chunk with an explicit forward-sequence-number offset.
+	std::vector<std::uint8_t> user_data_wire(vlu_t flow_id, vlu_t seq, vlu_t fsn_offset,
+		std::uint8_t flags, const std::vector<std::uint8_t> &payload)
+	{
+		byte_writer w;
+		w << flags;
+		w.write_vlu(flow_id);
+		w.write_vlu(seq);
+		w.write_vlu(fsn_offset);
+		w.write(payload.data(), payload.size());
+		return {w.data(), w.data() + w.size()};
+	}
+
+	// [command][vlu size = eIDLength + 1][type 0x15][32-byte group id]
+	std::vector<std::uint8_t> group_join(std::uint8_t id_byte)
+	{
+		std::vector<std::uint8_t> v{0x01, static_cast<std::uint8_t>(item::eIDLength + 1), 0x15};
+		v.insert(v.end(), item::eIDLength, id_byte);
+		return v;
+	}
+
+	void feed_group_message(const testable_session_ptr &s, vlu_t flow_id, vlu_t seq,
+		const std::vector<std::uint8_t> &payload)
+	{
+		std::vector<std::uint8_t> const wire = open_group_flow_wire(flow_id, seq, payload);
+		byte_reader r(wire.data(), wire.size());
+		user_data_chunk c;
+		REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(wire.size())));
+		s->handle_chunk(&c);
+	}
+}
+
+// Membership is a set keyed by group id: rejoining must not grow the list.
+TEST_CASE("rtmfp session: rejoining a group does not grow the membership list")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	for (vlu_t seq = 1; seq <= 50; ++seq)
+		feed_group_message(s, 5, seq, group_join(0xAA));
+
+	CHECK(h.net_groups == 50);                      // every message was delivered
+	CHECK(s->group_membership().size() == 1);
+}
+
+TEST_CASE("rtmfp session: distinct groups are each recorded once")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	feed_group_message(s, 5, 1, group_join(0xAA));
+	feed_group_message(s, 5, 2, group_join(0xBB));
+	feed_group_message(s, 5, 3, group_join(0xAA));
+
+	CHECK(h.net_groups == 3);
+	CHECK(s->group_membership().size() == 2);
+}
+
+TEST_CASE("rtmfp session: group memberships are capped per session")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	for (std::size_t i = 0; i < testable_session::eMaxGroupMemberships; ++i)
+		feed_group_message(s, 5, static_cast<vlu_t>(i + 1), group_join(static_cast<std::uint8_t>(i)));
+	REQUIRE(s->group_membership().size() == testable_session::eMaxGroupMemberships);
+
+	feed_group_message(s, 5, static_cast<vlu_t>(testable_session::eMaxGroupMemberships + 1),
+		group_join(static_cast<std::uint8_t>(testable_session::eMaxGroupMemberships)));
+
+	CHECK(s->group_membership().size() == testable_session::eMaxGroupMemberships);
+	CHECK(h.net_groups == static_cast<int>(testable_session::eMaxGroupMemberships));   // never offered to the host
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	CHECK(s->m_receiving_flows.begin()->second->fragment_count() == 0);       // still drained
+}
+
+// A host that will not track the group must not leave the message buffered.
+TEST_CASE("rtmfp session: a refused group join does not wedge the flow")
+{
+	fake_host h;
+	recording_app_host app;
+	h.accept_groups = false;
+	auto const s = make_session(h, app);
+
+	feed_group_message(s, 5, 1, group_join(0xAA));
+	feed_group_message(s, 5, 2, group_join(0xBB));
+
+	CHECK(h.net_groups == 2);
+	CHECK(s->group_membership().empty());
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	CHECK(s->m_receiving_flows.begin()->second->fragment_count() == 0);
+}
+
+// The NetGroup handler drains the flow in a loop, as the RTMP handler does.
+TEST_CASE("rtmfp session: a NetGroup flow is drained as it is consumed")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	for (vlu_t seq = 1; seq <= 8; ++seq)
+		feed_group_message(s, 5, seq, group_join(static_cast<std::uint8_t>(0xA0 + seq)));
+
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	flow_ptr const f = s->m_receiving_flows.begin()->second;
+	CHECK(f->fragment_count() == 0);       // each message consumed, not re-read
+	CHECK(h.net_groups == 8);              // eight distinct groups, not one eight times
+	CHECK(s->group_membership().size() == 8);
+	CHECK(f->state() != flow::eRejected);
+}
+
+// A rejected message is still consumed.
+TEST_CASE("rtmfp session: a malformed NetGroup message does not wedge the flow")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	feed_group_message(s, 5, 1, std::vector<std::uint8_t>{0x01, 0x02, 0x99});   // bad size + type
+	feed_group_message(s, 5, 2, group_join(0xAA));
+
+	CHECK(h.net_groups == 1);                       // the valid one still arrived
+	CHECK(s->group_membership().size() == 1);
+}
+
+// Truncated, not merely malformed: the reads themselves run out of body.
+TEST_CASE("rtmfp session: a truncated NetGroup message does not wedge the flow")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	feed_group_message(s, 6, 1, std::vector<std::uint8_t>{0x01});   // command, then nothing
+	feed_group_message(s, 6, 2, group_join(0xBB));
+
+	CHECK(h.net_groups == 1);
+	CHECK(s->group_membership().size() == 1);
+}
+
+// Truncated on the RTMP flow: the demux does not catch buffer_eof itself, so the
+// drain has to, or the message is never consumed.
+TEST_CASE("rtmfp session: a truncated RTMP message does not wedge the flow")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	// An AMF0 short string declaring 0xFFFF bytes with two present.
+	feed_open_flow(s, 5, 1, 7,
+		rtmp_payload(rtmp_message::eMessageInvoke, {0x02, 0xFF, 0xFF, 0x41, 0x42}));
+	CHECK(app.routed == 0);
+
+	REQUIRE(s->m_receiving_flows.size() == 1);
+	CHECK(s->m_receiving_flows.begin()->second->state() == flow::eOpen);
+
+	feed_open_flow(s, 5, 2, 7, rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0x21}));
+	CHECK(app.routed == 1);           // the flow still delivers afterwards
+}
+
+// A body the write bounds refuse must not unwind out of the receive handler.
+TEST_CASE("rtmfp session: a message the AMF write bounds refuse is dropped")
+{
+	amf0_type_ptr node = std::make_shared<amf0_null>();
+	for (unsigned i = 0; i < 25; ++i)
+	{
+		auto const o = std::make_shared<amf0_object>();
+		o->add_entry("a", node);
+		o->add_entry("b", node);   // same child twice: 2^n leaves when expanded
+		node = o;
+	}
+
+	auto const msg = rtmp_message_invoke::create_message("onStatus");
+	msg->add_parameter(node);
+
+	fake_host h;
+	auto const s = make_session(h);
+	CHECK_NOTHROW(s->message_to_fragment(msg));
+}
+
+// An allocation failure inside serialize reaches the same receive handler.
+TEST_CASE("rtmfp session: a message whose serialize runs out of memory is dropped")
+{
+	struct throwing_message : rtmp_message
+	{
+		explicit throwing_message(bool length)
+			: rtmp_message(eMessageNotify), m_length(length)
+		{}
+
+		void deserialize(byte_reader &) override {}
+		void serialize(byte_writer &) override
+		{
+			if (m_length)
+				throw std::length_error("body");
+			throw std::bad_alloc();
+		}
+
+		bool m_length;
+	};
+
+	fake_host h;
+	auto const s = make_session(h);
+
+	CHECK_NOTHROW(s->message_to_fragment(std::make_shared<throwing_message>(false)));
+	CHECK_NOTHROW(s->message_to_fragment(std::make_shared<throwing_message>(true)));
+}
+
+// Both halves of the forward sequence number come off the wire, so the offset can
+// exceed the sequence number and the difference would wrap to near 2^64 -- which
+// remove_fragments_until_seq reads as "erase everything".
+TEST_CASE("rtmfp session: an abandon whose offset exceeds its sequence drops nothing")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+
+	std::vector<std::uint8_t> const body{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
+
+	// Fragments 2..4 of a run whose first never arrives, each carrying an offset
+	// equal to its own sequence so the cumulative number stays behind them: all
+	// three stay buffered.
+	for (vlu_t seq = 2; seq <= 4; ++seq)
+		feed_open_flow(s, 9, seq, 1, body, fragment::eMiddle, seq);
+
+	auto const f = s->m_receiving_flows.find(vlu_t{9});
+	REQUIRE(f != s->m_receiving_flows.end());
+	REQUIRE(f->second->fragment_count() == 3);
+
+	// abandon (flag 0x02), sequence 4, offset 9: the difference wraps.
+	std::vector<std::uint8_t> const wire = user_data_wire(9, 4, 9, 0x02, body);
+	byte_reader r(wire.data(), wire.size());
+	user_data_chunk c;
+	REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(wire.size())));
+	CHECK(c.forward_seq_number() == 0);
+	s->handle_chunk(&c);
+
+	CHECK(f->second->fragment_count() == 3);
 }

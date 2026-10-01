@@ -50,6 +50,11 @@ namespace fms
 		if (relative.empty() || *relative.begin() == "..")
 			return std::nullopt;
 
+		// weakly_canonical resolves a symlink that has a target, so one still standing
+		// here dangles: it has no target to contain, and opening it writes through.
+		if (std::filesystem::is_symlink(std::filesystem::symlink_status(candidate, ec)))
+			return std::nullopt;
+
 		return candidate.string();
 	}
 }

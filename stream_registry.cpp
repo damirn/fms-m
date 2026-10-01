@@ -14,6 +14,9 @@ namespace fms
 			return false;
 		m_streams.insert(streams_map_t::value_type(id, name));
 		m_broadcasts[id];
+		// Teardown sweeps m_clients, and a peer may publish on a message-stream id it
+		// never obtained from createStream. Own it here so disconnect still closes it.
+		m_clients[id.first].insert(id.second);
 		return true;
 	}
 

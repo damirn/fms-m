@@ -5,9 +5,10 @@
 
 #include <cstdint>
 #include <map>
-#include <span>
 #include <memory>
 #include <optional>
+#include <span>
+#include <vector>
 
 namespace fms
 {
@@ -42,6 +43,10 @@ namespace fms
 				delete[] m_data;
 		}
 
+		// Conditionally owning: held only through fragment_ptr, never copied.
+		fragment(const fragment &) = delete;
+		fragment &operator=(const fragment &) = delete;
+
 		void set_send_flags()
 		{
 			m_abandoned = m_sent_abandoned = m_ever_sent = m_in_flight = false;
@@ -71,11 +76,12 @@ namespace fms
 		std::uint16_t m_data_len;
 		std::uint8_t m_frag_ctrl;
 		bool m_data_owner;
-		bool m_abandoned;
-		bool m_sent_abandoned;
-		bool m_ever_sent;
-		std::uint16_t m_nak_count;
-		bool m_in_flight;
+		// in_flight_count() walks receiver flows too, where set_send_flags() never runs.
+		bool m_abandoned{false};
+		bool m_sent_abandoned{false};
+		bool m_ever_sent{false};
+		std::uint16_t m_nak_count{0};
+		bool m_in_flight{false};
 	};
 
 	using fragment_ptr = std::shared_ptr<fragment>;
@@ -168,6 +174,15 @@ namespace fms
 		static constexpr std::uint32_t eMaxBufferedFragments = 8192;
 		static constexpr std::uint32_t eMaxReassembledMsgLen = 16u * 1024 * 1024;
 
+		// A fragment carries up to 64 KiB, so the fragment count alone does not bound
+		// the bytes held. Buffering more than the largest message a flow could deliver
+		// can never complete one, so that is the ceiling.
+		static constexpr std::size_t eMaxBufferedBytes = eMaxReassembledMsgLen;
+
+		// Across every receiving flow of one session: the per-flow bound alone would
+		// let eMaxReceivingFlows multiply it.
+		static constexpr std::size_t eMaxSessionBufferedBytes = 2u * eMaxReassembledMsgLen;
+
 		// Cap on the un-acknowledged send backlog of a live A/V flow. Past this,
 		// abandon_stale_fragments() drops the oldest frames instead of retransmitting
 		// them forever, so a slow/lossy subscriber can't inflate latency without bound
@@ -210,7 +225,9 @@ namespace fms
 		void remove_fragments_until_seq(const vlu_t &);
 		// The next complete message, or empty when none is ready. The bytes belong to
 		// the flow until remove_last_message().
-		std::span<const std::uint8_t> message_data();
+		// Nullopt when no message is ready. A ready message may still be empty, and
+		// an empty span alone cannot say which of the two it is.
+		[[nodiscard]] std::optional<std::span<const std::uint8_t>> message_data();
 		void remove_last_message();
 
 		std::uint16_t add_and_fragment_data(const std::uint8_t *, const std::uint32_t &);
@@ -252,6 +269,23 @@ namespace fms
 			return m_fragments.size();
 		}
 
+		std::size_t buffered_bytes() const
+		{
+			return m_fragments.bytes();
+		}
+
+		// Shared with every other flow of the same session, so one session's total
+		// reassembly backlog is bounded however many flows it opens.
+		void share_buffered_total(const std::shared_ptr<std::size_t> &total)
+		{
+			m_fragments.share_total(total);
+		}
+
+		std::size_t session_buffered_bytes() const
+		{
+			return m_fragments.shared_bytes();
+		}
+
 		std::uint16_t prev_rwnd() const
 		{
 			return m_prev_rwnd;
@@ -289,8 +323,103 @@ namespace fms
 		void parse_option_list();
 		static vlu_t get_stream_id_from_option(const option_ptr&);
 
-		using fragment_map_t = std::map<vlu_t, fragment_ptr>;
-		const std::uint8_t *create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
+		// Owns the buffered fragments together with the byte total they hold, so the
+		// byte bound cannot drift from the map it describes.
+		class fragment_store
+		{
+			using map_t = std::map<vlu_t, fragment_ptr>;
+
+		public:
+			using iterator = map_t::iterator;
+			using const_iterator = map_t::const_iterator;
+
+			iterator begin() { return m_map.begin(); }
+			iterator end() { return m_map.end(); }
+			const_iterator begin() const { return m_map.begin(); }
+			const_iterator end() const { return m_map.end(); }
+
+			[[nodiscard]] std::size_t size() const { return m_map.size(); }
+			[[nodiscard]] bool empty() const { return m_map.empty(); }
+			[[nodiscard]] std::size_t bytes() const { return m_bytes; }
+
+			iterator lower_bound(const vlu_t &k) { return m_map.lower_bound(k); }
+
+			// The shared total spans every flow of one session; a flow charges both or
+			// a session could hold eMaxReceivingFlows times the per-flow allowance.
+			void share_total(const std::shared_ptr<std::size_t> &total) { m_shared = total; }
+
+			[[nodiscard]] std::size_t shared_bytes() const { return m_shared ? *m_shared : 0; }
+
+			void assign(const vlu_t &k, const fragment_ptr &f)
+			{
+				auto const i = m_map.find(k);
+				if (i == m_map.end())
+					m_map.emplace(k, f);
+				else
+					release(i->second->m_data_len);
+				charge(f->m_data_len);
+				if (i != m_map.end())
+					i->second = f;
+			}
+
+			iterator erase(iterator i)
+			{
+				release(i->second->m_data_len);
+				return m_map.erase(i);
+			}
+
+			std::size_t erase(const vlu_t &k)
+			{
+				auto const i = m_map.find(k);
+				if (i == m_map.end())
+					return 0;
+				erase(i);
+				return 1;
+			}
+
+			iterator erase(iterator first, iterator last)
+			{
+				for (auto i = first; i != last; ++i)
+					release(i->second->m_data_len);
+				return m_map.erase(first, last);
+			}
+
+			void clear()
+			{
+				release(m_bytes);
+				m_map.clear();
+			}
+
+			~fragment_store() { release(m_bytes); }
+
+			fragment_store() = default;
+			fragment_store(const fragment_store &) = delete;
+			fragment_store &operator=(const fragment_store &) = delete;
+
+		private:
+			void charge(std::size_t n)
+			{
+				m_bytes += n;
+				if (m_shared)
+					*m_shared += n;
+			}
+
+			void release(std::size_t n)
+			{
+				m_bytes -= n;
+				if (m_shared)
+					*m_shared -= n;
+			}
+
+			map_t m_map;
+			std::size_t m_bytes{0};
+			std::shared_ptr<std::size_t> m_shared;
+		};
+
+		using fragment_map_t = fragment_store;
+		// False when the reassembly is refused and the flow rejected. On true the
+		// message is m_data[0, m_msg_len), which may legitimately be empty.
+		[[nodiscard]] bool create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
 
 		vlu_t m_flow_id;
 		vlu_t m_stream_id{0};
@@ -321,7 +450,7 @@ namespace fms
 	private:
 		bool m_msg_is_fragmented{false};
 		std::uint32_t m_msg_len{0};
-		std::uint8_t *m_data{nullptr};   // reassembly buffer; owned between create_message and remove_last_message
+		std::vector<std::uint8_t> m_data;   // reassembly buffer; filled by create_message, released by remove_last_message
 	};
 
 	using flow_ptr = std::shared_ptr<flow>;

@@ -20,9 +20,30 @@ namespace fms
 		{}
 	};
 
+	class amf0_write_exception final : public std::runtime_error
+	{
+	public:
+		amf0_write_exception()
+			: std::runtime_error("AMF0 value nests too deeply to serialise.")
+		{}
+	};
+
 	class amf0
 	{
 	public:
+		// Holds one decoded-string allowance across every top-level read of a
+		// message. Without it the allowance resets per value, so a message of n
+		// values gets n allowances. The outermost scope owns the span.
+		class [[nodiscard]] read_scope
+		{
+		public:
+			read_scope() { ++s_read_scopes; }
+			~read_scope() { --s_read_scopes; }
+
+			read_scope(const read_scope &) = delete;
+			read_scope &operator=(const read_scope &) = delete;
+		};
+
 		static bool read_short_string(byte_reader &, const amf0_string_ptr&, bool = false);
 		static void write_short_string(byte_writer &, const amf0_string_ptr&, bool = false);
 		static constexpr std::size_t eMaxShortString = 0xFFFF;
@@ -61,7 +82,7 @@ namespace fms
 		bool read_typed_object(byte_reader &, const amf0_typed_object_ptr&);
 		static void write_typed_object(byte_writer &, const amf0_typed_object_ptr&);
 
-		static bool read_amf3_container(byte_reader &, const amf0_amf3_container_ptr&);
+		bool read_amf3_container(byte_reader &, const amf0_amf3_container_ptr&);
 		static void write_amf3_container(byte_writer &, const amf0_amf3_container_ptr&);
 
 		amf0_type_ptr read(byte_reader &);
@@ -76,6 +97,20 @@ namespace fms
 		// be sent by reference). 0-based by occurrence, reset at top-level read.
 		std::vector<amf0_type_ptr> m_ref_table;
 
+		// Register a value as referenceable and return its index; the entry is
+		// marked complete only once it has been populated.
+		std::size_t register_ref(const amf0_type_ptr &);
+
+		// Parallel to m_ref_table: false while the entry is still being populated.
+		// A reference to an incomplete entry is a cycle, not a back-reference.
+		std::vector<bool> m_ref_complete;
+
 		unsigned m_depth = 0;
+
+		// Shared with every nested amf3 so the two decoders cannot each spend a
+		// full string allowance out of one message.
+		std::size_t m_decoded_string_bytes = 0;
+
+		static inline thread_local unsigned s_read_scopes = 0;
 	};
 }

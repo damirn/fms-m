@@ -36,7 +36,7 @@ namespace fms
 			boost::asio::post(m_io_context, [this]() { handle_notify(); });
 		}
 
-		void handle_net_group(group_ptr &, const session_ptr &) override;
+		[[nodiscard]] bool handle_net_group(group_ptr &, const session_ptr &) override;
 
 		boost::asio::io_context &io_context() const override
 		{
@@ -104,8 +104,7 @@ namespace fms
 		sid_to_session_map_t m_sessions;
 		sid_to_session_map_t::iterator m_sessions_iterator;
 
-		using group_set_t = std::set<group_ptr, group::less>;
-		group_set_t m_groups;
+		group_registry m_groups;
 
 		using endpoint_chunk_pair_t = std::pair<boost::asio::ip::udp::endpoint, std::unique_ptr<chunk>>;
 		// Redirects pending a send slot. Bounded: one is pushed per peer-lookup

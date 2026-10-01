@@ -1,12 +1,13 @@
 #include "pch.h"
 #include "media_application.h"
-#include "util.h"
 #include "client_session.h"
 #include "config.h"
 #include "io_context_pool.h"
-#include "stream_recorder.h"
 #include "logging.h"
+#include "media_path.h"
 #include "remote_relay.h"
+#include "stream_recorder.h"
+#include "util.h"
 
 #include <filesystem>
 #include <memory>
@@ -250,6 +251,7 @@ namespace fms
 		rtmp_application::close_stream(invoke, connection_id);
 		auto const lock = m_registry.lock_exclusive();
 		res = close_stream(connection_id, invoke->stream_id(), lock);
+		forget_subscription(connection_id, invoke->stream_id(), lock);
 		m_registry.remove_client_stream(connection_id, invoke->stream_id(), lock);
 	}
 
@@ -364,46 +366,56 @@ namespace fms
 			auto i = params.begin();
 			++i;
 
-			auto const lock = m_registry.lock_exclusive();
-
-			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
-			auto const target = remote_relay::parse_target(std::string(strip_query(str->value())));
-			std::string const &stream_name = target.m_stream;
-			bool const is_remote = !target.m_server.empty();
-
-			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << stream_name << "'";
-			if (is_remote)
-				BOOST_LOG(lg::get()) << "stream '" << stream_name << "' is on remote server (" << target.m_server << ")";
-
-			std::optional<stream_client_id_t> const found = m_registry.broadcaster_for_name(stream_name);
-			bool const res = found.has_value();
-			stream_client_id_t const bcaster_id = res ? *found : stream_client_id_t{};
-
-			// No live publisher: if a saved .flv exists, serve it as VOD.
-			if (!res && !is_remote && m_vod.start(connection_id, invoke, stream_name))
-				return;
-
-			add_waiting_client(connection_id, invoke, stream_name, lock);
-			if (!res) // we still don't have broadcaster for this stream
+			// Collected under the lock, acted on after it: spawning a helper forks.
+			std::optional<remote_relay::remote_target> relay;
 			{
+				auto const lock = m_registry.lock_exclusive();
+
+				amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
+				auto const target = remote_relay::parse_target(std::string(strip_query(str->value())));
+				std::string const &stream_name = target.m_stream;
+				bool const is_remote = !target.m_server.empty();
+
+				BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << stream_name << "'";
 				if (is_remote)
-					remote_relay::spawn_helper(target.m_server, stream_name);
+					BOOST_LOG(lg::get()) << "stream '" << stream_name << "' is on remote server (" << target.m_server << ")";
+
+				std::optional<stream_client_id_t> const found = m_registry.broadcaster_for_name(stream_name);
+				bool const res = found.has_value();
+				stream_client_id_t const bcaster_id = res ? *found : stream_client_id_t{};
+
+				// No live publisher: if a saved .flv exists, serve it as VOD.
+				if (!res && !is_remote)
+				{
+					forget_subscription(connection_id, invoke->stream_id(), lock);
+					if (m_vod.start(connection_id, invoke, stream_name))
+						return;
+				}
+
+				add_waiting_client(connection_id, invoke, stream_name, lock);
+				if (!res) // we still don't have broadcaster for this stream
+				{
+					if (is_remote)
+						relay = target;
+				}
+				else
+				{
+					stream_client_id_t const cid = std::make_pair(connection_id, invoke->stream_id());
+					create_stream_client(bcaster_id, cid, true, lock);
+					m_app_manager->update_netstream(cid, stream_name, false);
+				}
+				send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
+				// A live playback buffer starts empty: emit BufferEmpty(31) right after
+				// Play.Start (FMS order), then av_delivery emits BufferReady(32) when the
+				// first frame flows. With no publisher yet, 31 stands alone until one
+				// appears -- exactly the FMS 4.5 waiting-subscriber sequence.
+				enqueue_async_message(connection_id,
+					std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingBufferEmpty, invoke->stream_id()));
+				if (res)
+					m_av.send_metadata(connection_id, invoke->stream_id(), bcaster_id);
 			}
-			else
-			{
-				stream_client_id_t const cid = std::make_pair(connection_id, invoke->stream_id());
-				create_stream_client(bcaster_id, cid, true, lock);
-				m_app_manager->update_netstream(cid, stream_name, false);
-			}
-			send_play_start_messages(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
-			// A live playback buffer starts empty: emit BufferEmpty(31) right after
-			// Play.Start (FMS order), then av_delivery emits BufferReady(32) when the
-			// first frame flows. With no publisher yet, 31 stands alone until one
-			// appears -- exactly the FMS 4.5 waiting-subscriber sequence.
-			enqueue_async_message(connection_id,
-				std::make_shared<rtmp_message_ping>(rtmp_message_ping::ePingBufferEmpty, invoke->stream_id()));
-			if (res)
-				m_av.send_metadata(connection_id, invoke->stream_id(), bcaster_id);
+			if (relay)
+				remote_relay::spawn_helper(relay->m_server, relay->m_stream);
 		}
 		catch (rtmp_illegal_parameter_exception &e)
 		{
@@ -543,11 +555,18 @@ namespace fms
 		stream_registry::broadcast_stream *const b = m_registry.find_broadcast(std::make_pair(connection_id, stream_id));
 		if (!b)
 			return false;
+		// Peer-controlled name reaching the filesystem: resolve through the guard.
+		std::optional<std::string> const flv_full_name =
+			resolve_media_file(config::instance()->flv_folder(), stream);
+		if (!flv_full_name)
+		{
+			BOOST_LOG(lg::get()) << "cid: " << connection_id
+				<< " refused to record '" << stream << "': name escapes the output folder";
+			return false;
+		}
 		try
 		{
-			std::filesystem::path const flv_name(stream + ".flv");
-			std::filesystem::path const flv_full_name = config::instance()->flv_folder() / flv_name;
-			b->recorder = std::make_unique<stream_recorder>(flv_full_name.string());
+			b->recorder = std::make_unique<stream_recorder>(*flv_full_name);
 		}
 		catch (std::runtime_error &)
 		{
@@ -638,13 +657,21 @@ namespace fms
 		for (std::uint32_t const stream : m_registry.take_client(connection_id, lock))
 		{
 			close_stream(connection_id, stream, lock);
-			// remove the client from any waiting list, then drop its stream-name map
-			stream_client_id_t const sub(connection_id, stream);
-			if (std::optional<std::string> const name = m_registry.subscriber_stream(sub))
-			{
-				m_registry.erase_waiting(*name, sub, lock);
-				m_registry.erase_subscriber_stream(sub, lock);
-			}
+			forget_subscription(connection_id, stream, lock);
+		}
+	}
+
+	// Releases every subscription a stream id holds: the live fan-out edge, a VOD
+	// playback, and the waiting-list and stream-name state.
+	void media_application::forget_subscription(std::uint32_t connection_id, std::uint32_t stream_id, const stream_registry::exclusive_guard &guard)
+	{
+		stream_client_id_t const sub(connection_id, stream_id);
+		m_vod.stop(sub);
+		m_registry.detach_subscriber(sub, guard);
+		if (std::optional<std::string> const name = m_registry.subscriber_stream(sub))
+		{
+			m_registry.erase_waiting(*name, sub, guard);
+			m_registry.erase_subscriber_stream(sub, guard);
 		}
 	}
 
@@ -657,6 +684,9 @@ namespace fms
 
 	void media_application::add_waiting_client(std::uint32_t connection_id, const rtmp_message_invoke_ptr& invoke, const std::string &str, const stream_registry::exclusive_guard &guard)
 	{
+		// One stream id holds one subscription: taking a new one releases the old.
+		forget_subscription(connection_id, invoke->stream_id(), guard);
+
 		stream_registry::subscriber const wc(connection_id, invoke->stream_id(), invoke->channel_id());
 		m_registry.add_waiting(str, wc, guard);
 		m_registry.set_subscriber_stream(std::make_pair(connection_id, invoke->stream_id()), str, guard);

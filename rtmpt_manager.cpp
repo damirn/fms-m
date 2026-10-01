@@ -54,6 +54,13 @@ namespace fms
 		if (i == m_ids.end())
 			return false;
 
+		// A closed session keeps neither its id nor its slot.
+		if (i->second->m_session->is_closed())
+		{
+			m_ids.erase(i);
+			return false;
+		}
+
 		if (i->second->m_sequence > sequence ||
 			i->second->m_address != remote.address())
 			return false;
@@ -113,11 +120,18 @@ namespace fms
 		// Per-session lock only, so a busy session does not stall other tunnelled
 		// clients. `sd` keeps the session alive even if a concurrent remove/reap
 		// erases it from the table.
-		std::lock_guard const s(sd->m_session_mutex);
-		if (in_order)
-			sd->m_session->handle_data(input, output);
-		else
-			sd->m_session->serialize_poll_time(output);
+		boost::tribool result = true;
+		{
+			std::lock_guard const s(sd->m_session_mutex);
+			if (in_order)
+				result = sd->m_session->handle_data(input, output);
+			else
+				sd->m_session->serialize_poll_time(output);
+		}
+		// A definite false is fatal to the session: drop the id so it cannot be
+		// driven further. indeterminate means "incomplete", which is not a failure.
+		if (!result)
+			remove_session(cid);
 		return output.size();
 	}
 
@@ -134,15 +148,21 @@ namespace fms
 			sd->m_not_alive = 0;
 			advance_sequence(*sd, seq, drained);
 		}
-		std::lock_guard const s(sd->m_session_mutex);
 		// An /idle carries no body of its own, but it still occupies a sequence -- so
 		// it can be the request that closes a gap. Anything it releases from the stash
 		// has to be delivered here, or those bodies are dropped and the sequence walks
 		// past a number the client will never send again, wedging the tunnel.
-		if (drained.size() > 0)
-			sd->m_session->handle_data(drained, buffer);
-		else
-			sd->m_session->serialize_result(buffer);
+		boost::tribool result = true;
+		{
+			std::lock_guard const s(sd->m_session_mutex);
+			if (!drained.empty())
+				result = sd->m_session->handle_data(drained, buffer);
+			else
+				sd->m_session->serialize_result(buffer);
+		}
+		// A definite false is fatal wherever the body came from.
+		if (!result)
+			remove_session(cid);
 		return buffer.size();
 	}
 
@@ -213,7 +233,7 @@ namespace fms
 					// m_not_alive/m_open_ticks are guarded by the global lock (held here);
 					// handshake_complete() reads session state -> per-session lock
 					// (global-then-per-session, the same order remove_session uses).
-					bool is_dead = i->second->m_not_alive > 3;
+					bool is_dead = i->second->m_not_alive > 3 || i->second->m_session->is_closed();
 					if (!is_dead)
 					{
 						std::lock_guard const s(i->second->m_session_mutex);

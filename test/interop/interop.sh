@@ -132,6 +132,7 @@ play_rtmpdump() {
 	local url="$1" out="$2" secs="$3"; shift 3
 	rtmpdump -z "$@" -r "$url" -o "$out" >"${out%.flv}.log" 2>&1 &
 	local rd=$!
+	track "$rd"          # the EXIT trap has to be able to reach it too
 	for _ in $(seq 1 $((secs*4))); do kill -0 "$rd" 2>/dev/null || return 0; sleep 0.25; done
 	kill "$rd" 2>/dev/null; wait "$rd" 2>/dev/null; return 0
 }
@@ -213,6 +214,108 @@ wait_publishing tun
 ffmpeg -hide_banner -loglevel error -y -i "rtmpt://127.0.0.1:$RTMPT_PORT/media/tun" -t 2 -c copy -f flv "$WORK/tun.flv" >"$WORK/tun_play.log" 2>&1
 kill "$PUB" 2>/dev/null
 has_av "$WORK/tun.flv"                  && ok "rtmpt: valid A/V over the HTTP tunnel" || bad "rtmpt: media"
+
+# --- Case 3b: RTMPT body limits ----------------------------------------------
+# Beast decides a Content-Length body against the limit while parsing the header,
+# so a limit raised after that never applies. Driven on /idle, whose body the
+# server reads and discards: nothing but the limit can decide the outcome, where
+# /send would also feed the bytes to the RTMP parser and close on the garbage.
+echo "[3b] RTMPT body limit: 1 MiB unauthenticated, 16 MiB once a session exists"
+dd if=/dev/zero of="$WORK/body_2m" bs=1024 count=2048 2>/dev/null
+
+# No session: /idle against an unknown id must not read a 2 MiB body.
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+	-X POST --data-binary "@$WORK/body_2m" \
+	"http://127.0.0.1:$RTMPT_PORT/idle/000000/1" 2>/dev/null) || true
+[ -n "$code" ] || code=000
+[ "$code" = "413" ] && ok "rtmpt: 2 MiB body without a session is refused (413)" \
+	|| bad "rtmpt: 2 MiB body without a session got HTTP $code, expected 413"
+
+# With a session, the same body must be read. /open returns the id + '\n'.
+cid=$(curl -s --max-time 10 -X POST --data-binary '' \
+	"http://127.0.0.1:$RTMPT_PORT/open/1" 2>/dev/null | tr -d '\r\n')
+if [ -n "$cid" ]; then
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+		-X POST --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/1" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "200" ] && ok "rtmpt: 2 MiB body on an open session is accepted" \
+		|| bad "rtmpt: 2 MiB body on session $cid got HTTP $code"
+	# Past the parser's own limit the refusal happens while the header is parsed,
+	# which must still answer rather than just disconnect.
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+		-H 'Content-Length: 67108864' -H 'Expect:' \
+		-X POST --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/1" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "413" ] && ok "rtmpt: a body past the parser limit is refused (413), not dropped" \
+		|| bad "rtmpt: 64 MiB Content-Length got HTTP $code, expected 413"
+
+	# A live session is not on its own enough: the request must be one the server
+	# would act on. A malformed sequence is rejected anyway, so it earns nothing.
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+		-X POST --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/notanumber" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "413" ] && ok "rtmpt: a malformed sequence does not earn the larger body limit" \
+		|| bad "rtmpt: 2 MiB body on a malformed sequence got HTTP $code, expected 413"
+
+	# Nor does a method the server will not serve.
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+		-X PUT --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/1" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "413" ] && ok "rtmpt: a non-POST does not earn the larger body limit" \
+		|| bad "rtmpt: 2 MiB body on a PUT got HTTP $code, expected 413"
+
+	curl -s -o /dev/null --max-time 10 -X POST --data-binary '' \
+		"http://127.0.0.1:$RTMPT_PORT/close/$cid/2" 2>/dev/null || true
+else
+	bad "rtmpt: /open returned no session id, so the limit cases prove nothing"
+fi
+
+# --- Case 3d: the ident probe must name a usable address ---------------------
+# A client tunnels to whatever /fcs/ident2 replies, so the wildcard bind address
+# the server defaults to is not an answer.
+echo "[3d] RTMPT: /fcs/ident2 answers a usable address"
+ident=$(curl -s --max-time 10 -X POST --data-binary '' \
+	"http://127.0.0.1:$RTMPT_PORT/fcs/ident2" 2>/dev/null | tr -d '\r\n')
+case "$ident" in
+	0.0.0.0|::|"") bad "rtmpt: /fcs/ident2 answered '$ident', which no client can tunnel to" ;;
+	*) ok "rtmpt: /fcs/ident2 answered '$ident'" ;;
+esac
+
+# A chunked body carries no Content-Length, so the limit is charged per chunk and
+# trips after the header. That refusal has to be answered, not closed on.
+echo "[3e] RTMPT: an oversize chunked body without a session is refused (413)"
+code=$(head -c 2097152 /dev/zero | curl -s -o /dev/null -w '%{http_code}' --max-time 25 \
+	-X POST -H 'Transfer-Encoding: chunked' -H 'Content-Type: application/x-fcs' \
+	--data-binary @- "http://127.0.0.1:$RTMPT_PORT/idle/000000/1" 2>/dev/null) || true
+[ "$code" = "413" ] && ok "rtmpt: oversize chunked body refused (413)" \
+	|| bad "rtmpt: oversize chunked body got HTTP $code, expected 413"
+
+# --- Case 3c: a refused tunnelled handshake drops the session ----------------
+# An unknown C0 magic is refused. The session must not survive it: proved by the
+# body limit falling back to the unauthenticated one on the same id.
+echo "[3c] RTMPT: a refused handshake drops the session"
+cid=$(curl -s --max-time 10 -X POST --data-binary '' \
+	"http://127.0.0.1:$RTMPT_PORT/open/1" 2>/dev/null | tr -d '\r\n')
+if [ -n "$cid" ]; then
+	# C0 = 0x99 (no such version) + 1536 bytes of C1.
+	printf '\x99' >"$WORK/bad_c0"
+	dd if=/dev/zero bs=1536 count=1 2>/dev/null >>"$WORK/bad_c0"
+	curl -s -o /dev/null --max-time 10 -X POST --data-binary "@$WORK/bad_c0" \
+		"http://127.0.0.1:$RTMPT_PORT/send/$cid/0" 2>/dev/null || true
+
+	code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+		-X POST --data-binary "@$WORK/body_2m" \
+		"http://127.0.0.1:$RTMPT_PORT/idle/$cid/1" 2>/dev/null) || true
+	[ -n "$code" ] || code=000
+	[ "$code" = "413" ] && ok "rtmpt: the session is gone after a refused handshake" \
+		|| bad "rtmpt: session $cid still accepts a 2 MiB body after a refused handshake (HTTP $code)"
+else
+	bad "rtmpt: /open returned no session id, so the handshake case proves nothing"
+fi
 
 # --- Case 4/5: RTMFP (rtmfp-cpp reference clients, strict crypto) -------------
 if have_rtmfp; then

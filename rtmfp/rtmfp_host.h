@@ -32,7 +32,8 @@ namespace fms
 		virtual void remove(const session_ptr &) = 0;
 
 		// Route a NetGroup membership announcement to the peers already in the group.
-		virtual void handle_net_group(group_ptr &, const session_ptr &) = 0;
+		// False when the group cannot be tracked; the caller must drop the join.
+		[[nodiscard]] virtual bool handle_net_group(group_ptr &, const session_ptr &) = 0;
 
 		// Where the session's timers and strand run. One thread per io_context, so
 		// everything posted here is serialised with the packet path.

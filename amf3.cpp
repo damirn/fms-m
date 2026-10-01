@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "amf3.h"
+#include "amf_write_budget.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 
@@ -12,9 +13,12 @@ namespace fms
 		if (m_depth == 0)          // top-level value: fresh reference context (spec 4.1)
 			reset_refs();
 
-		if (++m_depth > eMaxDepth)   // bound recursion on hostile nested input
-			throw amf3_read_exception();
+		// Guard first: the frame that trips the bound has to give its level back too,
+		// or the instance is left one level deep after the unwind.
+		++m_depth;
 		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ m_depth };
+		if (m_depth > eMaxDepth)   // bound recursion on hostile nested input
+			throw amf3_read_exception();
 
 		std::uint8_t type;
 		buffer >> type;
@@ -49,6 +53,11 @@ namespace fms
 
 	void amf3::write(byte_writer &buffer, const amf3_type_ptr& type)
 	{
+		// Depth stops a cycle; the node budget stops reference fan-out.
+		amf_write_budget::frame const budget(buffer.size());
+		if (!budget.ok())
+			throw amf3_write_exception();
+
 		std::uint8_t const marker = type->type();
 		buffer << marker;
 		switch (marker)
@@ -91,9 +100,18 @@ namespace fms
 
 	amf3_type_ptr amf3::object_ref(std::uint32_t idx) const
 	{
-		if (idx >= m_object_refs.size())
+		// An entry still being populated is an ancestor of this value: taking it
+		// would close a cycle, and nothing downstream survives walking one.
+		if (idx >= m_object_refs.size() || !m_object_complete[idx])
 			throw amf3_read_exception();
 		return m_object_refs[idx];
+	}
+
+	std::size_t amf3::register_object(const amf3_type_ptr &value, bool complete)
+	{
+		m_object_refs.push_back(value);
+		m_object_complete.push_back(complete);
+		return m_object_refs.size() - 1;
 	}
 
 	amf3_empty_type_ptr amf3::read_empty_type(byte_reader &, std::uint8_t type)
@@ -194,9 +212,9 @@ namespace fms
 
 	void amf3::charge_string_bytes(std::size_t n)
 	{
-		if (n > eMaxDecodedStringBytes - m_decoded_string_bytes)
+		if (n > eMaxDecodedStringBytes - *m_string_bytes)
 			throw amf3_read_exception();
-		m_decoded_string_bytes += n;
+		*m_string_bytes += n;
 	}
 
 	amf3_string_type_ptr amf3::read_string(byte_reader &buffer)
@@ -246,7 +264,7 @@ namespace fms
 		std::string s(reinterpret_cast<const char *>(buffer.read_pos()), len);   // NOLINT(misc-const-correctness) moved below
 		buffer.skip(len);
 		auto xml = std::make_shared<amf3_xml_type>(static_cast<amf3_type::etype>(marker), std::move(s));
-		m_object_refs.push_back(xml);
+		register_object(xml, true);
 		return xml;
 	}
 
@@ -265,7 +283,7 @@ namespace fms
 
 		amf3_double_type_ptr const ms = read_double(buffer);   // date-time is a DOUBLE
 		auto date = std::make_shared<amf3_date_type>(ms->value());
-		m_object_refs.push_back(date);
+		register_object(date, true);
 		return date;
 	}
 
@@ -288,7 +306,7 @@ namespace fms
 		std::string bytes(reinterpret_cast<const char *>(buffer.read_pos()), len);
 		buffer.skip(len);
 		auto ba = std::make_shared<amf3_bytearray_type>(std::move(bytes));
-		m_object_refs.push_back(ba);
+		register_object(ba, true);
 		return ba;
 	}
 
@@ -307,7 +325,7 @@ namespace fms
 
 		std::uint32_t const dense_count = header >> 1;
 		auto arr = std::make_shared<amf3_array_type>();
-		m_object_refs.push_back(arr);   // register before populating (may self-reference)
+		std::size_t const arr_ref = register_object(arr, false);   // referenceable before populating
 
 		// associative portion: name/value pairs terminated by the empty string
 		for (;;)
@@ -322,6 +340,7 @@ namespace fms
 		for (std::uint32_t i = 0; i < dense_count; ++i)
 			arr->dense().push_back(read(buffer));
 
+		m_object_complete[arr_ref] = true;
 		return arr;
 	}
 
@@ -378,15 +397,27 @@ namespace fms
 			traits->m_dynamic = dynamic;
 			traits->m_class_name = read_string(buffer)->value();
 			for (std::uint32_t i = 0; i < sealed_count; ++i)
-				traits->m_properties.push_back(read_string(buffer)->value());
+			{
+				std::string name = read_string(buffer)->value();
+				// The empty name terminates the dynamic-member list, so a member
+				// carrying it could not be written back out.
+				if (name.empty())
+					throw amf3_read_exception();
+				traits->m_properties.push_back(std::move(name));
+			}
 			m_traits_refs.push_back(traits);
 		}
 
 		auto obj = std::make_shared<amf3_object_type>();
-		m_object_refs.push_back(obj);   // register before populating (may self-reference)
+		std::size_t const obj_ref = register_object(obj, false);   // referenceable before populating
 
 		for (auto const &name : traits->m_properties)   // sealed members
+		{
+			// Traits can be sent by reference, so the name was charged once at
+			// declaration but every object using them materialises its own copy.
+			charge_string_bytes(name.size());
 			obj->value()[name] = read(buffer);
+		}
 
 		if (traits->m_dynamic)                           // dynamic members
 		{
@@ -399,6 +430,7 @@ namespace fms
 			}
 		}
 
+		m_object_complete[obj_ref] = true;
 		return obj;
 	}
 

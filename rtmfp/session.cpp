@@ -1,8 +1,10 @@
 #include "pch.h"
 #include "session.h"
+#include "aes.h"
+#include "amf0.h"
+#include "amf3.h"
 #include "app_host.h"
 #include "byte_order.h"
-#include "aes.h"
 #include "byte_reader.h"
 #include "byte_writer.h"
 #include "chunk.h"
@@ -18,6 +20,7 @@
 #include "util.h"
 
 #include <charconv>
+#include <cstring>
 #include <iostream>
 #include <memory>
 
@@ -248,6 +251,7 @@ namespace fms
 	flow_ptr session::create_receiving_flow(user_data_chunk *udc)
 	{
 		flow_ptr f = std::make_shared<flow>(udc->flow_id(), flow::eReceiver, udc->options());
+		f->share_buffered_total(m_buffered_bytes);
 		m_receiving_flows[udc->flow_id()] = f;
 
 		if (f->state() == flow::eOpen)
@@ -409,32 +413,40 @@ namespace fms
 
 	void session::handle_rtmp_flow_message(const flow_ptr& f)
 	{
-		std::span<const std::uint8_t> data = f->message_data();
+		std::optional<std::span<const std::uint8_t>> data = f->message_data();
 
-		while (!data.empty())
+		while (data)
 		{
-			if (data.size() > 5) // rtmp message min size
+			// The message is fully reassembled here, so a buffer_eof means corruption.
+			// It is consumed either way, or the flow re-delivers it forever.
+			try
 			{
-				rtmp_header h;
-				byte_reader s(data);
-				std::uint8_t msg_type = 0;
-				std::uint32_t ts = 0;
-				s >> msg_type >> ts;
-				h.set_message_type(msg_type);
-				h.set_timestamp(to_host<std::uint32_t>(ts));
-				auto const i = m_flow_id_to_stream_id.find(f->flow_id());
-				if (i != m_flow_id_to_stream_id.end())
+				if (data->size() > 5) // rtmp message min size
 				{
-					h.set_stream_id(i->second);
-					h.set_message_length(static_cast<std::uint32_t>(data.size()) - 5); // msg type + timestamp
-					rtmp_protocol p;
-					byte_reader r(s.read_pos(), s.available());
-					if (p.deserialize(r, h))
+					rtmp_header h;
+					byte_reader s(*data);
+					std::uint8_t msg_type = 0;
+					std::uint32_t ts = 0;
+					s >> msg_type >> ts;
+					h.set_message_type(msg_type);
+					h.set_timestamp(to_host<std::uint32_t>(ts));
+					auto const i = m_flow_id_to_stream_id.find(f->flow_id());
+					if (i != m_flow_id_to_stream_id.end())
 					{
-						rtmp_message_ptr const msg = p.message();
-						handle_message(msg, h);
+						h.set_stream_id(i->second);
+						h.set_message_length(static_cast<std::uint32_t>(data->size()) - 5); // msg type + timestamp
+						rtmp_protocol p;
+						byte_reader r(s.read_pos(), s.available());
+						if (p.deserialize(r, h))
+						{
+							rtmp_message_ptr const msg = p.message();
+							handle_message(msg, h);
+						}
 					}
 				}
+			}
+			catch (buffer_eof_exception &)
+			{
 			}
 			f->remove_last_message();
 			data = f->message_data();
@@ -445,15 +457,33 @@ namespace fms
 	{
 		static std::uint8_t marker = 0x0b;
 
-		std::span<const std::uint8_t> const data = f->message_data();
-		if (!data.empty())
+		std::optional<std::span<const std::uint8_t>> data = f->message_data();
+		while (data)
 		{
-			byte_reader s(data);
+			byte_reader s(*data);
 			group_ptr g = group::deserialize(s);
 			if (!g)
-				return;   // malformed NetGroup message
-			m_service->handle_net_group(g, shared_from_this());
-			m_group_membership.push_back(g);
+			{
+				f->remove_last_message();   // consume it, or the flow wedges here
+				data = f->message_data();
+				continue;
+			}
+			bool const present = m_group_membership.contains(g->id_bytes());
+			if (!present && m_group_membership.size() >= eMaxGroupMemberships)
+			{
+				// Only at the cap is it worth walking the map for expired entries.
+				for (auto i = m_group_membership.begin(); i != m_group_membership.end(); )
+					i = i->second.expired() ? m_group_membership.erase(i) : std::next(i);
+			}
+			if ((!present && m_group_membership.size() >= eMaxGroupMemberships)
+				|| !m_service->handle_net_group(g, shared_from_this()))
+			{
+				f->remove_last_message();
+				data = f->message_data();
+				continue;
+			}
+			if (!present)
+				m_group_membership.emplace(g->id_bytes(), g);
 			if (g->members().size() > 1)
 			{
 				vlu_t const sending = m_receiving_to_sending_flow[f->flow_id()];
@@ -477,6 +507,8 @@ namespace fms
 			// group re-sends the full member list on the same sending flow rather than a
 			// delta on the flow associated with f. P2P NetGroups are otherwise
 			// unexercised (no test path), so this is left as-is deliberately.
+			f->remove_last_message();
+			data = f->message_data();
 		}
 	}
 
@@ -505,14 +537,14 @@ namespace fms
 		m_messages_read++;
 		if (m_app != nullptr) // do we have an rtmp app assigned to us?
 		{
-			ret = m_app->handle_message(msg, m_id, h, result);
-			m_app->update_stats(true, false, 1);
+			ret = get_app()->handle_message(msg, m_id, h, result);
+			get_app()->update_stats(true, false, 1);
 		}
 		else
 		{
 			ret = m_app_manager->handle_message(msg, m_id, h, result);
 			if (m_app != nullptr) // if app has been selected, update stats
-				m_app->update_stats(true, false, 1);
+				get_app()->update_stats(true, false, 1);
 		}
 
 		if (ret && result.get() != nullptr)
@@ -527,7 +559,28 @@ namespace fms
 		std::uint32_t ts = result->timestamp();
 		ts = to_network<std::uint32_t>(ts);
 		temp << ts;
-		result->serialize(temp);
+		try
+		{
+			result->serialize(temp);
+		}
+		catch (const amf0_write_exception &)
+		{
+			// The write bounds reject a graph the read bounds accepted; drop the
+			// message rather than unwind into the receive handler.
+			return;
+		}
+		catch (const amf3_write_exception &)
+		{
+			return;
+		}
+		catch (const std::bad_alloc &)
+		{
+			return;
+		}
+		catch (const std::length_error &)
+		{
+			return;
+		}
 
 		auto const i = m_stream_id_to_flow_id.find(result->stream_id());
 		if (i != m_stream_id_to_flow_id.end())
@@ -699,7 +752,7 @@ namespace fms
 		{
 			rtmp_message_ptr msg;
 			bool has_msg = false;
-			while (m_app->get_async_message(m_id, msg))
+			while (get_app()->get_async_message(m_id, msg))
 			{
 				if (msg->type() == rtmp_message::eMessageChunkSize ||
 					msg->type() == rtmp_message::eMessageWindowAcknowledgementSize ||

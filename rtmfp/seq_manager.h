@@ -1,5 +1,8 @@
 #pragma once
 
+#include "../byte_writer.h"
+
+#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <set>
@@ -28,12 +31,22 @@ namespace fms
 
 		// Ceiling on csn itself. m_sum is the triangular sum csn*(csn+1)/2, which
 		// overflows a 64-bit accumulator past roughly 2^32; eMaxGap only bounds a
-		// single step, so repeated advances could reach it.
-		static constexpr T eMaxCsn = 0xFFFFFFFF;
+		// single step, so repeated advances could reach it. A cumulative ack also
+		// goes back out as a VLU, so it cannot exceed what that encodes.
+		static constexpr T eMaxCsn = static_cast<T>(byte_writer::eMaxVlu);
+
+		// Gap-filling costs one node per missing sequence, so a single jump of eMaxGap
+		// would buy 64K insertions from one packet. A peer this far ahead is not one we
+		// can still reassemble for.
+		static constexpr std::size_t eMaxMissing = 8192;
 
 		result add_seq(const T &val)
 		{
 			if (val <= m_csn || val - m_csn > eMaxGap || val > eMaxCsn || m_sequences.find(val) != m_sequences.end())
+			{
+				return _eDuplicate;
+			}
+			if (m_missing.size() + static_cast<std::size_t>(val - m_csn) > eMaxMissing)
 			{
 				return _eDuplicate;
 			}

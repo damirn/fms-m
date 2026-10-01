@@ -90,14 +90,22 @@ namespace fms
 		using event_ptr = std::shared_ptr<event>;
 		using event_list_t = std::list<event_ptr>;
 
+		// The body decodes events until it is empty, so a framing-legal message of
+		// 5-byte events becomes one heap-allocated event per five bytes.
+		static constexpr std::size_t eMaxEvents = 64;
+
 		event_list_t &events()
 		{
 			return m_events;
 		}
 
-		void add_event(const event_ptr& e)
+		// False when the message already carries every event a peer will parse.
+		[[nodiscard]] bool add_event(const event_ptr& e)
 		{
+			if (m_events.size() >= eMaxEvents)
+				return false;
 			m_events.push_back(e);
+			return true;
 		}
 
 	protected:

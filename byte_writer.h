@@ -147,6 +147,9 @@ namespace fms
 		std::size_t size() const { return m_buf.size() - m_read_pos; }
 
 		// ---- input-buffer role ------------------------------------------------
+		// Bytes reserved by write_buffer() and not yet reported by update().
+		[[nodiscard]] std::size_t reserved() const { return m_reserved; }
+
 		// Reserve n bytes of writable room at the end for an async read/receive
 		// to fill; size() stays put until update() reports how many actually
 		// arrived.
@@ -171,6 +174,10 @@ namespace fms
 		{
 			assert(filled <= m_reserved && filled <= m_buf.size() &&
 			       "update() must directly follow write_buffer()");
+			// No live reservation (a clear() in between, say): the subtraction below
+			// would wrap into an enormous resize, and NDEBUG has no assert to stop it.
+			if (filled > m_reserved)
+				return;
 			m_buf.resize(m_buf.size() - (m_reserved - filled));   // drop the unfilled tail
 			m_reserved = 0;
 		}
@@ -198,7 +205,8 @@ namespace fms
 			return boost::asio::const_buffer(m_buf.data() + m_read_pos, m_buf.size() - m_read_pos);
 		}
 		bool empty() const { return m_buf.size() == m_read_pos; }
-		void clear() { m_buf.clear(); m_read_pos = 0; }
+		// Drops any pending write_buffer() reservation: after clear() nothing is outstanding.
+		void clear() { m_buf.clear(); m_read_pos = 0; m_reserved = 0; }
 
 		// clear() keeps the capacity, which is what you want for a buffer that is
 		// reused at a steady size. For one that occasionally holds something huge --
@@ -214,6 +222,7 @@ namespace fms
 			else
 				m_buf.clear();
 			m_read_pos = 0;
+			m_reserved = 0;
 		}
 
 		// Allocated storage, for tests/diagnostics (>= footprint()).

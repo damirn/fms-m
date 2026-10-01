@@ -68,3 +68,51 @@ TEST_CASE("media path: the resolved path always stays under the base")
 		CHECK(fs::weakly_canonical(*p).string().rfind(cbase, 0) == 0);
 	}
 }
+
+// The shapes the recording path must refuse. The call sites themselves are
+// covered end to end by realworld.sh F3.
+TEST_CASE("media path: the write direction rejects the arbitrary-write shapes")
+{
+	temp_media t;
+	std::string const base = t.dir.string();
+
+	// Absolute names: operator/ would drop the base and write wherever asked.
+	CHECK_FALSE(resolve_media_file(base, "/etc/cron.d/pwn").has_value());
+	CHECK_FALSE(resolve_media_file(base, "/root/.ssh/authorized_keys").has_value());
+	CHECK_FALSE(resolve_media_file(base, "/tmp/pwned").has_value());
+
+	// Traversal out of the base, at one and several levels.
+	CHECK_FALSE(resolve_media_file(base, "../../../../var/www/html/x").has_value());
+	CHECK_FALSE(resolve_media_file(base, "sub/../../../escape").has_value());
+
+	// A name that only looks like traversal stays inside and is allowed.
+	auto const inside = resolve_media_file(base, "sub/clip");
+	REQUIRE(inside.has_value());
+	CHECK(fs::weakly_canonical(*inside).string().rfind(fs::weakly_canonical(base).string(), 0) == 0);
+}
+
+TEST_CASE("media path: a dangling symlink is refused, a contained one is not")
+{
+	temp_media t;
+	std::string const base = t.dir.string();
+	fs::path const outside = t.dir.parent_path() / "fms_media_test_escape.flv";
+
+	std::error_code ec;
+	fs::remove(outside, ec);
+	fs::remove(t.dir / "dangling.flv", ec);
+	fs::remove(t.dir / "alias.flv", ec);
+	fs::create_symlink(outside, t.dir / "dangling.flv", ec);
+	REQUIRE_FALSE(ec);
+	fs::create_symlink(t.dir / "movie.flv", t.dir / "alias.flv", ec);
+	REQUIRE_FALSE(ec);
+
+	// Writing through a dangling link would create the file outside the base.
+	CHECK_FALSE(resolve_media_file(base, "dangling").has_value());
+
+	// One that resolves inside stays usable: it is the target that matters.
+	auto const alias = resolve_media_file(base, "alias");
+	REQUIRE(alias.has_value());
+	CHECK(fs::path(*alias) == fs::weakly_canonical(t.dir / "movie.flv"));
+
+	CHECK_FALSE(fs::exists(outside));
+}

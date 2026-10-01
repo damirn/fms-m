@@ -44,8 +44,7 @@ namespace fms
 			call_instance_data &operator=(const call_instance_data &) = delete;
 
 			std::set<std::uint32_t> m_clients;
-			mixer *m_mixer{nullptr};
-			audio_sink *m_sink{nullptr};   // non-owning; the mixer owns it
+			std::unique_ptr<mixer> m_mixer;   // owns the sink it was built with
 		};
 
 		using call_instance_data_ptr = std::shared_ptr<call_instance_data>;

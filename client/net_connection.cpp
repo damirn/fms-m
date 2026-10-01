@@ -1,12 +1,14 @@
 #include "pch.h"
 #include "net_connection.h"
 #include "amf0.h"
+#include "basic_rtmp_connection.h"
 #include "channel_manager.h"
 #include "crypto.h"
 #include "net_client_tunnel.h"
 #include "net_stream.h"
 #include "rtmp_handshake.h"
 #include "rtmp_message.h"
+#include "rtmp_parser.h"
 #include "rtmp_protocol.h"
 #include "util.h"
 
@@ -295,9 +297,9 @@ namespace fms::rtmp_client
 	void net_connection::update_bytes_read(std::size_t bytes_read)
 	{
 		m_bytes_read += static_cast<std::uint32_t>(bytes_read);
-		if (m_bytes_read >= m_ack_size_next)
+		if (basic_rtmp_connection::ack_due(m_bytes_read, m_ack_size_next))
 		{
-			m_ack_size_next += m_ack_size;
+			m_ack_size_next = basic_rtmp_connection::next_ack_threshold(m_bytes_read, m_ack_size);
 			rtmp_message_bytes_read_ptr const msg = std::make_shared<rtmp_message_bytes_read>(m_bytes_read);
 			send_message(msg);
 		}
@@ -344,19 +346,29 @@ namespace fms::rtmp_client
 		rtmp_header h;
 		rtmp_protocol p(m_out_chunk_size);
 		m_messages_written++;
-		p.serialize(*m_output_buffer, message, h, channel->sent_header());
+		if (!p.serialize(*m_output_buffer, message, h, channel->sent_header()))
+			return;   // nothing was written, so the channel's sent_header still stands
 		channel->sent_header() = h;
 		// Apply our own Set Chunk Size only AFTER framing that control message at
 		// the previous size: the peer parses it at the old size, then switches, so
 		// our subsequent media chunks (and its parse) use the new size.
 		if (message->type() == rtmp_message::eMessageChunkSize)
-			m_out_chunk_size = static_cast<std::uint16_t>(
-				std::static_pointer_cast<rtmp_message_chunk_size>(message)->chunk_size());
+			set_out_chunk_size(std::static_pointer_cast<rtmp_message_chunk_size>(message)->chunk_size());
 	}
 
-	void net_connection::set_output_chunk_size(std::uint32_t n)
+	bool net_connection::set_output_chunk_size(std::uint32_t n)
 	{
+		if (n < 1 || n > rtmp_parser::eMaxChunkSize)
+			return false;
 		send_message(std::make_shared<rtmp_message_chunk_size>(n));
+		return true;
+	}
+
+	void net_connection::set_out_chunk_size(std::uint32_t n)
+	{
+		if (n < 1 || n > rtmp_parser::eMaxChunkSize)
+			return;                  // rtmp_protocol divides by this
+		m_out_chunk_size = n;
 	}
 
 	bool net_connection::prepare_handshake()
@@ -380,9 +392,9 @@ namespace fms::rtmp_client
 			// digest = HMAC-SHA256(C1 with the 32 digest bytes removed, FP_key[0:30]),
 			// written into C1 at the scheme's digest offset.
 			std::uint32_t const off = rtmp_handshake::digest_offset(c1, m_hs_scheme);
-			rtmp_handshake::compute_digest(c1, off, {genuine_keys::FP_key, 30},
+			// A failed HMAC zeroes the digest, which the server would reject anyway.
+			return rtmp_handshake::compute_digest(c1, off, {genuine_keys::FP_key, 30},
 				c1.subspan(off).first<rtmp_handshake::eDigestLen>());
-			return true;
 		}
 
 		std::memset(c1.data() + 4, 0, 4);    // version = 0 -> simple handshake
@@ -400,13 +412,13 @@ namespace fms::rtmp_client
 		rtmp_handshake::c1_span const c2 = *opt;
 
 		std::uint32_t const off = rtmp_handshake::digest_offset(s1, m_hs_scheme);
-		std::uint8_t key[SHA256_DIGEST_LENGTH];
-		HMAC_SHA256(s1.data() + off, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, key);
+		std::uint8_t key[SHA256_DIGEST_LENGTH] = {};
+		if (HMAC_SHA256(s1.data() + off, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, key) == 0)
+			return false;   // C2 must ship signed
 		if (!rtmp_handshake::fill_random(c2.first(eHandshakeSize - SHA256_DIGEST_LENGTH)))
 			return false;
-		HMAC_SHA256(c2.data(), eHandshakeSize - SHA256_DIGEST_LENGTH, key, SHA256_DIGEST_LENGTH,
-			c2.data() + eHandshakeSize - SHA256_DIGEST_LENGTH);
-		return true;
+		return HMAC_SHA256(c2.data(), eHandshakeSize - SHA256_DIGEST_LENGTH, key, SHA256_DIGEST_LENGTH,
+			c2.data() + eHandshakeSize - SHA256_DIGEST_LENGTH) != 0;
 	}
 
 	void net_connection::handle_message(rtmp_channel_ptr, rtmp_message_ptr msg)
@@ -464,7 +476,7 @@ namespace fms::rtmp_client
 		if (msg->type() == rtmp_message::eMessageChunkSize)
 		{
 			rtmp_message_chunk_size_ptr const cs = std::dynamic_pointer_cast<rtmp_message_chunk_size>(msg);
-			m_parser.set_chunk_size(cs->chunk_size());
+			(void)m_parser.set_chunk_size(cs->chunk_size());   // out of range: keep the current size
 		}
 		else if (msg->type() == rtmp_message::eMessageWindowAcknowledgementSize)
 		{
@@ -497,7 +509,11 @@ namespace fms::rtmp_client
 
 	void net_connection::handle_win_ack(const rtmp_message_window_acknowledgement_size_ptr& ack)
 	{
-		m_ack_size = m_ack_size_next = ack->size();
+		if (std::uint32_t const n = ack->size(); n != 0)
+		{
+			m_ack_size = basic_rtmp_connection::clamp_window(n);
+			m_ack_size_next = basic_rtmp_connection::next_ack_threshold(m_bytes_read, m_ack_size);
+		}
 	}
 
 	void net_connection::handle_set_peer_bandwidth(const rtmp_message_set_peer_bandwidth_ptr& peer_bandwidth)

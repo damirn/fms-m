@@ -60,8 +60,17 @@ namespace fms
 		bool framing_error() const { return m_framing_error; }
 
 		// Apply a peer SetChunkSize (the sink forwards it here -- it changes how the
-		// parser frames subsequent chunks).
-		void set_chunk_size(std::uint32_t n) { m_chunk_size = n; }
+		// parser frames subsequent chunks). False, and unchanged, outside spec 5.4.1's
+		// 1..0xFFFFFF; the invariant lives here so no caller can skip it.
+		[[nodiscard]] bool set_chunk_size(std::uint32_t n)
+		{
+			if (n < 1 || n > eMaxChunkSize)
+				return false;
+			m_chunk_size = n;
+			return true;
+		}
+
+		static constexpr std::uint32_t eMaxChunkSize = 0xFFFFFF;
 
 		// 24-bit RTMP length allows up to 16 MiB; no legitimate audio/video frame (or
 		// live aggregate) is this big. Bounds per-channel reassembly and the

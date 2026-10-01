@@ -76,13 +76,13 @@ namespace fms
 		, m_speex_codec(std::make_shared<speex_codec>())
 	{}
 
-	mixer::mixer(audio_sink *sink)
+	mixer::mixer(std::unique_ptr<audio_sink> sink)
 		: 
 		 m_rec_buffer(nullptr)
 		, m_init(false)
 		, m_running(false)
 		, m_timestamp(0)
-		, m_sink(sink)
+		, m_sink(std::move(sink))
 		, m_speex_codec(std::make_shared<speex_codec>())
 	{}
 

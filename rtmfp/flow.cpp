@@ -12,13 +12,14 @@ namespace fms
 
 	flow::~flow()
 	{
-		delete[] m_data;   // a reassembly buffer mid-flight at teardown would otherwise leak
 		m_fragments.clear();
 	}
 
 	flow::vlu_seq_manager::result flow::add_fragment(const fragment_ptr& f)
 	{
-		if (m_fragments.size() >= eMaxBufferedFragments)
+		if (m_fragments.size() >= eMaxBufferedFragments
+			|| m_fragments.bytes() + f->m_data_len > eMaxBufferedBytes
+			|| m_fragments.shared_bytes() + f->m_data_len > eMaxSessionBufferedBytes)
 		{
 			// Sending flow: the backlog is our own queued (and possibly in-flight)
 			// data, so refuse the new fragment rather than discarding all of it.
@@ -44,19 +45,20 @@ namespace fms
 				f->take_ownership();
 			}
 
-			m_fragments[f->m_seq] = f;
+			m_fragments.assign(f->m_seq, f);
 		}
 		return ret;
 	}
 
 	void flow::remove_fragments_until_seq(const vlu_t &seq)
 	{
-		auto const i = m_fragments.find(seq);
+		// lower_bound: the peer-supplied sequence need not be buffered.
+		auto const i = m_fragments.lower_bound(seq);
 		m_fragments.erase(m_fragments.begin(), i);
 		m_fragments.erase(seq);
 	}
 
-	std::span<const std::uint8_t> flow::message_data()
+	std::optional<std::span<const std::uint8_t>> flow::message_data()
 	{
 		vlu_t const csn = m_seq_manager.csn();
 		auto i = m_fragments.begin();
@@ -66,7 +68,7 @@ namespace fms
 			if (f->m_frag_ctrl == fragment::eWhole)
 			{
 				m_msg_is_fragmented = false;
-				return {f->m_data, f->m_data_len};
+				return std::span<const std::uint8_t>{f->m_data, f->m_data_len};
 			}
 			if (f->m_frag_ctrl == fragment::eEnd || f->m_frag_ctrl == fragment::eMiddle)
 			{
@@ -83,8 +85,10 @@ namespace fms
 					m_msg_len += j->second->m_data_len;
 					if (j->second->m_frag_ctrl == fragment::eEnd)
 					{
+						if (!create_message(i, j))
+							return std::nullopt;   // refused, and the flow is rejected
 						m_msg_is_fragmented = true;
-						return {create_message(i, j), m_msg_len};
+						return std::span<const std::uint8_t>{m_data.data(), m_msg_len};
 					}
 					if (j->second->m_frag_ctrl == fragment::eWhole || j->second->m_frag_ctrl == fragment::eBegin)
 					{
@@ -97,7 +101,7 @@ namespace fms
 				break;
 			}
 		}
-		return {};
+		return std::nullopt;
 	}
 
 	void flow::remove_last_message()
@@ -108,8 +112,8 @@ namespace fms
 		}
 		else
 		{
-			delete[] m_data;
-			m_data = nullptr;             // guard against a double delete[]
+			m_data.clear();
+			m_data.shrink_to_fit();       // a 16MB reassembly must not stay resident
 			m_msg_is_fragmented = false;
 		}
 	}
@@ -152,33 +156,34 @@ namespace fms
 		return id > 0xFFFFFFFFu ? 0 : id;
 	}
 
-	const std::uint8_t *flow::create_message(const fragment_map_t::iterator &from, const fragment_map_t::iterator &to)
+	bool flow::create_message(const fragment_map_t::iterator &from, const fragment_map_t::iterator &to)
 	{
 		if (m_msg_len > eMaxReassembledMsgLen)   // abusive reassembled size -> refuse + reject the flow
 		{
 			m_fragments.erase(from, to);
 			m_fragments.erase(to);
-			m_data = nullptr;
+			m_data.clear();
+			m_msg_len = 0;              // callers span {data, len}: an empty base must carry length 0
 			m_msg_is_fragmented = false;
 			m_state = eRejected;
-			return nullptr;
+			return false;
 		}
-		m_data = new std::uint8_t[m_msg_len];
+		m_data.resize(m_msg_len);
 		std::uint32_t prev_len = 0;
 		fragment_map_t::iterator i = from;
 		while (true)
 		{
-			std::memcpy(m_data + prev_len, i->second->m_data, i->second->m_data_len);
+			if (i->second->m_data_len != 0)
+				std::memcpy(m_data.data() + prev_len, i->second->m_data, i->second->m_data_len);
 			prev_len += i->second->m_data_len;
 			if (i == to)
 			{
 				m_fragments.erase(from, to);
 				m_fragments.erase(to);
-				return m_data;
+				return true;
 			}
 							++i;
 		}
-		return nullptr; // never reached
 	}
 
 	std::uint16_t flow::add_and_fragment_data(const std::uint8_t *data, const std::uint32_t &len)

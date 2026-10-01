@@ -80,6 +80,15 @@ namespace fms
 	void service::handle_receive_from(const boost::system::error_code &e, size_t bytes_received)
 	{
 		m_read_in_progress = false;
+
+		// The receive is re-armed however this handler leaves; without it a throw out
+		// of the parse tree would leave the service with no outstanding read.
+		struct rearm
+		{
+			service *s;
+			~rearm() { s->read(); }
+		} const guard{ this };
+
 		if (!e && bytes_received >= ePacketMinLen)
 		{
 			m_buffer.update(bytes_received);
@@ -132,7 +141,6 @@ namespace fms
 				}
 			}
 		}
-		read();
 	}
 
 	void service::handle_send_to(const boost::system::error_code &, size_t)
@@ -163,7 +171,6 @@ namespace fms
 	{
 		byte_reader packet(m_buffer.data() + 4, m_buffer.size() - 4);
 		m_parser->parse(packet);
-		read();
 	}
 
 	std::uint32_t service::get_sid()
@@ -216,12 +223,18 @@ namespace fms
 		auto const i = m_sessions.find(sid);
 		if (i != m_sessions.end())
 		{
-			m_initial_sessions.erase(i->second->end_point());
-			m_session_map.erase(i->second->peer_id());
-			const std::list<group_weak_ptr> &grps = i->second->group_membership();
+			// Erase only if the entry still maps to this session: a re-handshake from
+			// the same endpoint or peer id replaces it.
+			if (auto const k = m_initial_sessions.find(i->second->end_point());
+				k != m_initial_sessions.end() && k->second == i->second)
+				m_initial_sessions.erase(k);
+			if (auto const k = m_session_map.find(i->second->peer_id());
+				k != m_session_map.end() && k->second == i->second)
+				m_session_map.erase(k);
+			const session::group_membership_t &grps = i->second->group_membership();
 			if (!grps.empty())
 			{
-				for (const auto & grp : grps)
+				for (const auto & [id, grp] : grps)
 				{
 					if (group_ptr const g = grp.lock())
 					{
@@ -484,22 +497,11 @@ namespace fms
 		return ts & 0xffff;
 	}
 
-	void service::handle_net_group(group_ptr &g, const session_ptr& s)
+	bool service::handle_net_group(group_ptr &g, const session_ptr& s)
 	{
-		if (g->command() == group::eJoinGroup)
-		{
-			auto const i = m_groups.find(g);
-			if (i == m_groups.end())
-			{
-				// g already owns its id (group::deserialize copied it).
-				g->add_member(s);
-				m_groups.insert(g);
-			}
-			else
-			{
-				(*i)->add_member(s);
-				g = *i;
-			}
-		}
+		if (g->command() != group::eJoinGroup)
+			return false;
+
+		return m_groups.join(g, s);
 	}
 }

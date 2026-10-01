@@ -35,6 +35,7 @@ namespace
 		bool handshaken = false;
 		bool closed = false;
 		int data_calls = 0, poll_calls = 0, result_calls = 0;
+		bool fatal = false;              // next handle_data reports a fatal error
 		std::size_t bytes_read = 0, bytes_written = 0;
 		std::vector<std::uint8_t> last_input;
 		std::vector<std::vector<std::uint8_t>> delivered;
@@ -49,6 +50,8 @@ namespace
 			last_input.assign(in.data(), in.data() + in.size());
 			delivered.emplace_back(in.data(), in.data() + in.size());
 			out << std::uint8_t{0x01};      // a byte, so the caller sees a non-zero size
+			if (fatal)
+				return false;
 			return true;
 		}
 		void serialize_result(byte_writer &out) override { ++result_calls; out << std::uint8_t{0x02}; }
@@ -56,6 +59,7 @@ namespace
 		void handle_bytes_read(std::size_t n) override { bytes_read += n; }
 		void handle_bytes_written(std::size_t n) override { bytes_written += n; }
 		void close() override { closed = true; }
+		bool is_closed() const override { return closed; }
 	};
 
 	using fake_session_ptr = std::shared_ptr<fake_session>;
@@ -80,6 +84,11 @@ namespace
 	{
 		using rtmpt_manager::rtmpt_manager;
 		void tick() { handle_timer({}); }
+		std::size_t session_count()
+		{
+			std::lock_guard const lock(m_mutex);
+			return m_ids.size();
+		}
 	};
 
 	boost::asio::ip::tcp::endpoint ep(const std::string &ip, std::uint16_t port = 1935)
@@ -336,6 +345,28 @@ TEST_CASE("rtmpt: the out-of-order backlog is capped by total bytes")
 	CHECK(h.made[0]->last_input.size() == 1 + 4 * big.size());
 }
 
+TEST_CASE("rtmpt: a fatal error on the /idle drain drops the session")
+{
+	fake_host h;
+	testable_manager m(&h);
+
+	std::string id;
+	m.create_session(ep("10.0.0.5"), id);
+	REQUIRE(h.made.size() == 1);
+	h.made[0]->handshaken = true;              // past the never-handshook reaper
+
+	byte_writer i0 = buf({0xA0}), o0;
+	m.handle_data(id, 0, i0, o0);              // in order
+	byte_writer i2 = buf({0xA2}), o2;
+	m.handle_data(id, 2, i2, o2);              // stashed, gap at 1
+
+	h.made[0]->fatal = true;
+	byte_writer poll;
+	m.serialize_result(id, 1, poll);           // the /idle drains 2 and it turns fatal
+
+	CHECK_FALSE(m.validate(ep("10.0.0.5"), id, 3));
+}
+
 TEST_CASE("rtmpt: the session table is capped against an /open flood")
 {
 	fake_host h;
@@ -352,6 +383,35 @@ TEST_CASE("rtmpt: the session table is capped against an /open flood")
 	m.create_session(ep("10.0.0.1"), id);
 	CHECK(id.empty());               // refused
 	CHECK(h.made.size() == 4096);    // and refused BEFORE allocating a session
+}
+
+TEST_CASE("rtmpt: a session closed by the server stops being served")
+{
+	// An app- or admin-initiated close goes through the session, not through
+	// remove_session, so the id table has to notice on its own.
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.9"), id);
+	REQUIRE_FALSE(id.empty());
+	REQUIRE(m.validate(ep("10.0.0.9"), id, 0));
+
+	h.made[0]->close();              // as destroy_connection -> post_close does
+
+	CHECK_FALSE(m.validate(ep("10.0.0.9"), id, 0));
+	CHECK(m.session_count() == 0);   // the slot is released, not just refused
+}
+
+TEST_CASE("rtmpt: the reaper frees the slot of a closed session that stops polling")
+{
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.10"), id);
+	h.made[0]->close();
+
+	m.tick();
+	CHECK(m.session_count() == 0);
 }
 
 TEST_CASE("rtmpt: remove_session closes the session and forgets the id")

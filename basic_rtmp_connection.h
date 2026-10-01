@@ -7,6 +7,7 @@
 #include "rtmp_message.h"
 #include "rtmp_parser.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -26,6 +27,36 @@ namespace fms
 	class basic_rtmp_connection : public client_session, public rtmp_message_sink, public std::enable_shared_from_this<basic_rtmp_connection>
 	{
 	public:
+		// Smallest acknowledgement window we will adopt: below this the threshold
+		// advances by less than one read and we ack every read.
+		static constexpr std::uint32_t eMinWindowAck = 1024;
+
+		// Largest: the threshold test is a wrapping signed difference, so a window
+		// at or above 2^31 lands it behind the counter and never advances forward.
+		static constexpr std::uint32_t eMaxWindowAck = 0x20000000;
+
+		// Clamp rather than ignore, so a peer that honours the window it announced
+		// still sees an acknowledgement.
+		static constexpr std::uint32_t clamp_window(std::uint32_t n)
+		{
+			return std::clamp(n, eMinWindowAck, eMaxWindowAck);
+		}
+
+		// The next threshold, re-based on the counter: one read can be larger than
+		// the window, and stepping by the window instead would let the lag run to
+		// 2^31 and turn the wrapping comparison negative for good.
+		static constexpr std::uint32_t next_ack_threshold(std::uint32_t bytes_read, std::uint32_t window)
+		{
+			return bytes_read + window;
+		}
+
+		// The threshold test itself: a wrapping signed difference, so the counter
+		// passing 2^32 does not strand it.
+		static constexpr bool ack_due(std::uint32_t bytes_read, std::uint32_t threshold)
+		{
+			return static_cast<std::int32_t>(bytes_read - threshold) >= 0;
+		}
+
 		basic_rtmp_connection(std::uint32_t id, boost::asio::io_context &, app_host *);
 
 		~basic_rtmp_connection() override = default;

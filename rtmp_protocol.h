@@ -17,8 +17,9 @@ namespace fms
 			: m_chunk_size(eChunkSize)
 		{}
 
+		// chunk_buffer divides by this, so a zero never reaches the framer.
 		explicit rtmp_protocol(std::uint32_t chunk_size)
-			: m_chunk_size(chunk_size)
+			: m_chunk_size(chunk_size != 0 ? chunk_size : eChunkSize)
 		{}
 
 		bool deserialize(byte_reader &, rtmp_header &);
@@ -27,7 +28,9 @@ namespace fms
 		// used to decode an aggregate's sub-messages so nested aggregates are bounded.
 		void set_aggregate_depth(int d) { m_aggregate_depth = d; }
 
-		void serialize(byte_writer &, const rtmp_message_ptr&, rtmp_header &, rtmp_header &);
+		// False when the body could not be serialised; nothing is written and the
+		// caller must leave the channel's sent_header alone.
+		[[nodiscard]] bool serialize(byte_writer &, const rtmp_message_ptr&, rtmp_header &, rtmp_header &);
 
 		rtmp_message_ptr message()
 		{
