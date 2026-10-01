@@ -380,3 +380,35 @@ TEST_CASE("rtmfp flow: the buffered byte total returns to zero as fragments are 
 		f.add_fragment(big(seq));
 	CHECK(f.state() == flow::eOpen);
 }
+
+TEST_CASE("rtmfp flow: one session's reassembly backlog is bounded across its flows")
+{
+	// Each flow stays inside its own byte bound; what they must not do is add up
+	// without limit, so the shared total is what has to refuse the later ones.
+	auto const session_total = std::make_shared<std::size_t>(0);
+
+	std::vector<std::unique_ptr<flow>> flows;
+	std::size_t rejected = 0;
+	std::uint64_t id = 1;
+
+	// Enough flows that the per-flow bound alone could reach many times the cap.
+	for (; id <= 8; ++id)
+	{
+		auto f = std::make_unique<flow>(vlu_t{id}, flow::eReceiver);
+		f->share_buffered_total(session_total);
+
+		for (std::uint64_t seq = 1; seq <= 200 && f->state() == flow::eOpen; ++seq)
+			f->add_fragment(big(seq));
+
+		if (f->state() == flow::eRejected)
+			++rejected;
+		flows.push_back(std::move(f));
+	}
+
+	CHECK(*session_total <= flow::eMaxSessionBufferedBytes);
+	CHECK(rejected > 0);              // the shared total refused the later flows
+
+	// Freeing a flow returns its share, so the session can buffer again.
+	flows.clear();
+	CHECK(*session_total == 0);
+}
