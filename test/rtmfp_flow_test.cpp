@@ -325,3 +325,58 @@ TEST_CASE("rtmfp flow: a zero-length message is ready, and is consumed")
 	REQUIRE(second.has_value());      // the flow did not wedge behind the empty one
 	CHECK(second->size() == 1);
 }
+
+namespace
+{
+	// A fragment at the wire maximum: m_data_len is a uint16_t.
+	fragment_ptr big(std::uint64_t seq, std::uint8_t ctrl = fragment::eMiddle)
+	{
+		static std::vector<std::uint8_t> data(0xFFFF, 0x5A);
+		return std::make_shared<fragment>(seq, data.data(), static_cast<std::uint16_t>(data.size()),
+		                                  ctrl, true);
+	}
+}
+
+TEST_CASE("rtmfp flow: the buffered byte total bounds a run the fragment count does not")
+{
+	// 64 KiB fragments reach the byte ceiling after ~256 of them, far short of
+	// eMaxBufferedFragments, so the count cap cannot be what refuses this.
+	flow f(vlu_t{1}, flow::eReceiver);
+	REQUIRE(f.state() == flow::eOpen);
+
+	std::uint64_t seq = 1;
+	while (f.state() == flow::eOpen && seq <= flow::eMaxBufferedFragments)
+	{
+		f.add_fragment(big(seq));
+		++seq;
+	}
+
+	CHECK(f.state() == flow::eRejected);
+	CHECK(f.fragment_count() == 0);                       // what it buffered was dropped
+	CHECK(seq - 1 < flow::eMaxBufferedFragments);          // refused before the count cap
+	CHECK(seq - 1 > 1);                                    // and not on the first fragment
+}
+
+TEST_CASE("rtmfp flow: the buffered byte total returns to zero as fragments are consumed")
+{
+	// Accounting has to be exact in both directions: a total that only ever grew
+	// would refuse a long-lived healthy flow.
+	flow f(vlu_t{1}, flow::eReceiver);
+
+	f.add_fragment(big(1, static_cast<std::uint8_t>(fragment::eBegin)));
+	f.add_fragment(big(2, static_cast<std::uint8_t>(fragment::eEnd)));
+	CHECK(f.buffered_bytes() == 2u * 0xFFFF);
+
+	auto const msg = f.message_data();
+	REQUIRE(msg.has_value());
+	CHECK(msg->size() == 2u * 0xFFFF);
+	f.remove_last_message();
+
+	CHECK(f.fragment_count() == 0);
+	CHECK(f.buffered_bytes() == 0);
+
+	// The flow still accepts its full allowance afterwards.
+	for (std::uint64_t seq = 3; seq < 3 + 200; ++seq)
+		f.add_fragment(big(seq));
+	CHECK(f.state() == flow::eOpen);
+}
