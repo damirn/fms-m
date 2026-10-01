@@ -412,3 +412,24 @@ TEST_CASE("rtmfp flow: one session's reassembly backlog is bounded across its fl
 	flows.clear();
 	CHECK(*session_total == 0);
 }
+
+TEST_CASE("rtmfp flow: a jump too far ahead is refused rather than gap-filled")
+{
+	// Gap-filling inserts one node per missing sequence. eMaxGap alone permits a
+	// 64K jump, so the missing-set bound is what has to refuse this one.
+	using seq = flow::vlu_seq_manager;
+	static_assert(seq::eMaxMissing < seq::eMaxGap, "else eMaxGap would refuse it first");
+
+	flow f(vlu_t{1}, flow::eReceiver);
+	f.add_fragment(mid(1));
+	REQUIRE(f.fragment_count() == 1);
+
+	// Inside the missing-set allowance: accepted, and the gap is tracked.
+	f.add_fragment(mid(1000));
+	CHECK(f.fragment_count() == 2);
+
+	// Past it, but still inside eMaxGap: refused, so nothing is buffered for it.
+	f.add_fragment(mid(seq::eMaxMissing + 2000));
+	CHECK(f.fragment_count() == 2);
+	CHECK(f.state() == flow::eOpen);   // refused, not a rejected flow
+}
