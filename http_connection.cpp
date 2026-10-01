@@ -93,7 +93,9 @@ namespace fms
 			return false;
 
 		std::string const target(m_parser->get().target().data(), m_parser->get().target().size());
-		std::string verb, cid, seq;
+		std::string verb;
+		std::string cid;
+		std::string seq;
 		split_target(target, verb, cid, seq);
 		if (cid.empty())
 			return false;
@@ -159,7 +161,9 @@ namespace fms
 		// Charge the session this request names, not the one a previous request on
 		// this connection left behind: m_cid is not set until the request dispatches.
 		std::string const target(m_parser->get().target().data(), m_parser->get().target().size());
-		std::string verb, cid, seq;
+		std::string verb;
+		std::string cid;
+		std::string seq;
 		split_target(target, verb, cid, seq);
 		m_rtmpt_manager->update_bytes_read(cid,
 			static_cast<std::uint32_t>(m_header_bytes + bytes_transferred));
@@ -225,7 +229,9 @@ namespace fms
 		}
 
 		std::string const target(req.target().data(), req.target().size());
-		std::string verb, cid, seq;
+		std::string verb;
+		std::string cid;
+		std::string seq;
 		split_target(target, verb, cid, seq);
 
 		boost::system::error_code ec;
