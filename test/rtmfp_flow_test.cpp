@@ -432,3 +432,30 @@ TEST_CASE("rtmfp flow: a jump too far ahead is refused rather than gap-filled")
 	CHECK(f.fragment_count() == 2);
 	CHECK(f.state() == flow::eOpen);   // refused, not a rejected flow
 }
+
+TEST_CASE("rtmfp flow: sequence numbers run to the sum bound, and gaps still close there")
+{
+	using seq = flow::vlu_seq_manager;
+	auto advance_to = [](seq &s, vlu_t target)
+	{
+		while (s.csn() < target)
+		{
+			vlu_t const before = s.csn();
+			s.add_sequences_until(std::min<vlu_t>(before + seq::eMaxGap, target));
+			if (s.csn() == before)
+				return;
+		}
+	};
+
+	seq s;
+	advance_to(s, vlu_t{1} << 29);
+	REQUIRE(s.csn() == (vlu_t{1} << 29));
+	CHECK(s.add_seq(s.csn() + 1) == seq::_eOK);
+
+	advance_to(s, seq::eMaxCsn - 2);
+	REQUIRE(s.csn() == seq::eMaxCsn - 2);
+	CHECK(s.add_seq(seq::eMaxCsn) == seq::_eProducesGap);
+	CHECK(s.add_seq(seq::eMaxCsn - 1) == seq::_eGapClosed);
+	CHECK(s.csn() == seq::eMaxCsn);
+	CHECK(s.add_seq(seq::eMaxCsn + 1) == seq::_eDuplicate);
+}
