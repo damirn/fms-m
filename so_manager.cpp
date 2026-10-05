@@ -24,6 +24,7 @@ namespace fms
 
 		pending_sends_t pending;   // filled under the lock, flushed after it is released
 		bool released = false;
+		bool used = false;         // a request names one object, so one Use reply answers it
 		{
 			std::unique_lock const lock(m_mutex);
 			m_new_message = true;
@@ -36,7 +37,9 @@ namespace fms
 				switch ((*i)->m_type)
 				{
 				case rtmp_message_shared_object::eUse:
-					handle_use_event(so, connection_id, ret, pending);
+					if (!used)
+						handle_use_event(so, connection_id, ret, pending);
+					used = true;
 					break;
 				case rtmp_message_shared_object::eRelease:
 					handle_release_event(so, connection_id);
