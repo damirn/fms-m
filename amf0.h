@@ -31,13 +31,12 @@ namespace fms
 	class amf0
 	{
 	public:
-		// Holds one decoded-string allowance across every top-level read of a
-		// message. Without it the allowance resets per value, so a message of n
-		// values gets n allowances. The outermost scope owns the span.
+		// Every read inside the outermost scope, by any instance, spends one
+		// decoded-string allowance.
 		class [[nodiscard]] read_scope
 		{
 		public:
-			read_scope() { ++s_read_scopes; }
+			read_scope() { if (s_read_scopes++ == 0) s_scope_string_bytes = 0; }
 			~read_scope() { --s_read_scopes; }
 
 			read_scope(const read_scope &) = delete;
@@ -111,6 +110,9 @@ namespace fms
 		// full string allowance out of one message.
 		std::size_t m_decoded_string_bytes = 0;
 
+		std::size_t *string_budget() { return s_read_scopes != 0 ? &s_scope_string_bytes : &m_decoded_string_bytes; }
+
 		static inline thread_local unsigned s_read_scopes = 0;
+		static inline thread_local std::size_t s_scope_string_bytes = 0;
 	};
 }

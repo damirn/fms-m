@@ -229,6 +229,7 @@ namespace fms
 
 	void rtmp_message_aggregate::deserialize(byte_reader &buffer, int depth)
 	{
+		amf0::read_scope const budget;   // one decoded-string allowance for every sub-message
 		bool first = true;
 		std::uint32_t prev_ts = 0;
 		std::uint32_t prev_calc_ts = m_ts;
