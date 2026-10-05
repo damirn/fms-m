@@ -16,7 +16,7 @@ namespace fms
 		rtmp_message_shared_object::event_list_t &list = so->events();
 		auto const j = list.end();
 
-		rtmp_message_shared_object_ptr const ret = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
+		rtmp_message_shared_object_ptr ret = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
 
 		// A reply the handlers build event by event, and one that replaces it
 		// wholesale; the event cap below bounds the former, which is the one we grow.
@@ -31,9 +31,6 @@ namespace fms
 
 			for (auto i = list.begin(); i != j; ++i)
 			{
-				if (ret->events().size() >= rtmp_message_shared_object::eMaxEvents)
-					break;
-
 				switch ((*i)->m_type)
 				{
 				case rtmp_message_shared_object::eUse:
@@ -46,6 +43,11 @@ namespace fms
 					released = true;
 					break;
 				case rtmp_message_shared_object::eRequestChange:
+					if (ret->events().size() >= rtmp_message_shared_object::eMaxEvents)
+					{
+						pending.emplace_back(connection_id, ret);   // a full reply goes out; later replies start a new one
+						ret = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
+					}
 					handle_req_change_event(so, connection_id, *i, ret, pending);
 					break;
 				case rtmp_message_shared_object::eSendMessage:
