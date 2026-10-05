@@ -211,9 +211,8 @@ TEST_CASE("rtmfp flow: advertised receive window shrinks as the reassembly backl
 	CHECK(f.advertised_rwnd() < flow::eRecvWindowBlocks);
 }
 
-// A refused reassembly reports nothing ready, which is distinct from a ready
-// message that happens to be empty.
-TEST_CASE("rtmfp flow: an oversize reassembly yields no message")
+// The buffered byte bound refuses an oversize reassembly before its end arrives.
+TEST_CASE("rtmfp flow: an oversize reassembly is refused while buffering")
 {
 	flow f(vlu_t{1}, flow::eReceiver);
 
