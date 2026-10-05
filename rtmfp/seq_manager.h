@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../byte_writer.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <list>
@@ -31,9 +29,8 @@ namespace fms
 
 		// Ceiling on csn itself. m_sum is the triangular sum csn*(csn+1)/2, which
 		// overflows a 64-bit accumulator past roughly 2^32; eMaxGap only bounds a
-		// single step, so repeated advances could reach it. A cumulative ack also
-		// goes back out as a VLU, so it cannot exceed what that encodes.
-		static constexpr T eMaxCsn = static_cast<T>(byte_writer::eMaxVlu);
+		// single step, so repeated advances could reach it.
+		static constexpr T eMaxCsn = (T{1} << 29) - 1;
 
 		// Gap-filling costs one node per missing sequence, so a single jump of eMaxGap
 		// would buy 64K insertions from one packet. A peer this far ahead is not one we

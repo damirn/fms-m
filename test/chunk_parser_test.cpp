@@ -820,8 +820,6 @@ TEST_CASE("byte_writer output role is unaffected by the read offset")
 
 TEST_CASE("VLU: byte_writer -> byte_reader round-trips the 1..3 byte forms")
 {
-	// RTMFP only encodes values < 2^21 (the 4-byte "max" form is asymmetric with
-	// read_vlu by design); round-trip the range that's actually used.
 	std::vector<std::uint64_t> const vals = {0, 1, 0x7f, 0x80, 0x3fff, 0x4000, 0x1fffff};
 	for (std::uint64_t const v : vals)
 	{
@@ -836,18 +834,16 @@ TEST_CASE("VLU: byte_writer -> byte_reader round-trips the 1..3 byte forms")
 TEST_CASE("VLU: vlu_size agrees with the bytes write_vlu emits")
 {
 	// serializer reserves vlu_size(seq) bytes up front and writes the value later,
-	// so any disagreement misaligns the packet front. The old loop returned 5+
-	// past 2^28 while write_vlu still emitted 4.
+	// so any disagreement misaligns the packet front.
 	std::vector<std::uint64_t> const vals = {
 		0, 1, 0x7f, 0x80, 0x3fff, 0x4000, 0x1fffff, 0x200000,
-		0x0fffffff, byte_writer::eMaxVlu
+		0x0fffffff, 0x10000000, ~std::uint64_t{0}
 	};
 	for (std::uint64_t const v : vals)
 	{
 		byte_writer bw;
 		bw.write_vlu(v);
 		CHECK(bw.size() == byte_writer::vlu_size(v));
-		CHECK(byte_writer::vlu_size(v) <= 4);
 	}
 }
 
@@ -887,38 +883,26 @@ TEST_CASE("VLU: every encodable value survives a write/read round trip")
 	// assert on in Debug and truncate in Release.
 	std::vector<std::uint64_t> vals = {
 		0, 1, 0x7f, 0x80, 0x3fff, 0x4000, 0x1fffff, 0x200000, 0x3fffff,
-		0xffffff, 0x1000000, 0x0fffffff, 0x10000080, 0x1fffff80, byte_writer::eMaxVlu
+		0xffffff, 0x1000000, 0x0fffffff, 0x10000080, 0x1fffff80, ~std::uint64_t{0}
 	};
-	for (std::uint64_t v = 1; v <= byte_writer::eMaxVlu; v = (v << 1) | 1)
+	for (std::uint64_t v = 1; v != ~std::uint64_t{0}; v = (v << 1) | 1)
 		vals.push_back(v);
 
 	for (std::uint64_t const v : vals)
 	{
 		byte_writer bw;
 		bw.write_vlu(v);
-		REQUIRE(bw.size() <= 4);
+		REQUIRE(bw.size() == byte_writer::vlu_size(v));
 		byte_reader br(bw.data(), bw.size());
 		CHECK(br.read_vlu() == v);
 	}
 }
 
-TEST_CASE("VLU: a read can never exceed what write_vlu can emit")
+TEST_CASE("VLU: vlu_size covers the whole 64-bit range")
 {
-	// Four 0xFF bytes is the widest encoding the reader accepts.
-	std::array<std::uint8_t, 8> const wire{ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-	byte_reader br(wire.data(), wire.size());
-	std::uint64_t const v = br.read_vlu();
-	CHECK(v == byte_writer::eMaxVlu);
-	CHECK(br.read_pos() == wire.data() + 4);
-}
-
-TEST_CASE("VLU: vlu_size terminates on values past the encodable range")
-{
-	// vlu_min <<= 7 reached 0 after nine rounds, so `v >= vlu_min` held forever
-	// and the uint8 counter wrapped -- an outright hang for any v >= 2^63.
-	CHECK(byte_writer::vlu_size(std::uint64_t{1} << 29) == 4);
-	CHECK(byte_writer::vlu_size(std::uint64_t{1} << 63) == 4);
-	CHECK(byte_writer::vlu_size(~std::uint64_t{0}) == 4);
+	CHECK(byte_writer::vlu_size(std::uint64_t{1} << 29) == 5);
+	CHECK(byte_writer::vlu_size(std::uint64_t{1} << 63) == 10);
+	CHECK(byte_writer::vlu_size(~std::uint64_t{0}) == 10);
 }
 
 TEST_CASE("header round-trips: serialize (byte_writer) -> try_deserialize (byte_reader)")
