@@ -196,7 +196,7 @@ TEST_CASE("chunk parser: a chunk size outside spec 5.4.1 is refused by the sette
 
 	parser_harness h;
 	CHECK_FALSE(h.set_chunk_size(0));
-	CHECK_FALSE(h.set_chunk_size(rtmp_parser::eMaxChunkSize + 1));
+	CHECK_FALSE(h.set_chunk_size(rtmp_parser::eMaxPeerChunkSize + 1));
 	CHECK(h.set_chunk_size(rtmp_parser::eMaxChunkSize));
 	CHECK(h.set_chunk_size(128));
 
