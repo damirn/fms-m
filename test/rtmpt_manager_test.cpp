@@ -452,12 +452,12 @@ TEST_CASE("rtmpt: byte counters reach the session")
 	std::string id;
 	m.create_session(ep("10.0.0.7"), id);
 
-	m.update_bytes_read(id, 120);
+	m.update_bytes_read(ep("10.0.0.7"), id, 120);
 	m.update_bytes_written(id, 340);
 	CHECK(h.made[0]->bytes_read == 120);
 	CHECK(h.made[0]->bytes_written == 340);
 
-	m.update_bytes_read("no-such-id", 1);   // no crash
+	m.update_bytes_read(ep("10.0.0.7"), "no-such-id", 1);   // no crash
 }
 
 TEST_CASE("rtmpt: the reaper drops a session that stops polling")
@@ -670,7 +670,7 @@ TEST_CASE("rtmpt: poll threads and the reaper run concurrently without racing")
 				m.handle_data(id, seq, in, out);
 				byte_writer r;
 				m.serialize_result(id, seq, r);
-				m.update_bytes_read(id, 8);
+				m.update_bytes_read(ep("10.0.0.7"), id, 8);
 				m.update_bytes_written(id, 16);
 				(void)m.validate(ep("10.0.0.7"), id, 0);
 				++seq;
