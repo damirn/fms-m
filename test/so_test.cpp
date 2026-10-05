@@ -562,3 +562,40 @@ TEST_CASE("so_manager: a property too large to replay in a Use reply is refused"
 	REQUIRE(reply);
 	CHECK_NOTHROW(reply->serialize(out));
 }
+
+TEST_CASE("so_manager: a send-message event does not drop the requester's other replies")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	do_use(sm, "obj", 2);
+
+	// Every event the requester is owed arrives, in the reply or delivered to it.
+	auto const received = [&](const rtmp_message_ptr &result, std::uint32_t client, std::uint8_t type)
+	{
+		if (has_event(std::dynamic_pointer_cast<SO>(result), type))
+			return true;
+		return std::any_of(sk.recs.begin(), sk.recs.end(),
+			[&](const sink::rec &r) { return r.client == client && has_event(r.so, type); });
+	};
+
+	{
+		auto m = make_so("obj");
+		REQUIRE(m->add_event(ev(SO::eSendMessage)));
+		REQUIRE(m->add_event(change_ev("k", "v")));
+		sk.recs.clear();
+		rtmp_message_ptr result;
+		REQUIRE(sm.handle_so(m, 1, result));
+		CHECK(received(result, 1, SO::eSuccess));
+	}
+
+	{
+		auto m = make_so("obj");
+		REQUIRE(m->add_event(ev(SO::eSendMessage)));
+		REQUIRE(m->add_event(ev(SO::eUse)));
+		sk.recs.clear();
+		rtmp_message_ptr result;
+		REQUIRE(sm.handle_so(m, 3, result));
+		CHECK(received(result, 3, SO::eUseSuccess));
+	}
+}
