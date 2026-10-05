@@ -1,6 +1,7 @@
 #pragma once
 
 #include "io_context_pool.h"
+#include "remote_relay.h"
 
 #include <cstddef>
 #include <memory>
@@ -89,6 +90,8 @@ namespace fms
 		// in-progress FLV recordings (flv_writer's dtor) and closes sockets;
 		// clients observe the TCP close as NetConnection.Connect.Closed.
 		boost::asio::signal_set m_signals;
+
+		remote_relay::child_reaper m_child_reaper;
 
 		std::unique_ptr<rtmp_app_manager> m_app_manager;
 		std::unique_ptr<service> m_rtmfp_service;

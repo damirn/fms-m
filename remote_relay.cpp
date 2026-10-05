@@ -3,6 +3,7 @@
 #include "config.h"
 #include "logging.h"
 
+#include <csignal>
 #include <cstring>
 #include <mutex>
 #include <spawn.h>
@@ -91,6 +92,24 @@ namespace fms::remote_relay
 		}
 	}
 
+	child_reaper::child_reaper(boost::asio::io_context &io, spawn_throttle &throttle)
+		: m_signals(io, SIGCHLD)
+		, m_throttle(throttle)
+	{
+		arm();
+	}
+
+	void child_reaper::arm()
+	{
+		m_signals.async_wait([this](const boost::system::error_code &ec, int)
+		{
+			if (ec)
+				return;
+			m_throttle.reap();
+			arm();
+		});
+	}
+
 	spawn_throttle &helper_throttle()
 	{
 		static spawn_throttle t;
@@ -140,7 +159,7 @@ namespace fms::remote_relay
 				argv.push_back(const_cast<char *>(a.c_str()));
 			argv.push_back(nullptr);
 
-			// SIGCHLD stays default: reap() needs the children waitable so the
+			// SIGCHLD is never ignored: reap() needs the children waitable so the
 			// in-flight count tracks helpers that are still running.
 			// posix_spawnp rather than fork()+execvp(): between the two, a child of a
 			// multithreaded process may call only async-signal-safe functions, and it
@@ -155,7 +174,10 @@ namespace fms::remote_relay
 				helper_throttle().note_spawn_failed();
 			}
 			else
+			{
 				helper_throttle().note_spawned(pid);
+				helper_throttle().reap();   // its SIGCHLD may have come before it was tracked
+			}
 		}
 	}
 }
