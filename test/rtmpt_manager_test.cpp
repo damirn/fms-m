@@ -460,6 +460,20 @@ TEST_CASE("rtmpt: byte counters reach the session")
 	m.update_bytes_read(ep("10.0.0.7"), "no-such-id", 1);   // no crash
 }
 
+TEST_CASE("rtmpt: inbound bytes from another address are not charged to the session")
+{
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.7"), id);
+
+	m.update_bytes_read(ep("10.0.0.8"), id, 1000);
+	CHECK(h.made[0]->bytes_read == 0);
+
+	m.update_bytes_read(ep("10.0.0.7", 4000), id, 10);
+	CHECK(h.made[0]->bytes_read == 10);
+}
+
 TEST_CASE("rtmpt: the reaper drops a session that stops polling")
 {
 	fake_host h;
