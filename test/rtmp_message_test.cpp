@@ -213,3 +213,35 @@ TEST_CASE("rtmp_message: the decode budget spans a whole invoke, not one paramet
 		CHECK_THROWS_AS(msg.deserialize(r), amf3_read_exception);
 	}
 }
+
+// Sub-messages are rebuilt one by one, but the aggregate is one allowance.
+TEST_CASE("rtmp aggregate: the decode budget spans every sub-message")
+{
+	constexpr std::uint32_t len = 65536;
+	constexpr std::uint32_t refs = 256;
+	constexpr int count = 8;
+
+	byte_writer notify;
+	notify << static_cast<std::uint8_t>(0x00);
+	amf0::write_short_string(notify, "onData", 6);
+	std::vector<std::uint8_t> const fanout = avmplus_string_fanout(len, refs);
+	notify.write(fanout.data(), fanout.size());
+	auto const size = static_cast<std::uint32_t>(notify.size());
+
+	std::vector<std::uint8_t> body;
+	for (int i = 0; i < count; ++i)
+	{
+		body.push_back(rtmp_message::eMessageNotifyAMF3);
+		body.push_back(static_cast<std::uint8_t>(size >> 16));
+		body.push_back(static_cast<std::uint8_t>(size >> 8));
+		body.push_back(static_cast<std::uint8_t>(size));
+		body.insert(body.end(), 7, 0);                      // timestamp, extended, stream id
+		body.insert(body.end(), notify.data(), notify.data() + size);
+		body.insert(body.end(), 4, 0);                      // previous tag size
+	}
+
+	byte_reader r(body.data(), body.size());
+	rtmp_message_aggregate agg(0);
+	REQUIRE_NOTHROW(agg.deserialize(r));
+	CHECK(agg.get_messages().size() == 1);
+}
