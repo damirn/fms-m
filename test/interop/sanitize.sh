@@ -83,9 +83,10 @@ trap cleanup EXIT
 mkdir -p "$WORK/rec" "$WORK/logs"
 
 command -v ffmpeg >/dev/null 2>&1 || { echo "ffmpeg required"; exit 2; }
-ffmpeg -loglevel quiet -f lavfi -i "testsrc=d=$((DURATION + 10)):s=320x240" \
+ffmpeg -loglevel error -f lavfi -i "testsrc=d=$((DURATION + 10)):s=320x240" \
 	-f lavfi -i "sine=d=$((DURATION + 10))" \
-	-c:v libx264 -preset ultrafast -c:a aac -y "$WORK/src.flv" 2>/dev/null
+	-c:v libx264 -preset ultrafast -c:a aac -y "$WORK/src.flv" </dev/null \
+	&& [ -s "$WORK/src.flv" ] || { echo "could not encode the source media" >&2; exit 2; }
 
 # Reports go to files so a crashed server still leaves its findings behind. One
 # prefix for all three: the runtime parses every *SAN_OPTIONS it is given and the
@@ -125,7 +126,7 @@ if [ "$have_rtmfp" -eq 1 ]; then
 	"$RTMFP_CPP/tcpublish" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#r1" "$WORK/src.flv" >/dev/null 2>&1 &
 	track $!
 	sleep 2
-	"$RTMFP_CPP/tcconn" -4 "rtmfp://127.0.0.1:$RTMFP_PORT/media#r1" >/dev/null 2>&1 &
+	"$RTMFP_CPP/tcconn" -4 -v -v "rtmfp://127.0.0.1:$RTMFP_PORT/media#r1" >"$WORK/rtmfp_play.log" 2>&1 &
 	track $!
 	echo "  rtmfp: publish + play (fragment reassembly, session reaper)"
 fi
@@ -150,6 +151,16 @@ if kill -0 "$SRV" 2>/dev/null; then
 fi
 wait "$SRV" 2>/dev/null; srv_status=$?
 
+# Positive controls: a server that carried no media produces no reports either.
+no_media=""
+if [ "$have_rtmp" -eq 1 ]; then
+	rec="$(find "$WORK/rec" -name 's1*.flv' -size +16k 2>/dev/null | head -1)"
+	[ -n "$rec" ] || no_media="rtmp (nothing recorded)"
+fi
+if [ "$have_rtmfp" -eq 1 ] && ! grep -qE "stream on(Video|Audio) " "$WORK/rtmfp_play.log" 2>/dev/null; then
+	no_media="${no_media}${no_media:+, }rtmfp (no frames played)"
+fi
+
 echo
 # Attribute by signature, not by file name: all three write to the same prefix.
 reports="$(cat "$WORK"/san.* 2>/dev/null)"
@@ -170,6 +181,11 @@ if [ "$total" -eq 0 ]; then
 	if [ "$killed" -eq 1 ]; then
 		echo "  server did not exit on SIGINT and was killed; no report, but not a clean run"
 		tail -30 "$WORK/server.out" 2>/dev/null
+		echo "  work dir: $WORK"
+		exit 1
+	fi
+	if [ -n "$no_media" ]; then
+		echo "  no media flowed for: $no_media; no report, but not evidence"
 		echo "  work dir: $WORK"
 		exit 1
 	fi

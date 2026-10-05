@@ -112,21 +112,21 @@ namespace fms
 			m_pos += n;
 		}
 
-		// Variable-length unsigned (RTMFP VLU): 7 bits/byte, high bit = "more", over
-		// at most 4 bytes; the 4th carries 8 bits, mirroring byte_writer::write_vlu.
+		// RTMFP VLU (RFC 7016 2.1.2): 7 bits per byte, high bit = "more"; a value
+		// past 64 bits is refused rather than truncated.
 		std::uint64_t read_vlu()
 		{
 			std::uint8_t a = 0;
 			std::uint64_t ret = 0;
-			for (int bytes = 1; ; ++bytes)
+			do
 			{
+				if ((ret >> 57) != 0)
+					throw buffer_eof_exception();
 				*this >> a;
-				if (bytes == 4)
-					return (ret << 8) + a;
-				ret = (ret << 7) + (a & 0x7f);
-				if ((a & 0x80) == 0)
-					return ret;
+				ret = (ret << 7) | (a & 0x7f);
 			}
+			while ((a & 0x80) != 0);
+			return ret;
 		}
 
 		// 24-bit big-endian, throwing.

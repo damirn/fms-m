@@ -22,7 +22,8 @@ namespace fms
 		, m_http_acceptor(m_io_context_pool.get_io_context())
 		, m_rtmps_acceptor(m_io_context_pool.get_io_context())
 		, m_rtmpts_acceptor(m_io_context_pool.get_io_context())
-		, m_signals(m_io_context_pool.get_io_context(), SIGINT, SIGTERM) {}
+		, m_signals(m_io_context_pool.get_io_context(), SIGINT, SIGTERM)
+		, m_child_reaper(m_io_context_pool.get_io_context(), remote_relay::helper_throttle()) {}
 
 	// out-of-line: the unique_ptr members' types are complete in the .cpp
 	server::~server() = default;

@@ -5,7 +5,13 @@
 #include "doctest.h"
 #include "remote_relay.h"
 
+#include <chrono>
+#include <spawn.h>
 #include <string>
+
+#include <boost/asio/io_context.hpp>
+
+extern char **environ;
 
 using namespace fms::remote_relay;
 using clock_t_ = spawn_throttle::clock;
@@ -214,4 +220,22 @@ TEST_CASE("relay throttle: a failed spawn keeps its cooldown")
 	CHECK_FALSE(helper_throttle().allow(key, clock_t_::now()));
 
 	helper_throttle().release(key);
+}
+
+TEST_CASE("relay throttle: an exited helper is reaped without waiting for the next spawn")
+{
+	boost::asio::io_context io;
+	spawn_throttle t;
+	child_reaper const reaper(io, t);
+
+	char arg0[] = "true";
+	char *argv[] = {arg0, nullptr};
+	::pid_t pid = 0;
+	REQUIRE(::posix_spawnp(&pid, argv[0], nullptr, nullptr, argv, environ) == 0);
+	t.note_spawned(pid);
+	REQUIRE(t.live_count() == 1);
+
+	for (int i = 0; i < 50 && t.live_count() != 0; ++i)
+		io.run_for(std::chrono::milliseconds{100});
+	CHECK(t.live_count() == 0);
 }

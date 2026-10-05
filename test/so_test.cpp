@@ -562,3 +562,156 @@ TEST_CASE("so_manager: a property too large to replay in a Use reply is refused"
 	REQUIRE(reply);
 	CHECK_NOTHROW(reply->serialize(out));
 }
+
+TEST_CASE("so_manager: a send-message event does not drop the requester's other replies")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	do_use(sm, "obj", 2);
+
+	// Every event the requester is owed arrives, in the reply or delivered to it.
+	auto const received = [&](const rtmp_message_ptr &result, std::uint32_t client, std::uint8_t type)
+	{
+		if (has_event(std::dynamic_pointer_cast<SO>(result), type))
+			return true;
+		return std::any_of(sk.recs.begin(), sk.recs.end(),
+			[&](const sink::rec &r) { return r.client == client && has_event(r.so, type); });
+	};
+
+	{
+		auto m = make_so("obj");
+		REQUIRE(m->add_event(ev(SO::eSendMessage)));
+		REQUIRE(m->add_event(change_ev("k", "v")));
+		sk.recs.clear();
+		rtmp_message_ptr result;
+		REQUIRE(sm.handle_so(m, 1, result));
+		CHECK(received(result, 1, SO::eSuccess));
+	}
+
+	{
+		auto m = make_so("obj");
+		REQUIRE(m->add_event(ev(SO::eSendMessage)));
+		REQUIRE(m->add_event(ev(SO::eUse)));
+		sk.recs.clear();
+		rtmp_message_ptr result;
+		REQUIRE(sm.handle_so(m, 3, result));
+		CHECK(received(result, 3, SO::eUseSuccess));
+	}
+}
+
+TEST_CASE("so_manager: stored values are bounded by nodes so a Use reply stays writable")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "nodes", 1);
+
+	// A strict array of n nulls: n + 1 nodes in n + 5 bytes.
+	auto nulls = [](const std::string &key, std::size_t n)
+	{
+		auto a = std::make_shared<amf0_strict_array>();
+		auto const null = std::make_shared<amf0_null>();
+		for (std::size_t i = 0; i < n; ++i)
+			a->add_entry(null);
+		auto e = ev(SO::eRequestChange);
+		e->m_name = std::make_shared<amf0_string>(key);
+		e->m_value = a;
+		return e;
+	};
+
+	auto const stored = [&](const SO::event_ptr &e)
+	{
+		auto s = make_so("nodes");
+		REQUIRE(s->add_event(e));
+		rtmp_message_ptr r;
+		sm.handle_so(s, 1, r);
+		return has_event(std::dynamic_pointer_cast<SO>(r), SO::eSuccess);
+	};
+
+	// Under the byte cap but past the node share: refused.
+	std::size_t const dense = so_manager::eMaxValueBytes - 5;
+	REQUIRE(dense > so_manager::eMaxValueNodes);
+	CHECK_FALSE(stored(nulls("dense", dense)));
+
+	// Every property at its full share still replays.
+	for (std::size_t i = 0; i < so_manager::eMaxProperties; ++i)
+		CHECK(stored(nulls("k" + std::to_string(i), so_manager::eMaxValueNodes - 1)));
+
+	byte_writer out;
+	auto const reply = use_reply(sm, "nodes", 2);
+	REQUIRE(reply);
+	CHECK(count_events(reply, SO::eChange) == so_manager::eMaxProperties);
+	CHECK_NOTHROW(reply->serialize(out));
+}
+
+TEST_CASE("so_manager: repeated use events in one request get one replay")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	REQUIRE(do_change(sm, "obj", 1, "k", "v"));
+
+	auto m = make_so("obj");
+	for (int i = 0; i < 8; ++i)
+		REQUIRE(m->add_event(ev(SO::eUse)));
+
+	sk.recs.clear();
+	rtmp_message_ptr result;
+	REQUIRE(sm.handle_so(m, 2, result));
+
+	std::size_t replays = count_events(std::dynamic_pointer_cast<SO>(result), SO::eUseSuccess);
+	for (auto const &r : sk.recs)
+		if (r.client == 2)
+			replays += count_events(r.so, SO::eUseSuccess);
+	CHECK(replays == 1);
+}
+
+TEST_CASE("so_manager: a change after a full use reply is still applied and answered")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	for (std::size_t i = 0; i < so_manager::eMaxProperties; ++i)
+		REQUIRE(do_change(sm, "obj", 1, "k" + std::to_string(i), "v"));
+
+	auto m = make_so("obj");
+	REQUIRE(m->add_event(ev(SO::eUse)));
+	REQUIRE(m->add_event(change_ev("k0", "v2")));
+
+	sk.recs.clear();
+	rtmp_message_ptr result;
+	REQUIRE(sm.handle_so(m, 2, result));
+
+	std::size_t successes = count_events(std::dynamic_pointer_cast<SO>(result), SO::eSuccess);
+	std::size_t notified = 0;
+	for (auto const &r : sk.recs)
+	{
+		CHECK(r.so->events().size() <= SO::eMaxEvents);
+		if (r.client == 2)
+			successes += count_events(r.so, SO::eSuccess);
+		if (r.client == 1 && change_value(r.so, "k0") == "v2")
+			++notified;
+	}
+	CHECK(successes == 1);
+	CHECK(notified == 1);
+	CHECK(change_value(use_reply(sm, "obj", 3), "k0") == "v2");
+}
+
+TEST_CASE("so_manager: a release after a full use reply still releases")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	for (std::size_t i = 0; i < so_manager::eMaxProperties; ++i)
+		REQUIRE(do_change(sm, "obj", 1, "k" + std::to_string(i), "v"));
+
+	auto m = make_so("obj");
+	REQUIRE(m->add_event(ev(SO::eUse)));
+	REQUIRE(m->add_event(ev(SO::eRelease)));
+
+	rtmp_message_ptr result;
+	CHECK_FALSE(sm.handle_so(m, 2, result));
+
+	sm.remove_connection(1);
+	CHECK(sm.size() == 0);
+}

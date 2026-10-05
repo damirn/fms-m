@@ -85,36 +85,24 @@ namespace fms
 			m_buf.insert(m_buf.end(), p, p + n);
 		}
 
-		// Variable-length unsigned (RTMFP VLU): 7 bits per byte, high bit set on
-		// all but the last; the 4-byte form emits its final byte as 8 bits.
-		static constexpr std::uint64_t eMaxVlu = (std::uint64_t{1} << 29) - 1;
-
-		// Never more than the 4 bytes write_vlu emits; callers reserve by this.
+		// RTMFP VLU (RFC 7016 2.1.2): 7 bits per byte, most significant first, high
+		// bit set on all but the last. Exactly the bytes write_vlu emits; callers reserve by this.
 		static constexpr std::uint8_t vlu_size(std::uint64_t v)
 		{
-			if (v < 0x80) return 1;
-			if (v < 0x4000) return 2;
-			if (v < 0x200000) return 3;
-			return 4;
+			std::uint8_t n = 1;
+			while ((v >>= 7) != 0)
+				++n;
+			return n;
 		}
 
 		void write_vlu(std::uint64_t v)
 		{
-			assert(v <= eMaxVlu && "VLU is a 29-bit encoding; larger values truncate");
-			std::uint8_t size = (vlu_size(v) - 1) * 7;
-			bool max = false;
-			if (size >= 21)   // 4 bytes maximum
+			for (int shift = (vlu_size(v) - 1) * 7; shift > 0; shift -= 7)
 			{
-				size = 22;
-				max = true;
-			}
-			while (size >= 7)
-			{
-				std::uint8_t const b = 0x80 | ((v >> size) & 0x7F);
+				std::uint8_t const b = 0x80 | ((v >> shift) & 0x7F);
 				*this << b;
-				size -= 7;
 			}
-			std::uint8_t const b = max ? (v & 0xFF) : (v & 0x7F);
+			std::uint8_t const b = v & 0x7F;
 			*this << b;
 		}
 

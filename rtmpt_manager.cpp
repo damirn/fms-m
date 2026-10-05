@@ -166,18 +166,18 @@ namespace fms
 		return buffer.size();
 	}
 
-	void rtmpt_manager::update_stats(const std::string &id, std::uint32_t bytes_transferred, bool is_inbound)
+	void rtmpt_manager::update_stats(const std::string &id, std::uint32_t bytes_transferred, const std::optional<boost::asio::ip::address> &from)
 	{
 		rtmpt_session_data_ptr sd;
 		{
 			std::unique_lock const lock(m_mutex);
 			auto const i = m_ids.find(id);
-			if (i == m_ids.end())
+			if (i == m_ids.end() || (from && i->second->m_address != *from))
 				return;
 			sd = i->second;
 		}
 		std::lock_guard const s(sd->m_session_mutex);
-		if (is_inbound)
+		if (from)
 			sd->m_session->handle_bytes_read(bytes_transferred);
 		else
 			sd->m_session->handle_bytes_written(bytes_transferred);

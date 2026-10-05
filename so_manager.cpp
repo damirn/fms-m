@@ -16,7 +16,7 @@ namespace fms
 		rtmp_message_shared_object::event_list_t &list = so->events();
 		auto const j = list.end();
 
-		rtmp_message_shared_object_ptr const ret = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
+		rtmp_message_shared_object_ptr ret = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
 
 		// A reply the handlers build event by event, and one that replaces it
 		// wholesale; the event cap below bounds the former, which is the one we grow.
@@ -24,25 +24,30 @@ namespace fms
 
 		pending_sends_t pending;   // filled under the lock, flushed after it is released
 		bool released = false;
+		bool used = false;         // a request names one object, so one Use reply answers it
 		{
 			std::unique_lock const lock(m_mutex);
 			m_new_message = true;
 
 			for (auto i = list.begin(); i != j; ++i)
 			{
-				if (ret->events().size() >= rtmp_message_shared_object::eMaxEvents)
-					break;
-
 				switch ((*i)->m_type)
 				{
 				case rtmp_message_shared_object::eUse:
-					handle_use_event(so, connection_id, ret, pending);
+					if (!used)
+						handle_use_event(so, connection_id, ret, pending);
+					used = true;
 					break;
 				case rtmp_message_shared_object::eRelease:
 					handle_release_event(so, connection_id);
 					released = true;
 					break;
 				case rtmp_message_shared_object::eRequestChange:
+					if (ret->events().size() >= rtmp_message_shared_object::eMaxEvents)
+					{
+						pending.emplace_back(connection_id, ret);   // a full reply goes out; later replies start a new one
+						ret = std::make_shared<rtmp_message_shared_object>(so->name(), so->version(), so->flags());
+					}
 					handle_req_change_event(so, connection_id, *i, ret, pending);
 					break;
 				case rtmp_message_shared_object::eSendMessage:
@@ -58,6 +63,9 @@ namespace fms
 					break;
 			}
 		}
+
+		if (replacement && !released && !ret->events().empty())
+			pending.emplace_back(connection_id, ret);   // the requester still gets every reply event
 
 		// Fan out to the other clients with m_mutex released.
 		for (auto &[client, msg] : pending)
@@ -164,19 +172,19 @@ namespace fms
 		}
 	}
 
-	std::optional<std::size_t> so_manager::value_bytes(const amf0_type_ptr &v)
+	bool so_manager::replayable(const amf0_type_ptr &v)
 	{
 		if (!v)
-			return std::nullopt;
+			return false;
 		try
 		{
 			byte_writer probe;
 			amf0::write(probe, v);
-			return probe.size();
+			return probe.size() <= eMaxValueBytes && amf_write_budget::nodes() <= eMaxValueNodes;
 		}
 		catch (...)
 		{
-			return std::nullopt;
+			return false;
 		}
 	}
 
@@ -189,8 +197,7 @@ namespace fms
 			if (s->m_values.size() >= eMaxProperties && !s->m_values.contains(e->m_name->value()))
 				return;   // a new property past the cap: refuse rather than reply unsendably
 
-			std::optional<std::size_t> const bytes = value_bytes(e->m_value);
-			if (!bytes || *bytes > eMaxValueBytes)
+			if (!replayable(e->m_value))
 				return;   // a value a Use reply could not carry back
 
 			increase_version(s);

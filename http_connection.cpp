@@ -165,8 +165,11 @@ namespace fms
 		std::string cid;
 		std::string seq;
 		split_target(target, verb, cid, seq);
-		m_rtmpt_manager->update_bytes_read(cid,
-			static_cast<std::uint32_t>(m_header_bytes + bytes_transferred));
+		boost::system::error_code ec;
+		boost::asio::ip::tcp::endpoint const remote = m_socket.remote_endpoint(ec);
+		if (!ec)
+			m_rtmpt_manager->update_bytes_read(remote, cid,
+				static_cast<std::uint32_t>(m_header_bytes + bytes_transferred));
 		handle_request(m_parser->get());
 	}
 

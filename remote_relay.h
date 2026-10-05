@@ -7,6 +7,9 @@
 #include <string>
 #include <sys/types.h>
 
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/signal_set.hpp>
+
 namespace fms::remote_relay
 {
 	struct remote_target
@@ -64,6 +67,19 @@ namespace fms::remote_relay
 
 		// Drop the oldest reservation; the caller holds m_mutex.
 		void consume_pending();
+	};
+
+	// Reaps a throttle's exited helpers on SIGCHLD, so none waits for the next spawn.
+	class child_reaper
+	{
+	public:
+		child_reaper(boost::asio::io_context &, spawn_throttle &);
+
+	private:
+		void arm();
+
+		boost::asio::signal_set m_signals;
+		spawn_throttle &m_throttle;
 	};
 
 	// If a --helper-app is configured, fork+exec it to pull `stream` from

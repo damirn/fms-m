@@ -107,26 +107,23 @@ TEST_CASE("read_vlu refuses a continuation that runs off the end")
 	CHECK_THROWS_AS(r.read_vlu(), buffer_eof_exception);
 }
 
-TEST_CASE("read_vlu stops at the fourth byte however many say more")
+TEST_CASE("read_vlu refuses a value past 64 bits")
 {
-	// A length cap alone would let the top bits fall out of the accumulator; the
-	// encoding is four bytes wide, so a continuation past that is not consumed.
 	std::vector<std::uint8_t> const v(11, 0xFF);
 	byte_reader r(v.data(), v.size());
-	std::uint64_t value = 0;
-	CHECK_NOTHROW(value = r.read_vlu());
-	CHECK(value == byte_writer::eMaxVlu);
-	CHECK(r.read_pos() == v.data() + 4);
+	CHECK_THROWS_AS(r.read_vlu(), buffer_eof_exception);
 }
 
 TEST_CASE("read_vlu accepts the largest value that still fits")
 {
-	// 7 + 7 + 7 + 8 bits: the widest encoding write_vlu emits.
-	std::vector<std::uint8_t> const v(4, 0xFF);
+	std::vector<std::uint8_t> v{0x81};
+	v.insert(v.end(), 8, 0xFF);
+	v.push_back(0x7F);
 	byte_reader r(v.data(), v.size());
 	std::uint64_t value = 0;
 	CHECK_NOTHROW(value = r.read_vlu());
-	CHECK(value == byte_writer::eMaxVlu);
+	CHECK(value == ~std::uint64_t{0});
+	CHECK(r.available() == 0);
 }
 
 TEST_CASE("available and read_pos track consumption")

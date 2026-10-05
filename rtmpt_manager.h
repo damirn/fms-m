@@ -8,6 +8,7 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -29,15 +30,16 @@ namespace fms
 		std::uint32_t handle_data(const std::string &, std::uint32_t, byte_writer &, byte_writer &);
 		std::uint32_t serialize_result(const std::string &, std::uint32_t, byte_writer &);
 
-		void update_bytes_read(const std::string &cid, std::uint32_t bytes_transferred)
+		// Inbound bytes count only against a session the sender's address owns.
+		void update_bytes_read(const boost::asio::ip::tcp::endpoint &from, const std::string &cid, std::uint32_t bytes_transferred)
 		{
-			update_stats(cid, bytes_transferred, true);
+			update_stats(cid, bytes_transferred, from.address());
 		}
 		void update_bytes_written(const std::string &cid, std::uint32_t bytes_transferred)
 		{
-			update_stats(cid, bytes_transferred, false);
+			update_stats(cid, bytes_transferred, std::nullopt);
 		}
-		void update_stats(const std::string &, std::uint32_t, bool);
+		void update_stats(const std::string &, std::uint32_t, const std::optional<boost::asio::ip::address> &from);
 
 		const std::string &version() const
 		{
