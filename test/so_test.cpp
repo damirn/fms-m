@@ -599,3 +599,47 @@ TEST_CASE("so_manager: a send-message event does not drop the requester's other 
 		CHECK(received(result, 3, SO::eUseSuccess));
 	}
 }
+
+TEST_CASE("so_manager: stored values are bounded by nodes so a Use reply stays writable")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "nodes", 1);
+
+	// A strict array of n nulls: n + 1 nodes in n + 5 bytes.
+	auto nulls = [](const std::string &key, std::size_t n)
+	{
+		auto a = std::make_shared<amf0_strict_array>();
+		auto const null = std::make_shared<amf0_null>();
+		for (std::size_t i = 0; i < n; ++i)
+			a->add_entry(null);
+		auto e = ev(SO::eRequestChange);
+		e->m_name = std::make_shared<amf0_string>(key);
+		e->m_value = a;
+		return e;
+	};
+
+	auto const stored = [&](const SO::event_ptr &e)
+	{
+		auto s = make_so("nodes");
+		REQUIRE(s->add_event(e));
+		rtmp_message_ptr r;
+		sm.handle_so(s, 1, r);
+		return has_event(std::dynamic_pointer_cast<SO>(r), SO::eSuccess);
+	};
+
+	// Under the byte cap but past the node share: refused.
+	std::size_t const dense = so_manager::eMaxValueBytes - 5;
+	REQUIRE(dense > so_manager::eMaxValueNodes);
+	CHECK_FALSE(stored(nulls("dense", dense)));
+
+	// Every property at its full share still replays.
+	for (std::size_t i = 0; i < so_manager::eMaxProperties; ++i)
+		CHECK(stored(nulls("k" + std::to_string(i), so_manager::eMaxValueNodes - 1)));
+
+	byte_writer out;
+	auto const reply = use_reply(sm, "nodes", 2);
+	REQUIRE(reply);
+	CHECK(count_events(reply, SO::eChange) == so_manager::eMaxProperties);
+	CHECK_NOTHROW(reply->serialize(out));
+}
