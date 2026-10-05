@@ -59,6 +59,9 @@ namespace fms
 			}
 		}
 
+		if (replacement && !released && !ret->events().empty())
+			pending.emplace_back(connection_id, ret);   // the requester still gets every reply event
+
 		// Fan out to the other clients with m_mutex released.
 		for (auto &[client, msg] : pending)
 			m_deliver(client, msg);
