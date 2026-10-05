@@ -665,3 +665,53 @@ TEST_CASE("so_manager: repeated use events in one request get one replay")
 			replays += count_events(r.so, SO::eUseSuccess);
 	CHECK(replays == 1);
 }
+
+TEST_CASE("so_manager: a change after a full use reply is still applied and answered")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	for (std::size_t i = 0; i < so_manager::eMaxProperties; ++i)
+		REQUIRE(do_change(sm, "obj", 1, "k" + std::to_string(i), "v"));
+
+	auto m = make_so("obj");
+	REQUIRE(m->add_event(ev(SO::eUse)));
+	REQUIRE(m->add_event(change_ev("k0", "v2")));
+
+	sk.recs.clear();
+	rtmp_message_ptr result;
+	REQUIRE(sm.handle_so(m, 2, result));
+
+	std::size_t successes = count_events(std::dynamic_pointer_cast<SO>(result), SO::eSuccess);
+	std::size_t notified = 0;
+	for (auto const &r : sk.recs)
+	{
+		CHECK(r.so->events().size() <= SO::eMaxEvents);
+		if (r.client == 2)
+			successes += count_events(r.so, SO::eSuccess);
+		if (r.client == 1 && change_value(r.so, "k0") == "v2")
+			++notified;
+	}
+	CHECK(successes == 1);
+	CHECK(notified == 1);
+	CHECK(change_value(use_reply(sm, "obj", 3), "k0") == "v2");
+}
+
+TEST_CASE("so_manager: a release after a full use reply still releases")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	for (std::size_t i = 0; i < so_manager::eMaxProperties; ++i)
+		REQUIRE(do_change(sm, "obj", 1, "k" + std::to_string(i), "v"));
+
+	auto m = make_so("obj");
+	REQUIRE(m->add_event(ev(SO::eUse)));
+	REQUIRE(m->add_event(ev(SO::eRelease)));
+
+	rtmp_message_ptr result;
+	CHECK_FALSE(sm.handle_so(m, 2, result));
+
+	sm.remove_connection(1);
+	CHECK(sm.size() == 0);
+}
