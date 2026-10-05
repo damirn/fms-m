@@ -1,5 +1,6 @@
 #pragma once
 
+#include "amf_write_budget.h"
 #include "rtmp_so_message.h"
 
 #include <cstdint>
@@ -51,6 +52,7 @@ namespace fms
 		// A Use reply replays every stored property, so the property count alone does
 		// not keep that reply inside the AMF write budget: bound each value too.
 		static constexpr std::size_t eMaxValueBytes = 64u << 10;
+		static constexpr std::size_t eMaxValueNodes = amf_write_budget::eMaxNodes / (eMaxProperties + 1);
 
 	protected:
 		// (client id, message) pairs collected while m_mutex is held and flushed to
@@ -87,8 +89,8 @@ namespace fms
 
 		std::optional<so_data_ptr> find_so(const rtmp_message_shared_object_ptr&);
 
-		// Wire size of a value, or nullopt if it cannot be written at all.
-		static std::optional<std::size_t> value_bytes(const amf0_type_ptr &);
+		// Whether a value writes within its share of a Use reply's byte and node budget.
+		[[nodiscard]] static bool replayable(const amf0_type_ptr &);
 
 		void increase_version(const so_data_ptr& so)
 		{

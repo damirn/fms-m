@@ -167,19 +167,19 @@ namespace fms
 		}
 	}
 
-	std::optional<std::size_t> so_manager::value_bytes(const amf0_type_ptr &v)
+	bool so_manager::replayable(const amf0_type_ptr &v)
 	{
 		if (!v)
-			return std::nullopt;
+			return false;
 		try
 		{
 			byte_writer probe;
 			amf0::write(probe, v);
-			return probe.size();
+			return probe.size() <= eMaxValueBytes && amf_write_budget::nodes() <= eMaxValueNodes;
 		}
 		catch (...)
 		{
-			return std::nullopt;
+			return false;
 		}
 	}
 
@@ -192,8 +192,7 @@ namespace fms
 			if (s->m_values.size() >= eMaxProperties && !s->m_values.contains(e->m_name->value()))
 				return;   // a new property past the cap: refuse rather than reply unsendably
 
-			std::optional<std::size_t> const bytes = value_bytes(e->m_value);
-			if (!bytes || *bytes > eMaxValueBytes)
+			if (!replayable(e->m_value))
 				return;   // a value a Use reply could not carry back
 
 			increase_version(s);

@@ -65,6 +65,9 @@ namespace fms
 			bool m_ok = false;
 		};
 
+		// Nodes charged in the current scope, or by the last unscoped write.
+		[[nodiscard]] static std::size_t nodes() { return s_nodes; }
+
 	private:
 		static void reset(std::size_t written)
 		{
