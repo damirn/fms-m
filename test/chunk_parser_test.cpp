@@ -205,6 +205,22 @@ TEST_CASE("chunk parser: a chunk size outside spec 5.4.1 is refused by the sette
 	CHECK(h.messages.size() == 1);
 }
 
+TEST_CASE("chunk parser: a chunk size past 0xFFFFFF frames as 0xFFFFFF")
+{
+	chunk_stream cs;
+	cs.chunk_size = 4000;
+	auto const p = pattern(4000, 5);
+	cs.message(4, VIDEO, 1, 1000, p);
+
+	parser_harness h;
+	CHECK(h.set_chunk_size(rtmp_parser::eMaxPeerChunkSize));
+
+	h.feed(cs.bytes);
+	CHECK_FALSE(h.framing_error());
+	REQUIRE(h.messages.size() == 1);
+	CHECK(h.messages[0].payload == p);
+}
+
 TEST_CASE("chunk parser: a User Control (Ping) with an invalid length must not crash")
 {
 	// deserialize_ping only builds a message for body lengths {2,6,10,14}; any
