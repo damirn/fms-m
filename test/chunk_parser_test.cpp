@@ -898,6 +898,28 @@ TEST_CASE("VLU: every encodable value survives a write/read round trip")
 	}
 }
 
+TEST_CASE("VLU: values from 2^21 up use the RFC 7016 encoding both ways")
+{
+	struct { std::uint64_t value; std::vector<std::uint8_t> wire; } const cases[] = {
+		{0x200000,   {0x81, 0x80, 0x80, 0x00}},
+		{0x0fffffff, {0xFF, 0xFF, 0xFF, 0x7F}},
+		{0x10000000, {0x81, 0x80, 0x80, 0x80, 0x00}},
+	};
+	for (auto const &c : cases)
+	{
+		byte_writer bw;
+		bw.write_vlu(c.value);
+		CHECK(std::vector<std::uint8_t>(bw.data(), bw.data() + bw.size()) == c.wire);
+
+		// The field after it must start where the VLU ends.
+		std::vector<std::uint8_t> wire = c.wire;
+		wire.push_back(0x2A);
+		byte_reader br(wire.data(), wire.size());
+		CHECK(br.read_vlu() == c.value);
+		CHECK(br.read_vlu() == 0x2A);
+	}
+}
+
 TEST_CASE("VLU: vlu_size covers the whole 64-bit range")
 {
 	CHECK(byte_writer::vlu_size(std::uint64_t{1} << 29) == 5);
