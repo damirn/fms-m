@@ -85,8 +85,7 @@ namespace fms
 					m_msg_len += j->second->m_data_len;
 					if (j->second->m_frag_ctrl == fragment::eEnd)
 					{
-						if (!create_message(i, j))
-							return std::nullopt;   // refused, and the flow is rejected
+						create_message(i, j);
 						m_msg_is_fragmented = true;
 						return std::span<const std::uint8_t>{m_data.data(), m_msg_len};
 					}
@@ -156,18 +155,8 @@ namespace fms
 		return id > 0xFFFFFFFFu ? 0 : id;
 	}
 
-	bool flow::create_message(const fragment_map_t::iterator &from, const fragment_map_t::iterator &to)
+	void flow::create_message(const fragment_map_t::iterator &from, const fragment_map_t::iterator &to)
 	{
-		if (m_msg_len > eMaxReassembledMsgLen)   // abusive reassembled size -> refuse + reject the flow
-		{
-			m_fragments.erase(from, to);
-			m_fragments.erase(to);
-			m_data.clear();
-			m_msg_len = 0;              // callers span {data, len}: an empty base must carry length 0
-			m_msg_is_fragmented = false;
-			m_state = eRejected;
-			return false;
-		}
 		m_data.resize(m_msg_len);
 		std::uint32_t prev_len = 0;
 		fragment_map_t::iterator i = from;
@@ -180,7 +169,7 @@ namespace fms
 			{
 				m_fragments.erase(from, to);
 				m_fragments.erase(to);
-				return true;
+				return;
 			}
 							++i;
 		}

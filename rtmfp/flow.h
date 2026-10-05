@@ -178,6 +178,7 @@ namespace fms
 		// the bytes held. Buffering more than the largest message a flow could deliver
 		// can never complete one, so that is the ceiling.
 		static constexpr std::size_t eMaxBufferedBytes = eMaxReassembledMsgLen;
+		static_assert(eMaxBufferedBytes <= eMaxReassembledMsgLen, "a message is assembled only from buffered fragments");
 
 		// Across every receiving flow of one session: the per-flow bound alone would
 		// let eMaxReceivingFlows multiply it.
@@ -419,7 +420,7 @@ namespace fms
 		using fragment_map_t = fragment_store;
 		// False when the reassembly is refused and the flow rejected. On true the
 		// message is m_data[0, m_msg_len), which may legitimately be empty.
-		[[nodiscard]] bool create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
+		void create_message(const fragment_map_t::iterator &, const fragment_map_t::iterator &);
 
 		vlu_t m_flow_id;
 		vlu_t m_stream_id{0};
