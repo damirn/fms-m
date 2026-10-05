@@ -643,3 +643,25 @@ TEST_CASE("so_manager: stored values are bounded by nodes so a Use reply stays w
 	CHECK(count_events(reply, SO::eChange) == so_manager::eMaxProperties);
 	CHECK_NOTHROW(reply->serialize(out));
 }
+
+TEST_CASE("so_manager: repeated use events in one request get one replay")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "obj", 1);
+	REQUIRE(do_change(sm, "obj", 1, "k", "v"));
+
+	auto m = make_so("obj");
+	for (int i = 0; i < 8; ++i)
+		REQUIRE(m->add_event(ev(SO::eUse)));
+
+	sk.recs.clear();
+	rtmp_message_ptr result;
+	REQUIRE(sm.handle_so(m, 2, result));
+
+	std::size_t replays = count_events(std::dynamic_pointer_cast<SO>(result), SO::eUseSuccess);
+	for (auto const &r : sk.recs)
+		if (r.client == 2)
+			replays += count_events(r.so, SO::eUseSuccess);
+	CHECK(replays == 1);
+}
