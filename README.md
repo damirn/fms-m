@@ -1,18 +1,31 @@
 # F Media Server (fms-m)
 
-A lightweight, multi-threaded **RTMP / RTMFP media server** for live audio/video
-streaming. It accepts published live streams (as from OBS, ffmpeg, or Flash-era
-encoders), relays them to any number of subscribers in real time, and can record
-incoming streams to FLV files on disk.
+A fast, self-hosted **RTMP / RTMFP media server** written in C++23. Publish from
+OBS or ffmpeg, relay live to any number of viewers, and record to FLV, over
+every Flash-era transport from one small binary.
 
-The server speaks the full family of Adobe streaming protocols — plain RTMP,
-encrypted RTMPE, TLS-secured RTMPS, HTTP-tunnelled RTMPT (and RTMPTS over TLS),
-and UDP-based RTMFP — over an `io_context`-per-core Boost.Asio engine, so a
-single process scales across all available CPU cores.
+```sh
+docker build -t fms-m .
+docker run --rm -p 1935:1935 -p 1935:1935/udp -p 8080:8080 fms-m
 
-- **Language / build:** C++23, CMake, Boost, OpenSSL 3, Speex
-- **Platforms:** macOS (Apple clang) and Linux (GCC/clang) — POSIX only
-- **Version:** 2.0.2
+ffmpeg -re -i input.mp4 -c copy -f flv rtmp://127.0.0.1/media/mystream   # publish
+ffplay rtmp://127.0.0.1/media/mystream                                   # watch
+```
+
+## Why fms-m
+
+- **Every transport, one set of streams.** RTMP, RTMPE, RTMPS, RTMPT, RTMPTS and
+  UDP-based RTMFP all serve the same applications: publish over one, play over any
+  other. RTMFP in particular is rarely implemented anywhere else.
+- **Uses every core.** One Boost.Asio `io_context` per thread, each connection
+  pinned to one of them. No JVM, no license server.
+- **Built for hostile input.** Bounded queues, decode budgets and handshake
+  timeouts throughout; unit tests under ASan, TSan and UBSan, AMF fuzzers, and an
+  interop matrix against ffmpeg, rtmpdump and rtmfp-cpp.
+- **Portable.** Builds warning-free on macOS and Linux, from GCC 12 to 16 and
+  Clang 16 to 22 (see [Verified build environments](#verified-build-environments)).
+
+**Version 2.0.2** · C++23 · CMake · Boost · OpenSSL 3 · Speex · POSIX only
 
 ---
 
@@ -65,10 +78,8 @@ The publish/play/record URL for the media app is
 
 - A C++23 compiler (Apple clang 16+, or GCC 12+)
 - CMake ≥ 3.16
-- **Boost** — `date_time`, `log`, `log_setup`, `program_options`, `thread`.
-  Whatever the system provides; there is no version pin on any platform.
-  Boost.System is header-only since 1.69 and is deliberately *not* a linked
-  component — newer distributions no longer ship the stub library.
+- **Boost** — `date_time`, `log`, `log_setup`, `program_options`, `thread`; no
+  version pin. Boost.System is header-only and deliberately not linked.
 - **OpenSSL 3** — `libcrypto` (the **legacy provider** must be available for
   RTMPE, which uses RC4) and `libssl` (for the TLS transports, RTMPS / RTMPTS)
 - **Speex** — audio codec
@@ -80,7 +91,7 @@ The publish/play/record URL for the media app is
 brew install cmake boost openssl@3 speex pkg-config
 
 cmake -S . -B build
-cmake --build build -j
+cmake --build build -j8
 ```
 
 Homebrew's `boost` installs into the prefix CMake already searches; the
@@ -373,7 +384,7 @@ next remote-stream play.
 
 ```sh
 cmake -S . -B build -DBUILD_TESTS=ON      # unit tests
-cmake --build build -j
+cmake --build build -j8
 ctest --test-dir build --output-on-failure
 ```
 
@@ -411,7 +422,7 @@ server, so `test/interop/sanitize.sh` drives a sanitizer build with real clients
 
 ```sh
 cmake -S . -B build-tsan -DSANITIZE=thread -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build-tsan -j
+cmake --build build-tsan -j8
 test/interop/sanitize.sh build-tsan/fms-m        # exits non-zero on any report
 ```
 
