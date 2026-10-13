@@ -350,6 +350,14 @@ if(BUILD_TESTS)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
+  add_executable(crypto_providers_test test/test_main.cpp test/crypto_providers_test.cpp crypto.cpp)
+  target_link_libraries(crypto_providers_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME crypto_providers_test COMMAND crypto_providers_test)
+  if(APPLE)
+    set_tests_properties(crypto_providers_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   add_executable(window_ack_test test/test_main.cpp test/window_ack_test.cpp
     client_session.cpp rtmp_parser.cpp rtmp_header.cpp rtmp_message.cpp
     rtmp_protocol.cpp rtmp_so_message.cpp rtmp_handshaker.cpp rtmp_handshake.cpp
