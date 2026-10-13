@@ -31,6 +31,7 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/fms-realworld.XXXXXX")"
 RTMP_PORT=27100; RTMPT_PORT=27101; RTMFP_PORT=27102
 RTMPS_PORT=27543; RTMPTS_PORT=27544
 TLS_CERT="$WORK/cert.pem"; TLS_KEY="$WORK/key.pem"
+NO_VERIFY="-tls_verify 0"   # the test certificate is self-signed; ffmpeg may verify by default
 MAXQ="${MAXQ:-10485760}"
 
 PASS=0; FAIL=0; SKIP=0; declare -a FAILED=()
@@ -154,7 +155,9 @@ pub() {
 # play <name> <out> <secs> [url_override]
 play() {
 	local name="$1" out="$2" secs="$3" url="${4:-rtmp://127.0.0.1:$RTMP_PORT/media/$1}"
-	run_timeout $((secs+12)) ffmpeg -hide_banner -loglevel error -y -i "$url" -t "$secs" -c copy \
+	local tls=""
+	[[ "$url" == rtmps://* ]] && tls="$NO_VERIFY"
+	run_timeout $((secs+12)) ffmpeg -hide_banner -loglevel error -y $tls -i "$url" -t "$secs" -c copy \
 		-f flv "$out" >"${out%.flv}_play.log" 2>&1
 }
 
@@ -341,7 +344,7 @@ P=$(pub "$WORK/h264_aac.flv" d3); wait_publishing d3 && {
 kill $P 2>/dev/null; sleep 1
 
 echo "[D4] publish over RTMPS, play over plain RTMP (transport crossover)"
-ffmpeg -hide_banner -loglevel error -re -stream_loop -1 -i "$WORK/h264_aac.flv" -c copy -f flv \
+ffmpeg -hide_banner -loglevel error -re -stream_loop -1 -i "$WORK/h264_aac.flv" -c copy $NO_VERIFY -f flv \
 	"rtmps://127.0.0.1:$RTMPS_PORT/media/d4" >"$WORK/pub_d4.log" 2>&1 &
 P=$!; track $P
 wait_publishing d4 && {

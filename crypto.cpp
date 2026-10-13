@@ -38,13 +38,32 @@ namespace fms
 	std::uint8_t genuine_keys::FMS_key_len = sizeof(genuine_keys::FMS_key);
 	std::uint8_t genuine_keys::FMP_key_len = sizeof(genuine_keys::FP_key);
 
-	bool init_crypto_providers()
+	namespace
 	{
 		// RC4 lives in the legacy provider in OpenSSL 3; loading any provider
 		// explicitly means we must also load the default one ourselves.
-		bool const legacy = OSSL_PROVIDER_load(nullptr, "legacy") != nullptr;
-		OSSL_PROVIDER_load(nullptr, "default");
-		return legacy;   // RC4/RTMPE is unavailable without the legacy provider
+		struct loaded_providers
+		{
+			OSSL_PROVIDER *legacy = OSSL_PROVIDER_load(nullptr, "legacy");
+			OSSL_PROVIDER *fallback = OSSL_PROVIDER_load(nullptr, "default");
+
+			loaded_providers() = default;
+			loaded_providers(const loaded_providers &) = delete;
+			loaded_providers &operator=(const loaded_providers &) = delete;
+			~loaded_providers()
+			{
+				if (fallback)
+					OSSL_PROVIDER_unload(fallback);
+				if (legacy)
+					OSSL_PROVIDER_unload(legacy);
+			}
+		};
+	}
+
+	bool init_crypto_providers()
+	{
+		static loaded_providers const providers;   // loaded once, unloaded at exit
+		return providers.legacy != nullptr;        // RC4/RTMPE is unavailable without it
 	}
 
 	unsigned int HMAC_SHA256(const std::uint8_t *data, std::uint32_t data_len, const std::uint8_t *key, std::uint32_t key_len, std::uint8_t *res)
