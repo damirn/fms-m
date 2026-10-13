@@ -8,7 +8,7 @@
 
 namespace fms
 {
-	static const char version[] = "2.0.0";
+	static const char version[] = "2.0.2";
 
 	config *config::instance()
 	{
