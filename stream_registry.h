@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <list>
 #include <map>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <shared_mutex>
