@@ -9,11 +9,13 @@
 #include "null_app_host.h"
 #include "rtmp_message.h"
 
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <unistd.h>
@@ -28,6 +30,7 @@ namespace
 		using media_application::handle_invoke_play;
 		using media_application::handle_invoke_create_stream;
 		using media_application::handle_invoke_publish;
+		using media_application::m_vod;
 		using media_application::m_registry;
 
 		std::vector<std::string> status_codes(std::uint32_t conn)
@@ -268,4 +271,46 @@ TEST_CASE("publish: a refused publish is not reported as a publishing stream")
 		if (name == "taken" && pub)
 			++publishing;
 	CHECK(publishing == 1);
+}
+
+TEST_CASE("play: a long VOD seek does not hold up another playback")
+{
+	write_recording("vod_small");
+	{
+		// enough tags that a seek past the end takes a measurable scan
+		flv_writer w((std::filesystem::path(config::instance()->flv_folder()) / "vod_big.flv").string());
+		char const key[] = {0x17, 0x01, 0x00, 0x00, 0x00, 0x11};
+		char const inter[] = {0x27, 0x01, 0x00, 0x00, 0x00, 0x22};
+		w.write_video(key, sizeof key, 0);
+		for (std::uint32_t t = 1; t < 400000; ++t)
+			w.write_video(inter, sizeof inter, t);
+		w.close();
+	}
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	auto big = play("vod_big", 0.0);
+	big->set_stream_id(1);
+	auto small = play("vod_small", 0.0);
+	small->set_stream_id(2);
+	app.handle_invoke_play(big, 7);
+	app.handle_invoke_play(small, 7);
+
+	using clk = std::chrono::steady_clock;
+	clk::duration seek_took{};
+	std::thread seeker([&]
+	{
+		auto const t0 = clk::now();
+		app.m_vod.seek(7, 1, 0xFFFFFFFFu);   // scans every tag
+		seek_took = clk::now() - t0;
+	});
+	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	auto const t0 = clk::now();
+	app.m_vod.set_buffer_length(7, 2, 500);
+	auto const other_took = clk::now() - t0;
+	seeker.join();
+
+	REQUIRE(seek_took > std::chrono::milliseconds(100));   // the scan is long enough to tell
+	CHECK(other_took < seek_took / 4);
+	std::filesystem::remove(std::filesystem::path(config::instance()->flv_folder()) / "vod_big.flv");
 }

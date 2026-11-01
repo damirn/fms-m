@@ -122,6 +122,10 @@ namespace fms
 		// by handle_timer under the lock.
 		qos_reporter m_qos{*this, m_registry, m_app_manager};
 
+		// VOD (video-on-demand) playback of saved .flv files, when a play target has
+		// no live publisher. Owns its per-play state and its own locks.
+		vod_manager m_vod{*this};
+
 		static constexpr auto eStatsInterval = std::chrono::seconds{1};
 
 		bool add_recording_stream(const std::string &, std::uint32_t, std::uint32_t);
@@ -143,9 +147,6 @@ namespace fms
 
 		void update_waiting_client(stream_client_id_t &, bool, bool, const stream_registry::exclusive_guard &);
 
-		// VOD (video-on-demand) playback of saved .flv files, when a play target has
-		// no live publisher. Owns its own per-play state; shares the registry's lock.
-		vod_manager m_vod{*this};
 
 		boost::asio::steady_timer m_timer;
 	};

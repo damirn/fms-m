@@ -24,12 +24,13 @@ namespace fms
 	// The RTMP send path is reached through an injected media_host (enqueue frames
 	// and status messages, the app manager / io_context).
 	//
-	// LOCKING: owns m_mutex, guarding m_vod and the vod_session state behind it.
-	// Deliberately not the stream_registry's lock: tick() does blocking disk I/O
-	// per frame, and on the registry lock that would stall the whole application's
-	// live fan-out.
+	// LOCKING: m_mutex guards only the m_vod map; each vod_session's own mutex
+	// guards its reader and state, so a seek or a frame read in one playback never
+	// waits on another. Neither is the stream_registry's lock: tick() does blocking
+	// disk I/O per frame, and on the registry lock that would stall the live fan-out.
+	// No method holds both at once.
 	//
-	// LOCK ORDER: registry lock BEFORE this one -- docs/concurrency.md.
+	// LOCK ORDER: registry lock BEFORE either -- docs/concurrency.md.
 	class vod_manager : boost::noncopyable
 	{
 	public:
@@ -65,12 +66,16 @@ namespace fms
 	private:
 		// Emit the next frame of `session` and re-arm its timer for the frame after.
 		void tick(const vod_session_ptr &session);
+		// tick's work under the session's lock; true when the playback just ended.
+		bool tick_session(const vod_session_ptr &session);
+
+		vod_session_ptr find(const stream_client_id_t &key);
+		// Stop a session already taken out of m_vod.
+		static void halt(const vod_session_ptr &session);
 
 		media_host &m_host;
 
-		// Guards m_vod and the sessions in it. See the locking note on the class:
-		// deliberately not the registry's lock, so per-frame disk reads cannot stall
-		// the live fan-out.
+		// Guards m_vod only; see the locking note on the class.
 		std::mutex m_mutex;
 
 		// active VOD playbacks, keyed by (connection_id, stream_id)
