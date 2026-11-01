@@ -23,6 +23,10 @@ namespace fms::remote_relay
 	// always set.
 	remote_target parse_target(const std::string &stream);
 
+	// posix_spawnp `argv` with only stdin, stdout and stderr inherited: the server's
+	// listening and client sockets stay out of the child. 0 or an errno value.
+	[[nodiscard]] int spawn_isolated(::pid_t &pid, char *const argv[]);
+
 	// At most one helper spawn per remote target per eCooldown, at most
 	// eMaxPerWindow spawns in one cooldown window across all targets, and at most
 	// eMaxInFlight helpers alive at once. A helper is invisible to later play()s
