@@ -278,7 +278,6 @@ namespace fms
 			std::string const stream_name(strip_query(str->value()));
 
 			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is publishing stream '" << stream_name << "'";
-			m_app_manager->update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, true);
 
 			++i;
 			bool record = false;
@@ -307,6 +306,7 @@ namespace fms
 			}
 			if (published)
 			{
+				m_app_manager->update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, true);
 				add_qos_stream(stream_name, connection_id, invoke->stream_id());
 				add_publisher_to_app_instance(connection_id);
 

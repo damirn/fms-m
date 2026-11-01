@@ -27,6 +27,7 @@ namespace
 		explicit play_app(app_host *h) : media_application(h) {}
 		using media_application::handle_invoke_play;
 		using media_application::handle_invoke_create_stream;
+		using media_application::handle_invoke_publish;
 		using media_application::m_registry;
 
 		std::vector<std::string> status_codes(std::uint32_t conn)
@@ -228,4 +229,43 @@ TEST_CASE("play: a name that escapes the media folder is never served as VOD")
 		CHECK_FALSE(has(codes, "NetStream.Play.Start"));
 	}
 	std::filesystem::remove(folder.parent_path() / "vod_escape.flv");
+}
+
+namespace
+{
+	struct netstream_host : test::null_host
+	{
+		std::vector<std::pair<std::string, bool>> updates;
+		void update_netstream(const stream_client_id_t &, const std::string &name, bool publishing) override
+		{
+			updates.emplace_back(name, publishing);
+		}
+	};
+
+	rtmp_message_invoke_ptr publish(const std::string &name, std::uint32_t sid)
+	{
+		auto inv = std::make_shared<rtmp_message_invoke>("publish", 0.0);
+		inv->set_stream_id(sid);
+		inv->add_parameter(std::make_shared<amf0_null>());
+		inv->add_parameter(std::make_shared<amf0_string>(name));
+		inv->add_parameter(std::make_shared<amf0_string>("live"));
+		return inv;
+	}
+}
+
+TEST_CASE("publish: a refused publish is not reported as a publishing stream")
+{
+	netstream_host host;
+	host.add_session(3);
+	host.add_session(4);
+	play_app app(&host);
+	rtmp_message_ptr res;
+	app.handle_invoke_publish(publish("taken", 1), 3, res);
+	app.handle_invoke_publish(publish("taken", 1), 4, res);   // BadName: the name is in use
+
+	std::size_t publishing = 0;
+	for (auto const &[name, pub] : host.updates)
+		if (name == "taken" && pub)
+			++publishing;
+	CHECK(publishing == 1);
 }
