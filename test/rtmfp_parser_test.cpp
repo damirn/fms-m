@@ -127,13 +127,18 @@ TEST_CASE("a chunk length that overruns the datagram is not dispatched")
 	CHECK(rec.chunk_types.empty());   // never handed a chunk with attacker-set lengths
 }
 
-TEST_CASE("an unknown chunk type is refused")
+TEST_CASE("an unknown chunk is skipped by its length and the chunks after it still dispatch")
 {
 	recorder rec;
 	parser p(rec);
-	std::vector<std::uint8_t> const chunks = {0x7E, 0x00, 0x00};   // not a chunk we implement
-	CHECK_FALSE(run(p, seal(body_with_chunks(chunks))));
-	CHECK(rec.chunk_types.empty());
+	std::vector<std::uint8_t> const chunks = {
+		0x50, 0x00, 0x03, 0x01, 0x02, 0x03,   // ACK_BITMAP: not a chunk we implement
+		0x7E, 0x00, 0x00,
+		chunk::eSessionClose, 0x00, 0x00
+	};
+	CHECK(run(p, seal(body_with_chunks(chunks))));
+	REQUIRE(rec.chunk_types.size() == 1);
+	CHECK(rec.chunk_types[0] == chunk::eSessionClose);
 }
 
 TEST_CASE("padding ends the chunk walk cleanly")
