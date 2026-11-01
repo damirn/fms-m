@@ -12,6 +12,7 @@
 #include "rtmfp/chunk.h"
 #include "rtmfp/flow.h"
 #include "rtmfp/group.h"
+#include "rtmfp/header.h"
 #include "app_host.h"
 #include "rtmfp/session.h"
 #include "rtmfp/types.h"
@@ -110,6 +111,7 @@ namespace
 	{
 		using session::session;
 		using session::handle_chunk;
+		using session::handle_header;
 		using session::flow_sanity_check;
 		using session::message_to_fragment;
 		using session::m_receiving_flows;
@@ -684,4 +686,60 @@ TEST_CASE("rtmfp session: an abandon whose offset exceeds its sequence drops not
 	s->handle_chunk(&c);
 
 	CHECK(f->second->fragment_count() == 3);
+}
+
+namespace
+{
+	bool feed_next_user_data(const testable_session_ptr &s, const std::vector<std::uint8_t> &payload, std::uint8_t frag_ctl)
+	{
+		std::vector<std::uint8_t> wire{static_cast<std::uint8_t>((frag_ctl & 0x03) << 4)};
+		wire.insert(wire.end(), payload.begin(), payload.end());
+		byte_reader r(wire.data(), wire.size());
+		next_user_data_chunk c;
+		REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(wire.size())));
+		return s->handle_chunk(&c);
+	}
+
+	void next_packet(const testable_session_ptr &s)
+	{
+		header h(false, false, 0, header::eStartup);
+		s->handle_header(h);
+	}
+}
+
+TEST_CASE("rtmfp session: next user data continues a user data chunk of the same packet")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+	std::vector<std::uint8_t> const whole =
+		rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0x33, 0x44});
+	std::vector<std::uint8_t> const first(whole.begin(), whole.begin() + 4);
+	std::vector<std::uint8_t> const rest(whole.begin() + 4, whole.end());
+
+	next_packet(s);
+	feed_open_flow(s, 5, 1, 7, first, fragment::eBegin);
+	CHECK(feed_next_user_data(s, rest, fragment::eEnd));
+	CHECK(app.routed == 1);
+}
+
+TEST_CASE("rtmfp session: next user data opening a packet is ignored without failing it")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+	std::vector<std::uint8_t> const whole =
+		rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0x33, 0x44});
+	std::vector<std::uint8_t> const first(whole.begin(), whole.begin() + 4);
+	std::vector<std::uint8_t> const rest(whole.begin() + 4, whole.end());
+
+	next_packet(s);
+	feed_open_flow(s, 5, 1, 7, first, fragment::eBegin);
+	next_packet(s);
+	CHECK(feed_next_user_data(s, rest, fragment::eEnd));
+	CHECK(app.routed == 0);
+
+	auto fresh = make_session(h, app);
+	next_packet(fresh);
+	CHECK(feed_next_user_data(fresh, rest, fragment::eEnd));
 }
