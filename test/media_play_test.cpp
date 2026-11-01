@@ -2,16 +2,21 @@
 // stream, -2 either. A name nothing can serve under the request is refused at once.
 
 #include "client_session.h"
+#include "config.h"
 #include "doctest.h"
+#include "flv_writer.h"
 #include "media_application.h"
 #include "null_app_host.h"
 #include "rtmp_message.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
+
+#include <unistd.h>
 
 using namespace fms;
 
@@ -146,4 +151,57 @@ TEST_CASE("play: stream id 0 is the control stream and never carries a play")
 	app.handle_invoke_play(inv, 7);
 	CHECK(has(app.status_codes(7), "NetStream.Failed"));
 	CHECK_FALSE(app.waiting(7, 0));
+}
+
+namespace
+{
+	// A saved recording `name`.flv in a private media folder.
+	void write_recording(const std::string &name)
+	{
+		static std::filesystem::path const dir =
+			std::filesystem::temp_directory_path() / ("fms-play-" + std::to_string(::getpid()));
+		static bool const configured = []
+		{
+			std::filesystem::create_directories(dir);
+			static std::string const s = dir.string();
+			static char a0[] = "media_play_test";
+			static char a1[] = "-o";
+			std::vector<char *> argv{a0, a1, const_cast<char *>(s.c_str())};
+			return config::instance()->parse_cli(static_cast<int>(argv.size()), argv.data());
+		}();
+		REQUIRE(configured);
+		flv_writer w((dir / (name + ".flv")).string());
+		char const key[] = {0x17, 0x01, 0x00, 0x00, 0x00, 0x11};
+		char const inter[] = {0x27, 0x01, 0x00, 0x00, 0x00, 0x22};
+		w.write_video(key, sizeof key, 0);
+		for (std::uint32_t t = 40; t <= 2000; t += 40)
+			w.write_video(inter, sizeof inter, t);
+		w.close();
+	}
+}
+
+TEST_CASE("play: a saved recording is served as VOD, from a start offset too")
+{
+	write_recording("vod_clip");
+	for (double const start : {0.0, 1.0, -2.0})
+	{
+		test::null_host host;
+		host.add_session(7);
+		play_app app(&host);
+		app.handle_invoke_play(play("vod_clip", start), 7);
+		auto const codes = app.status_codes(7);
+		CHECK(has(codes, "NetStream.Play.Start"));
+		CHECK_FALSE(has(codes, "NetStream.Play.StreamNotFound"));
+		CHECK_FALSE(app.waiting(7, 1));    // a VOD play is not parked for a publisher
+	}
+}
+
+TEST_CASE("play: a live-only request ignores a saved recording")
+{
+	write_recording("vod_clip_live");
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	app.handle_invoke_play(play("vod_clip_live", -1.0), 7);
+	CHECK(app.waiting(7, 1));
 }

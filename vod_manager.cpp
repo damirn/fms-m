@@ -15,23 +15,22 @@
 
 namespace fms
 {
-	bool vod_manager::start(std::uint32_t connection_id, const rtmp_message_invoke_ptr &invoke, const std::string &stream_name)
+	vod_session_ptr vod_manager::prepare(std::uint32_t connection_id, const rtmp_message_invoke_ptr &invoke, const std::string &stream_name)
 	{
-		// Caller (handle_invoke_play) holds the registry lock; we take only m_mutex,
-		// and only to publish -- see the locking note on the class.
+		// Disk work only, on a session nobody else can reach yet: no lock is needed.
 		auto const path = resolve_media_file(config::instance()->flv_folder(), stream_name);
 		if (!path)
-			return false;   // malformed / traversal attempt
+			return nullptr;   // malformed / traversal attempt
 		std::error_code ec;
 		if (!std::filesystem::is_regular_file(*path, ec))
-			return false;   // no such saved file -> fall back to live/waiting
+			return nullptr;   // no such saved file -> fall back to live/waiting
 
 		auto session = std::make_shared<vod_session>(
 			m_host.io_context(),
 			connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
 		session->m_reader.open(*path);
 		if (!session->m_reader.is_open())
-			return false;
+			return nullptr;
 
 		// Optional play start offset (3rd play param, in seconds): begin there.
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
@@ -48,26 +47,29 @@ namespace fms
 		}
 
 		if (!session->m_reader.read_frame())   // empty / unreadable / seek past end
-			return false;
+			return nullptr;
 		session->m_next = session->m_reader.get_frame();
+		return session;
+	}
 
-		// Everything above operates on a session nobody else can reach yet, so the
-		// open/seek/first-read needs no lock of ours -- only publishing it does.
+	void vod_manager::start(const vod_session_ptr &session)
+	{
+		std::uint32_t const connection_id = session->m_connection_id;
+		std::uint32_t const stream_id = session->m_stream_id;
 		{
 			std::lock_guard const lock(m_mutex);
-			m_vod[std::make_pair(connection_id, invoke->stream_id())] = session;
+			m_vod[std::make_pair(connection_id, stream_id)] = session;
 		}
-		m_host.update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, false);
+		m_host.update_netstream(std::make_pair(connection_id, stream_id), session->m_stream_name, false);
 
-		BOOST_LOG(lg::get()) << "cid: " << connection_id << " VOD playback of '" << stream_name << "'";
-		m_host.send_play_start(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name, true /* recorded */);
+		BOOST_LOG(lg::get()) << "cid: " << connection_id << " VOD playback of '" << session->m_stream_name << "'";
+		m_host.send_play_start(connection_id, stream_id, session->m_channel_id, session->m_stream_name, true /* recorded */);
 
 		// Arm last, so Play.Start is on the wire before the first frame. A stop()
 		// slipping in here leaves the session eStopped and tick() returns at once.
 		std::lock_guard const lock(m_mutex);
 		session->m_timer.expires_after(std::chrono::milliseconds(0));
 		session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) tick(session); });
-		return true;
 	}
 
 	void vod_manager::tick(const vod_session_ptr &session)

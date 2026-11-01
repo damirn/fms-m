@@ -37,12 +37,14 @@ namespace fms
 			: m_host(host)
 		{}
 
-		// Try to begin VOD for (connection_id, stream_id). Caller holds the REGISTRY
-		// lock (see the locking note above); this takes m_mutex itself.
-		// Returns false when there is no such saved file (or it is malformed / a
-		// traversal attempt / unreadable), so the caller can fall back to the
-		// live/waiting path.
-		bool start(std::uint32_t connection_id, const rtmp_message_invoke_ptr &invoke, const std::string &stream_name);
+		// Open `stream_name`'s saved file for (connection_id, stream_id) and position
+		// it at play's start offset. Disk work under no lock, so the caller runs it
+		// before taking the registry lock. Null when there is no playable file (or it
+		// is malformed / a traversal attempt / unreadable).
+		vod_session_ptr prepare(std::uint32_t connection_id, const rtmp_message_invoke_ptr &invoke, const std::string &stream_name);
+
+		// Publish and begin a prepared playback. Caller holds the registry lock.
+		void start(const vod_session_ptr &session);
 
 		void pause(std::uint32_t connection_id, std::uint32_t stream_id, bool pause);
 		void seek(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms);

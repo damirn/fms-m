@@ -376,15 +376,22 @@ namespace fms
 			auto i = params.begin();
 			++i;
 
+			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
+			auto const target = remote_relay::parse_target(std::string(strip_query(str->value())));
+			std::string const &stream_name = target.m_stream;
+			bool const is_remote = !target.m_server.empty();
+
+			// play start: >= 0 a recording (or a live publisher), -1 live only, -2 either.
+			double const start = play_start(params);
+			bool const live_only = start < 0 && start > -2;
+			// The file is opened and positioned before the registry lock is taken, so
+			// a long seek never stalls the live fan-out; it is dropped if a publisher wins.
+			vod_session_ptr const vod = is_remote || live_only ? nullptr : m_vod.prepare(connection_id, invoke, stream_name);
+
 			// Collected under the lock, acted on after it: spawning a helper forks.
 			std::optional<remote_relay::remote_target> relay;
 			{
 				auto const lock = m_registry.lock_exclusive();
-
-				amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
-				auto const target = remote_relay::parse_target(std::string(strip_query(str->value())));
-				std::string const &stream_name = target.m_stream;
-				bool const is_remote = !target.m_server.empty();
 
 				BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << stream_name << "'";
 				if (is_remote)
@@ -394,14 +401,14 @@ namespace fms
 				bool const res = found.has_value();
 				stream_client_id_t const bcaster_id = res ? *found : stream_client_id_t{};
 
-				// play start: >= 0 a recording (or a live publisher), -1 live only, -2 either.
 				if (!res && !is_remote)
 				{
 					forget_subscription(connection_id, invoke->stream_id(), lock);
-					double const start = play_start(params);
-					bool const live_only = start < 0 && start > -2;
-					if (!live_only && m_vod.start(connection_id, invoke, stream_name))
+					if (vod)
+					{
+						m_vod.start(vod);
 						return;
+					}
 					if (start >= 0)
 					{
 						send_stream_not_found(connection_id, invoke->stream_id(), stream_name);
