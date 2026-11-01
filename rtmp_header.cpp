@@ -143,8 +143,7 @@ namespace fms
 					m_message_length == previous_header.m_message_length)
 				{
 					size -= 4;
-					if ((m_timestamp == previous_header.m_timestamp ||
-						m_ts_delta_write == prev_delta) &&
+					if (m_ts_delta_write == prev_delta &&
 						m_channel_id == previous_header.m_channel_id &&
 						previous_header.m_header_type == eHeaderTimerChange)
 						size = 1;

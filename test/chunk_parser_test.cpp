@@ -636,6 +636,32 @@ namespace
 	}
 }
 
+TEST_CASE("header serialize: a type-3 header is chosen only when the delta repeats")
+{
+	// header fmt of each message on one chunk stream
+	auto fmts_of = [](std::initializer_list<std::uint32_t> stamps)
+	{
+		std::vector<std::uint8_t> fmts;
+		rtmp_header prev;
+		for (std::uint32_t const ts : stamps)
+		{
+			rtmp_header h = make_header(4, ts, 10, AUDIO, 1);
+			byte_writer w;
+			h.serialize(w, prev);
+			REQUIRE(w.size() > 0);
+			fmts.push_back(static_cast<std::uint8_t>(w.data()[0] >> 6));
+			prev = h;
+		}
+		return fmts;
+	};
+	auto const repeat = fmts_of({100, 140, 180});
+	CHECK(repeat[1] == 2);   // delta 40
+	CHECK(repeat[2] == 3);   // delta 40 again
+	auto const equal = fmts_of({100, 140, 140});
+	CHECK(equal[1] == 2);
+	CHECK(equal[2] == 2);    // delta 0 is new: a type 3 would replay 40
+}
+
 TEST_CASE("byte_writer: append, write_uint32_3, mark/patch")
 {
 	byte_writer w;
