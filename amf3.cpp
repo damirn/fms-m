@@ -19,6 +19,7 @@ namespace fms
 		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ m_depth };
 		if (m_depth > eMaxDepth)   // bound recursion on hostile nested input
 			throw amf3_read_exception();
+		charge_node();
 
 		std::uint8_t type;
 		buffer >> type;
@@ -212,9 +213,15 @@ namespace fms
 
 	void amf3::charge_string_bytes(std::size_t n)
 	{
-		if (n > eMaxDecodedStringBytes - *m_string_bytes)
+		if (n > amf_read_budget::eMaxStringBytes - m_budget->string_bytes)
 			throw amf3_read_exception();
-		*m_string_bytes += n;
+		m_budget->string_bytes += n;
+	}
+
+	void amf3::charge_node()
+	{
+		if (++m_budget->nodes > amf_read_budget::eMaxNodes)
+			throw amf3_read_exception();
 	}
 
 	amf3_string_type_ptr amf3::read_string(byte_reader &buffer)
