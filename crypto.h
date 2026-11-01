@@ -16,7 +16,7 @@ namespace fms
 		static std::uint8_t FMP_key_len;
 	};
 
-	// Load the OpenSSL 3 providers we need. Call once at startup. Returns false
+	// Load the OpenSSL 3 providers once; they are released at exit. Returns false
 	// if the legacy provider (required for RC4/RTMPE) could not be loaded.
 	bool init_crypto_providers();
 
