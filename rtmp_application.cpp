@@ -90,6 +90,17 @@ namespace fms
 				handle_ping(msg, connection_id, header);
 				return false;
 			}
+		case rtmp_message::eMessageAggregate:
+			for (rtmp_message_ptr const &sub : std::static_pointer_cast<rtmp_message_aggregate>(msg)->get_messages())
+			{
+				rtmp_message_ptr sub_result;
+				if (handle_message(sub, connection_id, header, sub_result) && sub_result)
+				{
+					enqueue_async_message(connection_id, sub_result);
+					notify(connection_id);
+				}
+			}
+			return false;
 		// Consumed, not acted on: the peer's ack bookkeeping needs no reply.
 		case rtmp_message::eMessageBytesRead:
 		case rtmp_message::eMessageWindowAcknowledgementSize:
