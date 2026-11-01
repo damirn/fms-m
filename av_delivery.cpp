@@ -58,10 +58,15 @@ namespace fms
 
 		bool const has_data_to_send = !bs->video_queue.empty();
 
+		bool const keyframe = video->get_frame_type() == rtmp_message_video_data::eKeyFrame;
 		m_registry.for_each_subscriber(bcid, [&](const stream_client_id_t &, const stream_client_ptr &client)
 		{
-			if (!client->m_receive_video || (client->m_stream_was_playing && !client->m_key_frame_sent && !has_data_to_send) ||
-				(!client->m_stream_was_playing && !client->m_key_frame_sent && video->get_frame_type() != rtmp_message_video_data::eKeyFrame))
+			if (!client->m_receive_video)
+				return;
+			// Without a keyframe to decode from, only a fresh live joiner can be primed
+			// (from the GOP cache); anyone else waits for the next keyframe.
+			bool const primable = client->m_stream_was_playing && !client->m_first_video_packet_seen && has_data_to_send;
+			if (!client->m_key_frame_sent && !keyframe && !primable)
 				return;
 
 			send_video_frame(client, video, bcid);

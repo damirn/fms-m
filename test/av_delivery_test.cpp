@@ -328,3 +328,25 @@ TEST_CASE("av_delivery: after the GOP cache overflows, caching resumes at the ne
 	f.av.route_video(vframe(INTER, AVC, 1, 9200), f.bcid);
 	CHECK(f.reg.find_broadcast(f.bcid)->video_queue.size() == 2);
 }
+
+TEST_CASE("av_delivery: re-enabling video resumes at the next keyframe, not mid-GOP")
+{
+	fixture f(true);   // joined a stream that was already playing
+	f.av.route_video(vframe(KEY, AVC, 1, 0), f.bcid);
+	f.av.route_video(vframe(INTER, AVC, 1, 40), f.bcid);
+	REQUIRE_FALSE(f.host.videos(2).empty());
+
+	f.sub->m_receive_video = false;              // receiveVideo(false)
+	f.av.route_video(vframe(INTER, AVC, 1, 80), f.bcid);
+	f.sub->m_receive_video = true;               // receiveVideo(true), as the app applies it
+	f.sub->m_key_frame_sent = false;
+	f.host.log.clear();
+
+	f.av.route_video(vframe(INTER, AVC, 1, 120), f.bcid);
+	CHECK(f.host.videos(2).empty());
+
+	f.av.route_video(vframe(KEY, AVC, 1, 160), f.bcid);
+	auto const v = f.host.videos(2);
+	REQUIRE(v.size() == 1);
+	CHECK(v[0]->get_frame_type() == rtmp_message_video_data::eKeyFrame);
+}
