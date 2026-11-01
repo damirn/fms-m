@@ -41,12 +41,9 @@ namespace fms
 			std::optional<netstream_stats_ptr> const stats = m_manager->get_stream_stats(real);
 			if (!stats)
 				return;
-			std::chrono::system_clock::time_point const now(std::chrono::system_clock::now());
-			std::chrono::system_clock::duration const td = now - (*stats)->start_streaming_time();
-			auto const secs = std::chrono::duration_cast<std::chrono::seconds>(td).count();
-			if (secs == 0)
+			std::uint32_t const kbps = (*stats)->average_kbps(std::chrono::system_clock::now());
+			if (kbps == 0)
 				return;
-			std::uint32_t const kbps = (*stats)->m_bytes / secs;
 
 			m_registry.for_each_subscriber(*bs.qos_target, [&](const stream_client_id_t &ssid, const stream_client_ptr &)
 			{
