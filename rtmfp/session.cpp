@@ -755,8 +755,14 @@ namespace fms
 		{
 			rtmp_message_ptr msg;
 			bool has_msg = false;
+			bool close_requested = false;
 			while (get_app()->get_async_message(m_id, msg))
 			{
+				if (msg->type() == rtmp_message::eMessageClose)
+				{
+					close_requested = true;
+					break;
+				}
 				if (msg->type() == rtmp_message::eMessageChunkSize ||
 					msg->type() == rtmp_message::eMessageWindowAcknowledgementSize ||
 					msg->type() == rtmp_message::eMessageSetPeerBandwidth)
@@ -766,6 +772,13 @@ namespace fms
 			}
 			if (has_msg && m_notifier)
 				m_notifier();
+			if (close_requested)
+			{
+				// SessionClose to the peer, then reap after the close linger
+				begin_close();
+				m_timer.expires_after(eCloseLinger);
+				m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+			}
 		}
 	}
 

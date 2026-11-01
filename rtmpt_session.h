@@ -85,6 +85,8 @@ namespace fms
 
 		boost::tribool handle_handshake(byte_writer &, byte_writer &);
 		void handle_results(byte_writer &);
+		// Serialize the queued messages up to a close request, which closes the session.
+		void drain_async(byte_writer &);
 		void serialize_message(const rtmp_message_ptr&, byte_writer &);
 
 		std::uint8_t get_poll_time(bool);

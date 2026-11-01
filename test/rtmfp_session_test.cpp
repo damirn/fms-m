@@ -17,6 +17,7 @@
 #include "rtmfp/session.h"
 #include "rtmfp/types.h"
 #include "rtmp_header.h"
+#include "rtmp_application.h"
 #include "rtmp_message.h"
 
 #include <cstdint>
@@ -112,6 +113,7 @@ namespace
 		using session::session;
 		using session::handle_chunk;
 		using session::handle_header;
+		using session::notify_impl;
 		using session::flow_sanity_check;
 		using session::message_to_fragment;
 		using session::m_receiving_flows;
@@ -742,4 +744,36 @@ TEST_CASE("rtmfp session: next user data opening a packet is ignored without fai
 	auto fresh = make_session(h, app);
 	next_packet(fresh);
 	CHECK(feed_next_user_data(fresh, rest, fragment::eEnd));
+}
+
+namespace
+{
+	struct queue_app : rtmp_application
+	{
+		explicit queue_app(app_host *h) : rtmp_application(h, "q") {}
+		void handle_audio_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override {}
+		void handle_video_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override {}
+		boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) override
+		{
+			return false;
+		}
+	};
+}
+
+TEST_CASE("rtmfp session: a queued close request closes the session and stops the drain")
+{
+	fake_host h;
+	recording_app_host host;
+	queue_app app(&host);
+	auto const s = make_session(h, host);
+	s->set_state(session::eOpen);
+	s->set_app(&app);
+
+	app.enqueue_async_message(s->id(), std::make_shared<rtmp_message_invoke>("close", 0.0));
+	app.enqueue_async_message(s->id(), std::make_shared<rtmp_message_close>());
+	app.enqueue_async_message(s->id(), std::make_shared<rtmp_message_invoke>("after", 0.0));
+	s->notify_impl();
+
+	CHECK(s->state() == session::eNearClose);
+	CHECK(app.has_async_messages(s->id()));   // nothing past the close was sent
 }
