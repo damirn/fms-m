@@ -298,7 +298,10 @@ namespace fms::rtmp_client
 			read_data();
 		}
 		else
+		{
+			close();
 			m_event_handler.on_status(connect_closed);
+		}
 	}
 
 	void net_connection::update_bytes_read(std::size_t bytes_read)

@@ -88,9 +88,12 @@ namespace fms::rtmp_client
 		// enforced here rather than at each caller.
 		void set_out_chunk_size(std::uint32_t n);
 
+		// Pending reply handlers own the connection and can never complete after a
+		// close, so they go with the socket.
 		void close()
 		{
 			m_client->close_socket();
+			m_result_handlers.clear();
 		}
 
 		void call(const std::string &);
