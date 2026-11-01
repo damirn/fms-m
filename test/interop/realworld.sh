@@ -31,7 +31,6 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/fms-realworld.XXXXXX")"
 RTMP_PORT=27100; RTMPT_PORT=27101; RTMFP_PORT=27102
 RTMPS_PORT=27543; RTMPTS_PORT=27544
 TLS_CERT="$WORK/cert.pem"; TLS_KEY="$WORK/key.pem"
-NO_VERIFY="-tls_verify 0"   # the test certificate is self-signed; ffmpeg may verify by default
 MAXQ="${MAXQ:-10485760}"
 
 PASS=0; FAIL=0; SKIP=0; declare -a FAILED=()
@@ -56,8 +55,9 @@ trap cleanup EXIT
 mkdir -p "$WORK/logs" "$WORK/rec"
 
 start_server() {
+	# A SAN for the address the clients dial, so they can verify the server against it.
 	openssl req -x509 -newkey rsa:2048 -keyout "$TLS_KEY" -out "$TLS_CERT" \
-		-days 2 -nodes -subj "/CN=localhost" >/dev/null 2>&1
+		-days 2 -nodes -subj "/CN=localhost" -addext "subjectAltName=IP:127.0.0.1,DNS:localhost" >/dev/null 2>&1
 	"$FMS" -R "$RTMP_PORT" -T "$RTMPT_PORT" -K "$RTMFP_PORT" \
 		--rtmps-port "$RTMPS_PORT" --rtmpts-port "$RTMPTS_PORT" \
 		--tls-cert "$TLS_CERT" --tls-key "$TLS_KEY" \
@@ -144,6 +144,13 @@ done
 [ "$have_log" = 1 ] && ok "log file is under --log-path" || bad "no log under --log-path"
 ls ./*.log >/dev/null 2>&1 && bad "a log leaked into the current directory" || ok "nothing written to the CWD"
 
+# tls_opts <url> -> the ffmpeg options that trust the suite's certificate for a TLS URL
+tls_opts() {
+	case "$1" in
+		rtmps://*|rtmpts://*) echo "-ca_file $TLS_CERT" ;;
+	esac
+}
+
 # pub <src> <name> [extra ffmpeg args] -> echoes pid
 pub() {
 	local src="$1" name="$2"; shift 2
@@ -155,9 +162,7 @@ pub() {
 # play <name> <out> <secs> [url_override]
 play() {
 	local name="$1" out="$2" secs="$3" url="${4:-rtmp://127.0.0.1:$RTMP_PORT/media/$1}"
-	local tls=""
-	[[ "$url" == rtmps://* ]] && tls="$NO_VERIFY"
-	run_timeout $((secs+12)) ffmpeg -hide_banner -loglevel error -y $tls -i "$url" -t "$secs" -c copy \
+	run_timeout $((secs+12)) ffmpeg -hide_banner -loglevel error -y $(tls_opts "$url") -i "$url" -t "$secs" -c copy \
 		-f flv "$out" >"${out%.flv}_play.log" 2>&1
 }
 
@@ -344,8 +349,9 @@ P=$(pub "$WORK/h264_aac.flv" d3); wait_publishing d3 && {
 kill $P 2>/dev/null; sleep 1
 
 echo "[D4] publish over RTMPS, play over plain RTMP (transport crossover)"
-ffmpeg -hide_banner -loglevel error -re -stream_loop -1 -i "$WORK/h264_aac.flv" -c copy $NO_VERIFY -f flv \
-	"rtmps://127.0.0.1:$RTMPS_PORT/media/d4" >"$WORK/pub_d4.log" 2>&1 &
+D4_URL="rtmps://127.0.0.1:$RTMPS_PORT/media/d4"
+ffmpeg -hide_banner -loglevel error -re -stream_loop -1 -i "$WORK/h264_aac.flv" -c copy $(tls_opts "$D4_URL") -f flv \
+	"$D4_URL" >"$WORK/pub_d4.log" 2>&1 &
 P=$!; track $P
 wait_publishing d4 && {
 	play d4 "$WORK/d4.flv" 4
