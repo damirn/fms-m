@@ -289,6 +289,12 @@ namespace fms::rtmp_client
 			}
 
 			m_parser.parse(*m_input_buffer);
+			if (m_parser.framing_error())
+			{
+				close();
+				m_event_handler.on_status(connect_closed);
+				return;
+			}
 			read_data();
 		}
 		else

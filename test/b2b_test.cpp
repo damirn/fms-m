@@ -489,3 +489,48 @@ TEST_CASE("b2b(rtmpt): a closed tunnel client stops polling")
 
 	std::error_code ec; fs::remove_all(dir, ec);
 }
+
+namespace
+{
+	struct status_nc : net_connection_event_handler
+	{
+		std::vector<std::string> status;
+		void on_status(const std::string &s) override { status.push_back(s); }
+	};
+}
+
+TEST_CASE("b2b: the client drops a server whose chunk stream breaks the framing limits")
+{
+	using boost::asio::ip::tcp;
+	boost::asio::io_context server_io;
+	tcp::acceptor acceptor(server_io, {boost::asio::ip::address_v4::loopback(), 0});
+	unsigned short const port = acceptor.local_endpoint().port();
+
+	std::thread server([&]
+	{
+		boost::system::error_code ec;
+		tcp::socket s = acceptor.accept(ec);
+		if (ec)
+			return;
+		std::vector<std::uint8_t> c0c1(1537);
+		boost::asio::read(s, boost::asio::buffer(c0c1), ec);
+		std::vector<std::uint8_t> s0s1s2(1 + 2 * 1536, 0);
+		s0s1s2[0] = 0x03;
+		boost::asio::write(s, boost::asio::buffer(s0s1s2), ec);
+		std::vector<std::uint8_t> c2(1536);
+		boost::asio::read(s, boost::asio::buffer(c2), ec);
+		// type-0 header on csid 3 declaring a 16 MiB invoke, past the parser's cap
+		std::uint8_t const bad[] = {0x03, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0x14, 0, 0, 0, 0, 1, 2, 3, 4};
+		boost::asio::write(s, boost::asio::buffer(bad), ec);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
+	});
+
+	boost::asio::io_context io;
+	status_nc nc;
+	auto const conn = std::make_shared<net_connection>(io, nc, false);
+	conn->connect("rtmp://127.0.0.1:" + std::to_string(port) + "/media");
+	io.run_for(std::chrono::seconds(2));
+	server.join();
+
+	CHECK(saw(nc.status, "NetConnection.Connect.Closed"));
+}
