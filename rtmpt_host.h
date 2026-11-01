@@ -29,6 +29,9 @@ namespace fms
 		// True once the session has been closed; its id is not served again.
 		virtual bool is_closed() const = 0;
 
+		// A close requested from another thread, applied under the session's lock.
+		virtual bool close_pending() const { return false; }
+
 		// True once the tunnelled RTMP handshake is done; the reaper drops a session
 		// that keeps polling but never gets here.
 		virtual bool handshake_complete() const = 0;

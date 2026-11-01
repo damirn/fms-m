@@ -60,3 +60,14 @@ TEST_CASE("rtmpt session: a poll with nothing queued answers with the poll inter
 	CHECK(out.size() == 1);
 	CHECK_FALSE(s->is_closed());
 }
+
+TEST_CASE("rtmpt session: a close requested from another thread waits for the session's own lock")
+{
+	boost::asio::io_context io;
+	test::null_host host;
+	auto const s = std::make_shared<rtmpt_session>(1, io, &host);
+	s->post_close();
+	io.poll();                       // nothing may run the close off the request path
+	CHECK_FALSE(s->is_closed());
+	CHECK(s->close_pending());
+}

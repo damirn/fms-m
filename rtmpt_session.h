@@ -77,6 +77,11 @@ namespace fms
 
 		bool is_closed() const override { return m_closed; }
 
+		// The session is driven under the manager's per-session lock, not on an
+		// io_context, so a foreign thread only flags the close.
+		void post_close() override { m_close_requested = true; }
+		bool close_pending() const override { return m_close_requested; }
+
 	protected:
 		// Handle application's result
 		void handle_app_result(rtmp_channel_ptr, rtmp_message_ptr) override;
@@ -95,6 +100,7 @@ namespace fms
 
 		// Read by the manager under its own lock, set from the connection's thread.
 		std::atomic_bool m_closed{false};
+		std::atomic_bool m_close_requested{false};
 
 		static constexpr std::uint8_t eMaxIdleTimes = 6;
 		std::uint8_t m_poll_cnt{0};

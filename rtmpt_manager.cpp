@@ -123,14 +123,16 @@ namespace fms
 		boost::tribool result = true;
 		{
 			std::lock_guard const s(sd->m_session_mutex);
-			if (in_order)
+			if (sd->m_session->close_pending())
+				sd->m_session->close();
+			else if (in_order)
 				result = sd->m_session->handle_data(input, output);
 			else
 				sd->m_session->serialize_poll_time(output);
 		}
 		// A definite false is fatal to the session: drop the id so it cannot be
 		// driven further. indeterminate means "incomplete", which is not a failure.
-		if (!result)
+		if (!result || sd->m_session->is_closed())
 			remove_session(cid);
 		return output.size();
 	}
@@ -155,13 +157,15 @@ namespace fms
 		boost::tribool result = true;
 		{
 			std::lock_guard const s(sd->m_session_mutex);
-			if (!drained.empty())
+			if (sd->m_session->close_pending())
+				sd->m_session->close();
+			else if (!drained.empty())
 				result = sd->m_session->handle_data(drained, buffer);
 			else
 				sd->m_session->serialize_result(buffer);
 		}
 		// A definite false is fatal wherever the body came from.
-		if (!result)
+		if (!result || sd->m_session->is_closed())
 			remove_session(cid);
 		return buffer.size();
 	}
@@ -233,7 +237,8 @@ namespace fms
 					// m_not_alive/m_open_ticks are guarded by the global lock (held here);
 					// handshake_complete() reads session state -> per-session lock
 					// (global-then-per-session, the same order remove_session uses).
-					bool is_dead = i->second->m_not_alive > 3 || i->second->m_session->is_closed();
+					bool is_dead = i->second->m_not_alive > 3 || i->second->m_session->is_closed()
+						|| i->second->m_session->close_pending();
 					if (!is_dead)
 					{
 						std::lock_guard const s(i->second->m_session_mutex);
