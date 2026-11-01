@@ -1,6 +1,8 @@
 // play's start argument selects what may serve a name: >= 0 a recording, -1 a live
 // stream, -2 either. A name nothing can serve under the request is refused at once.
 
+#include "amf0.h"
+#include "byte_writer.h"
 #include "client_session.h"
 #include "config.h"
 #include "doctest.h"
@@ -313,4 +315,43 @@ TEST_CASE("play: a long VOD seek does not hold up another playback")
 	REQUIRE(seek_took > std::chrono::milliseconds(100));   // the scan is long enough to tell
 	CHECK(other_took < seek_took / 4);
 	std::filesystem::remove(std::filesystem::path(config::instance()->flv_folder()) / "vod_big.flv");
+}
+
+TEST_CASE("play: VOD sends the recording's onMetaData after Play.Start")
+{
+	write_recording("vod_meta_probe");   // configures the media folder
+	{
+		byte_writer body;
+		amf0::write(body, std::make_shared<amf0_string>("onMetaData"));
+		auto arr = std::make_shared<amf0_ecma_array>();
+		arr->add_entry("duration", 2.0);
+		amf0::write(body, arr);
+		flv_writer w((std::filesystem::path(config::instance()->flv_folder()) / "vod_meta.flv").string());
+		w.write_script(reinterpret_cast<const char *>(body.data()), static_cast<std::uint32_t>(body.size()), 0);
+		char const key[] = {0x17, 0x01, 0x00, 0x00, 0x00, 0x11};
+		w.write_video(key, sizeof key, 0);
+		w.close();
+	}
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	app.handle_invoke_play(play("vod_meta", 0.0), 7);
+
+	bool saw_start = false;
+	bool meta_after_start = false;
+	rtmp_message_ptr m;
+	while (app.get_async_message(7, m))
+	{
+		if (auto const inv = std::dynamic_pointer_cast<rtmp_message_invoke>(m))
+			for (auto const &p : inv->parameters())
+				if (auto const obj = std::dynamic_pointer_cast<amf0_object>(p))
+					if (auto const c = obj->value().find("code"); c != obj->value().end()
+						&& static_cast<std::string>(*c->m_value) == "NetStream.Play.Start")
+						saw_start = true;
+		if (auto const n = std::dynamic_pointer_cast<rtmp_message_notify>(m))
+			if (n->function()->value() == "onMetaData" && saw_start && n->stream_id() == 1)
+				meta_after_start = true;
+	}
+	CHECK(saw_start);
+	CHECK(meta_after_start);
 }

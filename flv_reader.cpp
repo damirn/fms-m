@@ -1,5 +1,10 @@
 #include "pch.h"
 #include "flv_reader.h"
+#include "amf0.h"
+#include "byte_reader.h"
+
+#include <exception>
+#include <vector>
 
 namespace fms
 {
@@ -16,8 +21,42 @@ namespace fms
 			m_name = name;
 			m_f.open(m_name.c_str(), std::ios_base::binary);
 			if (m_f.is_open())
+			{
 				m_f.seekg(13);
+				read_metadata();
+			}
 		}
+	}
+
+	void flv_reader::read_metadata()
+	{
+		std::streampos const first_tag = m_f.tellg();
+		std::uint8_t type = 0;
+		m_f.read(reinterpret_cast<char *>(&type), 1);
+		std::uint32_t const size = read_uint32_3();
+		m_f.seekg(7, std::ios_base::cur);   // timestamp, its extension, stream id
+		if (m_f && type == 0x12 && size <= eMaxMetadataBytes)
+		{
+			std::vector<std::uint8_t> body(size);
+			if (m_f.read(reinterpret_cast<char *>(body.data()), size))
+			{
+				try
+				{
+					byte_reader r(body.data(), body.size());
+					amf0 codec;
+					amf0_type_ptr const name = codec.read(r);
+					if (name && name->type() == amf0_type::eAMF0String
+						&& std::static_pointer_cast<amf0_string>(name)->value() == "onMetaData")
+						m_metadata = codec.read(r);
+				}
+				catch (const std::exception &)
+				{
+					m_metadata.reset();   // malformed metadata: play without it
+				}
+			}
+		}
+		m_f.clear();
+		m_f.seekg(first_tag);
 	}
 
 	bool flv_reader::read_frame()

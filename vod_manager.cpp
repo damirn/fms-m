@@ -66,6 +66,13 @@ namespace fms
 
 		BOOST_LOG(lg::get()) << "cid: " << connection_id << " VOD playback of '" << session->m_stream_name << "'";
 		m_host.send_play_start(connection_id, stream_id, session->m_channel_id, session->m_stream_name, true /* recorded */);
+		if (amf0_object_ptr const meta = as_object(session->m_reader.metadata()))
+		{
+			rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>("onMetaData");
+			msg->set_stream_id(stream_id);
+			msg->parameters().push_back(meta);
+			m_host.enqueue(connection_id, msg);
+		}
 
 		// Arm last, so Play.Start is on the wire before the first frame. A stop()
 		// slipping in here leaves the session eStopped and tick() returns at once.

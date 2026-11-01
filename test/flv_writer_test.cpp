@@ -1,3 +1,5 @@
+#include "amf0.h"
+#include "byte_writer.h"
 #include "doctest.h"
 #include "flv_reader.h"
 #include "flv_writer.h"
@@ -131,5 +133,35 @@ TEST_CASE("flv round trip: a timestamp past 24 bits survives through the extende
 	CHECK(r.get_frame()->timestamp() == 0);
 	REQUIRE(r.read_frame());
 	CHECK(r.get_frame()->timestamp() == 0x01234567u);
+	fs::remove(path);
+}
+
+TEST_CASE("flv_reader: a leading onMetaData tag is kept as metadata and not returned as a frame")
+{
+	std::string const path = temp_path("meta");
+	fs::remove(path);
+	{
+		byte_writer body;
+		amf0::write(body, std::make_shared<amf0_string>("onMetaData"));
+		auto arr = std::make_shared<amf0_ecma_array>();
+		arr->add_entry("width", 640.0);
+		amf0::write(body, arr);
+		flv_writer w(path);
+		w.write_script(reinterpret_cast<const char *>(body.data()), static_cast<std::uint32_t>(body.size()), 0);
+		char const video[] = {0x17, 0x01, 0x00};
+		w.write_video(video, sizeof video, 0);
+		w.close();
+	}
+	flv_reader r;
+	r.open(path);
+	REQUIRE(r.is_open());
+	amf0_object_ptr const meta = as_object(r.metadata());
+	REQUIRE(meta != nullptr);
+	auto const w = meta->value().find("width");
+	REQUIRE(w != meta->value().end());
+	CHECK(static_cast<double>(*w->m_value) == 640.0);
+	REQUIRE(r.read_frame());
+	CHECK(r.get_frame()->type() == rtmp_message::eMessageVideoData);
+	CHECK_FALSE(r.read_frame());
 	fs::remove(path);
 }
