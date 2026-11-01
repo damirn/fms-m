@@ -86,15 +86,10 @@ namespace fms
 		// Handle asynchronous notifies
 		void handle_notify();
 
-		// Handle read timeout
-		void handle_rto(const boost::system::error_code &);
-
-		// Handle write timeout
-		void handle_wto(const boost::system::error_code &);
-
 		// Liveness timers -- only the socket transport runs them (the RTMPT tunnel is
 		// reaped by the manager instead). arm_hs_timer bounds the handshake; arm_timer
-		// drives the periodic ping.
+		// drives the periodic ping and closes a connection whose reads or a write
+		// have stalled for eIoTimeout.
 		void arm_hs_timer();
 		void arm_timer();
 		void handle_timer(const boost::system::error_code &);
@@ -106,9 +101,9 @@ namespace fms
 		// Socket for the connection.
 		boost::asio::ip::tcp::socket m_socket;
 
-		// Timers for read/write timeouts
-		boost::asio::steady_timer m_rto_timer;
-		boost::asio::steady_timer m_wto_timer;
+		// When the last read completed and the in-flight write began.
+		std::chrono::steady_clock::time_point m_last_read;
+		std::chrono::steady_clock::time_point m_write_started;
 
 		// Timer bounding the handshake, and the periodic ping timer.
 		boost::asio::steady_timer m_hs_timer;
@@ -116,6 +111,7 @@ namespace fms
 
 		static constexpr auto eHandShakeTimeout = std::chrono::seconds{5};
 		static constexpr auto ePingInterval      = std::chrono::seconds{30};
+		static constexpr auto eIoTimeout         = 2 * ePingInterval;
 
 		// Upper bound on how much handle_notify() serializes into m_output_buffer per
 		// async_write. Bounds the buffer and keeps one connection's backlog from
