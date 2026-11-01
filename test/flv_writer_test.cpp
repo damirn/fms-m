@@ -1,5 +1,7 @@
 #include "doctest.h"
+#include "flv_reader.h"
 #include "flv_writer.h"
+#include "rtmp_message.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -77,5 +79,36 @@ TEST_CASE("flv_writer: a body the tag length can describe is written")
 	// tag header + body + the trailing PreviousTagSize.
 	CHECK(written_size(path) == header_only + 11 + 64 + 4);
 
+	fs::remove(path);
+}
+
+TEST_CASE("flv_writer: timestamps never step back, from the first tag of either kind")
+{
+	std::string const path = temp_path("monotonic");
+	fs::remove(path);
+	{
+		flv_writer w(path);
+		char const audio[] = {static_cast<char>(0xAF), 0x01, 0x00};
+		char const video[] = {0x27, 0x01, 0x00};
+		w.write_audio(audio, sizeof audio, 1000);
+		w.write_video(video, sizeof video, 500);    // first video before the first audio
+		w.write_video(video, sizeof video, 540);
+		w.write_audio(audio, sizeof audio, 900);    // a step back
+		w.write_audio(audio, sizeof audio, 1040);
+		w.close();
+	}
+	flv_reader r;
+	r.open(path);
+	REQUIRE(r.is_open());
+	std::vector<std::uint32_t> ts;
+	while (r.read_frame())
+		ts.push_back(r.get_frame()->timestamp());
+	REQUIRE(ts.size() == 5);
+	for (std::uint32_t const t : ts)
+		CHECK(t < 60u * 1000u);   // nothing wrapped to a 49-day timestamp
+	CHECK(ts[1] == 0);
+	CHECK(ts[2] == 40);
+	CHECK(ts[3] == 0);
+	CHECK(ts[4] == 140);
 	fs::remove(path);
 }
