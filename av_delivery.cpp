@@ -129,21 +129,12 @@ namespace fms
 		stream_registry::broadcast_stream *const bc = m_registry.find_broadcast(bcid);
 		if (!bc)
 			return;
-		auto &vq = bc->video_queue;
-
-		if (video->get_frame_type() == rtmp_message_video_data::eKeyFrame)
-		{
-			if (video->get_codec() == rtmp_message_video_data::eAVC)
-			{
-				// the latest sequence header governs every NALU after it
-				if (video->size() > 1 && video->data()[1] == 0)
-					bc->avc_config.store(video);
-			}
-			vq.clear();
-			vq.push_back(video);
-		}
-		else if (!vq.empty())
-			vq.push_back(video);
+		bool const keyframe = video->get_frame_type() == rtmp_message_video_data::eKeyFrame;
+		// the latest sequence header governs every NALU after it
+		if (keyframe && video->get_codec() == rtmp_message_video_data::eAVC
+			&& video->size() > 1 && video->data()[1] == 0)
+			bc->avc_config.store(video);
+		bc->video_queue.add(video, keyframe);
 	}
 
 	void av_delivery::deliver_to_subscriber(const stream_client_ptr &client, const rtmp_message_ptr &msg)
@@ -253,7 +244,7 @@ namespace fms
 		stream_registry::broadcast_stream *const b = m_registry.find_broadcast(bcid);
 		if (!b)
 			return;
-		std::list<rtmp_message_video_data_ptr> &list = b->video_queue;
+		const gop_cache::frames_t &list = b->video_queue.frames();
 		std::uint32_t const size = static_cast<std::uint32_t>(list.size());
 
 		send_avc_config(bcid, client);

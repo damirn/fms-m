@@ -288,3 +288,43 @@ TEST_CASE("av_delivery: a mid-stream AVC sequence header replaces the one a late
 	CHECK(v.front()->data()[1] == 0x00);
 	CHECK(v.front()->data()[2] == 0x22);
 }
+
+TEST_CASE("av_delivery: the GOP cache is bounded when the publisher stops sending keyframes")
+{
+	fixture f;
+	f.av.route_video(vframe(KEY, AVC, 1, 0), f.bcid);
+	for (std::uint32_t i = 1; i <= gop_cache::eMaxFrames + 10; ++i)
+		f.av.route_video(vframe(INTER, AVC, 1, i), f.bcid);
+	auto const *bs = f.reg.find_broadcast(f.bcid);
+	REQUIRE(bs != nullptr);
+	CHECK(bs->video_queue.size() <= gop_cache::eMaxFrames);
+
+	// Bytes bound it too: frames large enough to cross eMaxBytes in a few steps.
+	fixture g;
+	auto big = [](std::uint8_t ftype, std::uint32_t ts)
+	{
+		auto v = std::make_shared<rtmp_message_video_data>(4u * 1024 * 1024);
+		v->data()[0] = static_cast<std::uint8_t>((ftype << 4) | AVC);
+		v->data()[1] = 1;
+		v->set_timestamp(ts);
+		return v;
+	};
+	g.av.route_video(big(KEY, 0), g.bcid);
+	for (std::uint32_t i = 1; i <= 8; ++i)
+		g.av.route_video(big(INTER, i), g.bcid);
+	CHECK(g.reg.find_broadcast(g.bcid)->video_queue.bytes() <= gop_cache::eMaxBytes);
+}
+
+TEST_CASE("av_delivery: after the GOP cache overflows, caching resumes at the next keyframe")
+{
+	fixture f;
+	f.av.route_video(vframe(KEY, AVC, 1, 0), f.bcid);
+	for (std::uint32_t i = 1; i <= gop_cache::eMaxFrames + 1; ++i)
+		f.av.route_video(vframe(INTER, AVC, 1, i), f.bcid);
+	f.av.route_video(vframe(INTER, AVC, 1, 9000), f.bcid);
+	CHECK(f.reg.find_broadcast(f.bcid)->video_queue.empty());
+
+	f.av.route_video(vframe(KEY, AVC, 1, 9100), f.bcid);
+	f.av.route_video(vframe(INTER, AVC, 1, 9200), f.bcid);
+	CHECK(f.reg.find_broadcast(f.bcid)->video_queue.size() == 2);
+}
