@@ -8,7 +8,7 @@
 //
 //   ./bench_rtmp_throughput [frame_B=16384] [seconds=15] [chunk_B=60000]
 //                           [n_streams=1] [server_threads=8] [base_port=26000]
-//                           [window_frames] [name_offset=0] [fanout=0]
+//                           [window_frames=512, 0 = default] [name_offset=0] [fanout=0]
 //
 // fanout=1 changes the shape: instead of N independent pairs, ONE publisher feeds
 // N subscribers all playing the SAME stream. That is the interesting saturation
@@ -297,7 +297,8 @@ int main(int argc, char **argv)
 	int const n_streams = argc > 4 ? std::atoi(argv[4]) : 1;
 	int const server_threads = argc > 5 ? std::atoi(argv[5]) : 8;
 	int const port = argc > 6 ? std::atoi(argv[6]) : 26000;
-	if (argc > 7) g_window = std::strtoull(argv[7], nullptr, 10);
+	if (argc > 7 && std::strtoull(argv[7], nullptr, 10) != 0)   // 0 would never send a frame: keep the default
+		g_window = std::strtoull(argv[7], nullptr, 10);
 	int const name_off = argc > 8 ? std::atoi(argv[8]) : 0;   // distinct stream names per client instance
 	bool const fanout = argc > 9 && std::atoi(argv[9]) != 0;
 	double const warmup = std::min(3.0, seconds * 0.2);
