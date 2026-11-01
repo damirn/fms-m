@@ -12,6 +12,7 @@
 #include <cmath>
 #include <filesystem>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -783,7 +784,7 @@ namespace fms
 			auto i = params.begin();
 			++i;
 			if (amf0_number_ptr const n = std::dynamic_pointer_cast<amf0_number>(*i))
-				stream_id = static_cast<std::uint32_t>(n->value());
+				stream_id = amf0_util::to_integer<std::uint32_t>(n->value()).value_or(0);
 		}
 		if (stream_id == 0)
 			return;   // the control stream is never reserved
@@ -822,7 +823,8 @@ namespace fms
 		if ((*i)->type() != amf0_type::eAMF0Number)
 			return;
 		double const ms = std::dynamic_pointer_cast<amf0_number>(*i)->value();
-		m_vod.seek(connection_id, invoke->stream_id(), ms < 0 ? 0u : static_cast<std::uint32_t>(ms));
+		std::uint32_t const past_end = ms > 0 ? std::numeric_limits<std::uint32_t>::max() : 0;
+		m_vod.seek(connection_id, invoke->stream_id(), amf0_util::to_integer<std::uint32_t>(ms).value_or(past_end));
 	}
 
 	// ------------------------------------- FMLE/OBS publish handshake verbs --

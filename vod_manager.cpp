@@ -8,6 +8,7 @@
 #include "media_path.h"
 
 #include <chrono>
+#include <limits>
 #include <mutex>
 #include <filesystem>
 #include <system_error>
@@ -40,9 +41,9 @@ namespace fms
 			std::advance(it, 2);
 			if ((*it)->type() == amf0_type::eAMF0Number)
 			{
-				double const start = std::dynamic_pointer_cast<amf0_number>(*it)->value();
-				if (start > 0)
-					session->m_reader.seek(static_cast<std::uint32_t>(start * 1000.0));
+				double const start_ms = std::dynamic_pointer_cast<amf0_number>(*it)->value() * 1000.0;
+				if (start_ms > 0)
+					session->m_reader.seek(amf0_util::to_integer<std::uint32_t>(start_ms).value_or(std::numeric_limits<std::uint32_t>::max()));
 			}
 		}
 

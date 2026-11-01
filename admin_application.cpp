@@ -10,6 +10,7 @@
 #include <chrono>
 #include <fstream>
 #include <list>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -264,7 +265,8 @@ namespace fms
 		res->set_channel_id(invoke->channel_id());
 		res->set_stream_id(invoke->stream_id());
 
-		if (auto const stats = m_app_manager->get_client_stats(static_cast<std::uint32_t>(id->value())))
+		std::optional<std::uint32_t> const client = amf0_util::to_integer<std::uint32_t>(id->value());
+		if (auto const stats = client ? m_app_manager->get_client_stats(*client) : std::nullopt)
 		{
 			amf0_object_ptr const obj = std::make_shared<amf0_object>();
 			obj->add_entry("time", stats->m_online_time);
@@ -385,7 +387,8 @@ namespace fms
 
 		amf0_number_ptr const id = std::dynamic_pointer_cast<amf0_number>(*i);
 
-		m_app_manager->destroy_connection(static_cast<std::uint32_t>(id->value()));
+		if (std::optional<std::uint32_t> const client = amf0_util::to_integer<std::uint32_t>(id->value()))
+			m_app_manager->destroy_connection(*client);
 	}
 
 	bool admin_application::check_client(std::uint32_t connection_id)

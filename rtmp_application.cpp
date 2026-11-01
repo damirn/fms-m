@@ -8,6 +8,7 @@
 #include "so_manager.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 namespace fms
@@ -355,7 +356,10 @@ namespace fms
 		// take() frees this connection's slot before the callback runs -- the
 		// bandwidth exchange re-registers the same handler under a fresh id from
 		// inside it, which would otherwise be charged against a slot we still hold.
-		result_handler_ptr const res = m_result_handlers.take(static_cast<std::uint32_t>(msg->invoke_id()->value()));
+		std::optional<std::uint32_t> const id = amf0_util::to_integer<std::uint32_t>(msg->invoke_id()->value());
+		if (!id)
+			return false;   // no transaction of ours carries that id
+		result_handler_ptr const res = m_result_handlers.take(*id);
 		if (!res)
 			return false;
 		return res->m_call_back(msg, res, result);
