@@ -9,7 +9,9 @@
 #include "stream_recorder.h"
 #include "util.h"
 
+#include <cmath>
 #include <filesystem>
+#include <iterator>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -384,12 +386,19 @@ namespace fms
 				bool const res = found.has_value();
 				stream_client_id_t const bcaster_id = res ? *found : stream_client_id_t{};
 
-				// No live publisher: if a saved .flv exists, serve it as VOD.
+				// play start: >= 0 a recording (or a live publisher), -1 live only, -2 either.
 				if (!res && !is_remote)
 				{
 					forget_subscription(connection_id, invoke->stream_id(), lock);
-					if (m_vod.start(connection_id, invoke, stream_name))
+					double const start = play_start(params);
+					bool const live_only = start < 0 && start > -2;
+					if (!live_only && m_vod.start(connection_id, invoke, stream_name))
 						return;
+					if (start >= 0)
+					{
+						send_stream_not_found(connection_id, invoke->stream_id(), stream_name);
+						return;
+					}
 				}
 
 				add_waiting_client(connection_id, invoke, stream_name, lock);
@@ -513,6 +522,33 @@ namespace fms
 			notify(connection_id);
 		}
 		return result;
+	}
+
+	double media_application::play_start(const rtmp_message_invoke::parameters_list_t &params)
+	{
+		// [command object, name, start, ...]; absent or not a number is the -2 default.
+		if (params.size() < 3)
+			return -2;
+		amf0_number_ptr const n = std::dynamic_pointer_cast<amf0_number>(*std::next(params.begin(), 2));
+		if (!n || std::isnan(n->value()))
+			return -2;
+		return n->value();
+	}
+
+	void media_application::send_stream_not_found(std::uint32_t connection_id, std::uint32_t stream_id, const std::string &stream_name)
+	{
+		rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
+		result->set_stream_id(stream_id);
+		result->add_parameter(std::make_shared<amf0_null>());
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
+		obj->add_entry("level", "error");
+		obj->add_entry("code", "NetStream.Play.StreamNotFound");
+		obj->add_entry("description", "Failed to play " + stream_name + "; stream not found.");
+		obj->add_entry("details", stream_name);
+		obj->add_entry("clientid", static_cast<double>(connection_id));
+		result->add_parameter(obj);
+		enqueue_async_message(connection_id, result);
+		notify(connection_id);
 	}
 
 	void media_application::send_publish_notify(std::uint32_t connection_id, std::uint32_t stream_id, const std::string &stream_name)
