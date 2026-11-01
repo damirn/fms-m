@@ -87,7 +87,8 @@ namespace fms
 		bool m_new_message{false};
 		std::mutex m_mutex;
 
-		std::optional<so_data_ptr> find_so(const rtmp_message_shared_object_ptr&);
+		// The named object, only for a connection that is using it.
+		std::optional<so_data_ptr> find_so(const rtmp_message_shared_object_ptr&, std::uint32_t connection_id);
 
 		// Whether a value writes within its share of a Use reply's byte and node budget.
 		[[nodiscard]] static bool replayable(const amf0_type_ptr &);
