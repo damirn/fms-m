@@ -47,9 +47,12 @@ namespace fms
 
 		// Adopt a socket accepted by async_accept(executor). The moved-in socket
 		// must belong to the same io_context this connection was created on.
+		// Small media and poll replies go out at once rather than waiting on Nagle.
 		void adopt_socket(boost::asio::ip::tcp::socket &&s)
 		{
 			m_socket = std::move(s);
+			boost::system::error_code ec;
+			m_socket.set_option(boost::asio::ip::tcp::no_delay(true), ec);
 		}
 
 	protected:

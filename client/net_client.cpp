@@ -53,6 +53,8 @@ namespace fms::rtmp_client
 	{
 		if (!err)
 		{
+			boost::system::error_code ec;
+			m_socket.set_option(boost::asio::ip::tcp::no_delay(true), ec);   // frames leave as they are written
 			m_connected = true;
 			m_connect_cb(m_connected, "");
 			m_timer.expires_at(boost::asio::steady_timer::time_point::max());

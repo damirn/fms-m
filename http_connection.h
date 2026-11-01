@@ -39,9 +39,12 @@ namespace fms
 
 		// Adopt a socket accepted on this connection's own io_context, so the socket
 		// and its owner never straddle io_contexts (like rtmp_connection).
+		// Small media and poll replies go out at once rather than waiting on Nagle.
 		void adopt_socket(boost::asio::ip::tcp::socket &&s)
 		{
 			m_socket = std::move(s);
+			boost::system::error_code ec;
+			m_socket.set_option(boost::asio::ip::tcp::no_delay(true), ec);
 		}
 
 	protected:
