@@ -19,13 +19,16 @@ namespace fms
 		// False on any OpenSSL failure, with `to` cleared.
 		[[nodiscard]] bool encrypt(byte_writer &, byte_writer &);
 
+		// Writable key buffers: handing one out schedules that key again on its next use.
 		std::uint8_t *dec_key_data()
 		{
+			m_dec_rekey = true;
 			return m_dec_key_data;
 		}
 
 		std::uint8_t *enc_key_data()
 		{
+			m_enc_rekey = true;
 			return m_enc_key_data;
 		}
 
@@ -76,6 +79,12 @@ namespace fms
 		EVP_CIPHER_CTX *m_encrypt_ctx{nullptr};
 		std::uint8_t m_dec_key_data[eKeySize * 2]{};
 		std::uint8_t m_enc_key_data[eKeySize * 2]{};
+		bool m_dec_rekey{true};
+		bool m_enc_rekey{true};
+
+		// Ready `ctx` for one packet: the key schedule is built only when `rekey`, the
+		// IV is reset every time. False on an OpenSSL failure.
+		[[nodiscard]] static bool begin_packet(EVP_CIPHER_CTX *ctx, const std::uint8_t *key, bool &rekey, int enc);
 
 		bool m_hmac_send{false};
 		bool m_hmac_recv{false};

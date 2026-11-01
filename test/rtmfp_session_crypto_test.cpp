@@ -117,3 +117,38 @@ TEST_CASE("aes wipes its session and HMAC keys when destroyed")
 	}
 	CHECK(longest < 8);
 }
+
+TEST_CASE("aes: every packet starts from the zero IV, and a rewritten key takes effect")
+{
+	byte_writer plain;
+	for (int i = 0; i < 32; ++i)
+		plain << static_cast<std::uint8_t>(i);
+
+	aes a;
+	byte_writer c1, c2;
+	REQUIRE(a.encrypt(plain, c1));
+	REQUIRE(a.encrypt(plain, c2));
+	CHECK(std::vector<std::uint8_t>(c1.data(), c1.data() + c1.size()) ==
+		std::vector<std::uint8_t>(c2.data(), c2.data() + c2.size()));
+
+	for (byte_writer *c : {&c1, &c2})
+	{
+		byte_reader r(c->data(), c->size());
+		byte_writer out;
+		a.decrypt(r, out);
+		CHECK(std::vector<std::uint8_t>(out.data(), out.data() + out.size()) ==
+			std::vector<std::uint8_t>(plain.data(), plain.data() + plain.size()));
+	}
+
+	std::memset(a.enc_key_data(), 0x5A, 32);   // the session key replaces the default one
+	byte_writer c3;
+	REQUIRE(a.encrypt(plain, c3));
+	aes fresh;
+	std::memset(fresh.enc_key_data(), 0x5A, 32);
+	byte_writer c4;
+	REQUIRE(fresh.encrypt(plain, c4));
+	CHECK(std::vector<std::uint8_t>(c3.data(), c3.data() + c3.size()) ==
+		std::vector<std::uint8_t>(c4.data(), c4.data() + c4.size()));
+	CHECK(std::vector<std::uint8_t>(c3.data(), c3.data() + c3.size()) !=
+		std::vector<std::uint8_t>(c1.data(), c1.data() + c1.size()));
+}

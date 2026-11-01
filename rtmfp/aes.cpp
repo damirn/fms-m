@@ -31,6 +31,17 @@ namespace fms
 		OPENSSL_cleanse(m_rx_hmac_key, sizeof m_rx_hmac_key);
 	}
 
+	bool aes::begin_packet(EVP_CIPHER_CTX *ctx, const std::uint8_t *key, bool &rekey, int enc)
+	{
+		if (!rekey)
+			return EVP_CipherInit_ex(ctx, nullptr, nullptr, nullptr, m_iv, enc) == 1;
+		if (EVP_CipherInit_ex(ctx, EVP_aes_128_cbc(), nullptr, key, m_iv, enc) != 1
+			|| EVP_CIPHER_CTX_set_padding(ctx, 0) != 1)
+			return false;
+		rekey = false;
+		return true;
+	}
+
 	void aes::decrypt(byte_reader &from, byte_writer &to)
 	{
 		to.clear();
@@ -42,9 +53,8 @@ namespace fms
 		if (m_decrypt_ctx == nullptr || n == 0 || n % 16 != 0)
 			return;
 		int outlen1 = 0;
-		if (EVP_CipherInit_ex(m_decrypt_ctx, EVP_aes_128_cbc(), nullptr, m_dec_key_data, m_iv, 0) != 1)
+		if (!begin_packet(m_decrypt_ctx, m_dec_key_data, m_dec_rekey, 0))
 			return;
-		EVP_CIPHER_CTX_set_padding(m_decrypt_ctx, 0);
 		// padding off + block-aligned input, so plaintext == ciphertext size
 		std::uint8_t *dst = to.extend(n);
 		if (EVP_CipherUpdate(m_decrypt_ctx, dst, &outlen1, from.read_pos(), static_cast<int>(n)) != 1)
@@ -58,9 +68,8 @@ namespace fms
 			return false;
 
 		int outlen1 = 0;
-		if (EVP_CipherInit_ex(m_encrypt_ctx, EVP_aes_128_cbc(), nullptr, m_enc_key_data, m_iv, 1) != 1)
+		if (!begin_packet(m_encrypt_ctx, m_enc_key_data, m_enc_rekey, 1))
 			return false;
-		EVP_CIPHER_CTX_set_padding(m_encrypt_ctx, 0);
 
 		// The plaintext is block-aligned (add_padding) and padding is disabled, so
 		// CBC emits exactly from.size() bytes; reserve that and encrypt in place.
