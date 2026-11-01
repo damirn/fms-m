@@ -61,9 +61,10 @@ namespace fms
 			break;
 		case eHeaderContinue:
 			h.m_header_size = channel_bytes_count;
-			if (h.m_has_extended_ts)   // rtmp_specification_1.0: 5.3.1.3
+			if (h.m_has_extended_ts)   // 5.3.1.3: repeats the previous field; the channel applies it
 			{
-				if (!r.try_u32_be(h.m_timestamp))
+				std::uint32_t repeated;
+				if (!r.try_u32_be(repeated))
 					return false;
 			}
 			break;

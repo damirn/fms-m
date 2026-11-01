@@ -428,6 +428,40 @@ TEST_CASE("chunk parser: extended timestamp (ts >= 0xFFFFFF)")
 	CHECK(h.messages[0].payload == p);
 }
 
+TEST_CASE("chunk parser: type-3 chunks after an extended type-1 delta keep the absolute timestamp")
+{
+	constexpr std::uint32_t delta = 0x01000000;
+	auto const p1 = pattern(10, 1);
+	auto const p2 = pattern(200, 2);
+	auto const p3 = pattern(200, 3);
+	chunk_stream cs;
+	cs.message(4, AUDIO, 1, 1000, p1);
+	// type 1 with an extended delta, its body split over a type-3 continuation that
+	// repeats the 4-byte field
+	cs.hdr1(4, 0xFFFFFF, 200, AUDIO);
+	cs.u32be(delta);
+	cs.raw(p2.data(), 128);
+	cs.hdr3(4);
+	cs.u32be(delta);
+	cs.raw(p2.data() + 128, 72);
+	// a new message opened by type 3 reuses the same delta
+	cs.hdr3(4);
+	cs.u32be(delta);
+	cs.raw(p3.data(), 128);
+	cs.hdr3(4);
+	cs.u32be(delta);
+	cs.raw(p3.data() + 128, 72);
+
+	parser_harness h;
+	h.feed(cs.bytes);
+
+	REQUIRE(h.messages.size() == 3);
+	CHECK(h.messages[1].timestamp == 1000 + delta);
+	CHECK(h.messages[1].payload == p2);
+	CHECK(h.messages[2].timestamp == 1000 + 2 * delta);
+	CHECK(h.messages[2].payload == p3);
+}
+
 TEST_CASE("chunk parser: multiple back-to-back messages in one buffer")
 {
 	chunk_stream cs;
