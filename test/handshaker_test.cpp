@@ -342,3 +342,22 @@ TEST_CASE("RTMPE type 8 and 9 handshakes scramble S2 and verify a scrambled C2")
 		CHECK_FALSE(h.validate_c2(view_of(unscrambled)));
 	}
 }
+
+TEST_CASE("a plaintext signed handshake ignores the DH slot of C1")
+{
+	// Only RTMPE uses C1's DH public key. A plaintext fp9 client may leave any bytes
+	// there, including a value with no shared secret.
+	c1_buf c1 = make_signed_c1(0);
+	std::uint32_t const dh_off = rtmp_handshake::dh_offset(view_of(c1), 0);
+	std::uint32_t const dig_off = rtmp_handshake::digest_offset(view_of(c1), 0);
+	REQUIRE((dh_off + 128 <= dig_off || dig_off + 32 <= dh_off));
+	std::fill(c1.begin() + dh_off, c1.begin() + dh_off + 128, std::uint8_t{0});
+	REQUIRE(rtmp_handshake::compute_digest(view_of(c1), dig_off, {genuine_keys::FP_key, 30},
+		rtmp_handshake::digest_out(c1.data() + dig_off, 32)));   // re-sign over the new bytes
+	REQUIRE(rtmp_handshake::validate_digest(view_of(c1), 0, {genuine_keys::FP_key, 30}));
+
+	rtmp_handshaker h;
+	CHECK(h.build_response(rtmp_handshaker::ePlainMagic, span_of(c1)));
+	CHECK_FALSE(h.sid().empty());
+	CHECK_FALSE(h.encrypting());
+}
