@@ -83,6 +83,7 @@ namespace fms::rtmp_client
 		}
 
 		std::vector<std::uint8_t> const &body = m_parser->get().body();
+		bool const ok = m_parser->get().result() == http::status::ok;
 
 		if (m_state == eOpening)
 		{
@@ -94,6 +95,12 @@ namespace fms::rtmp_client
 					break;
 				m_cid.push_back(static_cast<char>(c));
 			}
+			if (!ok || m_cid.empty())
+			{
+				close_socket();
+				m_connect_cb(false, "the server refused the tunnel (HTTP " + std::to_string(m_parser->get().result_int()) + ")");
+				return;
+			}
 			m_state = eReady;
 			arm_timer();
 			m_connect_cb(true, "");
@@ -101,6 +108,12 @@ namespace fms::rtmp_client
 		}
 
 		m_write_in_progress = false;
+		if (!ok)
+		{
+			close_socket();   // the session is gone or was refused
+			m_read_cb(false, 0);
+			return;
+		}
 		deliver(body);
 	}
 

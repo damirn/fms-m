@@ -534,3 +534,34 @@ TEST_CASE("b2b: the client drops a server whose chunk stream breaks the framing 
 
 	CHECK(saw(nc.status, "NetConnection.Connect.Closed"));
 }
+
+TEST_CASE("b2b(rtmpt): a refused tunnel open is a failed connect, not a success")
+{
+	using boost::asio::ip::tcp;
+	boost::asio::io_context server_io;
+	tcp::acceptor acceptor(server_io, {boost::asio::ip::address_v4::loopback(), 0});
+	unsigned short const port = acceptor.local_endpoint().port();
+
+	std::thread server([&]
+	{
+		boost::system::error_code ec;
+		tcp::socket s = acceptor.accept(ec);
+		if (ec)
+			return;
+		boost::asio::streambuf req;
+		boost::asio::read_until(s, req, "\r\n\r\n", ec);
+		std::string const reply = "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n";
+		boost::asio::write(s, boost::asio::buffer(reply), ec);
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+	});
+
+	boost::asio::io_context io;
+	status_nc nc;
+	auto const conn = std::make_shared<net_connection>(io, nc, true);
+	conn->connect("rtmpt://127.0.0.1:" + std::to_string(port) + "/media");
+	io.run_for(std::chrono::seconds(2));
+	server.join();
+
+	CHECK_FALSE(saw(nc.status, "NetConnection.Connect.Success"));
+	CHECK(saw(nc.status, "NetConnection.Connect.Failed"));
+}
