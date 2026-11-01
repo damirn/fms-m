@@ -300,21 +300,10 @@ namespace fms
 
 	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, std::uint32_t value)
 	{
-		std::unique_lock const lock(m_stats_mutex);
-		if (is_inbound)
-		{
-			if (is_bytes)
-				m_stats.m_bytes_read += value;
-			else
-				m_stats.m_messages_read += value;
-		}
-		else
-		{
-			if (is_bytes)
-				m_stats.m_bytes_written += value;
-			else
-				m_stats.m_messages_written += value;
-		}
+		std::atomic<std::uint32_t> &counter = is_inbound
+			? (is_bytes ? m_bytes_read : m_messages_read)
+			: (is_bytes ? m_bytes_written : m_messages_written);
+		counter.fetch_add(value, std::memory_order_relaxed);
 	}
 
 	boost::tribool rtmp_application::handle_invoke(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
