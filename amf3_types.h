@@ -36,7 +36,12 @@ namespace fms
 			eAMF3Array,
 			eAMF3Object,
 			eAMF3XML,
-			eAMF3ByteArray
+			eAMF3ByteArray,
+			eAMF3VectorInt,
+			eAMF3VectorUint,
+			eAMF3VectorDouble,
+			eAMF3VectorObject,
+			eAMF3Dictionary
 		};
 
 		explicit amf3_type(etype t)
@@ -357,4 +362,75 @@ namespace fms
 	};
 
 	using amf3_array_type_ptr = std::shared_ptr<amf3_array_type>;
+
+	// Vector.<int>, Vector.<uint> and Vector.<Number>: raw numbers, fixed-length or not.
+	template <amf3_type::etype Marker, class T>
+	class amf3_numeric_vector_type final : public amf3_type
+	{
+	public:
+		amf3_numeric_vector_type()
+			: amf3_type(Marker)
+		{}
+
+		std::vector<T> &value() { return m_values; }
+		const std::vector<T> &value() const { return m_values; }
+		bool &fixed() { return m_fixed; }
+		bool fixed() const { return m_fixed; }
+
+	protected:
+		std::vector<T> m_values;
+		bool m_fixed{false};
+	};
+
+	using amf3_vector_int_type = amf3_numeric_vector_type<amf3_type::eAMF3VectorInt, std::int32_t>;
+	using amf3_vector_uint_type = amf3_numeric_vector_type<amf3_type::eAMF3VectorUint, std::uint32_t>;
+	using amf3_vector_double_type = amf3_numeric_vector_type<amf3_type::eAMF3VectorDouble, double>;
+	using amf3_vector_int_type_ptr = std::shared_ptr<amf3_vector_int_type>;
+	using amf3_vector_uint_type_ptr = std::shared_ptr<amf3_vector_uint_type>;
+	using amf3_vector_double_type_ptr = std::shared_ptr<amf3_vector_double_type>;
+
+	// Vector.<T> of objects: AMF3 values under one element type name ("" for any).
+	class amf3_vector_object_type final : public amf3_type
+	{
+	public:
+		amf3_vector_object_type()
+			: amf3_type(eAMF3VectorObject)
+		{}
+
+		std::vector<amf3_type_ptr> &value() { return m_values; }
+		const std::vector<amf3_type_ptr> &value() const { return m_values; }
+		std::string &type_name() { return m_type_name; }
+		const std::string &type_name() const { return m_type_name; }
+		bool &fixed() { return m_fixed; }
+		bool fixed() const { return m_fixed; }
+
+	protected:
+		std::vector<amf3_type_ptr> m_values;
+		std::string m_type_name;
+		bool m_fixed{false};
+	};
+
+	using amf3_vector_object_type_ptr = std::shared_ptr<amf3_vector_object_type>;
+
+	// flash.utils.Dictionary: AMF3 values keyed by AMF3 values, in wire order.
+	class amf3_dictionary_type final : public amf3_type
+	{
+	public:
+		amf3_dictionary_type()
+			: amf3_type(eAMF3Dictionary)
+		{}
+
+		using entries_t = std::vector<std::pair<amf3_type_ptr, amf3_type_ptr>>;
+
+		entries_t &value() { return m_entries; }
+		const entries_t &value() const { return m_entries; }
+		bool &weak_keys() { return m_weak_keys; }
+		bool weak_keys() const { return m_weak_keys; }
+
+	protected:
+		entries_t m_entries;
+		bool m_weak_keys{false};
+	};
+
+	using amf3_dictionary_type_ptr = std::shared_ptr<amf3_dictionary_type>;
 }

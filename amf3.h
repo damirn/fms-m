@@ -87,6 +87,12 @@ namespace fms
 		amf3_type_ptr read_object(byte_reader &);
 		void write_object(byte_writer &, const amf3_object_type_ptr&);
 
+		amf3_type_ptr read_vector(byte_reader &, std::uint8_t marker);
+		void write_vector(byte_writer &, const amf3_type_ptr&);
+
+		amf3_type_ptr read_dictionary(byte_reader &);
+		void write_dictionary(byte_writer &, const amf3_dictionary_type_ptr&);
+
 		static std::uint32_t read_u29(byte_reader &);
 
 		// Returns the referenced object, or nullptr if idx is out of range.
