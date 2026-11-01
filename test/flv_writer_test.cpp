@@ -165,3 +165,29 @@ TEST_CASE("flv_reader: a leading onMetaData tag is kept as metadata and not retu
 	CHECK_FALSE(r.read_frame());
 	fs::remove(path);
 }
+
+TEST_CASE("flv_reader: seek lands on the last keyframe before the target")
+{
+	std::string const path = temp_path("seekkey");
+	fs::remove(path);
+	{
+		flv_writer w(path);
+		char const key[] = {0x17, 0x01, 0x00};
+		char const inter[] = {0x27, 0x01, 0x00};
+		for (std::uint32_t t = 0; t < 3000; t += 40)
+			w.write_video(t % 1000 == 0 ? key : inter, 3, t);
+		w.close();
+	}
+	flv_reader r;
+	r.open(path);
+	REQUIRE(r.is_open());
+	r.seek(1500);
+	REQUIRE(r.read_frame());
+	CHECK(r.get_frame()->timestamp() == 1000);   // the keyframe that starts that GOP
+	r.seek(2000);
+	REQUIRE(r.read_frame());
+	CHECK(r.get_frame()->timestamp() == 2000);   // exactly on a keyframe
+	r.seek(10000);
+	CHECK_FALSE(r.read_frame());                 // past the end
+	fs::remove(path);
+}

@@ -37,8 +37,9 @@ namespace fms
 		}
 
 
-		// Position so the next read_frame() returns the first audio/video tag whose
-		// timestamp is >= ms (or leaves the reader at EOF if none).
+		// Position so the next read_frame() returns a frame playback can decode from
+		// at `ms`: the first audio/video tag at or after it when that is a keyframe or
+		// nothing precedes it, else the last keyframe before. EOF past the last tag.
 		void seek(std::uint32_t ms);
 
 	protected:
