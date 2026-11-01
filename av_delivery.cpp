@@ -135,8 +135,8 @@ namespace fms
 		{
 			if (video->get_codec() == rtmp_message_video_data::eAVC)
 			{
-				// "not yet stored" == null value
-				if (!bc->avc_config.load() && video->size() > 1 && video->data()[1] == 0)
+				// the latest sequence header governs every NALU after it
+				if (video->size() > 1 && video->data()[1] == 0)
 					bc->avc_config.store(video);
 			}
 			vq.clear();

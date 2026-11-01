@@ -267,3 +267,24 @@ TEST_CASE("av_delivery: onMetaData of any other AMF type is ignored")
 	f.av.route_metadata(std::make_shared<amf0_string>("x"), f.bcid);
 	CHECK(f.host.metadata_count(2) == 0);
 }
+
+TEST_CASE("av_delivery: a mid-stream AVC sequence header replaces the one a late joiner is primed with")
+{
+	fixture f;
+	auto first = vframe(KEY, AVC, 0, 10);
+	first->data()[2] = 0x11;
+	auto second = vframe(KEY, AVC, 0, 50);
+	second->data()[2] = 0x22;
+	f.av.route_video(first, f.bcid);
+	f.av.route_video(vframe(KEY, AVC, 1, 20), f.bcid);
+	f.av.route_video(second, f.bcid);
+
+	f.add_subscriber(3, 7);
+	f.host.log.clear();
+	f.av.route_video(vframe(KEY, AVC, 1, 60), f.bcid);
+
+	auto const v = f.host.videos(3);
+	REQUIRE(!v.empty());
+	CHECK(v.front()->data()[1] == 0x00);
+	CHECK(v.front()->data()[2] == 0x22);
+}
