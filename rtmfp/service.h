@@ -82,7 +82,10 @@ namespace fms
 		boost::asio::ip::udp::socket m_socket;
 		boost::asio::ip::udp::endpoint m_sender_endpoint;
 		bool m_read_in_progress{false};
-		bool m_write_in_progress{false};
+		// Each datagram owns its bytes, so sends overlap up to this bound.
+		static constexpr std::size_t eMaxSendsInFlight = 256;
+		std::size_t m_sends_in_flight{0};
+		bool can_send() const { return m_sends_in_flight < eMaxSendsInFlight; }
 		parser *m_parser;
 		serializer *m_serializer;
 
@@ -102,13 +105,12 @@ namespace fms
 
 		using sid_to_session_map_t = std::map<std::uint32_t, session_ptr>;
 		sid_to_session_map_t m_sessions;
-		sid_to_session_map_t::iterator m_sessions_iterator;
 
 		group_registry m_groups;
 
 		using endpoint_chunk_pair_t = std::pair<boost::asio::ip::udp::endpoint, std::unique_ptr<chunk>>;
-		// Redirects pending a send slot. Bounded: one is pushed per peer-lookup
-		// IHello, and it only drains from handle_send_to.
+		// Redirects pending a send. Bounded: one is pushed per peer-lookup IHello,
+		// and it only drains from handle_send_to.
 		static constexpr std::size_t eMaxQueuedRedirects = 1024;
 		std::queue<endpoint_chunk_pair_t> m_queue;
 
