@@ -452,3 +452,40 @@ TEST_CASE("b2b: pause actually halts the VOD, unpause resumes it")
 
 	std::error_code ec; fs::remove_all(dir, ec);
 }
+
+namespace
+{
+	// Connect, then close the moment the connection is up.
+	struct closing_nc : net_connection_event_handler
+	{
+		net_connection_ptr conn;
+		bool connected = false;
+		void on_status(const std::string &s) override
+		{
+			if (s == "NetConnection.Connect.Success")
+			{
+				connected = true;
+				conn->close();
+			}
+		}
+	};
+}
+
+TEST_CASE("b2b(rtmpt): a closed tunnel client stops polling")
+{
+	int const port = 26005;
+	fs::path const dir = fs::temp_directory_path() / "fms_b2b_rtmpt_close";
+	fs::create_directories(dir);
+	server_process server(dir.string(), port);
+
+	boost::asio::io_context io;
+	closing_nc nc;
+	nc.conn = std::make_shared<net_connection>(io, nc, true);
+	nc.conn->connect("rtmpt://127.0.0.1:" + std::to_string(port + 1) + "/media");
+	io.run_for(std::chrono::seconds(8));
+
+	CHECK(nc.connected);
+	CHECK(io.stopped());   // nothing left queued: no poll timer outlives the close
+
+	std::error_code ec; fs::remove_all(dir, ec);
+}

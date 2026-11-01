@@ -61,7 +61,8 @@ namespace fms::rtmp_client
 		virtual void read_data(std::size_t = 1);
 		virtual void write_data();
 
-		void close_socket();
+		// Close the socket and stop every timer this client runs.
+		virtual void close_socket();
 
 	protected:
 		void start(const boost::asio::ip::tcp::resolver::results_type &);

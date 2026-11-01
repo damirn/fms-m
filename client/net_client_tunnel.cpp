@@ -126,13 +126,19 @@ namespace fms::rtmp_client
 
 	void net_client_tunnel::arm_timer()
 	{
-		m_timer.expires_after(std::chrono::milliseconds(m_ms_timer));
-		m_timer.async_wait([self = shared_tunnel()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+		m_poll_timer.expires_after(std::chrono::milliseconds(m_ms_timer));
+		m_poll_timer.async_wait([self = shared_tunnel()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+	}
+
+	void net_client_tunnel::close_socket()
+	{
+		net_client::close_socket();
+		m_poll_timer.cancel();
 	}
 
 	void net_client_tunnel::handle_timer(const boost::system::error_code &e)
 	{
-		if (e)
+		if (e || m_stopped)
 			return;
 		arm_timer();
 		if (!m_write_in_progress)
