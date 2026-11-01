@@ -71,9 +71,12 @@ namespace fms
 			bs->recorder->record_video(video);
 	}
 
-	void av_delivery::route_metadata(const amf0_type_ptr &meta, const stream_client_id_t &cid)
+	void av_delivery::route_metadata(const amf0_type_ptr &data, const stream_client_id_t &cid)
 	{
 		// caller holds the shared lock.
+		amf0_object_ptr const meta = as_object(data);
+		if (!meta)
+			return;
 		update_metadata(cid, meta);
 
 		m_registry.for_each_subscriber(cid, [&](const stream_client_id_t &, const stream_client_ptr &client)
@@ -99,11 +102,8 @@ namespace fms
 		}
 	}
 
-	void av_delivery::update_metadata(const stream_client_id_t &cid, const amf0_type_ptr &data)
+	void av_delivery::update_metadata(const stream_client_id_t &cid, const amf0_object_ptr &obj)
 	{
-		amf0_object_ptr const obj = std::dynamic_pointer_cast<amf0_object>(data);
-		if (!obj)
-			return;
 		stream_registry::broadcast_stream *const bs = m_registry.find_broadcast(cid);
 		if (!bs)
 			return;   // metadata for a stream that isn't published -> nothing to attach it to

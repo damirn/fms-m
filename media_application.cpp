@@ -480,8 +480,6 @@ namespace fms
 			if (str->value() == "onMetaData")
 			{
 				++i;
-				if ((*i)->type() != amf0_type::eAMF0Object)
-					return;
 				stream_client_id_t const cid = std::make_pair(connection_id, msg->stream_id());
 				auto const lock = m_registry.lock_exclusive();
 				m_av.route_metadata(*i, cid);

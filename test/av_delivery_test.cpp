@@ -241,3 +241,29 @@ TEST_CASE("av_delivery: onMetaData is fanned out to subscribers")
 	f.av.route_metadata(obj, f.bcid);
 	CHECK(f.host.metadata_count(2) == 1);
 }
+
+TEST_CASE("av_delivery: onMetaData sent as an ECMA array is stored and fanned out as an object")
+{
+	fixture f;
+	auto arr = std::make_shared<amf0_ecma_array>();
+	arr->add_entry("width", 320.0);
+	arr->add_entry("height", 240.0);
+	arr->add_entry("width", 640.0);
+	f.av.route_metadata(arr, f.bcid);
+	REQUIRE(f.host.metadata_count(2) == 1);
+
+	auto const *bs = f.reg.find_broadcast(f.bcid);
+	REQUIRE(bs != nullptr);
+	REQUIRE(bs->metadata != nullptr);
+	auto const w = bs->metadata->value().find("width");
+	REQUIRE(w != bs->metadata->value().end());
+	CHECK(static_cast<double>(*w->m_value) == 640.0);
+	CHECK(bs->metadata->value().find("height") != bs->metadata->value().end());
+}
+
+TEST_CASE("av_delivery: onMetaData of any other AMF type is ignored")
+{
+	fixture f;
+	f.av.route_metadata(std::make_shared<amf0_string>("x"), f.bcid);
+	CHECK(f.host.metadata_count(2) == 0);
+}
