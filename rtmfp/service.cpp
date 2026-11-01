@@ -17,6 +17,7 @@
 #include <cstring>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #include <openssl/rand.h>
 
@@ -33,7 +34,6 @@ namespace fms
 		, m_io_context(io_context)
 		, m_socket(io_context, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port))
 		, m_start(std::chrono::system_clock::now())
-		, m_sessions_iterator(m_sessions.begin())
 	{
 		// A predictable secret defeats the authenticated-cookie check entirely.
 		if (RAND_bytes(m_cookie_secret, sizeof(m_cookie_secret)) != 1)
@@ -72,9 +72,15 @@ namespace fms
 		if (buffer.size() == 0)
 			return;   // serialization failed; an empty datagram helps nobody
 
-		m_write_in_progress = true;
-		m_socket.async_send_to(boost::asio::buffer(buffer.data(), buffer.size()), ep,
-			[this](const boost::system::error_code &ec, std::size_t bytes) { handle_send_to(ec, bytes); });
+		// A copy, so the serializer is free for the next packet while this one is in flight.
+		auto const datagram = std::make_shared<std::vector<std::uint8_t>>(buffer.data(), buffer.data() + buffer.size());
+		++m_sends_in_flight;
+		m_socket.async_send_to(boost::asio::buffer(*datagram), ep,
+			[this, datagram](const boost::system::error_code &ec, std::size_t bytes)
+			{
+				--m_sends_in_flight;
+				handle_send_to(ec, bytes);
+			});
 	}
 
 	void service::handle_receive_from(const boost::system::error_code &e, size_t bytes_received)
@@ -125,10 +131,8 @@ namespace fms
 					byte_reader packet(m_buffer.data() + 4, ct_len);
 					if (s->parse(packet))
 					{
-						// don't start a second async_send_to while one is in flight (it
-						// would overwrite the shared serializer buffer mid-send); pending
-						// data is flushed later by handle_send_to -> handle_notify
-						if (!m_write_in_progress && s->has_data_to_send(m_serializer))
+						// at the send cap, pending data is flushed by handle_send_to -> handle_notify
+						if (can_send() && s->has_data_to_send(m_serializer))
 						{
 							write(m_serializer->packet(), s->end_point());
 						}
@@ -145,7 +149,6 @@ namespace fms
 
 	void service::handle_send_to(const boost::system::error_code &, size_t)
 	{
-		m_write_in_progress = false;
 		if (!m_read_in_progress)
 			read();
 		if (m_queue.empty())
@@ -198,7 +201,6 @@ namespace fms
 			m_initial_sessions.erase(j);
 			m_sessions[sid] = s;
 			m_session_map[s->peer_id()] = s;
-			m_sessions_iterator = m_sessions.begin();
 			return std::optional<session_ptr>(s);
 		}
 		return std::optional<session_ptr>();
@@ -247,25 +249,25 @@ namespace fms
 				}
 			}
 			m_sessions.erase(i);
-			m_sessions_iterator = m_sessions.begin(); // reset iterator
 		}
 	}
 
 	void service::handle_notify()
 	{
-		if (!m_write_in_progress)
+		// One packet per session per pass, so every session shares the send cap.
+		for (bool sent = true; sent && can_send(); )
 		{
-			while (m_sessions_iterator != m_sessions.end())
+			sent = false;
+			for (auto const &[sid, s] : m_sessions)
 			{
-				if (m_sessions_iterator->second->has_data_to_send(m_serializer))
+				if (!can_send())
+					break;
+				if (s->has_data_to_send(m_serializer))
 				{
-					write(m_serializer->packet(), m_sessions_iterator->second->end_point());
-					++m_sessions_iterator;
-					return;
+					write(m_serializer->packet(), s->end_point());
+					sent = true;
 				}
-				++m_sessions_iterator;
 			}
-			m_sessions_iterator = m_sessions.begin();
 		}
 	}
 
@@ -288,9 +290,7 @@ namespace fms
 
 	void service::handle_ihello(ihello_chunk *ic)
 	{
-		// prepare_raw_packet clears buffers an in-flight send still points into,
-		// so bail before building, not just before writing.
-		if (m_write_in_progress)
+		if (!can_send())
 			return;
 
 		byte_reader s(ic->epd());
@@ -318,9 +318,7 @@ namespace fms
 
 	void service::handle_iikeying(iikeying_chunk *iikc)
 	{
-		// prepare_raw_packet clears buffers an in-flight send still points into,
-		// so bail before building, not just before writing.
-		if (m_write_in_progress)
+		if (!can_send())
 			return;
 
 		if (!echo_cookie_valid(iikc->cookie_echo().data(), iikc->cookie_echo().size()))
@@ -421,9 +419,7 @@ namespace fms
 
 	void service::redirect_ihello(ihello_chunk *ic, const std::uint8_t *peer_id)
 	{
-		// prepare_raw_packet clears buffers an in-flight send still points into,
-		// so bail before building, not just before writing.
-		if (m_write_in_progress)
+		if (!can_send())
 			return;
 
 		item const tmp(peer_id);

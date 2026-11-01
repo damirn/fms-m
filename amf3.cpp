@@ -5,6 +5,9 @@
 #include "byte_writer.h"
 
 #include <cstring>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace fms
 {
@@ -19,6 +22,7 @@ namespace fms
 		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ m_depth };
 		if (m_depth > eMaxDepth)   // bound recursion on hostile nested input
 			throw amf3_read_exception();
+		charge_node();
 
 		std::uint8_t type;
 		buffer >> type;
@@ -46,6 +50,13 @@ namespace fms
 			return read_object(buffer);
 		case amf3_type::eAMF3ByteArray:
 			return read_bytearray(buffer);
+		case amf3_type::eAMF3VectorInt:
+		case amf3_type::eAMF3VectorUint:
+		case amf3_type::eAMF3VectorDouble:
+		case amf3_type::eAMF3VectorObject:
+			return read_vector(buffer, type);
+		case amf3_type::eAMF3Dictionary:
+			return read_dictionary(buffer);
 		default:
 			throw amf3_read_exception();
 		}
@@ -92,6 +103,15 @@ namespace fms
 			break;
 		case amf3_type::eAMF3ByteArray:
 			write_bytearray(buffer, std::dynamic_pointer_cast<amf3_bytearray_type>(type));
+			break;
+		case amf3_type::eAMF3VectorInt:
+		case amf3_type::eAMF3VectorUint:
+		case amf3_type::eAMF3VectorDouble:
+		case amf3_type::eAMF3VectorObject:
+			write_vector(buffer, type);
+			break;
+		case amf3_type::eAMF3Dictionary:
+			write_dictionary(buffer, std::dynamic_pointer_cast<amf3_dictionary_type>(type));
 			break;
 		default:
 			throw amf3_read_exception();
@@ -212,9 +232,15 @@ namespace fms
 
 	void amf3::charge_string_bytes(std::size_t n)
 	{
-		if (n > eMaxDecodedStringBytes - *m_string_bytes)
+		if (n > amf_read_budget::eMaxStringBytes - m_budget->string_bytes)
 			throw amf3_read_exception();
-		*m_string_bytes += n;
+		m_budget->string_bytes += n;
+	}
+
+	void amf3::charge_node()
+	{
+		if (++m_budget->nodes > amf_read_budget::eMaxNodes)
+			throw amf3_read_exception();
 	}
 
 	amf3_string_type_ptr amf3::read_string(byte_reader &buffer)
@@ -358,6 +384,165 @@ namespace fms
 
 		for (auto const &v : arr->dense())
 			write(buffer, v);
+	}
+
+	namespace
+	{
+		template <class T>
+		void read_numbers(byte_reader &buffer, std::uint32_t count, std::vector<T> &out)
+		{
+			// Checked before allocating: a count can claim far more than the body holds.
+			if (count > buffer.available() / sizeof(T))
+				throw buffer_eof_exception();
+			out.resize(count);
+			for (T &v : out)
+			{
+				std::uint64_t u = 0;
+				for (std::size_t i = 0; i < sizeof(T); ++i)   // network (big-endian) order
+				{
+					std::uint8_t b;
+					buffer >> b;
+					u = (u << 8) | b;
+				}
+				if constexpr (std::is_same_v<T, double>)
+					std::memcpy(&v, &u, sizeof v);
+				else
+					v = static_cast<T>(static_cast<std::uint32_t>(u));
+			}
+		}
+
+		template <class T>
+		void write_numbers(byte_writer &buffer, const std::vector<T> &values)
+		{
+			for (T const v : values)
+			{
+				std::uint64_t u = 0;
+				if constexpr (std::is_same_v<T, double>)
+					std::memcpy(&u, &v, sizeof v);
+				else
+					u = static_cast<std::uint32_t>(v);
+				for (int i = static_cast<int>(sizeof(T)) - 1; i >= 0; --i)
+					buffer << static_cast<std::uint8_t>(u >> (8 * i));
+			}
+		}
+
+		template <class Vec>
+		amf3_type_ptr read_numeric_vector(byte_reader &buffer, std::uint32_t count, bool fixed)
+		{
+			auto v = std::make_shared<Vec>();
+			v->fixed() = fixed;
+			read_numbers(buffer, count, v->value());
+			return v;
+		}
+	}
+
+	amf3_type_ptr amf3::read_vector(byte_reader &buffer, std::uint8_t marker)
+	{
+		std::uint32_t const header = read_u29(buffer);
+		if ((header & 0x01) == 0)   // object reference
+			return object_ref(header >> 1);
+		std::uint32_t const count = header >> 1;
+		std::uint8_t fixed = 0;
+		buffer >> fixed;
+
+		if (marker != amf3_type::eAMF3VectorObject)
+		{
+			amf3_type_ptr v;
+			if (marker == amf3_type::eAMF3VectorInt)
+				v = read_numeric_vector<amf3_vector_int_type>(buffer, count, fixed != 0);
+			else if (marker == amf3_type::eAMF3VectorUint)
+				v = read_numeric_vector<amf3_vector_uint_type>(buffer, count, fixed != 0);
+			else
+				v = read_numeric_vector<amf3_vector_double_type>(buffer, count, fixed != 0);
+			register_object(v, true);
+			return v;
+		}
+
+		auto v = std::make_shared<amf3_vector_object_type>();
+		v->fixed() = fixed != 0;
+		v->type_name() = read_string(buffer)->value();
+		std::size_t const ref = register_object(v, false);   // referenceable before populating
+		if (count > buffer.available())                      // every element takes a byte
+			throw buffer_eof_exception();
+		for (std::uint32_t i = 0; i < count; ++i)
+			v->value().push_back(read(buffer));
+		m_object_complete[ref] = true;
+		return v;
+	}
+
+	void amf3::write_vector(byte_writer &buffer, const amf3_type_ptr &value)
+	{
+		auto header = [&buffer](std::size_t count, bool fixed)
+		{
+			write_integer(buffer, (static_cast<std::uint32_t>(count) << 1) | 0x01);
+			buffer << static_cast<std::uint8_t>(fixed ? 1 : 0);
+		};
+		switch (value->type())
+		{
+		case amf3_type::eAMF3VectorInt:
+			{
+				auto const v = std::static_pointer_cast<amf3_vector_int_type>(value);
+				header(v->value().size(), v->fixed());
+				write_numbers(buffer, v->value());
+				break;
+			}
+		case amf3_type::eAMF3VectorUint:
+			{
+				auto const v = std::static_pointer_cast<amf3_vector_uint_type>(value);
+				header(v->value().size(), v->fixed());
+				write_numbers(buffer, v->value());
+				break;
+			}
+		case amf3_type::eAMF3VectorDouble:
+			{
+				auto const v = std::static_pointer_cast<amf3_vector_double_type>(value);
+				header(v->value().size(), v->fixed());
+				write_numbers(buffer, v->value());
+				break;
+			}
+		default:
+			{
+				auto const v = std::static_pointer_cast<amf3_vector_object_type>(value);
+				header(v->value().size(), v->fixed());
+				write_string(buffer, v->type_name());
+				for (amf3_type_ptr const &e : v->value())
+					write(buffer, e);
+				break;
+			}
+		}
+	}
+
+	amf3_type_ptr amf3::read_dictionary(byte_reader &buffer)
+	{
+		std::uint32_t const header = read_u29(buffer);
+		if ((header & 0x01) == 0)   // object reference
+			return object_ref(header >> 1);
+		std::uint32_t const count = header >> 1;
+		auto d = std::make_shared<amf3_dictionary_type>();
+		std::uint8_t weak = 0;
+		buffer >> weak;
+		d->weak_keys() = weak != 0;
+		std::size_t const ref = register_object(d, false);
+		if (count > buffer.available() / 2)   // every key and value takes a byte
+			throw buffer_eof_exception();
+		for (std::uint32_t i = 0; i < count; ++i)
+		{
+			amf3_type_ptr key = read(buffer);
+			d->value().emplace_back(std::move(key), read(buffer));
+		}
+		m_object_complete[ref] = true;
+		return d;
+	}
+
+	void amf3::write_dictionary(byte_writer &buffer, const amf3_dictionary_type_ptr &d)
+	{
+		write_integer(buffer, (static_cast<std::uint32_t>(d->value().size()) << 1) | 0x01);
+		buffer << static_cast<std::uint8_t>(d->weak_keys() ? 1 : 0);
+		for (auto const &[key, value] : d->value())
+		{
+			write(buffer, key);
+			write(buffer, value);
+		}
 	}
 
 	amf3_type_ptr amf3::read_object(byte_reader &buffer)

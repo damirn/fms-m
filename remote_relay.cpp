@@ -5,6 +5,7 @@
 
 #include <csignal>
 #include <cstring>
+#include <fcntl.h>
 #include <mutex>
 #include <spawn.h>
 #include <sys/wait.h>
@@ -22,6 +23,37 @@ namespace fms::remote_relay
 		if (pos == std::string::npos || pos == 0 || pos + 1 == stream.length())
 			return {stream, {}};
 		return {stream.substr(0, pos), stream.substr(pos + 1)};
+	}
+
+	int spawn_isolated(::pid_t &pid, char *const argv[])
+	{
+		posix_spawnattr_t attr;
+		posix_spawn_file_actions_t actions;
+		if (int const rc = ::posix_spawnattr_init(&attr); rc != 0)
+			return rc;
+		if (int const rc = ::posix_spawn_file_actions_init(&actions); rc != 0)
+		{
+			::posix_spawnattr_destroy(&attr);
+			return rc;
+		}
+		int rc = 0;
+#if defined(__APPLE__)
+		rc = ::posix_spawnattr_setflags(&attr, POSIX_SPAWN_CLOEXEC_DEFAULT);
+		for (int fd = 0; rc == 0 && fd <= 2; ++fd)
+			rc = ::posix_spawn_file_actions_addinherit_np(&actions, fd);
+#elif defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 34))
+		rc = ::posix_spawn_file_actions_addclosefrom_np(&actions, 3);
+#else
+		long const max_fd = ::sysconf(_SC_OPEN_MAX);
+		for (int fd = 3; rc == 0 && fd < (max_fd > 0 ? max_fd : 1024); ++fd)
+			if (::fcntl(fd, F_GETFD) != -1)
+				rc = ::posix_spawn_file_actions_addclose(&actions, fd);
+#endif
+		if (rc == 0)
+			rc = ::posix_spawnp(&pid, argv[0], &actions, &attr, argv, environ);
+		::posix_spawn_file_actions_destroy(&actions);
+		::posix_spawnattr_destroy(&attr);
+		return rc;
 	}
 
 	bool spawn_throttle::allow(const std::string &key, clock::time_point now)
@@ -166,7 +198,7 @@ namespace fms::remote_relay
 			// reports failure instead of leaving the parent to mistake -1 for "I am
 			// the parent" and carry on with no helper and no diagnostic.
 			::pid_t pid = 0;
-			if (int const rc = ::posix_spawnp(&pid, argv[0], nullptr, nullptr, argv.data(), environ); rc != 0)
+			if (int const rc = spawn_isolated(pid, argv.data()); rc != 0)
 			{
 				// The cooldown entry stays: a spawn that keeps failing must be
 				// throttled like one that succeeds, or every play() retries it.

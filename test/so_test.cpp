@@ -715,3 +715,29 @@ TEST_CASE("so_manager: a release after a full use reply still releases")
 	sm.remove_connection(1);
 	CHECK(sm.size() == 0);
 }
+
+TEST_CASE("so_manager: a connection that never used an object cannot change, remove or message it")
+{
+	sink sk;
+	so_manager sm(sk.fn());
+	do_use(sm, "room", 1);
+	REQUIRE(do_change(sm, "room", 1, "topic", "hello"));
+	sk.recs.clear();
+
+	so_ptr const changed = do_change(sm, "room", 9, "topic", "spam");
+	CHECK((changed == nullptr || !has_event(changed, SO::eSuccess)));
+
+	auto rm = make_so("room");
+	REQUIRE(rm->add_event(remove_ev("topic")));
+	rtmp_message_ptr r;
+	sm.handle_so(rm, 9, r);
+
+	auto msg = make_so("room");
+	REQUIRE(msg->add_event(ev(SO::eSendMessage)));
+	sm.handle_so(msg, 9, r);
+
+	CHECK(sk.recs.empty());   // the members heard nothing from the outsider
+	so_ptr const replay = use_reply(sm, "room", 2);
+	REQUIRE(replay);
+	CHECK(change_value(replay, "topic") == "hello");   // the stored value is the member's
+}

@@ -2,10 +2,9 @@
 // state keyed on that id has to go at the same time: remove_client walks the
 // owned ids and can never reach it afterwards.
 
-#include "app_host.h"
 #include "doctest.h"
-#include "io_context_pool.h"
 #include "media_application.h"
+#include "null_app_host.h"
 #include "rtmp_message.h"
 #include "stream_client.h"
 
@@ -18,47 +17,13 @@ using namespace fms;
 
 namespace
 {
-	struct null_host : app_host
-	{
-		null_host() : m_pool(1) {}
-
-		client_session_ptr get_connection_opt(std::uint32_t) override { return nullptr; }
-		boost::tribool handle_message(const rtmp_message_ptr &, std::uint32_t,
-			const rtmp_header &, rtmp_message_ptr &) override { return false; }
-		bool has_connection(std::uint32_t) override { return true; }
-		void destroy_connection(std::uint32_t) override {}
-		void delete_connection(std::uint32_t) override {}
-		const std::string &get_app_instance(std::uint32_t) override { return m_empty; }
-		void set_encoding_for_connection(std::uint32_t, bool) override {}
-		bool is_amf3_encoding(std::uint32_t) override { return false; }
-
-		void create_netstream(const stream_client_id_t &) override {}
-		void delete_netstream(const stream_client_id_t &) override {}
-		void delete_netstreams(std::uint32_t) override {}
-		void update_netstream(const stream_client_id_t &, const std::string &, bool) override {}
-		void update_netstream_stats(const stream_client_id_t &, std::uint32_t, std::uint32_t, std::uint32_t) override {}
-		void add_dropped_messages_for_netstream(const stream_client_id_t &, std::size_t) override {}
-		std::optional<netstream_stats_ptr> get_stream_stats(const stream_client_id_t &) override { return std::nullopt; }
-
-		string_list_t list_applications() override { return {}; }
-		client_list_t list_clients() override { return {}; }
-		netstream_list_t list_streams() override { return {}; }
-		client_data_ptr get_client_data(std::uint32_t) override { return nullptr; }
-		std::optional<client_stats> get_client_stats(std::uint32_t) override { return std::nullopt; }
-		std::optional<app_stats> get_app_stats(const std::string &) override { return std::nullopt; }
-		queue_stats_list_t get_queue_stats() override { return {}; }
-
-		io_context_pool &get_io_context_pool() override { return m_pool; }
-
-	private:
-		io_context_pool m_pool;
-		std::string m_empty;
-	};
+	using null_host = fms::test::null_host;
 
 	struct sub_app : media_application
 	{
 		explicit sub_app(app_host *h) : media_application(h) {}
 		using media_application::handle_invoke_close_stream;
+		using media_application::handle_invoke_delete_stream;
 		using media_application::remove_client;
 		using media_application::m_registry;
 		using media_application::add_waiting_client;
@@ -193,4 +158,51 @@ TEST_CASE("media: re-playing a stream id releases its live fan-out edge")
 
 	CHECK(app.subscribers_of(bcaster) == 0);
 	CHECK(app.waiting_on_peek("second") == 1);
+}
+
+namespace
+{
+	rtmp_message_invoke_ptr delete_stream_invoke(std::uint32_t sid)
+	{
+		auto inv = std::make_shared<rtmp_message_invoke>("deleteStream", 0.0);
+		inv->add_parameter(std::make_shared<amf0_null>());
+		inv->add_parameter(std::make_shared<amf0_number>(sid));
+		return inv;   // sent on the control stream, naming the stream it ends
+	}
+}
+
+TEST_CASE("media: deleteStream ends a publish and frees the name")
+{
+	null_host host;
+	sub_app app(&host);
+	stream_client_id_t const pub(3, 1);
+	{
+		auto const g = app.m_registry.lock_exclusive();
+		REQUIRE(app.m_registry.add_broadcaster(pub, "show", g));
+		app.m_registry.add_client_stream(3, 1, g);
+	}
+	app.subscribe_live(pub, stream_client_id_t(7, 1), "show");
+
+	app.handle_invoke_delete_stream(delete_stream_invoke(1), 3);
+
+	CHECK_FALSE(app.m_registry.broadcaster_for_name("show").has_value());
+	CHECK(app.subscribers_of(pub) == 0);
+	auto const g = app.m_registry.lock_exclusive();
+	CHECK(app.m_registry.add_broadcaster(stream_client_id_t(4, 1), "show", g));
+}
+
+TEST_CASE("media: deleteStream ends a play")
+{
+	null_host host;
+	sub_app app(&host);
+	stream_client_id_t const pub(3, 1);
+	app.subscribe_live(pub, stream_client_id_t(7, 2), "show");
+	app.wait_for(7, 3, "later");
+
+	app.handle_invoke_delete_stream(delete_stream_invoke(2), 7);
+	app.handle_invoke_delete_stream(delete_stream_invoke(3), 7);
+
+	CHECK(app.subscribers_of(pub) == 0);
+	CHECK_FALSE(app.remembers(7, 2));
+	CHECK(app.waiting_on_peek("later") == 0);
 }

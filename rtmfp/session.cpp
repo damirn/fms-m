@@ -119,6 +119,7 @@ namespace fms
 
 	bool session::handle_user_data(user_data_chunk *udc)
 	{
+		m_have_current_flow = false;
 		flow_ptr f;
 		auto const i = m_receiving_flows.find(udc->flow_id());
 		if (i == m_receiving_flows.end())
@@ -132,6 +133,7 @@ namespace fms
 
 		// these are used for next user data chunk handling
 		m_current_flow_id = udc->flow_id();
+		m_have_current_flow = true;
 		m_next_seq = udc->seq_number();
 		++m_next_seq;
 
@@ -170,6 +172,8 @@ namespace fms
 
 	bool session::handle_next_user_data(next_user_data_chunk *ndc)
 	{
+		if (!m_have_current_flow)
+			return true;   // nothing in this packet for it to continue: ignore the chunk
 		flow_ptr f;
 		auto const i = m_receiving_flows.find(m_current_flow_id);
 		if (i != m_receiving_flows.end())
@@ -187,9 +191,8 @@ namespace fms
 					m_ack_now = true;
 			}
 			handle_flow_message(f);
-			return true;
 		}
-		return false;
+		return true;
 	}
 
 	bool session::handle_range_ack(range_ack_chunk *rac)
@@ -730,7 +733,13 @@ namespace fms
 
 	void session::notify()
 	{
-		boost::asio::post(m_strand, [self = shared_from_this()]() { self->notify_impl(); });
+		// At most one drain queued; it clears the flag before it starts.
+		if (!m_notify_pending.exchange(true, std::memory_order_acq_rel))
+			boost::asio::post(m_strand, [self = shared_from_this()]()
+			{
+				self->m_notify_pending.store(false, std::memory_order_release);
+				self->notify_impl();
+			});
 	}
 
 	void session::unreserve_stream_id(std::uint32_t stream_id)
@@ -752,8 +761,14 @@ namespace fms
 		{
 			rtmp_message_ptr msg;
 			bool has_msg = false;
+			bool close_requested = false;
 			while (get_app()->get_async_message(m_id, msg))
 			{
+				if (msg->type() == rtmp_message::eMessageClose)
+				{
+					close_requested = true;
+					break;
+				}
 				if (msg->type() == rtmp_message::eMessageChunkSize ||
 					msg->type() == rtmp_message::eMessageWindowAcknowledgementSize ||
 					msg->type() == rtmp_message::eMessageSetPeerBandwidth)
@@ -763,6 +778,13 @@ namespace fms
 			}
 			if (has_msg && m_notifier)
 				m_notifier();
+			if (close_requested)
+			{
+				// SessionClose to the peer, then reap after the close linger
+				begin_close();
+				m_timer.expires_after(eCloseLinger);
+				m_timer.async_wait([self = shared_from_this()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+			}
 		}
 	}
 

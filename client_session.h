@@ -4,8 +4,10 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -90,7 +92,13 @@ namespace fms
 			return m_app_instance;
 		}
 
-		std::uint32_t reserve_stream_id();
+		// Message streams one connection may hold at once.
+		static constexpr std::size_t eMaxStreams = 128;
+
+		// The lowest free stream id, or nullopt once eMaxStreams are held.
+		[[nodiscard]] std::optional<std::uint32_t> reserve_stream_id();
+		// Hold `id` for a play/publish that named it; false for id 0 or once full.
+		[[nodiscard]] bool claim_stream_id(std::uint32_t id);
 		virtual void unreserve_stream_id(std::uint32_t);
 
 		const std::string &sid() const

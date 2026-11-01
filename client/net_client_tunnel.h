@@ -28,7 +28,7 @@ namespace fms::rtmp_client
 
 		explicit net_client_tunnel(boost::asio::io_context &io_context)
 			: net_client(io_context)
-			, m_timer(io_context)
+			, m_poll_timer(io_context)
 		{}
 
 		void read_data(std::size_t = 1) override;   // no-op: the poll timer drives reads
@@ -40,6 +40,7 @@ namespace fms::rtmp_client
 		using response_t = boost::beast::http::response<body_t>;
 
 		void handle_connect(const boost::system::error_code &, const boost::asio::ip::tcp::endpoint &) override;
+		void close_socket() override;
 
 		void send_command(const char *verb, std::vector<std::uint8_t> body);
 		void on_write(const boost::system::error_code &, std::size_t);
@@ -52,7 +53,7 @@ namespace fms::rtmp_client
 		enum state { eOpening, eReady };
 		enum command { eCmdOpen, eCmdSend, eCmdIdle };
 
-		boost::asio::steady_timer m_timer;
+		boost::asio::steady_timer m_poll_timer;
 		boost::beast::flat_buffer m_read_buffer;
 		std::optional<boost::beast::http::response_parser<body_t>> m_parser;
 		request_t m_request;

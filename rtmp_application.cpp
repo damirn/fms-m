@@ -8,6 +8,7 @@
 #include "so_manager.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 namespace fms
@@ -90,6 +91,17 @@ namespace fms
 				handle_ping(msg, connection_id, header);
 				return false;
 			}
+		case rtmp_message::eMessageAggregate:
+			for (rtmp_message_ptr const &sub : std::static_pointer_cast<rtmp_message_aggregate>(msg)->get_messages())
+			{
+				rtmp_message_ptr sub_result;
+				if (handle_message(sub, connection_id, header, sub_result) && sub_result)
+				{
+					enqueue_async_message(connection_id, sub_result);
+					notify(connection_id);
+				}
+			}
+			return false;
 		// Consumed, not acted on: the peer's ack bookkeeping needs no reply.
 		case rtmp_message::eMessageBytesRead:
 		case rtmp_message::eMessageWindowAcknowledgementSize:
@@ -289,21 +301,10 @@ namespace fms
 
 	void rtmp_application::update_stats(bool is_inbound, bool is_bytes, std::uint32_t value)
 	{
-		std::unique_lock const lock(m_stats_mutex);
-		if (is_inbound)
-		{
-			if (is_bytes)
-				m_stats.m_bytes_read += value;
-			else
-				m_stats.m_messages_read += value;
-		}
-		else
-		{
-			if (is_bytes)
-				m_stats.m_bytes_written += value;
-			else
-				m_stats.m_messages_written += value;
-		}
+		std::atomic<std::uint32_t> &counter = is_inbound
+			? (is_bytes ? m_bytes_read : m_messages_read)
+			: (is_bytes ? m_bytes_written : m_messages_written);
+		counter.fetch_add(value, std::memory_order_relaxed);
 	}
 
 	boost::tribool rtmp_application::handle_invoke(const rtmp_message_ptr &msg, std::uint32_t connection_id, const rtmp_header &, rtmp_message_ptr &result)
@@ -355,7 +356,10 @@ namespace fms
 		// take() frees this connection's slot before the callback runs -- the
 		// bandwidth exchange re-registers the same handler under a fresh id from
 		// inside it, which would otherwise be charged against a slot we still hold.
-		result_handler_ptr const res = m_result_handlers.take(static_cast<std::uint32_t>(msg->invoke_id()->value()));
+		std::optional<std::uint32_t> const id = amf0_util::to_integer<std::uint32_t>(msg->invoke_id()->value());
+		if (!id)
+			return false;   // no transaction of ours carries that id
+		result_handler_ptr const res = m_result_handlers.take(*id);
 		if (!res)
 			return false;
 		return res->m_call_back(msg, res, result);

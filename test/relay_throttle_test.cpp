@@ -6,8 +6,12 @@
 #include "remote_relay.h"
 
 #include <chrono>
+#include <fcntl.h>
 #include <spawn.h>
 #include <string>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <vector>
 
 #include <boost/asio/io_context.hpp>
 
@@ -238,4 +242,26 @@ TEST_CASE("relay throttle: an exited helper is reaped without waiting for the ne
 	for (int i = 0; i < 50 && t.live_count() != 0; ++i)
 		io.run_for(std::chrono::milliseconds{100});
 	CHECK(t.live_count() == 0);
+}
+
+TEST_CASE("relay spawn: the helper inherits no descriptor beyond stderr")
+{
+	int fds[2];
+	REQUIRE(::pipe(fds) == 0);
+	int const probe = ::fcntl(fds[1], F_DUPFD, 50);   // no FD_CLOEXEC, like an accepted socket
+	REQUIRE(probe >= 50);
+	std::string const script = "[ -e /dev/fd/" + std::to_string(probe) + " ] && exit 1; [ -e /dev/fd/2 ] || exit 2; exit 0";
+	char sh[] = "/bin/sh";
+	char dash_c[] = "-c";
+	std::vector<char *> argv{sh, dash_c, const_cast<char *>(script.c_str()), nullptr};
+
+	::pid_t pid = 0;
+	REQUIRE(spawn_isolated(pid, argv.data()) == 0);
+	int status = 0;
+	REQUIRE(::waitpid(pid, &status, 0) == pid);
+	::close(probe);
+	::close(fds[0]);
+	::close(fds[1]);
+	REQUIRE(WIFEXITED(status));
+	CHECK(WEXITSTATUS(status) == 0);
 }

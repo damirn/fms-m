@@ -145,11 +145,7 @@ namespace fms
 					if (!entry.second->m_name.starts_with("QOS!"))
 					{
 						netstream_stats_ptr const stats = std::make_shared<netstream_stats>(*(entry.second));
-						std::chrono::system_clock::duration const td = now - stats->start_streaming_time();
-						std::uint32_t kbps = 0;
-						if (std::chrono::duration_cast<std::chrono::seconds>(td).count() != 0)
-							kbps = stats->m_bytes / std::chrono::duration_cast<std::chrono::seconds>(td).count();
-						stats->m_kbps = kbps;
+						stats->m_kbps = stats->average_kbps(now);
 						tmp[entry.first] = stats;
 					}
 				}

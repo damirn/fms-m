@@ -1,0 +1,357 @@
+// play's start argument selects what may serve a name: >= 0 a recording, -1 a live
+// stream, -2 either. A name nothing can serve under the request is refused at once.
+
+#include "amf0.h"
+#include "byte_writer.h"
+#include "client_session.h"
+#include "config.h"
+#include "doctest.h"
+#include "flv_writer.h"
+#include "media_application.h"
+#include "null_app_host.h"
+#include "rtmp_message.h"
+
+#include <chrono>
+#include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include <unistd.h>
+
+using namespace fms;
+
+namespace
+{
+	struct play_app : media_application
+	{
+		explicit play_app(app_host *h) : media_application(h) {}
+		using media_application::handle_invoke_play;
+		using media_application::handle_invoke_create_stream;
+		using media_application::handle_invoke_publish;
+		using media_application::m_vod;
+		using media_application::m_registry;
+
+		std::vector<std::string> status_codes(std::uint32_t conn)
+		{
+			std::vector<std::string> out;
+			rtmp_message_ptr m;
+			while (get_async_message(conn, m))
+				if (auto const inv = std::dynamic_pointer_cast<rtmp_message_invoke>(m))
+					for (auto const &p : inv->parameters())
+						if (auto const obj = std::dynamic_pointer_cast<amf0_object>(p))
+							if (auto const c = obj->value().find("code"); c != obj->value().end())
+								out.push_back(static_cast<std::string>(*c->m_value));
+			return out;
+		}
+
+		bool waiting(std::uint32_t conn, std::uint32_t sid)
+		{
+			return m_registry.subscriber_stream(std::make_pair(conn, sid)).has_value();
+		}
+	};
+
+	rtmp_message_invoke_ptr play(const std::string &name, std::optional<double> start)
+	{
+		auto inv = std::make_shared<rtmp_message_invoke>("play", 0.0);
+		inv->set_stream_id(1);
+		inv->add_parameter(std::make_shared<amf0_null>());
+		inv->add_parameter(std::make_shared<amf0_string>(name));
+		if (start)
+			inv->add_parameter(std::make_shared<amf0_number>(*start));
+		return inv;
+	}
+
+	bool has(const std::vector<std::string> &v, const std::string &s)
+	{
+		for (auto const &x : v)
+			if (x == s)
+				return true;
+		return false;
+	}
+}
+
+TEST_CASE("play: a recorded-only request for a name with no recording or publisher is StreamNotFound")
+{
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	app.handle_invoke_play(play("no_such_stream_xyz", 0.0), 7);
+	auto const codes = app.status_codes(7);
+	CHECK(has(codes, "NetStream.Play.StreamNotFound"));
+	CHECK_FALSE(has(codes, "NetStream.Play.Start"));
+	CHECK_FALSE(app.waiting(7, 1));
+}
+
+TEST_CASE("play: live-only and default requests for an absent name wait for a publisher")
+{
+	for (std::optional<double> const start : {std::optional<double>(-1.0), std::optional<double>(-2.0), std::optional<double>()})
+	{
+		test::null_host host;
+		host.add_session(7);
+		play_app app(&host);
+		app.handle_invoke_play(play("no_such_stream_xyz", start), 7);
+		auto const codes = app.status_codes(7);
+		CHECK_FALSE(has(codes, "NetStream.Play.StreamNotFound"));
+		CHECK(has(codes, "NetStream.Play.Start"));
+		CHECK(app.waiting(7, 1));
+	}
+}
+
+TEST_CASE("play: a recorded-only request is served by a live publisher of that name")
+{
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	{
+		auto const g = app.m_registry.lock_exclusive();
+		REQUIRE(app.m_registry.add_broadcaster(std::make_pair(3u, 1u), "live_one", g));
+	}
+	app.handle_invoke_play(play("live_one", 0.0), 7);
+	auto const codes = app.status_codes(7);
+	CHECK_FALSE(has(codes, "NetStream.Play.StreamNotFound"));
+	CHECK(has(codes, "NetStream.Play.Start"));
+}
+
+TEST_CASE("play: a connection holds at most eMaxStreams message streams")
+{
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	for (std::uint32_t sid = 1; sid <= client_session::eMaxStreams; ++sid)
+	{
+		auto inv = play("s" + std::to_string(sid), -2.0);
+		inv->set_stream_id(sid);
+		app.handle_invoke_play(inv, 7);
+	}
+	CHECK(app.waiting(7, client_session::eMaxStreams));
+	(void)app.status_codes(7);
+
+	auto over = play("one_more", -2.0);
+	over->set_stream_id(client_session::eMaxStreams + 1);
+	app.handle_invoke_play(over, 7);
+	auto const codes = app.status_codes(7);
+	CHECK(has(codes, "NetStream.Failed"));
+	CHECK_FALSE(app.waiting(7, client_session::eMaxStreams + 1));
+
+	// createStream is refused once the connection is full
+	auto cs = std::make_shared<rtmp_message_invoke>("createStream", 4.0);
+	cs->add_parameter(std::make_shared<amf0_null>());
+	rtmp_message_ptr res;
+	app.handle_invoke_create_stream(cs, 7, res);
+	auto const err = std::dynamic_pointer_cast<rtmp_message_invoke>(res);
+	REQUIRE(err != nullptr);
+	CHECK(err->function()->value() == "_error");
+}
+
+TEST_CASE("play: stream id 0 is the control stream and never carries a play")
+{
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	auto inv = play("x", -2.0);
+	inv->set_stream_id(0);
+	app.handle_invoke_play(inv, 7);
+	CHECK(has(app.status_codes(7), "NetStream.Failed"));
+	CHECK_FALSE(app.waiting(7, 0));
+}
+
+namespace
+{
+	// A saved recording `name`.flv in a private media folder.
+	void write_recording(const std::string &name)
+	{
+		static std::filesystem::path const dir =
+			std::filesystem::temp_directory_path() / ("fms-play-" + std::to_string(::getpid()));
+		static bool const configured = []
+		{
+			std::filesystem::create_directories(dir);
+			static std::string const s = dir.string();
+			static char a0[] = "media_play_test";
+			static char a1[] = "-o";
+			std::vector<char *> argv{a0, a1, const_cast<char *>(s.c_str())};
+			return config::instance()->parse_cli(static_cast<int>(argv.size()), argv.data());
+		}();
+		REQUIRE(configured);
+		flv_writer w((dir / (name + ".flv")).string());
+		char const key[] = {0x17, 0x01, 0x00, 0x00, 0x00, 0x11};
+		char const inter[] = {0x27, 0x01, 0x00, 0x00, 0x00, 0x22};
+		w.write_video(key, sizeof key, 0);
+		for (std::uint32_t t = 40; t <= 2000; t += 40)
+			w.write_video(inter, sizeof inter, t);
+		w.close();
+	}
+}
+
+TEST_CASE("play: a saved recording is served as VOD, from a start offset too")
+{
+	write_recording("vod_clip");
+	for (double const start : {0.0, 1.0, -2.0})
+	{
+		test::null_host host;
+		host.add_session(7);
+		play_app app(&host);
+		app.handle_invoke_play(play("vod_clip", start), 7);
+		auto const codes = app.status_codes(7);
+		CHECK(has(codes, "NetStream.Play.Start"));
+		CHECK_FALSE(has(codes, "NetStream.Play.StreamNotFound"));
+		CHECK_FALSE(app.waiting(7, 1));    // a VOD play is not parked for a publisher
+	}
+}
+
+TEST_CASE("play: a live-only request ignores a saved recording")
+{
+	write_recording("vod_clip_live");
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	app.handle_invoke_play(play("vod_clip_live", -1.0), 7);
+	CHECK(app.waiting(7, 1));
+}
+
+TEST_CASE("play: a name that escapes the media folder is never served as VOD")
+{
+	write_recording("vod_inside");   // configures the private media folder
+	std::filesystem::path const folder = config::instance()->flv_folder();
+	{
+		flv_writer w((folder.parent_path() / "vod_escape.flv").string());
+		char const key[] = {0x17, 0x01, 0x00, 0x00, 0x00, 0x11};
+		w.write_video(key, sizeof key, 0);
+		w.close();
+	}
+	for (std::string const &name : {std::string("../vod_escape"), (folder.parent_path() / "vod_escape").string(),
+		std::string("x/../../vod_escape")})
+	{
+		test::null_host host;
+		host.add_session(7);
+		play_app app(&host);
+		app.handle_invoke_play(play(name, 0.0), 7);
+		auto const codes = app.status_codes(7);
+		CHECK_MESSAGE(has(codes, "NetStream.Play.StreamNotFound"), name);
+		CHECK_FALSE(has(codes, "NetStream.Play.Start"));
+	}
+	std::filesystem::remove(folder.parent_path() / "vod_escape.flv");
+}
+
+namespace
+{
+	struct netstream_host : test::null_host
+	{
+		std::vector<std::pair<std::string, bool>> updates;
+		void update_netstream(const stream_client_id_t &, const std::string &name, bool publishing) override
+		{
+			updates.emplace_back(name, publishing);
+		}
+	};
+
+	rtmp_message_invoke_ptr publish(const std::string &name, std::uint32_t sid)
+	{
+		auto inv = std::make_shared<rtmp_message_invoke>("publish", 0.0);
+		inv->set_stream_id(sid);
+		inv->add_parameter(std::make_shared<amf0_null>());
+		inv->add_parameter(std::make_shared<amf0_string>(name));
+		inv->add_parameter(std::make_shared<amf0_string>("live"));
+		return inv;
+	}
+}
+
+TEST_CASE("publish: a refused publish is not reported as a publishing stream")
+{
+	netstream_host host;
+	host.add_session(3);
+	host.add_session(4);
+	play_app app(&host);
+	rtmp_message_ptr res;
+	app.handle_invoke_publish(publish("taken", 1), 3, res);
+	app.handle_invoke_publish(publish("taken", 1), 4, res);   // BadName: the name is in use
+
+	std::size_t publishing = 0;
+	for (auto const &[name, pub] : host.updates)
+		if (name == "taken" && pub)
+			++publishing;
+	CHECK(publishing == 1);
+}
+
+TEST_CASE("play: a long VOD seek does not hold up another playback")
+{
+	write_recording("vod_small");
+	{
+		// enough tags that a seek past the end takes a measurable scan
+		flv_writer w((std::filesystem::path(config::instance()->flv_folder()) / "vod_big.flv").string());
+		char const key[] = {0x17, 0x01, 0x00, 0x00, 0x00, 0x11};
+		char const inter[] = {0x27, 0x01, 0x00, 0x00, 0x00, 0x22};
+		w.write_video(key, sizeof key, 0);
+		for (std::uint32_t t = 1; t < 400000; ++t)
+			w.write_video(inter, sizeof inter, t);
+		w.close();
+	}
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	auto big = play("vod_big", 0.0);
+	big->set_stream_id(1);
+	auto small = play("vod_small", 0.0);
+	small->set_stream_id(2);
+	app.handle_invoke_play(big, 7);
+	app.handle_invoke_play(small, 7);
+
+	using clk = std::chrono::steady_clock;
+	clk::duration seek_took{};
+	std::thread seeker([&]
+	{
+		auto const t0 = clk::now();
+		app.m_vod.seek(7, 1, 0xFFFFFFFFu);   // scans every tag
+		seek_took = clk::now() - t0;
+	});
+	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	auto const t0 = clk::now();
+	app.m_vod.set_buffer_length(7, 2, 500);
+	auto const other_took = clk::now() - t0;
+	seeker.join();
+
+	REQUIRE(seek_took > std::chrono::milliseconds(100));   // the scan is long enough to tell
+	CHECK(other_took < seek_took / 4);
+	std::filesystem::remove(std::filesystem::path(config::instance()->flv_folder()) / "vod_big.flv");
+}
+
+TEST_CASE("play: VOD sends the recording's onMetaData after Play.Start")
+{
+	write_recording("vod_meta_probe");   // configures the media folder
+	{
+		byte_writer body;
+		amf0::write(body, std::make_shared<amf0_string>("onMetaData"));
+		auto arr = std::make_shared<amf0_ecma_array>();
+		arr->add_entry("duration", 2.0);
+		amf0::write(body, arr);
+		flv_writer w((std::filesystem::path(config::instance()->flv_folder()) / "vod_meta.flv").string());
+		w.write_script(reinterpret_cast<const char *>(body.data()), static_cast<std::uint32_t>(body.size()), 0);
+		char const key[] = {0x17, 0x01, 0x00, 0x00, 0x00, 0x11};
+		w.write_video(key, sizeof key, 0);
+		w.close();
+	}
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	app.handle_invoke_play(play("vod_meta", 0.0), 7);
+
+	bool saw_start = false;
+	bool meta_after_start = false;
+	rtmp_message_ptr m;
+	while (app.get_async_message(7, m))
+	{
+		if (auto const inv = std::dynamic_pointer_cast<rtmp_message_invoke>(m))
+			for (auto const &p : inv->parameters())
+				if (auto const obj = std::dynamic_pointer_cast<amf0_object>(p))
+					if (auto const c = obj->value().find("code"); c != obj->value().end()
+						&& static_cast<std::string>(*c->m_value) == "NetStream.Play.Start")
+						saw_start = true;
+		if (auto const n = std::dynamic_pointer_cast<rtmp_message_notify>(m))
+			if (n->function()->value() == "onMetaData" && saw_start && n->stream_id() == 1)
+				meta_after_start = true;
+	}
+	CHECK(saw_start);
+	CHECK(meta_after_start);
+}

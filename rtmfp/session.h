@@ -8,6 +8,7 @@
 #include "rtmfp_host.h"
 #include "types.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -215,6 +216,7 @@ namespace fms
 		void handle_header(header &h) override
 		{
 			calculate_ts(h);
+			m_have_current_flow = false;
 		}
 
 		bool handle_chunk(chunk *) override;
@@ -248,6 +250,7 @@ namespace fms
 		boost::asio::steady_timer m_timer;
 		boost::asio::steady_timer m_alarm;
 		boost::asio::io_context::strand m_strand;
+		std::atomic<bool> m_notify_pending{false};
 		state_t m_state{eInitialState};
 
 		chunk *m_ready_chunk{nullptr};
@@ -274,6 +277,8 @@ namespace fms
 		// Read by handle_next_user_data, which a peer can reach with a NextUserData
 		// chunk that no UserData preceded -- so these must not start indeterminate.
 		vlu_t m_current_flow_id{0};
+		// a Next User Data chunk continues the previous User Data chunk of the same packet
+		bool m_have_current_flow{false};
 		vlu_t m_next_seq{0};
 
 		vlu_t m_next_tsn{1};

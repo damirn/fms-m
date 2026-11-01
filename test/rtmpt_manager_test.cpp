@@ -60,6 +60,8 @@ namespace
 		void handle_bytes_written(std::size_t n) override { bytes_written += n; }
 		void close() override { closed = true; }
 		bool is_closed() const override { return closed; }
+		bool pending = false;          // a close requested from another thread
+		bool close_pending() const override { return pending; }
 	};
 
 	using fake_session_ptr = std::shared_ptr<fake_session>;
@@ -411,6 +413,43 @@ TEST_CASE("rtmpt: the reaper frees the slot of a closed session that stops polli
 	h.made[0]->close();
 
 	m.tick();
+	CHECK(m.session_count() == 0);
+}
+
+TEST_CASE("rtmpt: a pending close is applied by the next poll instead of serving it")
+{
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.11"), id);
+	h.made[0]->pending = true;
+
+	byte_writer in = buf({0xAA});
+	byte_writer out;
+	m.handle_data(id, 0, in, out);
+	CHECK(h.made[0]->closed);
+	CHECK(h.made[0]->data_calls == 0);
+	CHECK(m.session_count() == 0);
+
+	std::string id2;
+	m.create_session(ep("10.0.0.12"), id2);
+	h.made[1]->pending = true;
+	byte_writer res;
+	m.serialize_result(id2, 0, res);
+	CHECK(h.made[1]->closed);
+	CHECK(h.made[1]->result_calls == 0);
+	CHECK(m.session_count() == 0);
+}
+
+TEST_CASE("rtmpt: the reaper applies a pending close to a session that stops polling")
+{
+	fake_host h;
+	testable_manager m(&h);
+	std::string id;
+	m.create_session(ep("10.0.0.13"), id);
+	h.made[0]->pending = true;
+	m.tick();
+	CHECK(h.made[0]->closed);
 	CHECK(m.session_count() == 0);
 }
 

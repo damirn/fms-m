@@ -80,6 +80,10 @@ namespace fms
 		void handle_notify_clear_data_frame(const rtmp_message_notify_ptr&, std::uint32_t);
 		rtmp_message_ptr send_stream_notify(std::uint32_t, std::uint32_t, const std::string &, const std::string &, bool);
 		void send_publish_notify(std::uint32_t, std::uint32_t, const std::string &);
+		static double play_start(const rtmp_message_invoke::parameters_list_t &);
+		void claim_stream(std::uint32_t, std::uint32_t);
+		static rtmp_message_invoke_ptr create_call_failed(const rtmp_message_invoke_ptr &, const std::string &);
+		void send_stream_not_found(std::uint32_t, std::uint32_t, const std::string &);
 		void check_waiting_clients(std::uint32_t, const std::string &);
 		static bool check_bool_value(rtmp_message_invoke::parameters_list_t &);
 
@@ -118,6 +122,10 @@ namespace fms
 		// by handle_timer under the lock.
 		qos_reporter m_qos{*this, m_registry, m_app_manager};
 
+		// VOD (video-on-demand) playback of saved .flv files, when a play target has
+		// no live publisher. Owns its per-play state and its own locks.
+		vod_manager m_vod{*this};
+
 		static constexpr auto eStatsInterval = std::chrono::seconds{1};
 
 		bool add_recording_stream(const std::string &, std::uint32_t, std::uint32_t);
@@ -139,9 +147,6 @@ namespace fms
 
 		void update_waiting_client(stream_client_id_t &, bool, bool, const stream_registry::exclusive_guard &);
 
-		// VOD (video-on-demand) playback of saved .flv files, when a play target has
-		// no live publisher. Owns its own per-play state; shares the registry's lock.
-		vod_manager m_vod{*this};
 
 		boost::asio::steady_timer m_timer;
 	};

@@ -9,7 +9,10 @@
 #include "stream_recorder.h"
 #include "util.h"
 
+#include <cmath>
 #include <filesystem>
+#include <iterator>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -238,7 +241,13 @@ namespace fms
 		client_session_ptr const conn = get_connection_opt(connection_id);
 		if (!conn)
 			return;   // the connection went away between the invoke and here
-		std::uint32_t const stream_id = conn->reserve_stream_id();
+		std::optional<std::uint32_t> const reserved = conn->reserve_stream_id();
+		if (!reserved)
+		{
+			res = create_call_failed(invoke, "Too many streams on this connection.");
+			return;
+		}
+		std::uint32_t const stream_id = *reserved;
 
 		res = create_stream(invoke, connection_id, stream_id);
 
@@ -261,6 +270,7 @@ namespace fms
 		{
 			rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 			check_stream_name(params);
+			claim_stream(connection_id, invoke->stream_id());
 
 			auto i = params.begin();
 			++i;
@@ -268,7 +278,6 @@ namespace fms
 			std::string const stream_name(strip_query(str->value()));
 
 			BOOST_LOG(lg::get()) << "cid: " << connection_id << " is publishing stream '" << stream_name << "'";
-			m_app_manager->update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, true);
 
 			++i;
 			bool record = false;
@@ -297,6 +306,7 @@ namespace fms
 			}
 			if (published)
 			{
+				m_app_manager->update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, true);
 				add_qos_stream(stream_name, connection_id, invoke->stream_id());
 				add_publisher_to_app_instance(connection_id);
 
@@ -363,18 +373,26 @@ namespace fms
 		try
 		{
 			check_stream_name(params);
+			claim_stream(connection_id, invoke->stream_id());
 			auto i = params.begin();
 			++i;
+
+			amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
+			auto const target = remote_relay::parse_target(std::string(strip_query(str->value())));
+			std::string const &stream_name = target.m_stream;
+			bool const is_remote = !target.m_server.empty();
+
+			// play start: >= 0 a recording (or a live publisher), -1 live only, -2 either.
+			double const start = play_start(params);
+			bool const live_only = start < 0 && start > -2;
+			// The file is opened and positioned before the registry lock is taken, so
+			// a long seek never stalls the live fan-out; it is dropped if a publisher wins.
+			vod_session_ptr const vod = is_remote || live_only ? nullptr : m_vod.prepare(connection_id, invoke, stream_name);
 
 			// Collected under the lock, acted on after it: spawning a helper forks.
 			std::optional<remote_relay::remote_target> relay;
 			{
 				auto const lock = m_registry.lock_exclusive();
-
-				amf0_string_ptr const str = std::dynamic_pointer_cast<amf0_string>(*i);
-				auto const target = remote_relay::parse_target(std::string(strip_query(str->value())));
-				std::string const &stream_name = target.m_stream;
-				bool const is_remote = !target.m_server.empty();
 
 				BOOST_LOG(lg::get()) << "cid: " << connection_id << " is playing stream '" << stream_name << "'";
 				if (is_remote)
@@ -384,12 +402,19 @@ namespace fms
 				bool const res = found.has_value();
 				stream_client_id_t const bcaster_id = res ? *found : stream_client_id_t{};
 
-				// No live publisher: if a saved .flv exists, serve it as VOD.
 				if (!res && !is_remote)
 				{
 					forget_subscription(connection_id, invoke->stream_id(), lock);
-					if (m_vod.start(connection_id, invoke, stream_name))
+					if (vod)
+					{
+						m_vod.start(vod);
 						return;
+					}
+					if (start >= 0)
+					{
+						send_stream_not_found(connection_id, invoke->stream_id(), stream_name);
+						return;
+					}
 				}
 
 				add_waiting_client(connection_id, invoke, stream_name, lock);
@@ -480,8 +505,6 @@ namespace fms
 			if (str->value() == "onMetaData")
 			{
 				++i;
-				if ((*i)->type() != amf0_type::eAMF0Object)
-					return;
 				stream_client_id_t const cid = std::make_pair(connection_id, msg->stream_id());
 				auto const lock = m_registry.lock_exclusive();
 				m_av.route_metadata(*i, cid);
@@ -515,6 +538,54 @@ namespace fms
 			notify(connection_id);
 		}
 		return result;
+	}
+
+	void media_application::claim_stream(std::uint32_t connection_id, std::uint32_t stream_id)
+	{
+		client_session_ptr const conn = get_connection_opt(connection_id);
+		if (!conn || !conn->claim_stream_id(stream_id))
+			throw rtmp_illegal_parameter_exception("Too many streams on this connection.");
+	}
+
+	rtmp_message_invoke_ptr media_application::create_call_failed(const rtmp_message_invoke_ptr &invoke, const std::string &description)
+	{
+		rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("_error", invoke->invoke_id()->value());
+		result->set_channel_id(invoke->channel_id());
+		result->set_stream_id(invoke->stream_id());
+		result->add_parameter(std::make_shared<amf0_null>());
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
+		obj->add_entry("level", "error");
+		obj->add_entry("code", "NetConnection.Call.Failed");
+		obj->add_entry("description", description);
+		result->add_parameter(obj);
+		return result;
+	}
+
+	double media_application::play_start(const rtmp_message_invoke::parameters_list_t &params)
+	{
+		// [command object, name, start, ...]; absent or not a number is the -2 default.
+		if (params.size() < 3)
+			return -2;
+		amf0_number_ptr const n = std::dynamic_pointer_cast<amf0_number>(*std::next(params.begin(), 2));
+		if (!n || std::isnan(n->value()))
+			return -2;
+		return n->value();
+	}
+
+	void media_application::send_stream_not_found(std::uint32_t connection_id, std::uint32_t stream_id, const std::string &stream_name)
+	{
+		rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("onStatus", 0.0f);
+		result->set_stream_id(stream_id);
+		result->add_parameter(std::make_shared<amf0_null>());
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
+		obj->add_entry("level", "error");
+		obj->add_entry("code", "NetStream.Play.StreamNotFound");
+		obj->add_entry("description", "Failed to play " + stream_name + "; stream not found.");
+		obj->add_entry("details", stream_name);
+		obj->add_entry("clientid", static_cast<double>(connection_id));
+		result->add_parameter(obj);
+		enqueue_async_message(connection_id, result);
+		notify(connection_id);
 	}
 
 	void media_application::send_publish_notify(std::uint32_t connection_id, std::uint32_t stream_id, const std::string &stream_name)
@@ -580,7 +651,10 @@ namespace fms
 		client_session_ptr const conn = get_connection_opt(connection_id);
 		if (!conn)
 			return false;
-		std::uint32_t const new_stream_id = conn->reserve_stream_id();
+		std::optional<std::uint32_t> const reserved = conn->reserve_stream_id();
+		if (!reserved)
+			return false;
+		std::uint32_t const new_stream_id = *reserved;
 		auto const lock = m_registry.lock_exclusive();
 		if (!m_registry.add_broadcaster(std::make_pair(connection_id, new_stream_id), std::string("QOS!" + stream), lock))
 			return false;
@@ -702,8 +776,7 @@ namespace fms
 
 	void media_application::handle_invoke_delete_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
-		// deleteStream(txn, null, streamID) releases the id for reuse. Without
-		// this, reserve_stream_id's scan from 1 grows for the connection's life.
+		// deleteStream(txn, null, streamID) ends the stream and releases its id.
 		std::uint32_t stream_id = invoke->stream_id();
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		if (params.size() >= 2)
@@ -711,11 +784,19 @@ namespace fms
 			auto i = params.begin();
 			++i;
 			if (amf0_number_ptr const n = std::dynamic_pointer_cast<amf0_number>(*i))
-				stream_id = static_cast<std::uint32_t>(n->value());
+				stream_id = amf0_util::to_integer<std::uint32_t>(n->value()).value_or(0);
 		}
 		if (stream_id == 0)
 			return;   // the control stream is never reserved
 
+		// deleteStream destroys the stream: it stops publishing or playing first.
+		m_app_manager->delete_netstream(std::make_pair(connection_id, stream_id));
+		{
+			auto const lock = m_registry.lock_exclusive();
+			close_stream(connection_id, stream_id, lock);
+			forget_subscription(connection_id, stream_id, lock);
+			m_registry.remove_client_stream(connection_id, stream_id, lock);
+		}
 		if (client_session_ptr const conn = get_connection_opt(connection_id))
 			conn->unreserve_stream_id(stream_id);
 	}
@@ -742,7 +823,8 @@ namespace fms
 		if ((*i)->type() != amf0_type::eAMF0Number)
 			return;
 		double const ms = std::dynamic_pointer_cast<amf0_number>(*i)->value();
-		m_vod.seek(connection_id, invoke->stream_id(), ms < 0 ? 0u : static_cast<std::uint32_t>(ms));
+		std::uint32_t const past_end = ms > 0 ? std::numeric_limits<std::uint32_t>::max() : 0;
+		m_vod.seek(connection_id, invoke->stream_id(), amf0_util::to_integer<std::uint32_t>(ms).value_or(past_end));
 	}
 
 	// ------------------------------------- FMLE/OBS publish handshake verbs --

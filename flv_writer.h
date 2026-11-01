@@ -37,6 +37,9 @@ namespace fms
 		void write_uint32_3(std::uint32_t);
 		void write_timestamp(std::uint32_t);
 
+		// `written` moved on by how far `timestamp` is past `reference`, never back.
+		static std::uint32_t advance(std::uint32_t written, std::uint32_t timestamp, std::uint32_t reference);
+
 		std::ofstream m_file;
 		std::uint32_t m_prev_tag_size{0};
 

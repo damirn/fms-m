@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 
@@ -14,8 +15,8 @@ namespace fms
 {
 	// Per-play VOD (video-on-demand) playback state: reads frames from a saved FLV
 	// and paces them out to one subscriber connection via a timer. Driven by
-	// media_application (which owns the send path). Not thread-safe on its
-	// own; the owning application serialises access under its mutex.
+	// media_application (which owns the send path). m_mutex guards everything
+	// below it, so one playback's disk reads never wait on another's.
 	struct vod_session
 	{
 		enum state_t { ePlaying, ePaused, eStopped };
@@ -29,6 +30,7 @@ namespace fms
 			, m_stream_name(std::move(name))
 		{}
 
+		std::mutex                 m_mutex;
 		flv_reader                 m_reader;
 		boost::asio::steady_timer  m_timer;
 		std::uint32_t              m_connection_id;

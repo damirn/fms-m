@@ -1,6 +1,7 @@
 #pragma once
 
 #include "amf0_types.h"
+#include "amf_read_budget.h"
 #include "byte_writer.h"
 
 #include <cstddef>
@@ -32,11 +33,11 @@ namespace fms
 	{
 	public:
 		// Every read inside the outermost scope, by any instance, spends one
-		// decoded-string allowance.
+		// read budget.
 		class [[nodiscard]] read_scope
 		{
 		public:
-			read_scope() { if (s_read_scopes++ == 0) s_scope_string_bytes = 0; }
+			read_scope() { if (s_read_scopes++ == 0) s_scope_budget = {}; }
 			~read_scope() { --s_read_scopes; }
 
 			read_scope(const read_scope &) = delete;
@@ -108,11 +109,11 @@ namespace fms
 
 		// Shared with every nested amf3 so the two decoders cannot each spend a
 		// full string allowance out of one message.
-		std::size_t m_decoded_string_bytes = 0;
+		amf_read_budget m_budget;
 
-		std::size_t *string_budget() { return s_read_scopes != 0 ? &s_scope_string_bytes : &m_decoded_string_bytes; }
+		amf_read_budget *budget() { return s_read_scopes != 0 ? &s_scope_budget : &m_budget; }
 
 		static inline thread_local unsigned s_read_scopes = 0;
-		static inline thread_local std::size_t s_scope_string_bytes = 0;
+		static inline thread_local amf_read_budget s_scope_budget;
 	};
 }

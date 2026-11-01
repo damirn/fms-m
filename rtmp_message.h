@@ -681,6 +681,18 @@ namespace fms
 		{
 			return m_messages;
 		}
+
+		// Sub-messages belong to the aggregate's message stream (spec 7.1.6), at any depth.
+		void adopt_stream(std::uint32_t stream_id, std::uint32_t channel_id)
+		{
+			for (auto const &m : m_messages)
+			{
+				m->set_stream_id(stream_id);
+				m->set_channel_id(channel_id);
+				if (m->type() == eMessageAggregate)
+					static_cast<rtmp_message_aggregate &>(*m).adopt_stream(stream_id, channel_id);
+			}
+		}
 	protected:
 		message_list_t m_messages;
 		std::uint32_t m_ts;

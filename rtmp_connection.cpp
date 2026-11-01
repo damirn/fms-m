@@ -14,8 +14,6 @@ namespace fms
 	rtmp_connection::rtmp_connection(std::uint32_t id, boost::asio::io_context &io_context, app_host *app_manager)
 		: basic_rtmp_connection(id, io_context, app_manager)
 		, m_socket(io_context)
-		, m_rto_timer(io_context)
-		, m_wto_timer(io_context)
 		, m_hs_timer(io_context)
 		, m_timer(io_context)
 	{}
@@ -27,8 +25,6 @@ namespace fms
 		if (m_state != eStateClosing)
 		{
 			m_state = eStateClosing;
-			m_rto_timer.cancel();
-			m_wto_timer.cancel();
 			m_timer.cancel();
 			m_hs_timer.cancel();   // still armed if we close mid-handshake
 			BOOST_LOG(lg::get()) << "Closing socket for cid: " << m_id;
@@ -60,6 +56,13 @@ namespace fms
 		{
 			if (m_app == nullptr)
 			{
+				close();
+				return;
+			}
+			auto const now = std::chrono::steady_clock::now();
+			if (now - m_last_read >= eIoTimeout || (m_write_in_progress && now - m_write_started >= eIoTimeout))
+			{
+				BOOST_LOG(lg::get()) << "cid: " << m_id << (now - m_last_read >= eIoTimeout ? " read timeout" : " write timeout");
 				close();
 				return;
 			}
@@ -211,7 +214,6 @@ namespace fms
 	{
 		if (!e)
 		{
-			m_wto_timer.cancel();
 			handle_bytes_written(bytes_transferred);
 			m_write_in_progress = false;
 			m_output_buffer.clear();
@@ -229,8 +231,7 @@ namespace fms
 
 	void rtmp_connection::read_data()
 	{
-		m_rto_timer.expires_after(2 * ePingInterval);
-		m_rto_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_rto(ec); });
+		m_last_read = std::chrono::steady_clock::now();
 
 		async_read_transport(m_buffer.write_buffer(), 1,
 			[self = shared_self()](const boost::system::error_code &ec, std::size_t bytes) { self->handle_read_packet(ec, bytes); });
@@ -344,8 +345,7 @@ namespace fms
 	void rtmp_connection::perform_write()
 	{
 		m_write_in_progress = true;
-		m_wto_timer.expires_after(2 * ePingInterval);
-		m_wto_timer.async_wait([self = shared_self()](const boost::system::error_code &ec) { self->handle_wto(ec); });
+		m_write_started = std::chrono::steady_clock::now();
 
 		// encrypt outgoing data if needed (no-op if plaintext)
 		if (!m_output_buffer.empty())
@@ -370,23 +370,5 @@ namespace fms
 		}
 		m_sid = m_handshaker.sid();
 		return write_hand_shake_block();
-	}
-
-	void rtmp_connection::handle_rto(const boost::system::error_code &e)
-	{
-		if (!e && (m_state == eStateReadPackets))
-		{
-			BOOST_LOG(lg::get()) << "cid: " << m_id << " read timeout";
-			close();
-		}
-	}
-
-	void rtmp_connection::handle_wto(const boost::system::error_code &e)
-	{
-		if (!e && (m_state == eStateReadPackets))
-		{
-			BOOST_LOG(lg::get()) << "cid: " << m_id << " write timeout";
-			close();
-		}
 	}
 }

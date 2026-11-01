@@ -241,3 +241,112 @@ TEST_CASE("av_delivery: onMetaData is fanned out to subscribers")
 	f.av.route_metadata(obj, f.bcid);
 	CHECK(f.host.metadata_count(2) == 1);
 }
+
+TEST_CASE("av_delivery: onMetaData sent as an ECMA array is stored and fanned out as an object")
+{
+	fixture f;
+	auto arr = std::make_shared<amf0_ecma_array>();
+	arr->add_entry("width", 320.0);
+	arr->add_entry("height", 240.0);
+	arr->add_entry("width", 640.0);
+	f.av.route_metadata(arr, f.bcid);
+	REQUIRE(f.host.metadata_count(2) == 1);
+
+	auto const *bs = f.reg.find_broadcast(f.bcid);
+	REQUIRE(bs != nullptr);
+	REQUIRE(bs->metadata != nullptr);
+	auto const w = bs->metadata->value().find("width");
+	REQUIRE(w != bs->metadata->value().end());
+	CHECK(static_cast<double>(*w->m_value) == 640.0);
+	CHECK(bs->metadata->value().find("height") != bs->metadata->value().end());
+}
+
+TEST_CASE("av_delivery: onMetaData of any other AMF type is ignored")
+{
+	fixture f;
+	f.av.route_metadata(std::make_shared<amf0_string>("x"), f.bcid);
+	CHECK(f.host.metadata_count(2) == 0);
+}
+
+TEST_CASE("av_delivery: a mid-stream AVC sequence header replaces the one a late joiner is primed with")
+{
+	fixture f;
+	auto first = vframe(KEY, AVC, 0, 10);
+	first->data()[2] = 0x11;
+	auto second = vframe(KEY, AVC, 0, 50);
+	second->data()[2] = 0x22;
+	f.av.route_video(first, f.bcid);
+	f.av.route_video(vframe(KEY, AVC, 1, 20), f.bcid);
+	f.av.route_video(second, f.bcid);
+
+	f.add_subscriber(3, 7);
+	f.host.log.clear();
+	f.av.route_video(vframe(KEY, AVC, 1, 60), f.bcid);
+
+	auto const v = f.host.videos(3);
+	REQUIRE(!v.empty());
+	CHECK(v.front()->data()[1] == 0x00);
+	CHECK(v.front()->data()[2] == 0x22);
+}
+
+TEST_CASE("av_delivery: the GOP cache is bounded when the publisher stops sending keyframes")
+{
+	fixture f;
+	f.av.route_video(vframe(KEY, AVC, 1, 0), f.bcid);
+	for (std::uint32_t i = 1; i <= gop_cache::eMaxFrames + 10; ++i)
+		f.av.route_video(vframe(INTER, AVC, 1, i), f.bcid);
+	auto const *bs = f.reg.find_broadcast(f.bcid);
+	REQUIRE(bs != nullptr);
+	CHECK(bs->video_queue.size() <= gop_cache::eMaxFrames);
+
+	// Bytes bound it too: frames large enough to cross eMaxBytes in a few steps.
+	fixture g;
+	auto big = [](std::uint8_t ftype, std::uint32_t ts)
+	{
+		auto v = std::make_shared<rtmp_message_video_data>(4u * 1024 * 1024);
+		v->data()[0] = static_cast<std::uint8_t>((ftype << 4) | AVC);
+		v->data()[1] = 1;
+		v->set_timestamp(ts);
+		return v;
+	};
+	g.av.route_video(big(KEY, 0), g.bcid);
+	for (std::uint32_t i = 1; i <= 8; ++i)
+		g.av.route_video(big(INTER, i), g.bcid);
+	CHECK(g.reg.find_broadcast(g.bcid)->video_queue.bytes() <= gop_cache::eMaxBytes);
+}
+
+TEST_CASE("av_delivery: after the GOP cache overflows, caching resumes at the next keyframe")
+{
+	fixture f;
+	f.av.route_video(vframe(KEY, AVC, 1, 0), f.bcid);
+	for (std::uint32_t i = 1; i <= gop_cache::eMaxFrames + 1; ++i)
+		f.av.route_video(vframe(INTER, AVC, 1, i), f.bcid);
+	f.av.route_video(vframe(INTER, AVC, 1, 9000), f.bcid);
+	CHECK(f.reg.find_broadcast(f.bcid)->video_queue.empty());
+
+	f.av.route_video(vframe(KEY, AVC, 1, 9100), f.bcid);
+	f.av.route_video(vframe(INTER, AVC, 1, 9200), f.bcid);
+	CHECK(f.reg.find_broadcast(f.bcid)->video_queue.size() == 2);
+}
+
+TEST_CASE("av_delivery: re-enabling video resumes at the next keyframe, not mid-GOP")
+{
+	fixture f(true);   // joined a stream that was already playing
+	f.av.route_video(vframe(KEY, AVC, 1, 0), f.bcid);
+	f.av.route_video(vframe(INTER, AVC, 1, 40), f.bcid);
+	REQUIRE_FALSE(f.host.videos(2).empty());
+
+	f.sub->m_receive_video = false;              // receiveVideo(false)
+	f.av.route_video(vframe(INTER, AVC, 1, 80), f.bcid);
+	f.sub->m_receive_video = true;               // receiveVideo(true), as the app applies it
+	f.sub->m_key_frame_sent = false;
+	f.host.log.clear();
+
+	f.av.route_video(vframe(INTER, AVC, 1, 120), f.bcid);
+	CHECK(f.host.videos(2).empty());
+
+	f.av.route_video(vframe(KEY, AVC, 1, 160), f.bcid);
+	auto const v = f.host.videos(2);
+	REQUIRE(v.size() == 1);
+	CHECK(v[0]->get_frame_type() == rtmp_message_video_data::eKeyFrame);
+}

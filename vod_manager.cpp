@@ -8,30 +8,31 @@
 #include "media_path.h"
 
 #include <chrono>
+#include <limits>
 #include <mutex>
 #include <filesystem>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 namespace fms
 {
-	bool vod_manager::start(std::uint32_t connection_id, const rtmp_message_invoke_ptr &invoke, const std::string &stream_name)
+	vod_session_ptr vod_manager::prepare(std::uint32_t connection_id, const rtmp_message_invoke_ptr &invoke, const std::string &stream_name)
 	{
-		// Caller (handle_invoke_play) holds the registry lock; we take only m_mutex,
-		// and only to publish -- see the locking note on the class.
+		// Disk work only, on a session nobody else can reach yet: no lock is needed.
 		auto const path = resolve_media_file(config::instance()->flv_folder(), stream_name);
 		if (!path)
-			return false;   // malformed / traversal attempt
+			return nullptr;   // malformed / traversal attempt
 		std::error_code ec;
 		if (!std::filesystem::is_regular_file(*path, ec))
-			return false;   // no such saved file -> fall back to live/waiting
+			return nullptr;   // no such saved file -> fall back to live/waiting
 
 		auto session = std::make_shared<vod_session>(
 			m_host.io_context(),
 			connection_id, invoke->stream_id(), invoke->channel_id(), stream_name);
 		session->m_reader.open(*path);
 		if (!session->m_reader.is_open())
-			return false;
+			return nullptr;
 
 		// Optional play start offset (3rd play param, in seconds): begin there.
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
@@ -41,42 +42,61 @@ namespace fms
 			std::advance(it, 2);
 			if ((*it)->type() == amf0_type::eAMF0Number)
 			{
-				double const start = std::dynamic_pointer_cast<amf0_number>(*it)->value();
-				if (start > 0)
-					session->m_reader.seek(static_cast<std::uint32_t>(start * 1000.0));
+				double const start_ms = std::dynamic_pointer_cast<amf0_number>(*it)->value() * 1000.0;
+				if (start_ms > 0)
+					session->m_reader.seek(amf0_util::to_integer<std::uint32_t>(start_ms).value_or(std::numeric_limits<std::uint32_t>::max()));
 			}
 		}
 
 		if (!session->m_reader.read_frame())   // empty / unreadable / seek past end
-			return false;
+			return nullptr;
 		session->m_next = session->m_reader.get_frame();
+		return session;
+	}
 
-		// Everything above operates on a session nobody else can reach yet, so the
-		// open/seek/first-read needs no lock of ours -- only publishing it does.
+	void vod_manager::start(const vod_session_ptr &session)
+	{
+		std::uint32_t const connection_id = session->m_connection_id;
+		std::uint32_t const stream_id = session->m_stream_id;
 		{
 			std::lock_guard const lock(m_mutex);
-			m_vod[std::make_pair(connection_id, invoke->stream_id())] = session;
+			m_vod[std::make_pair(connection_id, stream_id)] = session;
 		}
-		m_host.update_netstream(std::make_pair(connection_id, invoke->stream_id()), stream_name, false);
+		m_host.update_netstream(std::make_pair(connection_id, stream_id), session->m_stream_name, false);
 
-		BOOST_LOG(lg::get()) << "cid: " << connection_id << " VOD playback of '" << stream_name << "'";
-		m_host.send_play_start(connection_id, invoke->stream_id(), invoke->channel_id(), stream_name, true /* recorded */);
+		BOOST_LOG(lg::get()) << "cid: " << connection_id << " VOD playback of '" << session->m_stream_name << "'";
+		m_host.send_play_start(connection_id, stream_id, session->m_channel_id, session->m_stream_name, true /* recorded */);
+		if (amf0_object_ptr const meta = as_object(session->m_reader.metadata()))
+		{
+			rtmp_message_notify_ptr const msg = std::make_shared<rtmp_message_notify>("onMetaData");
+			msg->set_stream_id(stream_id);
+			msg->parameters().push_back(meta);
+			m_host.enqueue(connection_id, msg);
+		}
 
 		// Arm last, so Play.Start is on the wire before the first frame. A stop()
 		// slipping in here leaves the session eStopped and tick() returns at once.
-		std::lock_guard const lock(m_mutex);
+		std::lock_guard const lock(session->m_mutex);
 		session->m_timer.expires_after(std::chrono::milliseconds(0));
 		session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) tick(session); });
-		return true;
 	}
 
 	void vod_manager::tick(const vod_session_ptr &session)
 	{
-		std::lock_guard const lock(m_mutex);
-		if (session->m_state != vod_session::ePlaying)
+		if (!tick_session(session))
 			return;
-
+		// Ended: forget it, unless a new play on the same stream id already replaced it.
 		stream_client_id_t const key = std::make_pair(session->m_connection_id, session->m_stream_id);
+		std::lock_guard const lock(m_mutex);
+		if (auto const it = m_vod.find(key); it != m_vod.end() && it->second == session)
+			m_vod.erase(it);
+	}
+
+	bool vod_manager::tick_session(const vod_session_ptr &session)
+	{
+		std::lock_guard const lock(session->m_mutex);
+		if (session->m_state != vod_session::ePlaying)
+			return false;
 
 		if (!session->m_next)   // end of file reached on the previous tick
 		{
@@ -86,8 +106,7 @@ namespace fms
 			m_host.send_status(session->m_connection_id, session->m_stream_id,
 				"NetStream.Play.Stop", "Stopped playing " + session->m_stream_name, true);
 			session->m_state = vod_session::eStopped;
-			m_vod.erase(key);
-			return;
+			return true;
 		}
 
 		rtmp_message_ptr const frame = session->m_next;
@@ -131,15 +150,22 @@ namespace fms
 		}
 		session->m_timer.expires_after(std::chrono::milliseconds(delay));
 		session->m_timer.async_wait([this, session](const boost::system::error_code &e) { if (!e) tick(session); });
+		return false;
+	}
+
+	vod_session_ptr vod_manager::find(const stream_client_id_t &key)
+	{
+		std::lock_guard const lock(m_mutex);
+		auto const it = m_vod.find(key);
+		return it != m_vod.end() ? it->second : nullptr;
 	}
 
 	void vod_manager::pause(std::uint32_t connection_id, std::uint32_t stream_id, bool pause)
 	{
-		std::lock_guard const lock(m_mutex);
-		auto const it = m_vod.find(std::make_pair(connection_id, stream_id));
-		if (it == m_vod.end())
+		vod_session_ptr const session = find(std::make_pair(connection_id, stream_id));
+		if (!session)
 			return;
-		vod_session_ptr const session = it->second;
+		std::lock_guard const lock(session->m_mutex);
 
 		if (pause)
 		{
@@ -164,11 +190,10 @@ namespace fms
 
 	void vod_manager::seek(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms)
 	{
-		std::lock_guard const lock(m_mutex);
-		auto const it = m_vod.find(std::make_pair(connection_id, stream_id));
-		if (it == m_vod.end())
+		vod_session_ptr const session = find(std::make_pair(connection_id, stream_id));
+		if (!session)
 			return;
-		vod_session_ptr const session = it->second;
+		std::lock_guard const lock(session->m_mutex);
 
 		session->m_reader.seek(ms);
 		session->m_next = session->m_reader.read_frame() ? session->m_reader.get_frame() : nullptr;
@@ -187,39 +212,53 @@ namespace fms
 
 	void vod_manager::set_buffer_length(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms)
 	{
-		std::lock_guard const lock(m_mutex);
-		auto const it = m_vod.find(std::make_pair(connection_id, stream_id));
-		if (it == m_vod.end())
+		vod_session_ptr const session = find(std::make_pair(connection_id, stream_id));
+		if (!session)
 			return;   // no VOD playback here (live subscribers pace themselves)
 		// Record the client's buffer. The already-armed tick picks it up on its next
 		// pass (within one frame interval), so we don't touch the running timer -- a
 		// SetBufferLength racing an in-flight tick can't spawn a second timer chain.
-		it->second->m_buffer_ms = ms;
+		std::lock_guard const lock(session->m_mutex);
+		session->m_buffer_ms = ms;
 	}
 
 	void vod_manager::stop(const stream_client_id_t &key)
 	{
 		// caller holds the registry lock; m_mutex is ours.
-		std::lock_guard const lock(m_mutex);
-		auto const it = m_vod.find(key);
-		if (it == m_vod.end())
-			return;
-		it->second->m_state = vod_session::eStopped;
-		it->second->m_timer.cancel();
-		m_vod.erase(it);
+		vod_session_ptr session;
+		{
+			std::lock_guard const lock(m_mutex);
+			auto const it = m_vod.find(key);
+			if (it == m_vod.end())
+				return;
+			session = it->second;
+			m_vod.erase(it);
+		}
+		halt(session);
+	}
+
+	void vod_manager::halt(const vod_session_ptr &session)
+	{
+		std::lock_guard const lock(session->m_mutex);
+		session->m_state = vod_session::eStopped;
+		session->m_timer.cancel();
 	}
 
 	void vod_manager::stop_connection(std::uint32_t connection_id)
 	{
 		// caller holds the registry lock; m_mutex is ours.
-		std::lock_guard const lock(m_mutex);
-		std::erase_if(m_vod, [connection_id](auto &kv)
+		std::vector<vod_session_ptr> ended;
 		{
-			if (kv.first.first != connection_id)
-				return false;
-			kv.second->m_state = vod_session::eStopped;
-			kv.second->m_timer.cancel();
-			return true;
-		});
+			std::lock_guard const lock(m_mutex);
+			std::erase_if(m_vod, [connection_id, &ended](auto &kv)
+			{
+				if (kv.first.first != connection_id)
+					return false;
+				ended.push_back(kv.second);
+				return true;
+			});
+		}
+		for (vod_session_ptr const &s : ended)
+			halt(s);
 	}
 }

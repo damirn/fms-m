@@ -547,3 +547,59 @@ TEST_CASE("amf: the AMF3 decode budget is shared across AVMPLUS containers")
 		CHECK(refused);
 	}
 }
+
+namespace
+{
+	std::vector<std::uint8_t> amf0_strict_array_of_nulls(std::uint32_t n)
+	{
+		std::vector<std::uint8_t> v{amf0_type::eAMF0StrictArray,
+			static_cast<std::uint8_t>(n >> 24), static_cast<std::uint8_t>(n >> 16),
+			static_cast<std::uint8_t>(n >> 8), static_cast<std::uint8_t>(n)};
+		v.insert(v.end(), n, amf0_type::eAMF0Null);
+		return v;
+	}
+
+	std::vector<std::uint8_t> amf3_dense_array_of_nulls(std::uint32_t n)
+	{
+		std::vector<std::uint8_t> v{amf3_type::eAMF3Array};
+		put_u29(v, (n << 1) | 1);
+		v.push_back(0x01);   // no associative members
+		v.insert(v.end(), n, amf3_type::eAMF3Null);
+		return v;
+	}
+}
+
+TEST_CASE("amf0: a value of more nodes than the read budget is refused")
+{
+	{
+		auto const wire = amf0_strict_array_of_nulls(1000);
+		byte_reader r(wire.data(), wire.size());
+		amf0 codec;
+		CHECK_NOTHROW(codec.read(r));
+	}
+	{
+		auto const wire = amf0_strict_array_of_nulls(amf_read_budget::eMaxNodes + 1);
+		byte_reader r(wire.data(), wire.size());
+		amf0 codec;
+		CHECK_THROWS_AS(codec.read(r), amf0_read_exception);
+	}
+}
+
+TEST_CASE("amf3: a value of more nodes than the read budget is refused")
+{
+	auto const wire = amf3_dense_array_of_nulls(amf_read_budget::eMaxNodes + 1);
+	byte_reader r(wire.data(), wire.size());
+	amf3 codec;
+	CHECK_THROWS_AS(codec.read(r), amf3_read_exception);
+}
+
+TEST_CASE("amf: under a scope the node budget spans every value of a message")
+{
+	auto const wire = amf0_strict_array_of_nulls(amf_read_budget::eMaxNodes / 2 + 1);
+	amf0 codec;
+	amf0::read_scope const budget;
+	byte_reader first(wire.data(), wire.size());
+	CHECK_NOTHROW(codec.read(first));
+	byte_reader second(wire.data(), wire.size());
+	CHECK_THROWS_AS(codec.read(second), amf0_read_exception);
+}

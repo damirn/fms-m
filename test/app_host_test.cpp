@@ -8,15 +8,19 @@
 // backpressure policy's two outcomes (shed droppable video, then disconnect).
 
 #include "app_host.h"
+#include "byte_reader.h"
 #include "config.h"
 #include "doctest.h"
 #include "rtmp_application.h"
+#include "rtmp_header.h"
 #include "rtmp_message.h"
+#include "rtmp_protocol.h"
 
 #include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 using namespace fms;
 
@@ -183,4 +187,64 @@ TEST_CASE("teardown of one connection leaves the others alone")
 	CHECK(app.queued_bytes(1) == 0);
 	CHECK(app.queued_bytes(2) > 0);
 	CHECK(app.has_async_messages(2));
+}
+
+namespace
+{
+	struct av_recorder : test_app
+	{
+		using test_app::test_app;
+		struct seen { std::uint8_t type; std::uint32_t stream; std::uint32_t ts; };
+		std::vector<seen> log;
+		void handle_audio_data(const rtmp_message_ptr &m, std::uint32_t, const rtmp_header &) override
+		{
+			log.push_back({m->type(), m->stream_id(), m->timestamp()});
+		}
+		void handle_video_data(const rtmp_message_ptr &m, std::uint32_t, const rtmp_header &) override
+		{
+			log.push_back({m->type(), m->stream_id(), m->timestamp()});
+		}
+	};
+
+	// One FLV-tag-shaped sub-message: type, len(3), ts(3), ts_ext, stream(3), body, prev size(4).
+	void sub_message(std::vector<std::uint8_t> &out, std::uint8_t type, std::uint32_t ts, std::uint8_t first_byte)
+	{
+		std::uint8_t const body[4] = {first_byte, 0x01, 0x02, 0x03};
+		out.push_back(type);
+		out.insert(out.end(), {0, 0, 4});
+		out.insert(out.end(), {static_cast<std::uint8_t>(ts >> 16), static_cast<std::uint8_t>(ts >> 8), static_cast<std::uint8_t>(ts), 0});
+		out.insert(out.end(), {0, 0, 0});
+		out.insert(out.end(), body, body + 4);
+		out.insert(out.end(), {0, 0, 0, 15});
+	}
+}
+
+TEST_CASE("an aggregate message is dispatched as its sub-messages on the aggregate's stream")
+{
+	std::vector<std::uint8_t> body;
+	sub_message(body, rtmp_message::eMessageAudioData, 500, 0xAF);
+	sub_message(body, rtmp_message::eMessageVideoData, 520, 0x27);
+
+	rtmp_header h;
+	h.set_message_type(rtmp_message::eMessageAggregate);
+	h.set_message_length(static_cast<std::uint32_t>(body.size()));
+	h.set_stream_id(5);
+	h.set_channel_id(6);
+	h.set_timestamp(1000);
+	byte_reader r(body.data(), body.size());
+	rtmp_protocol p;
+	REQUIRE(p.deserialize(r, h));
+
+	fake_host host;
+	av_recorder app(&host);
+	rtmp_message_ptr result;
+	app.handle_message(p.message(), 1, h, result);
+
+	REQUIRE(app.log.size() == 2);
+	CHECK(app.log[0].type == rtmp_message::eMessageAudioData);
+	CHECK(app.log[0].stream == 5);
+	CHECK(app.log[0].ts == 1000);
+	CHECK(app.log[1].type == rtmp_message::eMessageVideoData);
+	CHECK(app.log[1].stream == 5);
+	CHECK(app.log[1].ts == 1020);
 }

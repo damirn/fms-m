@@ -131,3 +131,16 @@ TEST_CASE("netstream stats: the snapshot copy carries every field")
 	// A field added later is only covered once it is listed above; sizeof() cannot
 	// stand in for that, because the size differs between libc++ and libstdc++.
 }
+
+TEST_CASE("netstream stats: the average bitrate is in kilobits per second")
+{
+	netstream_stats s(1);
+	auto const t0 = std::chrono::system_clock::now();
+	s.set_start_streaming_time(t0);
+	s.m_bytes = 1'250'000;                                   // 10 megabits
+	CHECK(s.average_kbps(t0 + std::chrono::seconds(10)) == 1000);
+	CHECK(s.average_kbps(t0 + std::chrono::milliseconds(500)) == 0);
+
+	s.m_bytes = 4'000'000'000u;                              // no overflow in the bit count
+	CHECK(s.average_kbps(t0 + std::chrono::seconds(4000)) == 8000);
+}

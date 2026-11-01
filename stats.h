@@ -101,6 +101,17 @@ namespace fms
 		{
 			m_start_streaming_rep.store(t.time_since_epoch().count(), std::memory_order_relaxed);
 		}
+
+		// Mean bitrate since streaming started, in kilobits per second; 0 before a
+		// whole second has passed.
+		std::uint32_t average_kbps(std::chrono::system_clock::time_point now) const
+		{
+			auto const secs = std::chrono::duration_cast<std::chrono::seconds>(now - start_streaming_time()).count();
+			if (secs <= 0)
+				return 0;
+			std::uint64_t const bits = std::uint64_t{m_bytes.load(std::memory_order_relaxed)} * 8;
+			return static_cast<std::uint32_t>(bits / 1000 / static_cast<std::uint64_t>(secs));
+		}
 	};
 
 	using netstream_stats_ptr = std::shared_ptr<netstream_stats>;

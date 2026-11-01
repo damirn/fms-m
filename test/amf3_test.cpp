@@ -497,3 +497,63 @@ TEST_CASE("amf3 strings: the decode budget is per top-level read, not cumulative
 		CHECK(as_str(got->dense()[1]) == "abc");
 	}
 }
+
+TEST_CASE("amf3: Vector.<int>, Vector.<uint> and Vector.<Number> decode and re-encode exactly")
+{
+	bytes const ints = hx("0D 07 00 00000001 FFFFFFFF 00000100");
+	auto const vi = std::dynamic_pointer_cast<amf3_vector_int_type>(decode(ints));
+	REQUIRE(vi);
+	CHECK(vi->value() == std::vector<std::int32_t>{1, -1, 256});
+	CHECK_FALSE(vi->fixed());
+	CHECK(encode(vi) == ints);
+
+	bytes const uints = hx("0E 03 01 B2D05E00");
+	auto const vu = std::dynamic_pointer_cast<amf3_vector_uint_type>(decode(uints));
+	REQUIRE(vu);
+	CHECK(vu->value() == std::vector<std::uint32_t>{3000000000u});
+	CHECK(vu->fixed());
+	CHECK(encode(vu) == uints);
+
+	bytes const dbls = hx("0F 03 00 3FE0000000000000");
+	auto const vd = std::dynamic_pointer_cast<amf3_vector_double_type>(decode(dbls));
+	REQUIRE(vd);
+	CHECK(vd->value() == std::vector<double>{0.5});
+	CHECK(encode(vd) == dbls);
+}
+
+TEST_CASE("amf3: Vector.<Object> and Dictionary decode and re-encode exactly")
+{
+	bytes const objs = hx("10 05 00 01 04 05 06 05 68 69");   // type name "", [5, "hi"]
+	auto const vo = std::dynamic_pointer_cast<amf3_vector_object_type>(decode(objs));
+	REQUIRE(vo);
+	REQUIRE(vo->value().size() == 2);
+	CHECK(vo->type_name().empty());
+	CHECK(vo->value()[0]->type() == amf3_type::eAMF3Integer);
+	CHECK(static_cast<std::string>(*vo->value()[1]) == "hi");
+	CHECK(encode(vo) == objs);
+
+	bytes const dict = hx("11 03 00 04 01 06 03 61");          // {1: "a"}
+	auto const d = std::dynamic_pointer_cast<amf3_dictionary_type>(decode(dict));
+	REQUIRE(d);
+	REQUIRE(d->value().size() == 1);
+	CHECK(d->value()[0].first->type() == amf3_type::eAMF3Integer);
+	CHECK(static_cast<std::string>(*d->value()[0].second) == "a");
+	CHECK(encode(d) == dict);
+}
+
+TEST_CASE("amf3: vectors and dictionaries are referenceable objects")
+{
+	// array [v, ref-to-v]: the array is object 0, the vector object 1
+	auto const arr = std::dynamic_pointer_cast<amf3_array_type>(decode(hx("09 05 01 0D 03 00 00000007 0D 02")));
+	REQUIRE(arr);
+	REQUIRE(arr->dense().size() == 2);
+	CHECK(arr->dense()[0] == arr->dense()[1]);
+	CHECK(arr->dense()[0]->type() == amf3_type::eAMF3VectorInt);
+}
+
+TEST_CASE("amf3: a vector or dictionary count past the body is refused before allocating")
+{
+	CHECK_THROWS(decode(hx("0D 9F FF FF FF 00 00000001")));   // ~67M ints claimed, one present
+	CHECK_THROWS(decode(hx("10 9F FF FF FF 00 01 04 05")));
+	CHECK_THROWS(decode(hx("11 9F FF FF FF 00 04 01")));
+}

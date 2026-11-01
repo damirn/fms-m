@@ -70,6 +70,8 @@ namespace fms
 			m_message->set_stream_id(h.stream_id());
 			m_message->set_channel_id(h.channel_id());
 			m_message->set_timestamp(h.timestamp());
+			if (m_message->type() == rtmp_message::eMessageAggregate)
+				std::static_pointer_cast<rtmp_message_aggregate>(m_message)->adopt_stream(h.stream_id(), h.channel_id());
 
 			return true;
 		}

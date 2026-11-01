@@ -12,10 +12,12 @@
 #include "rtmfp/chunk.h"
 #include "rtmfp/flow.h"
 #include "rtmfp/group.h"
+#include "rtmfp/header.h"
 #include "app_host.h"
 #include "rtmfp/session.h"
 #include "rtmfp/types.h"
 #include "rtmp_header.h"
+#include "rtmp_application.h"
 #include "rtmp_message.h"
 
 #include <cstdint>
@@ -110,6 +112,8 @@ namespace
 	{
 		using session::session;
 		using session::handle_chunk;
+		using session::handle_header;
+		using session::notify_impl;
 		using session::flow_sanity_check;
 		using session::message_to_fragment;
 		using session::m_receiving_flows;
@@ -684,4 +688,104 @@ TEST_CASE("rtmfp session: an abandon whose offset exceeds its sequence drops not
 	s->handle_chunk(&c);
 
 	CHECK(f->second->fragment_count() == 3);
+}
+
+namespace
+{
+	bool feed_next_user_data(const testable_session_ptr &s, const std::vector<std::uint8_t> &payload, std::uint8_t frag_ctl)
+	{
+		std::vector<std::uint8_t> wire{static_cast<std::uint8_t>((frag_ctl & 0x03) << 4)};
+		wire.insert(wire.end(), payload.begin(), payload.end());
+		byte_reader r(wire.data(), wire.size());
+		next_user_data_chunk c;
+		REQUIRE(c.deserialize(r, static_cast<std::uint16_t>(wire.size())));
+		return s->handle_chunk(&c);
+	}
+
+	void next_packet(const testable_session_ptr &s)
+	{
+		header h(false, false, 0, header::eStartup);
+		s->handle_header(h);
+	}
+}
+
+TEST_CASE("rtmfp session: next user data continues a user data chunk of the same packet")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+	std::vector<std::uint8_t> const whole =
+		rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0x33, 0x44});
+	std::vector<std::uint8_t> const first(whole.begin(), whole.begin() + 4);
+	std::vector<std::uint8_t> const rest(whole.begin() + 4, whole.end());
+
+	next_packet(s);
+	feed_open_flow(s, 5, 1, 7, first, fragment::eBegin);
+	CHECK(feed_next_user_data(s, rest, fragment::eEnd));
+	CHECK(app.routed == 1);
+}
+
+TEST_CASE("rtmfp session: next user data opening a packet is ignored without failing it")
+{
+	fake_host h;
+	recording_app_host app;
+	auto const s = make_session(h, app);
+	std::vector<std::uint8_t> const whole =
+		rtmp_payload(rtmp_message::eMessageAudioData, {0xAF, 0x01, 0x33, 0x44});
+	std::vector<std::uint8_t> const first(whole.begin(), whole.begin() + 4);
+	std::vector<std::uint8_t> const rest(whole.begin() + 4, whole.end());
+
+	next_packet(s);
+	feed_open_flow(s, 5, 1, 7, first, fragment::eBegin);
+	next_packet(s);
+	CHECK(feed_next_user_data(s, rest, fragment::eEnd));
+	CHECK(app.routed == 0);
+
+	auto fresh = make_session(h, app);
+	next_packet(fresh);
+	CHECK(feed_next_user_data(fresh, rest, fragment::eEnd));
+}
+
+namespace
+{
+	struct queue_app : rtmp_application
+	{
+		explicit queue_app(app_host *h) : rtmp_application(h, "q") {}
+		void handle_audio_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override {}
+		void handle_video_data(const rtmp_message_ptr &, std::uint32_t, const rtmp_header &) override {}
+		boost::tribool handle_client_login(std::uint32_t, const rtmp_message_invoke::parameters_list_t &, rtmp_message_ptr &) override
+		{
+			return false;
+		}
+	};
+}
+
+TEST_CASE("rtmfp session: a queued close request closes the session and stops the drain")
+{
+	fake_host h;
+	recording_app_host host;
+	queue_app app(&host);
+	auto const s = make_session(h, host);
+	s->set_state(session::eOpen);
+	s->set_app(&app);
+
+	app.enqueue_async_message(s->id(), std::make_shared<rtmp_message_invoke>("close", 0.0));
+	app.enqueue_async_message(s->id(), std::make_shared<rtmp_message_close>());
+	app.enqueue_async_message(s->id(), std::make_shared<rtmp_message_invoke>("after", 0.0));
+	s->notify_impl();
+
+	CHECK(s->state() == session::eNearClose);
+	CHECK(app.has_async_messages(s->id()));   // nothing past the close was sent
+}
+
+TEST_CASE("rtmfp session: a burst of notifies queues one drain")
+{
+	fake_host h;
+	auto const s = make_session(h);
+	for (int i = 0; i < 5; ++i)
+		s->notify();
+	CHECK(h.io.poll() == 1);
+	h.io.restart();
+	s->notify();                    // the drain cleared the flag, so the next one queues again
+	CHECK(h.io.poll() == 1);
 }

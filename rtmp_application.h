@@ -74,13 +74,15 @@ namespace fms
 		bool has_async_messages(std::uint32_t);
 		virtual bool get_async_message(std::uint32_t, rtmp_message_ptr &);
 
-		// Takes m_stats_mutex: update_stats mutates these four counters from every
-		// connection thread on every read and write, and this is read from the
-		// admin thread.
+		// Each counter is read on its own; the snapshot is not one instant.
 		app_stats get_stats() const
 		{
-			std::lock_guard const lock(m_stats_mutex);
-			return m_stats;
+			app_stats s;
+			s.m_bytes_read = m_bytes_read.load(std::memory_order_relaxed);
+			s.m_bytes_written = m_bytes_written.load(std::memory_order_relaxed);
+			s.m_messages_read = m_messages_read.load(std::memory_order_relaxed);
+			s.m_messages_written = m_messages_written.load(std::memory_order_relaxed);
+			return s;
 		}
 
 		queue_stats_list_t get_queue_stats();
@@ -158,8 +160,11 @@ namespace fms
 		delay_map_t m_delays;
 		std::mutex m_delay_mutex;
 
-		app_stats m_stats;
-		mutable std::mutex m_stats_mutex;
+		// Bumped by every connection thread on every read, write and message.
+		std::atomic<std::uint32_t> m_bytes_read{0};
+		std::atomic<std::uint32_t> m_bytes_written{0};
+		std::atomic<std::uint32_t> m_messages_read{0};
+		std::atomic<std::uint32_t> m_messages_written{0};
 
 		// Outbound-queue cap, cached from config at construction rather than read per
 		// message: enqueue runs on the per-frame fan-out path. 0 = unbounded.

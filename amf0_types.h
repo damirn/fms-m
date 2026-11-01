@@ -2,8 +2,10 @@
 
 #include <cstdint>
 #include <exception>
+#include <limits>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -196,11 +198,23 @@ namespace fms
 			throw amf0_illegal_cast();
 		}
 
+		// An AMF number as integer type T, truncated toward zero; nullopt when it is
+		// NaN or outside T, where a plain cast is undefined behaviour.
+		template <class T>
+		[[nodiscard]] std::optional<T> to_integer(double v)
+		{
+			if (!(v > static_cast<double>(std::numeric_limits<T>::min()) - 1.0
+				&& v < static_cast<double>(std::numeric_limits<T>::max()) + 1.0))
+				return std::nullopt;
+			return static_cast<T>(v);
+		}
+
 		template<> inline std::uint32_t get<std::uint32_t>(const amf0_type_ptr& v)
 		{
 			amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != nullptr)
-				return static_cast<std::uint32_t>(num->value());
+				if (std::optional<std::uint32_t> const n = to_integer<std::uint32_t>(num->value()))
+					return *n;
 			throw amf0_illegal_cast();
 		}
 
@@ -208,7 +222,8 @@ namespace fms
 		{
 			amf0_number_ptr const num = std::dynamic_pointer_cast<amf0_number>(v);
 			if (num.get() != nullptr)
-				return static_cast<std::int32_t>(num->value());
+				if (std::optional<std::int32_t> const n = to_integer<std::int32_t>(num->value()))
+					return *n;
 			throw amf0_illegal_cast();
 		}
 	}
@@ -413,6 +428,28 @@ namespace fms
 	};
 
 	using amf0_ecma_array_ptr = std::shared_ptr<amf0_ecma_array>;
+
+	// An anonymous object or an ECMA array as an object, in wire order, a repeated
+	// key keeping its last value; null for any other type.
+	inline amf0_object_ptr as_object(const amf0_type_ptr &v)
+	{
+		if (!v)
+			return nullptr;
+		if (v->type() == amf0_type::eAMF0Object)
+			return std::static_pointer_cast<amf0_object>(v);
+		if (v->type() != amf0_type::eAMF0EcmaArray)
+			return nullptr;
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
+		for (auto const &[name, value] : std::static_pointer_cast<amf0_ecma_array>(v)->value())
+		{
+			auto &by_name = obj->value();
+			if (auto const j = by_name.find(name); j == by_name.end())
+				obj->add_entry(name, value);
+			else
+				by_name.modify(j, [&value](amf0_object::entry &e) { e.m_value = value; });
+		}
+		return obj;
+	}
 
 	class amf0_strict_array final : public amf0_type
 	{

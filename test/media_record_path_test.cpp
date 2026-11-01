@@ -7,6 +7,7 @@
 #include "app_host.h"
 #include "config.h"
 #include "doctest.h"
+#include "flv_reader.h"
 #include "io_context_pool.h"
 #include "media_application.h"
 #include "rtmp_message.h"
@@ -138,4 +139,34 @@ TEST_CASE("media recorder: metadata the write bounds refuse is dropped, not thro
 
 	stream_recorder rec((dir / "meta.flv").string());
 	CHECK_NOTHROW(rec.record_metadata(node));
+}
+
+TEST_CASE("media recorder: frames reach the file in order once the recording thread drains")
+{
+	std::filesystem::path const dir = set_output_folder();
+	std::string const path = (dir / "ordered.flv").string();
+	{
+		stream_recorder rec(path);
+		for (std::uint32_t i = 0; i < 50; ++i)
+		{
+			auto v = std::make_shared<rtmp_message_video_data>(6);
+			v->data()[0] = i == 0 ? 0x17 : 0x27;
+			v->data()[1] = 0x01;
+			v->set_timestamp(i * 40);
+			rec.record_video(v);
+		}
+		rec.close();
+	}
+	stream_recorder::drain();
+
+	flv_reader r;
+	r.open(path);
+	REQUIRE(r.is_open());
+	std::uint32_t n = 0;
+	while (r.read_frame())
+	{
+		CHECK(r.get_frame()->timestamp() == n * 40);
+		++n;
+	}
+	CHECK(n == 50);
 }

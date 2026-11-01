@@ -83,6 +83,7 @@ namespace fms::rtmp_client
 		}
 
 		std::vector<std::uint8_t> const &body = m_parser->get().body();
+		bool const ok = m_parser->get().result() == http::status::ok;
 
 		if (m_state == eOpening)
 		{
@@ -94,6 +95,12 @@ namespace fms::rtmp_client
 					break;
 				m_cid.push_back(static_cast<char>(c));
 			}
+			if (!ok || m_cid.empty())
+			{
+				close_socket();
+				m_connect_cb(false, "the server refused the tunnel (HTTP " + std::to_string(m_parser->get().result_int()) + ")");
+				return;
+			}
 			m_state = eReady;
 			arm_timer();
 			m_connect_cb(true, "");
@@ -101,6 +108,12 @@ namespace fms::rtmp_client
 		}
 
 		m_write_in_progress = false;
+		if (!ok)
+		{
+			close_socket();   // the session is gone or was refused
+			m_read_cb(false, 0);
+			return;
+		}
 		deliver(body);
 	}
 
@@ -126,13 +139,19 @@ namespace fms::rtmp_client
 
 	void net_client_tunnel::arm_timer()
 	{
-		m_timer.expires_after(std::chrono::milliseconds(m_ms_timer));
-		m_timer.async_wait([self = shared_tunnel()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+		m_poll_timer.expires_after(std::chrono::milliseconds(m_ms_timer));
+		m_poll_timer.async_wait([self = shared_tunnel()](const boost::system::error_code &ec) { self->handle_timer(ec); });
+	}
+
+	void net_client_tunnel::close_socket()
+	{
+		net_client::close_socket();
+		m_poll_timer.cancel();
 	}
 
 	void net_client_tunnel::handle_timer(const boost::system::error_code &e)
 	{
-		if (e)
+		if (e || m_stopped)
 			return;
 		arm_timer();
 		if (!m_write_in_progress)

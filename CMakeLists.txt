@@ -385,6 +385,35 @@ if(BUILD_TESTS)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
+  add_executable(media_play_test
+    test/test_main.cpp test/media_play_test.cpp
+    media_application.cpp rtmp_application.cpp av_delivery.cpp qos_reporter.cpp
+    vod_manager.cpp stream_recorder.cpp flv_writer.cpp flv_reader.cpp
+    remote_relay.cpp io_context_pool.cpp so_manager.cpp random_string.cpp
+    stream_registry.cpp
+    client_session.cpp rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp
+    rtmp_so_message.cpp amf0.cpp amf3.cpp util.cpp config.cpp logging.cpp)
+  target_link_libraries(media_play_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME media_play_test COMMAND media_play_test)
+  if(APPLE)
+    set_tests_properties(media_play_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
+  add_executable(transport_test
+    test/test_main.cpp test/rtmpt_session_test.cpp test/rtmp_connection_test.cpp
+    rtmpt_session.cpp rtmp_connection.cpp basic_rtmp_connection.cpp rtmp_parser.cpp rtmp_handshaker.cpp
+    rtmp_handshake.cpp crypto.cpp dh.cpp evp_dh.cpp io_context_pool.cpp
+    rtmp_application.cpp so_manager.cpp random_string.cpp client_session.cpp
+    rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp rtmp_so_message.cpp
+    amf0.cpp amf3.cpp util.cpp config.cpp logging.cpp)
+  target_link_libraries(transport_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME transport_test COMMAND transport_test)
+  if(APPLE)
+    set_tests_properties(transport_test PROPERTIES
+      ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
+  endif()
+
   add_executable(app_host_test
     test/test_main.cpp test/app_host_test.cpp test/rtmp_message_test.cpp
     rtmp_application.cpp so_manager.cpp random_string.cpp client_session.cpp
@@ -507,6 +536,7 @@ if(BUILD_TESTS)
     rtmfp/types.cpp rtmfp/aes.cpp rtmfp/serializer.cpp rtmfp/dh2.cpp
     evp_dh.cpp client_session.cpp rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp
     rtmp_so_message.cpp amf0.cpp amf3.cpp logging.cpp config.cpp crypto.cpp util.cpp
+    rtmp_application.cpp so_manager.cpp random_string.cpp
 )
   target_include_directories(rtmfp_session_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/rtmfp

@@ -24,12 +24,13 @@ namespace fms
 	// The RTMP send path is reached through an injected media_host (enqueue frames
 	// and status messages, the app manager / io_context).
 	//
-	// LOCKING: owns m_mutex, guarding m_vod and the vod_session state behind it.
-	// Deliberately not the stream_registry's lock: tick() does blocking disk I/O
-	// per frame, and on the registry lock that would stall the whole application's
-	// live fan-out.
+	// LOCKING: m_mutex guards only the m_vod map; each vod_session's own mutex
+	// guards its reader and state, so a seek or a frame read in one playback never
+	// waits on another. Neither is the stream_registry's lock: tick() does blocking
+	// disk I/O per frame, and on the registry lock that would stall the live fan-out.
+	// No method holds both at once.
 	//
-	// LOCK ORDER: registry lock BEFORE this one -- docs/concurrency.md.
+	// LOCK ORDER: registry lock BEFORE either -- docs/concurrency.md.
 	class vod_manager : boost::noncopyable
 	{
 	public:
@@ -37,12 +38,14 @@ namespace fms
 			: m_host(host)
 		{}
 
-		// Try to begin VOD for (connection_id, stream_id). Caller holds the REGISTRY
-		// lock (see the locking note above); this takes m_mutex itself.
-		// Returns false when there is no such saved file (or it is malformed / a
-		// traversal attempt / unreadable), so the caller can fall back to the
-		// live/waiting path.
-		bool start(std::uint32_t connection_id, const rtmp_message_invoke_ptr &invoke, const std::string &stream_name);
+		// Open `stream_name`'s saved file for (connection_id, stream_id) and position
+		// it at play's start offset. Disk work under no lock, so the caller runs it
+		// before taking the registry lock. Null when there is no playable file (or it
+		// is malformed / a traversal attempt / unreadable).
+		vod_session_ptr prepare(std::uint32_t connection_id, const rtmp_message_invoke_ptr &invoke, const std::string &stream_name);
+
+		// Publish and begin a prepared playback. Caller holds the registry lock.
+		void start(const vod_session_ptr &session);
 
 		void pause(std::uint32_t connection_id, std::uint32_t stream_id, bool pause);
 		void seek(std::uint32_t connection_id, std::uint32_t stream_id, std::uint32_t ms);
@@ -63,12 +66,16 @@ namespace fms
 	private:
 		// Emit the next frame of `session` and re-arm its timer for the frame after.
 		void tick(const vod_session_ptr &session);
+		// tick's work under the session's lock; true when the playback just ended.
+		bool tick_session(const vod_session_ptr &session);
+
+		vod_session_ptr find(const stream_client_id_t &key);
+		// Stop a session already taken out of m_vod.
+		static void halt(const vod_session_ptr &session);
 
 		media_host &m_host;
 
-		// Guards m_vod and the sessions in it. See the locking note on the class:
-		// deliberately not the registry's lock, so per-frame disk reads cannot stall
-		// the live fan-out.
+		// Guards m_vod only; see the locking note on the class.
 		std::mutex m_mutex;
 
 		// active VOD playbacks, keyed by (connection_id, stream_id)

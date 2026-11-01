@@ -36,7 +36,7 @@ namespace fms
 		// the application's shared_mutex; `bcid` is the publisher (broadcaster) id.
 		void route_video(const rtmp_message_video_data_ptr &video, const stream_client_id_t &bcid);
 
-		// Fan a publisher's stream metadata (onMetaData) out to its subscribers,
+		// Fan a publisher's stream metadata (onMetaData, an object or ECMA array) out to its subscribers,
 		// merge it into the stored snapshot, and write it to the recording if any.
 		// Caller holds the application's shared_mutex; `cid` is the publisher id.
 		void route_metadata(const amf0_type_ptr &meta, const stream_client_id_t &cid);
@@ -54,7 +54,7 @@ namespace fms
 		void send_aac_config(const stream_client_id_t &src, const stream_client_ptr &client);
 
 		// Merge `data` into publisher `cid`'s stored metadata (copy-on-write).
-		void update_metadata(const stream_client_id_t &cid, const amf0_type_ptr &data);
+		void update_metadata(const stream_client_id_t &cid, const amf0_object_ptr &obj);
 
 		// Enqueue + notify a subscriber, using its cached session to skip the
 		// manager-mutex lookups on the per-frame fan-out path.

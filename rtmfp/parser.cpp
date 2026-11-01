@@ -76,7 +76,7 @@ namespace fms
 			if (raw.available() >= len)
 			{
 				if (!deserialize_chunk(type, len, raw))
-		return false;
+					return false;
 			}
 		}
 		return true;
@@ -120,10 +120,10 @@ namespace fms
 			c = std::make_unique<close_ack_chunk>();
 			break;
 		default:
-			break;
+			// RFC 7016 2.3.1: an unrecognised chunk is skipped by its length
+			raw.skip(len);
+			return true;
 		}
-		if (!c)
-			return false;
 
 		// A chunk whose deserialize overran its bounds leaves its length/offset
 		// fields attacker-set or indeterminate; do NOT hand it to the handler

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "amf3_types.h"
+#include "amf_read_budget.h"
 #include "byte_writer.h"
 
 #include <cstddef>
@@ -36,11 +37,11 @@ namespace fms
 	class amf3
 	{
 	public:
-		// depth_base and string_bytes charge this instance against an enclosing AMF0
-		// walk, so a mixed graph is bounded by one depth and one byte allowance.
-		explicit amf3(unsigned depth_base = 0, std::size_t *string_bytes = nullptr)
+		// depth_base and budget charge this instance against an enclosing AMF0 walk,
+		// so a mixed graph is bounded by one depth and one read budget.
+		explicit amf3(unsigned depth_base = 0, amf_read_budget *budget = nullptr)
 			: m_depth(depth_base)
-			, m_string_bytes(string_bytes != nullptr ? string_bytes : &m_own_string_bytes)
+			, m_budget(budget != nullptr ? budget : &m_own_budget)
 		{}
 
 		amf3(const amf3 &) = delete;
@@ -86,6 +87,12 @@ namespace fms
 		amf3_type_ptr read_object(byte_reader &);
 		void write_object(byte_writer &, const amf3_object_type_ptr&);
 
+		amf3_type_ptr read_vector(byte_reader &, std::uint8_t marker);
+		void write_vector(byte_writer &, const amf3_type_ptr&);
+
+		amf3_type_ptr read_dictionary(byte_reader &);
+		void write_dictionary(byte_writer &, const amf3_dictionary_type_ptr&);
+
 		static std::uint32_t read_u29(byte_reader &);
 
 		// Returns the referenced object, or nullptr if idx is out of range.
@@ -121,19 +128,16 @@ namespace fms
 			m_object_refs.clear();
 			m_object_complete.clear();
 			m_traits_refs.clear();
-			*m_string_bytes = 0;
+			*m_budget = {};
 		}
 
 		unsigned m_depth;
 
-		// A string reference costs one wire byte but materializes a full copy;
-		// budget every string handed back, by value or by reference.
-		static constexpr std::size_t eMaxDecodedStringBytes = 32u << 20;
-
 		// Storage for a standalone instance; a nested one points at its enclosing walk.
-		std::size_t m_own_string_bytes = 0;
-		std::size_t *m_string_bytes;
+		amf_read_budget m_own_budget;
+		amf_read_budget *m_budget;
 
 		void charge_string_bytes(std::size_t n);
+		void charge_node();
 	};
 }

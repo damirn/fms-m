@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <iomanip>
+#include <optional>
 #include <sstream>
 
 #include <openssl/sha.h>
@@ -22,12 +23,13 @@ namespace fms
 			if (client_sig[4] != 0)
 				m_is_fp9 = true;
 		}
-		else if (magic == eCryptoMagic)
+		else if (magic == eCryptoMagic || magic == eCryptoXteaMagic || magic == eCryptoBlowfishMagic)
 		{
 			m_is_fp9 = m_uses_crypto = true;
 		}
 		else
 			return false;   // unknown magic
+		m_magic = magic;
 
 		if (!m_is_fp9)
 		{
@@ -70,7 +72,7 @@ namespace fms
 			return false;
 		if (HMAC_SHA256(client_sig.data(), eHandShakeSize - SHA256_DIGEST_LENGTH, tmp_hash, SHA256_DIGEST_LENGTH, client_sig.data() + eHandShakeSize - SHA256_DIGEST_LENGTH) == 0)
 			return false;   // these bytes ship to the client as S2's signature
-		return true;
+		return rtmp_handshake::scramble_signature(m_magic, tmp_hash, client_sig.last<rtmp_handshake::eDigestLen>());
 	}
 
 	bool rtmp_handshaker::validate_c2(rtmp_handshake::c1_view c2)
@@ -84,6 +86,7 @@ namespace fms
 		std::uint8_t sig[SHA256_DIGEST_LENGTH] = {};
 		if (HMAC_SHA256(srv_dig.data() + digest, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, dig) != 0 &&
 			HMAC_SHA256(c2.data(), eHandShakeSize - SHA256_DIGEST_LENGTH, dig, SHA256_DIGEST_LENGTH, sig) != 0 &&
+			rtmp_handshake::scramble_signature(m_magic, dig, sig) &&
 			std::memcmp(sig, c2.data() + eHandShakeSize - SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH) == 0)
 			return true;
 
@@ -105,16 +108,22 @@ namespace fms
 
 	bool rtmp_handshaker::create_keys(rtmp_handshake::c1_view client_sig, rtmp_handshake::c1_span server_sig)
 	{
-		dh mydh;
-		if (!mydh.valid())
-			return false;   // keygen failed
 		std::uint32_t const client_dh_offset = rtmp_handshake::dh_offset(client_sig, m_validation_scheme);
 		std::uint32_t const server_dh_offset = rtmp_handshake::dh_offset(server_sig, m_validation_scheme);
 
-		if (!mydh.create_shared_key(client_sig.data() + client_dh_offset, 128))
-			return false;   // degenerate peer public value: fail the handshake, do not unwind
-		if (!mydh.copy_public_key(server_sig.data() + server_dh_offset, 128))
-			return false;   // S1's DH slot must hold the exported key, not the filler
+		// Only RTMPE keys a cipher: a plaintext signed handshake keeps S1's random
+		// filler in the DH slot and spends no modular exponentiation on it.
+		std::optional<dh> mydh;
+		if (m_uses_crypto)
+		{
+			mydh.emplace();
+			if (!mydh->valid())
+				return false;   // keygen failed
+			if (!mydh->create_shared_key(client_sig.data() + client_dh_offset, 128))
+				return false;   // degenerate peer public value: fail the handshake, do not unwind
+			if (!mydh->copy_public_key(server_sig.data() + server_dh_offset, 128))
+				return false;   // S1's DH slot must hold the exported key, not the filler
+		}
 
 		std::uint8_t hash[SHA256_DIGEST_LENGTH];
 		if (HMAC_SHA256(server_sig.data() + server_dh_offset, 128, genuine_keys::FP_key, 30, hash) == 0)
@@ -127,11 +136,11 @@ namespace fms
 
 		m_sid = tmp.str();
 
-		if (m_uses_crypto)
+		if (mydh)
 		{
 			// create RC4 keys
 			std::uint8_t shared_key[128];
-			if (!mydh.copy_shared_key(shared_key, 128))
+			if (!mydh->copy_shared_key(shared_key, 128))
 				return false;   // short secret: fail closed rather than ship cleartext
 			m_key_in.reset(EVP_CIPHER_CTX_new());
 			m_key_out.reset(EVP_CIPHER_CTX_new());

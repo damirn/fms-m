@@ -452,3 +452,155 @@ TEST_CASE("b2b: pause actually halts the VOD, unpause resumes it")
 
 	std::error_code ec; fs::remove_all(dir, ec);
 }
+
+namespace
+{
+	// Connect, then close the moment the connection is up.
+	struct closing_nc : net_connection_event_handler
+	{
+		net_connection_ptr conn;
+		bool connected = false;
+		void on_status(const std::string &s) override
+		{
+			if (s == "NetConnection.Connect.Success")
+			{
+				connected = true;
+				conn->close();
+			}
+		}
+	};
+}
+
+TEST_CASE("b2b(rtmpt): a closed tunnel client stops polling")
+{
+	int const port = 26005;
+	fs::path const dir = fs::temp_directory_path() / "fms_b2b_rtmpt_close";
+	fs::create_directories(dir);
+	server_process server(dir.string(), port);
+
+	boost::asio::io_context io;
+	closing_nc nc;
+	nc.conn = std::make_shared<net_connection>(io, nc, true);
+	nc.conn->connect("rtmpt://127.0.0.1:" + std::to_string(port + 1) + "/media");
+	io.run_for(std::chrono::seconds(8));
+
+	CHECK(nc.connected);
+	CHECK(io.stopped());   // nothing left queued: no poll timer outlives the close
+
+	std::error_code ec; fs::remove_all(dir, ec);
+}
+
+namespace
+{
+	struct status_nc : net_connection_event_handler
+	{
+		std::vector<std::string> status;
+		void on_status(const std::string &s) override { status.push_back(s); }
+	};
+}
+
+TEST_CASE("b2b: the client drops a server whose chunk stream breaks the framing limits")
+{
+	using boost::asio::ip::tcp;
+	boost::asio::io_context server_io;
+	tcp::acceptor acceptor(server_io, {boost::asio::ip::address_v4::loopback(), 0});
+	unsigned short const port = acceptor.local_endpoint().port();
+
+	std::thread server([&]
+	{
+		boost::system::error_code ec;
+		tcp::socket s = acceptor.accept(ec);
+		if (ec)
+			return;
+		std::vector<std::uint8_t> c0c1(1537);
+		boost::asio::read(s, boost::asio::buffer(c0c1), ec);
+		std::vector<std::uint8_t> s0s1s2(1 + 2 * 1536, 0);
+		s0s1s2[0] = 0x03;
+		boost::asio::write(s, boost::asio::buffer(s0s1s2), ec);
+		std::vector<std::uint8_t> c2(1536);
+		boost::asio::read(s, boost::asio::buffer(c2), ec);
+		// type-0 header on csid 3 declaring a 16 MiB invoke, past the parser's cap
+		std::uint8_t const bad[] = {0x03, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0x14, 0, 0, 0, 0, 1, 2, 3, 4};
+		boost::asio::write(s, boost::asio::buffer(bad), ec);
+		std::this_thread::sleep_for(std::chrono::seconds(3));
+	});
+
+	boost::asio::io_context io;
+	status_nc nc;
+	auto conn = std::make_shared<net_connection>(io, nc, false);
+	std::weak_ptr<net_connection> const alive = conn;
+	conn->connect("rtmp://127.0.0.1:" + std::to_string(port) + "/media");
+	io.run_for(std::chrono::seconds(2));
+	server.join();
+
+	CHECK(saw(nc.status, "NetConnection.Connect.Closed"));
+	conn.reset();
+	CHECK(alive.expired());   // the unanswered connect does not keep the connection alive
+}
+
+TEST_CASE("b2b: a server that hangs up mid-connect leaves no client connection behind")
+{
+	using boost::asio::ip::tcp;
+	boost::asio::io_context server_io;
+	tcp::acceptor acceptor(server_io, {boost::asio::ip::address_v4::loopback(), 0});
+	unsigned short const port = acceptor.local_endpoint().port();
+
+	std::thread server([&]
+	{
+		boost::system::error_code ec;
+		tcp::socket s = acceptor.accept(ec);
+		if (ec)
+			return;
+		std::vector<std::uint8_t> c0c1(1537);
+		boost::asio::read(s, boost::asio::buffer(c0c1), ec);
+		std::vector<std::uint8_t> s0s1s2(1 + 2 * 1536, 0);
+		s0s1s2[0] = 0x03;
+		boost::asio::write(s, boost::asio::buffer(s0s1s2), ec);
+		std::vector<std::uint8_t> c2(1536);
+		boost::asio::read(s, boost::asio::buffer(c2), ec);
+		s.close(ec);   // the connect is never answered
+	});
+
+	boost::asio::io_context io;
+	status_nc nc;
+	auto conn = std::make_shared<net_connection>(io, nc, false);
+	std::weak_ptr<net_connection> const alive = conn;
+	conn->connect("rtmp://127.0.0.1:" + std::to_string(port) + "/media");
+	io.run_for(std::chrono::seconds(2));
+	server.join();
+
+	CHECK(saw(nc.status, "NetConnection.Connect.Closed"));
+	conn.reset();
+	CHECK(alive.expired());
+}
+
+TEST_CASE("b2b(rtmpt): a refused tunnel open is a failed connect, not a success")
+{
+	using boost::asio::ip::tcp;
+	boost::asio::io_context server_io;
+	tcp::acceptor acceptor(server_io, {boost::asio::ip::address_v4::loopback(), 0});
+	unsigned short const port = acceptor.local_endpoint().port();
+
+	std::thread server([&]
+	{
+		boost::system::error_code ec;
+		tcp::socket s = acceptor.accept(ec);
+		if (ec)
+			return;
+		boost::asio::streambuf req;
+		boost::asio::read_until(s, req, "\r\n\r\n", ec);
+		std::string const reply = "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n";
+		boost::asio::write(s, boost::asio::buffer(reply), ec);
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+	});
+
+	boost::asio::io_context io;
+	status_nc nc;
+	auto const conn = std::make_shared<net_connection>(io, nc, true);
+	conn->connect("rtmpt://127.0.0.1:" + std::to_string(port) + "/media");
+	io.run_for(std::chrono::seconds(2));
+	server.join();
+
+	CHECK_FALSE(saw(nc.status, "NetConnection.Connect.Success"));
+	CHECK(saw(nc.status, "NetConnection.Connect.Failed"));
+}

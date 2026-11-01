@@ -13,6 +13,7 @@
 #include "util.h"
 
 #include <iostream>
+#include <optional>
 #include <utility>
 
 #include <boost/algorithm/string.hpp>
@@ -288,10 +289,19 @@ namespace fms::rtmp_client
 			}
 
 			m_parser.parse(*m_input_buffer);
+			if (m_parser.framing_error())
+			{
+				close();
+				m_event_handler.on_status(connect_closed);
+				return;
+			}
 			read_data();
 		}
 		else
+		{
+			close();
 			m_event_handler.on_status(connect_closed);
+		}
 	}
 
 	void net_connection::update_bytes_read(std::size_t bytes_read)
@@ -503,7 +513,8 @@ namespace fms::rtmp_client
 
 	void net_connection::send_message(const rtmp_message_invoke_ptr& msg, result_handler_ptr rs)
 	{
-		m_result_handlers[static_cast<std::uint32_t>(msg->invoke_id()->value())] = std::move(rs);
+		if (std::optional<std::uint32_t> const id = amf0_util::to_integer<std::uint32_t>(msg->invoke_id()->value()))
+			m_result_handlers[*id] = std::move(rs);
 		send_message(msg);
 	}
 
@@ -550,7 +561,8 @@ namespace fms::rtmp_client
 		}
 
 		// do we have result set handler for this invoke?
-		auto const i = m_result_handlers.find(static_cast<std::uint32_t>(invoke->invoke_id()->value()));
+		std::optional<std::uint32_t> const id = amf0_util::to_integer<std::uint32_t>(invoke->invoke_id()->value());
+		auto const i = id ? m_result_handlers.find(*id) : m_result_handlers.end();
 		if (i != m_result_handlers.end())
 		{
 			// Extract first: the callback can insert into this map and rehash it.
@@ -680,8 +692,12 @@ namespace fms::rtmp_client
 		if (!stream_id)
 			return;
 
+		std::optional<std::uint32_t> const created = amf0_util::to_integer<std::uint32_t>(stream_id->value());
+		if (!created)
+			return;   // not a stream id
+
 		std::string func;
-		std::uint32_t const sid = static_cast<std::uint32_t>(stream_id->value());
+		std::uint32_t const sid = *created;
 		m_net_streams[sid] = ns;
 		ns->set_stream_id(sid);
 
@@ -698,7 +714,7 @@ namespace fms::rtmp_client
 		}
 
 		rtmp_message_invoke_ptr const p = std::make_shared<rtmp_message_invoke>(func, 0.0f);
-		p->set_stream_id(static_cast<std::uint32_t>(stream_id->value()));
+		p->set_stream_id(sid);
 
 		amf0_null_ptr const null = std::make_shared<amf0_null>();
 		p->add_parameter(null);

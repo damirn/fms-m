@@ -1,5 +1,11 @@
 #include "pch.h"
 #include "flv_reader.h"
+#include "amf0.h"
+#include "byte_reader.h"
+
+#include <exception>
+#include <optional>
+#include <vector>
 
 namespace fms
 {
@@ -16,8 +22,42 @@ namespace fms
 			m_name = name;
 			m_f.open(m_name.c_str(), std::ios_base::binary);
 			if (m_f.is_open())
+			{
 				m_f.seekg(13);
+				read_metadata();
+			}
 		}
+	}
+
+	void flv_reader::read_metadata()
+	{
+		std::streampos const first_tag = m_f.tellg();
+		std::uint8_t type = 0;
+		m_f.read(reinterpret_cast<char *>(&type), 1);
+		std::uint32_t const size = read_uint32_3();
+		m_f.seekg(7, std::ios_base::cur);   // timestamp, its extension, stream id
+		if (m_f && type == 0x12 && size <= eMaxMetadataBytes)
+		{
+			std::vector<std::uint8_t> body(size);
+			if (m_f.read(reinterpret_cast<char *>(body.data()), size))
+			{
+				try
+				{
+					byte_reader r(body.data(), body.size());
+					amf0 codec;
+					amf0_type_ptr const name = codec.read(r);
+					if (name && name->type() == amf0_type::eAMF0String
+						&& std::static_pointer_cast<amf0_string>(name)->value() == "onMetaData")
+						m_metadata = codec.read(r);
+				}
+				catch (const std::exception &)
+				{
+					m_metadata.reset();   // malformed metadata: play without it
+				}
+			}
+		}
+		m_f.clear();
+		m_f.seekg(first_tag);
 	}
 
 	bool flv_reader::read_frame()
@@ -34,8 +74,11 @@ namespace fms
 			m_f.read(reinterpret_cast<char *>(&c), 1);
 
 			std::uint32_t const size = read_uint32_3();
-			std::uint32_t const ts = read_uint32_3();
-			m_f.seekg(4, std::ios_base::cur);
+			std::uint32_t ts = read_uint32_3();
+			std::uint8_t ts_extended = 0;   // the timestamp's high byte
+			m_f.read(reinterpret_cast<char *>(&ts_extended), 1);
+			ts |= static_cast<std::uint32_t>(ts_extended) << 24;
+			m_f.seekg(3, std::ios_base::cur);   // stream id, always 0
 			if (!m_f)   // short read or seek past end
 				return false;
 
@@ -74,6 +117,9 @@ namespace fms
 		m_f.clear();
 		m_f.seekg(13, std::ios_base::beg);   // past the FLV header
 
+		// Land where playback can decode from: the tag at `ms` if it is a keyframe,
+		// else the last keyframe before it, else (no video) the tag at `ms` itself.
+		std::optional<std::streampos> keyframe;
 		for (;;)
 		{
 			std::streampos const tag_start = m_f.tellg();
@@ -82,14 +128,31 @@ namespace fms
 			if (m_f.eof() || !m_f)
 				break;
 			std::uint32_t const size = read_uint32_3();
-			std::uint32_t const ts = read_uint32_3();
-			m_f.seekg(4, std::ios_base::cur);   // ts-extended + stream id
-
-			if ((type == 0x08 || type == 0x09) && ts >= ms)
+			std::uint32_t ts = read_uint32_3();
+			std::uint8_t ts_extended = 0;
+			m_f.read(reinterpret_cast<char *>(&ts_extended), 1);
+			ts |= static_cast<std::uint32_t>(ts_extended) << 24;
+			m_f.seekg(3, std::ios_base::cur);   // stream id
+			std::uint8_t first = 0;
+			if (type == 0x09 && size > 0)
 			{
-				m_f.clear();
-				m_f.seekg(tag_start);            // read_frame() will re-read this tag
-				return;
+				m_f.read(reinterpret_cast<char *>(&first), 1);
+				m_f.seekg(-1, std::ios_base::cur);
+			}
+			if (!m_f)
+				break;
+
+			if (type == 0x08 || type == 0x09)
+			{
+				bool const is_key = type == 0x09 && (first >> 4) == rtmp_message_video_data::eKeyFrame;
+				if (ts >= ms)
+				{
+					m_f.clear();
+					m_f.seekg(is_key || !keyframe ? tag_start : *keyframe);
+					return;
+				}
+				if (is_key)
+					keyframe = tag_start;
 			}
 			m_f.seekg(static_cast<std::streamoff>(size) + 4, std::ios_base::cur);  // data + prev tag size
 		}

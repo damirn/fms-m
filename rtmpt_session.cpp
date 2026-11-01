@@ -40,14 +40,26 @@ namespace fms
 			std::uint8_t const i = get_poll_time(true);
 			buffer << i;
 
-			rtmp_message_ptr msg;
-			while(get_app()->get_async_message(m_id, msg))
-				serialize_message(msg, buffer);
-
-			for (auto & result : m_results)
-				serialize_message(result, buffer);
+			drain_async(buffer);
+			if (!m_closed)
+				for (auto & result : m_results)
+					serialize_message(result, buffer);
 			m_results.clear();
 
+		}
+	}
+
+	void rtmpt_session::drain_async(byte_writer &buffer)
+	{
+		rtmp_message_ptr msg;
+		while (get_app()->get_async_message(m_id, msg))
+		{
+			if (msg->type() == rtmp_message::eMessageClose)
+			{
+				close();
+				return;
+			}
+			serialize_message(msg, buffer);
 		}
 	}
 
@@ -81,15 +93,9 @@ namespace fms
 	{
 		if (m_app != nullptr && get_app()->has_async_messages(m_id))
 		{
-			rtmp_message_ptr result;
-
 			std::uint8_t const i = get_poll_time(true);
 			buffer << i;
-
-			while (get_app()->get_async_message(m_id, result))
-			{
-				serialize_message(result, buffer);
-			}
+			drain_async(buffer);
 			return;
 		}
 

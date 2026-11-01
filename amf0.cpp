@@ -403,7 +403,7 @@ namespace fms
 		if (b != amf0_type::eAMF0AMF3Container)
 			return false;
 
-		amf3 m3(m_depth, string_budget());
+		amf3 m3(m_depth, budget());
 		amf3_type_ptr const type = m3.read(buffer);
 		value->set_data(type);
 
@@ -424,7 +424,7 @@ namespace fms
 		{
 			m_ref_table.clear();
 			m_ref_complete.clear();
-			m_decoded_string_bytes = 0;
+			m_budget = {};
 		}
 
 		// Guard first: the frame that trips the bound has to give its level back too,
@@ -432,6 +432,8 @@ namespace fms
 		++m_depth;
 		struct depth_guard { unsigned &d; ~depth_guard() { --d; } } const guard{ m_depth };
 		if (m_depth > eMaxDepth)   // bound recursion on hostile nested input
+			throw amf0_read_exception();
+		if (++budget()->nodes > amf_read_budget::eMaxNodes)
 			throw amf0_read_exception();
 
 		if (buffer.available() < 1)

@@ -5,6 +5,7 @@
 #include "doctest.h"
 
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -326,4 +327,26 @@ TEST_CASE("amf0_object: copy + merge leaves the original snapshot unchanged (met
 	CHECK(orig->value().size() == 2);
 	CHECK(num(*orig, "width") == 100.0);
 	CHECK(orig->value().find("fps") == orig->value().end());
+}
+
+TEST_CASE("amf0_util: an AMF number converts to an integer only when it fits")
+{
+	using amf0_util::to_integer;
+	double const nan = std::numeric_limits<double>::quiet_NaN();
+	double const inf = std::numeric_limits<double>::infinity();
+	CHECK(to_integer<std::uint32_t>(7.9) == 7u);
+	CHECK(to_integer<std::uint32_t>(-0.5) == 0u);
+	CHECK(to_integer<std::uint32_t>(4294967295.0) == 4294967295u);
+	CHECK_FALSE(to_integer<std::uint32_t>(4294967296.0));
+	CHECK_FALSE(to_integer<std::uint32_t>(-1.0));
+	CHECK_FALSE(to_integer<std::uint32_t>(nan));
+	CHECK_FALSE(to_integer<std::uint32_t>(inf));
+	CHECK(to_integer<std::int32_t>(-2147483648.0) == std::numeric_limits<std::int32_t>::min());
+	CHECK_FALSE(to_integer<std::int32_t>(2147483648.0));
+	CHECK_FALSE(to_integer<std::int32_t>(-inf));
+
+	amf0_type_ptr const bad = std::make_shared<amf0_number>(nan);
+	CHECK_THROWS_AS(amf0_util::get<std::uint32_t>(bad), amf0_illegal_cast);
+	CHECK_THROWS_AS(amf0_util::get<std::int32_t>(std::make_shared<amf0_number>(1e12)), amf0_illegal_cast);
+	CHECK(amf0_util::get<std::uint32_t>(std::make_shared<amf0_number>(42.0)) == 42u);
 }

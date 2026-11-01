@@ -22,6 +22,13 @@ namespace fms
 		m_file.close();
 	}
 
+	std::uint32_t flv_writer::advance(std::uint32_t written, std::uint32_t timestamp, std::uint32_t reference)
+	{
+		// A step back from `reference`, wrap-aware, writes no time at all.
+		auto const delta = static_cast<std::int32_t>(timestamp - reference);
+		return delta > 0 ? written + static_cast<std::uint32_t>(delta) : written;
+	}
+
 	void flv_writer::write_audio(const char *buf, std::uint32_t size, std::uint32_t timestamp)
 	{
 		if (m_first_audio_frame)
@@ -33,10 +40,10 @@ namespace fms
 				m_start_epoch = timestamp;
 			}
 			else
-				m_audio_ts = timestamp - m_start_epoch;
+				m_audio_ts = advance(0, timestamp, m_start_epoch);
 		}
 		else
-			m_audio_ts += timestamp - m_prev_audio_ts;
+			m_audio_ts = advance(m_audio_ts, timestamp, m_prev_audio_ts);
 		m_prev_audio_ts = timestamp;
 
 		if (!write_tag(eAudioFrame, size, m_audio_ts))
@@ -57,10 +64,10 @@ namespace fms
 				m_start_epoch = timestamp;
 			}
 			else
-				m_video_ts = timestamp - m_start_epoch;
+				m_video_ts = advance(0, timestamp, m_start_epoch);
 		}
 		else
-			m_video_ts += timestamp - m_prev_video_ts;
+			m_video_ts = advance(m_video_ts, timestamp, m_prev_video_ts);
 		m_prev_video_ts = timestamp;
 
 		if (!write_tag(eVideoFrame, size, m_video_ts))

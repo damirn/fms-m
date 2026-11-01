@@ -6,6 +6,7 @@
 #include "stats.h"          // stream_client_id_t, stream_client_id_map
 #include "stream_client.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <map>
@@ -25,6 +26,49 @@
 namespace fms
 {
 	class stream_recorder;
+
+	// The frames since the publisher's last keyframe, replayed to a joiner. A
+	// publisher that stops sending keyframes cannot grow it past the caps: the
+	// cache empties and refills from the next keyframe.
+	class gop_cache
+	{
+	public:
+		static constexpr std::size_t eMaxFrames = 3000;
+		static constexpr std::size_t eMaxBytes = 16u * 1024 * 1024;
+
+		using frames_t = std::list<rtmp_message_video_data_ptr>;
+
+		// A keyframe starts a new GOP; any other frame extends the current one.
+		void add(const rtmp_message_video_data_ptr &frame, bool keyframe)
+		{
+			if (keyframe)
+				clear();
+			else if (m_frames.empty())
+				return;
+			if (m_frames.size() >= eMaxFrames || m_bytes + frame->size() > eMaxBytes)
+			{
+				clear();
+				return;
+			}
+			m_frames.push_back(frame);
+			m_bytes += frame->size();
+		}
+
+		void clear()
+		{
+			m_frames.clear();
+			m_bytes = 0;
+		}
+
+		bool empty() const { return m_frames.empty(); }
+		std::size_t size() const { return m_frames.size(); }
+		std::size_t bytes() const { return m_bytes; }
+		const frames_t &frames() const { return m_frames; }
+
+	private:
+		frames_t m_frames;
+		std::size_t m_bytes{0};
+	};
 
 	// Owns the media-routing state of a broadcast application: the live publishers
 	// (broadcast_stream), their subscribers, the fan-out index, and the clients
@@ -71,7 +115,7 @@ namespace fms
 		// constructed in place by operator[].
 		struct broadcast_stream
 		{
-			std::list<rtmp_message_video_data_ptr> video_queue;
+			gop_cache video_queue;
 			atomic_shared_ptr<rtmp_message_video_data> avc_config;
 			atomic_shared_ptr<rtmp_message_audio_data> aac_config;
 			amf0_object_ptr metadata;
