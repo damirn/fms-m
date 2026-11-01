@@ -112,3 +112,24 @@ TEST_CASE("flv_writer: timestamps never step back, from the first tag of either 
 	CHECK(ts[4] == 140);
 	fs::remove(path);
 }
+
+TEST_CASE("flv round trip: a timestamp past 24 bits survives through the extended byte")
+{
+	std::string const path = temp_path("long");
+	fs::remove(path);
+	{
+		flv_writer w(path);
+		char const video[] = {0x17, 0x01, 0x00};
+		w.write_video(video, sizeof video, 0);
+		w.write_video(video, sizeof video, 0x01234567);   // about 5.3 hours in
+		w.close();
+	}
+	flv_reader r;
+	r.open(path);
+	REQUIRE(r.is_open());
+	REQUIRE(r.read_frame());
+	CHECK(r.get_frame()->timestamp() == 0);
+	REQUIRE(r.read_frame());
+	CHECK(r.get_frame()->timestamp() == 0x01234567u);
+	fs::remove(path);
+}

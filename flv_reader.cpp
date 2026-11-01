@@ -34,8 +34,11 @@ namespace fms
 			m_f.read(reinterpret_cast<char *>(&c), 1);
 
 			std::uint32_t const size = read_uint32_3();
-			std::uint32_t const ts = read_uint32_3();
-			m_f.seekg(4, std::ios_base::cur);
+			std::uint32_t ts = read_uint32_3();
+			std::uint8_t ts_extended = 0;   // the timestamp's high byte
+			m_f.read(reinterpret_cast<char *>(&ts_extended), 1);
+			ts |= static_cast<std::uint32_t>(ts_extended) << 24;
+			m_f.seekg(3, std::ios_base::cur);   // stream id, always 0
 			if (!m_f)   // short read or seek past end
 				return false;
 
