@@ -275,3 +275,70 @@ TEST_CASE("a degenerate DH public key fails the handshake without throwing")
 	CHECK(h.build_response(rtmp_handshaker::eCryptoMagic, span_of(good)));
 	CHECK(h.encrypting());
 }
+
+// Reference vectors from librtmp's rtmpe8_sig / rtmpe9_sig over sig[i] = i*7+3,
+// keyed by digest[i] = i*13+5.
+TEST_CASE("RTMPE type 8 and 9 signature transforms match the reference implementation")
+{
+	REQUIRE(legacy_provider);
+	std::array<std::uint8_t, 32> dig{};
+	std::array<std::uint8_t, 32> base{};
+	for (std::size_t i = 0; i < 32; ++i)
+	{
+		base[i] = static_cast<std::uint8_t>(i * 7 + 3);
+		dig[i] = static_cast<std::uint8_t>(i * 13 + 5);
+	}
+	constexpr std::array<std::uint8_t, 32> want8{
+		0x85, 0x02, 0x09, 0x0a, 0x05, 0x5c, 0x57, 0x60, 0x3c, 0x99, 0x7a, 0xe0, 0xce, 0x8d, 0x3a, 0x1f,
+		0xa0, 0xf1, 0xe4, 0x1f, 0x48, 0x74, 0x35, 0x23, 0xdb, 0x00, 0xf4, 0xd2, 0xe7, 0xd9, 0x34, 0xfc};
+	constexpr std::array<std::uint8_t, 32> want9{
+		0x93, 0xd3, 0x63, 0x36, 0x41, 0x5d, 0x88, 0xb5, 0xfa, 0xb5, 0x62, 0xd2, 0x92, 0xb7, 0xc1, 0xa1,
+		0x73, 0xcb, 0x01, 0x39, 0x29, 0xcc, 0xbb, 0x05, 0x67, 0xfd, 0xe6, 0x93, 0x2d, 0x1d, 0x04, 0xe4};
+
+	auto s = base;
+	REQUIRE(rtmp_handshake::scramble_signature(8, dig, s));
+	CHECK(s == want8);
+	s = base;
+	REQUIRE(rtmp_handshake::scramble_signature(9, dig, s));
+	CHECK(s == want9);
+	s = base;
+	REQUIRE(rtmp_handshake::scramble_signature(6, dig, s));
+	CHECK(s == base);
+}
+
+TEST_CASE("RTMPE type 8 and 9 handshakes scramble S2 and verify a scrambled C2")
+{
+	REQUIRE(legacy_provider);
+	for (std::uint8_t const magic : {rtmp_handshaker::eCryptoXteaMagic, rtmp_handshaker::eCryptoBlowfishMagic})
+	{
+		c1_buf c1 = make_signed_c1(0, 0x11, true);
+		c1_buf const original = c1;
+		rtmp_handshaker h;
+		REQUIRE(h.build_response(magic, span_of(c1)));
+		CHECK(h.response()[0] == magic);
+		CHECK(h.encrypting());
+
+		// S2 carries HMAC(C1[0:1504], HMAC(C1 digest, FMS_key)), then scrambled.
+		std::uint32_t const c1_digest = rtmp_handshake::digest_offset(view_of(original), 0);
+		std::uint8_t key[32];
+		std::array<std::uint8_t, 32> sig{};
+		HMAC_SHA256(original.data() + c1_digest, 32, genuine_keys::FMS_key, genuine_keys::FMS_key_len, key);
+		HMAC_SHA256(original.data(), eSize - 32, key, 32, sig.data());
+		REQUIRE(rtmp_handshake::scramble_signature(magic, std::span<const std::uint8_t, 32>(key, 32), sig));
+		CHECK(std::memcmp(c1.data() + eSize - 32, sig.data(), 32) == 0);
+
+		// A client's C2: signed under the S1 digest key, then scrambled the same way.
+		c1_buf const s1 = s1_of(h);
+		std::uint32_t const s1_digest = rtmp_handshake::digest_offset(view_of(s1), 0);
+		c1_buf c2{};
+		for (std::size_t i = 0; i < c2.size(); ++i)
+			c2[i] = static_cast<std::uint8_t>((i * 5u + 1u) & 0xFF);
+		HMAC_SHA256(s1.data() + s1_digest, 32, genuine_keys::FP_key, genuine_keys::FMP_key_len, key);
+		HMAC_SHA256(c2.data(), eSize - 32, key, 32, c2.data() + eSize - 32);
+		c1_buf unscrambled = c2;
+		REQUIRE(rtmp_handshake::scramble_signature(magic, std::span<const std::uint8_t, 32>(key, 32),
+			std::span<std::uint8_t, 32>(c2.data() + eSize - 32, 32)));
+		CHECK(h.validate_c2(view_of(c2)));
+		CHECK_FALSE(h.validate_c2(view_of(unscrambled)));
+	}
+}

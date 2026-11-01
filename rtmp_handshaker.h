@@ -25,10 +25,12 @@ namespace fms
 	public:
 
 		// Handshake framing constants the transport needs. 1536-byte C1/S1/C2 blocks;
-		// C0 is a single magic byte (0x03 plain, 0x06 encrypted/RTMPE).
+		// C0 is a single magic byte (0x03 plain, 0x06/0x08/0x09 encrypted/RTMPE).
 		static constexpr std::size_t eHandShakeSize = 1536;
 		static constexpr std::uint8_t ePlainMagic  = 0x03;
 		static constexpr std::uint8_t eCryptoMagic = 0x06;
+		static constexpr std::uint8_t eCryptoXteaMagic = 0x08;
+		static constexpr std::uint8_t eCryptoBlowfishMagic = 0x09;
 
 		// Phase 1. Given C0 (magic) and C1 (client_sig points at the peer's 1536-byte
 		// C1 in the caller's buffer), build the reply: S0S1 into our own buffer
@@ -63,6 +65,7 @@ namespace fms
 		std::array<std::uint8_t, eHandShakeSize + 1> m_tmp_buff;
 		bool m_is_fp9{false};
 		bool m_uses_crypto{false};
+		std::uint8_t m_magic{ePlainMagic};
 		std::uint8_t m_validation_scheme{0};
 		// unique_ptr: the destructor becomes implicit, and a copy is a compile error
 		// rather than a double EVP_CIPHER_CTX_free.

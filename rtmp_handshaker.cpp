@@ -22,12 +22,13 @@ namespace fms
 			if (client_sig[4] != 0)
 				m_is_fp9 = true;
 		}
-		else if (magic == eCryptoMagic)
+		else if (magic == eCryptoMagic || magic == eCryptoXteaMagic || magic == eCryptoBlowfishMagic)
 		{
 			m_is_fp9 = m_uses_crypto = true;
 		}
 		else
 			return false;   // unknown magic
+		m_magic = magic;
 
 		if (!m_is_fp9)
 		{
@@ -70,7 +71,7 @@ namespace fms
 			return false;
 		if (HMAC_SHA256(client_sig.data(), eHandShakeSize - SHA256_DIGEST_LENGTH, tmp_hash, SHA256_DIGEST_LENGTH, client_sig.data() + eHandShakeSize - SHA256_DIGEST_LENGTH) == 0)
 			return false;   // these bytes ship to the client as S2's signature
-		return true;
+		return rtmp_handshake::scramble_signature(m_magic, tmp_hash, client_sig.last<rtmp_handshake::eDigestLen>());
 	}
 
 	bool rtmp_handshaker::validate_c2(rtmp_handshake::c1_view c2)
@@ -84,6 +85,7 @@ namespace fms
 		std::uint8_t sig[SHA256_DIGEST_LENGTH] = {};
 		if (HMAC_SHA256(srv_dig.data() + digest, SHA256_DIGEST_LENGTH, genuine_keys::FP_key, genuine_keys::FMP_key_len, dig) != 0 &&
 			HMAC_SHA256(c2.data(), eHandShakeSize - SHA256_DIGEST_LENGTH, dig, SHA256_DIGEST_LENGTH, sig) != 0 &&
+			rtmp_handshake::scramble_signature(m_magic, dig, sig) &&
 			std::memcmp(sig, c2.data() + eHandShakeSize - SHA256_DIGEST_LENGTH, SHA256_DIGEST_LENGTH) == 0)
 			return true;
 

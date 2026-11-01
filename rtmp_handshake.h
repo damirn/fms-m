@@ -58,6 +58,11 @@ namespace fms::rtmp_handshake
 	// The scheme (0 or 1) whose embedded digest validates under `key`, or -1 if neither.
 	int detect_scheme(c1_view sig, key_view key);
 
+	// RTMPE C0 types 8 and 9 encrypt each 8-byte block of the 32-byte handshake
+	// signature with XTEA or Blowfish, keyed by `key_digest`; other types leave it.
+	// False if the cipher is unavailable, with `sig` unspecified.
+	[[nodiscard]] bool scramble_signature(std::uint8_t type, std::span<const std::uint8_t, eDigestLen> key_digest, std::span<std::uint8_t, eDigestLen> sig);
+
 	// CSPRNG fill (OpenSSL RAND_bytes). Returns false when no usable randomness is
 	// available -- callers MUST fail the handshake rather than ship predictable bytes.
 	[[nodiscard]] bool fill_random(std::span<std::uint8_t> buf);
