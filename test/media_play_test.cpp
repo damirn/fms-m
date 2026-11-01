@@ -205,3 +205,27 @@ TEST_CASE("play: a live-only request ignores a saved recording")
 	app.handle_invoke_play(play("vod_clip_live", -1.0), 7);
 	CHECK(app.waiting(7, 1));
 }
+
+TEST_CASE("play: a name that escapes the media folder is never served as VOD")
+{
+	write_recording("vod_inside");   // configures the private media folder
+	std::filesystem::path const folder = config::instance()->flv_folder();
+	{
+		flv_writer w((folder.parent_path() / "vod_escape.flv").string());
+		char const key[] = {0x17, 0x01, 0x00, 0x00, 0x00, 0x11};
+		w.write_video(key, sizeof key, 0);
+		w.close();
+	}
+	for (std::string const &name : {std::string("../vod_escape"), (folder.parent_path() / "vod_escape").string(),
+		std::string("x/../../vod_escape")})
+	{
+		test::null_host host;
+		host.add_session(7);
+		play_app app(&host);
+		app.handle_invoke_play(play(name, 0.0), 7);
+		auto const codes = app.status_codes(7);
+		CHECK_MESSAGE(has(codes, "NetStream.Play.StreamNotFound"), name);
+		CHECK_FALSE(has(codes, "NetStream.Play.Start"));
+	}
+	std::filesystem::remove(folder.parent_path() / "vod_escape.flv");
+}
