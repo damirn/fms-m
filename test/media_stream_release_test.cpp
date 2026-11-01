@@ -23,6 +23,7 @@ namespace
 	{
 		explicit sub_app(app_host *h) : media_application(h) {}
 		using media_application::handle_invoke_close_stream;
+		using media_application::handle_invoke_delete_stream;
 		using media_application::remove_client;
 		using media_application::m_registry;
 		using media_application::add_waiting_client;
@@ -157,4 +158,51 @@ TEST_CASE("media: re-playing a stream id releases its live fan-out edge")
 
 	CHECK(app.subscribers_of(bcaster) == 0);
 	CHECK(app.waiting_on_peek("second") == 1);
+}
+
+namespace
+{
+	rtmp_message_invoke_ptr delete_stream_invoke(std::uint32_t sid)
+	{
+		auto inv = std::make_shared<rtmp_message_invoke>("deleteStream", 0.0);
+		inv->add_parameter(std::make_shared<amf0_null>());
+		inv->add_parameter(std::make_shared<amf0_number>(sid));
+		return inv;   // sent on the control stream, naming the stream it ends
+	}
+}
+
+TEST_CASE("media: deleteStream ends a publish and frees the name")
+{
+	null_host host;
+	sub_app app(&host);
+	stream_client_id_t const pub(3, 1);
+	{
+		auto const g = app.m_registry.lock_exclusive();
+		REQUIRE(app.m_registry.add_broadcaster(pub, "show", g));
+		app.m_registry.add_client_stream(3, 1, g);
+	}
+	app.subscribe_live(pub, stream_client_id_t(7, 1), "show");
+
+	app.handle_invoke_delete_stream(delete_stream_invoke(1), 3);
+
+	CHECK_FALSE(app.m_registry.broadcaster_for_name("show").has_value());
+	CHECK(app.subscribers_of(pub) == 0);
+	auto const g = app.m_registry.lock_exclusive();
+	CHECK(app.m_registry.add_broadcaster(stream_client_id_t(4, 1), "show", g));
+}
+
+TEST_CASE("media: deleteStream ends a play")
+{
+	null_host host;
+	sub_app app(&host);
+	stream_client_id_t const pub(3, 1);
+	app.subscribe_live(pub, stream_client_id_t(7, 2), "show");
+	app.wait_for(7, 3, "later");
+
+	app.handle_invoke_delete_stream(delete_stream_invoke(2), 7);
+	app.handle_invoke_delete_stream(delete_stream_invoke(3), 7);
+
+	CHECK(app.subscribers_of(pub) == 0);
+	CHECK_FALSE(app.remembers(7, 2));
+	CHECK(app.waiting_on_peek("later") == 0);
 }

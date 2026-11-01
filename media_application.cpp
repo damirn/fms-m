@@ -775,8 +775,7 @@ namespace fms
 
 	void media_application::handle_invoke_delete_stream(const rtmp_message_invoke_ptr& invoke, std::uint32_t connection_id)
 	{
-		// deleteStream(txn, null, streamID) releases the id for reuse. Without
-		// this, reserve_stream_id's scan from 1 grows for the connection's life.
+		// deleteStream(txn, null, streamID) ends the stream and releases its id.
 		std::uint32_t stream_id = invoke->stream_id();
 		rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 		if (params.size() >= 2)
@@ -789,6 +788,14 @@ namespace fms
 		if (stream_id == 0)
 			return;   // the control stream is never reserved
 
+		// deleteStream destroys the stream: it stops publishing or playing first.
+		m_app_manager->delete_netstream(std::make_pair(connection_id, stream_id));
+		{
+			auto const lock = m_registry.lock_exclusive();
+			close_stream(connection_id, stream_id, lock);
+			forget_subscription(connection_id, stream_id, lock);
+			m_registry.remove_client_stream(connection_id, stream_id, lock);
+		}
 		if (client_session_ptr const conn = get_connection_opt(connection_id))
 			conn->unreserve_stream_id(stream_id);
 	}
