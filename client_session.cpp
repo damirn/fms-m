@@ -41,19 +41,27 @@ namespace fms
 			app->update_stats(false, true, static_cast<std::uint32_t>(bytes_written));
 	}
 
-	std::uint32_t client_session::reserve_stream_id()
+	std::optional<std::uint32_t> client_session::reserve_stream_id()
 	{
+		if (m_stream_ids.size() >= eMaxStreams)
+			return std::nullopt;
 		std::uint32_t stream_id = 1;
-		while (true)
-		{
-			if (!m_stream_ids.contains(stream_id))
-			{
-				m_stream_ids.insert(stream_id);
-				break;
-			}
+		while (m_stream_ids.contains(stream_id))
 			++stream_id;
-		}
+		m_stream_ids.insert(stream_id);
 		return stream_id;
+	}
+
+	bool client_session::claim_stream_id(std::uint32_t id)
+	{
+		if (id == 0)
+			return false;
+		if (m_stream_ids.contains(id))
+			return true;
+		if (m_stream_ids.size() >= eMaxStreams)
+			return false;
+		m_stream_ids.insert(id);
+		return true;
 	}
 
 	void client_session::unreserve_stream_id(std::uint32_t stream_id)

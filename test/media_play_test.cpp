@@ -1,6 +1,7 @@
 // play's start argument selects what may serve a name: >= 0 a recording, -1 a live
 // stream, -2 either. A name nothing can serve under the request is refused at once.
 
+#include "client_session.h"
 #include "doctest.h"
 #include "media_application.h"
 #include "null_app_host.h"
@@ -20,6 +21,7 @@ namespace
 	{
 		explicit play_app(app_host *h) : media_application(h) {}
 		using media_application::handle_invoke_play;
+		using media_application::handle_invoke_create_stream;
 		using media_application::m_registry;
 
 		std::vector<std::string> status_codes(std::uint32_t conn)
@@ -64,6 +66,7 @@ namespace
 TEST_CASE("play: a recorded-only request for a name with no recording or publisher is StreamNotFound")
 {
 	test::null_host host;
+	host.add_session(7);
 	play_app app(&host);
 	app.handle_invoke_play(play("no_such_stream_xyz", 0.0), 7);
 	auto const codes = app.status_codes(7);
@@ -77,6 +80,7 @@ TEST_CASE("play: live-only and default requests for an absent name wait for a pu
 	for (std::optional<double> const start : {std::optional<double>(-1.0), std::optional<double>(-2.0), std::optional<double>()})
 	{
 		test::null_host host;
+		host.add_session(7);
 		play_app app(&host);
 		app.handle_invoke_play(play("no_such_stream_xyz", start), 7);
 		auto const codes = app.status_codes(7);
@@ -89,6 +93,7 @@ TEST_CASE("play: live-only and default requests for an absent name wait for a pu
 TEST_CASE("play: a recorded-only request is served by a live publisher of that name")
 {
 	test::null_host host;
+	host.add_session(7);
 	play_app app(&host);
 	{
 		auto const g = app.m_registry.lock_exclusive();
@@ -98,4 +103,47 @@ TEST_CASE("play: a recorded-only request is served by a live publisher of that n
 	auto const codes = app.status_codes(7);
 	CHECK_FALSE(has(codes, "NetStream.Play.StreamNotFound"));
 	CHECK(has(codes, "NetStream.Play.Start"));
+}
+
+TEST_CASE("play: a connection holds at most eMaxStreams message streams")
+{
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	for (std::uint32_t sid = 1; sid <= client_session::eMaxStreams; ++sid)
+	{
+		auto inv = play("s" + std::to_string(sid), -2.0);
+		inv->set_stream_id(sid);
+		app.handle_invoke_play(inv, 7);
+	}
+	CHECK(app.waiting(7, client_session::eMaxStreams));
+	(void)app.status_codes(7);
+
+	auto over = play("one_more", -2.0);
+	over->set_stream_id(client_session::eMaxStreams + 1);
+	app.handle_invoke_play(over, 7);
+	auto const codes = app.status_codes(7);
+	CHECK(has(codes, "NetStream.Failed"));
+	CHECK_FALSE(app.waiting(7, client_session::eMaxStreams + 1));
+
+	// createStream is refused once the connection is full
+	auto cs = std::make_shared<rtmp_message_invoke>("createStream", 4.0);
+	cs->add_parameter(std::make_shared<amf0_null>());
+	rtmp_message_ptr res;
+	app.handle_invoke_create_stream(cs, 7, res);
+	auto const err = std::dynamic_pointer_cast<rtmp_message_invoke>(res);
+	REQUIRE(err != nullptr);
+	CHECK(err->function()->value() == "_error");
+}
+
+TEST_CASE("play: stream id 0 is the control stream and never carries a play")
+{
+	test::null_host host;
+	host.add_session(7);
+	play_app app(&host);
+	auto inv = play("x", -2.0);
+	inv->set_stream_id(0);
+	app.handle_invoke_play(inv, 7);
+	CHECK(has(app.status_codes(7), "NetStream.Failed"));
+	CHECK_FALSE(app.waiting(7, 0));
 }

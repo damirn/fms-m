@@ -240,7 +240,13 @@ namespace fms
 		client_session_ptr const conn = get_connection_opt(connection_id);
 		if (!conn)
 			return;   // the connection went away between the invoke and here
-		std::uint32_t const stream_id = conn->reserve_stream_id();
+		std::optional<std::uint32_t> const reserved = conn->reserve_stream_id();
+		if (!reserved)
+		{
+			res = create_call_failed(invoke, "Too many streams on this connection.");
+			return;
+		}
+		std::uint32_t const stream_id = *reserved;
 
 		res = create_stream(invoke, connection_id, stream_id);
 
@@ -263,6 +269,7 @@ namespace fms
 		{
 			rtmp_message_invoke::parameters_list_t &params = invoke->parameters();
 			check_stream_name(params);
+			claim_stream(connection_id, invoke->stream_id());
 
 			auto i = params.begin();
 			++i;
@@ -365,6 +372,7 @@ namespace fms
 		try
 		{
 			check_stream_name(params);
+			claim_stream(connection_id, invoke->stream_id());
 			auto i = params.begin();
 			++i;
 
@@ -524,6 +532,27 @@ namespace fms
 		return result;
 	}
 
+	void media_application::claim_stream(std::uint32_t connection_id, std::uint32_t stream_id)
+	{
+		client_session_ptr const conn = get_connection_opt(connection_id);
+		if (!conn || !conn->claim_stream_id(stream_id))
+			throw rtmp_illegal_parameter_exception("Too many streams on this connection.");
+	}
+
+	rtmp_message_invoke_ptr media_application::create_call_failed(const rtmp_message_invoke_ptr &invoke, const std::string &description)
+	{
+		rtmp_message_invoke_ptr const result = std::make_shared<rtmp_message_invoke>("_error", invoke->invoke_id()->value());
+		result->set_channel_id(invoke->channel_id());
+		result->set_stream_id(invoke->stream_id());
+		result->add_parameter(std::make_shared<amf0_null>());
+		amf0_object_ptr const obj = std::make_shared<amf0_object>();
+		obj->add_entry("level", "error");
+		obj->add_entry("code", "NetConnection.Call.Failed");
+		obj->add_entry("description", description);
+		result->add_parameter(obj);
+		return result;
+	}
+
 	double media_application::play_start(const rtmp_message_invoke::parameters_list_t &params)
 	{
 		// [command object, name, start, ...]; absent or not a number is the -2 default.
@@ -614,7 +643,10 @@ namespace fms
 		client_session_ptr const conn = get_connection_opt(connection_id);
 		if (!conn)
 			return false;
-		std::uint32_t const new_stream_id = conn->reserve_stream_id();
+		std::optional<std::uint32_t> const reserved = conn->reserve_stream_id();
+		if (!reserved)
+			return false;
+		std::uint32_t const new_stream_id = *reserved;
 		auto const lock = m_registry.lock_exclusive();
 		if (!m_registry.add_broadcaster(std::make_pair(connection_id, new_stream_id), std::string("QOS!" + stream), lock))
 			return false;

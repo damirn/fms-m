@@ -81,6 +81,8 @@ namespace fms
 		rtmp_message_ptr send_stream_notify(std::uint32_t, std::uint32_t, const std::string &, const std::string &, bool);
 		void send_publish_notify(std::uint32_t, std::uint32_t, const std::string &);
 		static double play_start(const rtmp_message_invoke::parameters_list_t &);
+		void claim_stream(std::uint32_t, std::uint32_t);
+		static rtmp_message_invoke_ptr create_call_failed(const rtmp_message_invoke_ptr &, const std::string &);
 		void send_stream_not_found(std::uint32_t, std::uint32_t, const std::string &);
 		void check_waiting_clients(std::uint32_t, const std::string &);
 		static bool check_bool_value(rtmp_message_invoke::parameters_list_t &);
