@@ -4,6 +4,7 @@
 #include "byte_writer.h"
 #include "transport_seam.h"
 
+#include <atomic>
 #include <cstdint>
 #include <deque>
 #include <utility>
@@ -24,9 +25,16 @@ namespace fms
 		// Start the first asynchronous operation for the connection.
 		void start() override;
 
+		// Any thread. At most one wakeup is queued: it clears the flag before it
+		// drains, so a message enqueued after that queues the next one.
 		void notify() override
 		{
-			boost::asio::post(m_io_context, [self = shared_self()]() { self->handle_notify(); });
+			if (!m_notify_pending.exchange(true, std::memory_order_acq_rel))
+				boost::asio::post(m_io_context, [self = shared_self()]()
+				{
+					self->m_notify_pending.store(false, std::memory_order_release);
+					self->handle_notify();
+				});
 		}
 
 		void close() override;
@@ -148,6 +156,8 @@ namespace fms
 
 		bool m_to_close{false};
 		std::deque<std::pair<rtmp_channel_ptr, rtmp_message_ptr>> m_pre_app_results;
+
+		std::atomic<bool> m_notify_pending{false};
 	};
 
 	using rtmp_connection_ptr = std::shared_ptr<rtmp_connection>;

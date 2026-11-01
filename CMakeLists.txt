@@ -400,17 +400,17 @@ if(BUILD_TESTS)
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 
-  add_executable(rtmpt_session_test
-    test/test_main.cpp test/rtmpt_session_test.cpp
-    rtmpt_session.cpp basic_rtmp_connection.cpp rtmp_parser.cpp rtmp_handshaker.cpp
+  add_executable(transport_test
+    test/test_main.cpp test/rtmpt_session_test.cpp test/rtmp_connection_test.cpp
+    rtmpt_session.cpp rtmp_connection.cpp basic_rtmp_connection.cpp rtmp_parser.cpp rtmp_handshaker.cpp
     rtmp_handshake.cpp crypto.cpp dh.cpp evp_dh.cpp io_context_pool.cpp
     rtmp_application.cpp so_manager.cpp random_string.cpp client_session.cpp
     rtmp_message.cpp rtmp_header.cpp rtmp_protocol.cpp rtmp_so_message.cpp
     amf0.cpp amf3.cpp util.cpp config.cpp logging.cpp)
-  target_link_libraries(rtmpt_session_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
-  add_test(NAME rtmpt_session_test COMMAND rtmpt_session_test)
+  target_link_libraries(transport_test ${Boost_LIBRARIES} ${CRYPTO_LIBRARIES})
+  add_test(NAME transport_test COMMAND transport_test)
   if(APPLE)
-    set_tests_properties(rtmpt_session_test PROPERTIES
+    set_tests_properties(transport_test PROPERTIES
       ENVIRONMENT "DYLD_FALLBACK_LIBRARY_PATH=${FMS_TEST_DYLD_PATH}")
   endif()
 

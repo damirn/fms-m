@@ -777,3 +777,15 @@ TEST_CASE("rtmfp session: a queued close request closes the session and stops th
 	CHECK(s->state() == session::eNearClose);
 	CHECK(app.has_async_messages(s->id()));   // nothing past the close was sent
 }
+
+TEST_CASE("rtmfp session: a burst of notifies queues one drain")
+{
+	fake_host h;
+	auto const s = make_session(h);
+	for (int i = 0; i < 5; ++i)
+		s->notify();
+	CHECK(h.io.poll() == 1);
+	h.io.restart();
+	s->notify();                    // the drain cleared the flag, so the next one queues again
+	CHECK(h.io.poll() == 1);
+}

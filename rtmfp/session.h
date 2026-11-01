@@ -8,6 +8,7 @@
 #include "rtmfp_host.h"
 #include "types.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -249,6 +250,7 @@ namespace fms
 		boost::asio::steady_timer m_timer;
 		boost::asio::steady_timer m_alarm;
 		boost::asio::io_context::strand m_strand;
+		std::atomic<bool> m_notify_pending{false};
 		state_t m_state{eInitialState};
 
 		chunk *m_ready_chunk{nullptr};

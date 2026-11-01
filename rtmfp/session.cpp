@@ -733,7 +733,13 @@ namespace fms
 
 	void session::notify()
 	{
-		boost::asio::post(m_strand, [self = shared_from_this()]() { self->notify_impl(); });
+		// At most one drain queued; it clears the flag before it starts.
+		if (!m_notify_pending.exchange(true, std::memory_order_acq_rel))
+			boost::asio::post(m_strand, [self = shared_from_this()]()
+			{
+				self->m_notify_pending.store(false, std::memory_order_release);
+				self->notify_impl();
+			});
 	}
 
 	void session::unreserve_stream_id(std::uint32_t stream_id)
