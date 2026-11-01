@@ -7,8 +7,10 @@
 #include "doctest.h"
 #include "parser.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <new>
 #include <vector>
 
 using namespace fms;
@@ -94,4 +96,24 @@ TEST_CASE("packet HMAC round-trips and rejects tampering")
 
 	mac[0] ^= 0x80;                                        // tamper the tag
 	CHECK_FALSE(rx.verify_rx_hmac(ct, sizeof(ct), mac));
+}
+
+TEST_CASE("aes wipes its session and HMAC keys when destroyed")
+{
+	alignas(aes) unsigned char storage[sizeof(aes)];
+	auto *const a = new (storage) aes;
+	std::memset(a->enc_key_data(), 0xA5, 32);
+	std::memset(a->dec_key_data(), 0xA5, 32);
+	std::memset(a->tx_hmac_key(), 0xA5, 32);
+	std::memset(a->rx_hmac_key(), 0xA5, 32);
+	a->~aes();
+
+	std::size_t run = 0;
+	std::size_t longest = 0;
+	for (unsigned char const b : storage)
+	{
+		run = b == 0xA5 ? run + 1 : 0;
+		longest = std::max(longest, run);
+	}
+	CHECK(longest < 8);
 }

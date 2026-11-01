@@ -25,6 +25,10 @@ namespace fms
 	{
 		EVP_CIPHER_CTX_free(m_decrypt_ctx);
 		EVP_CIPHER_CTX_free(m_encrypt_ctx);
+		OPENSSL_cleanse(m_dec_key_data, sizeof m_dec_key_data);
+		OPENSSL_cleanse(m_enc_key_data, sizeof m_enc_key_data);
+		OPENSSL_cleanse(m_tx_hmac_key, sizeof m_tx_hmac_key);
+		OPENSSL_cleanse(m_rx_hmac_key, sizeof m_rx_hmac_key);
 	}
 
 	void aes::decrypt(byte_reader &from, byte_writer &to)

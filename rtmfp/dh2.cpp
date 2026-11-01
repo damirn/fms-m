@@ -4,6 +4,7 @@
 
 #include <stdexcept>
 
+#include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
@@ -37,6 +38,7 @@ namespace fms
 	{
 		if (m_pkey)
 			EVP_PKEY_free(m_pkey);
+		OPENSSL_cleanse(m_shared_secret.data(), m_shared_secret.size());
 	}
 
 	void dh2::generate_public_key() noexcept
